@@ -1246,6 +1246,32 @@ function categoryOf(m) {
   const label = m.kind === 'spray' ? 'Válvula' : m.kind === 'gargalo' ? 'Peça de encaixe' : m.vol ? 'Corpo' : 'Tampa';
   return CATS.find(([l]) => l === label);
 }
+// Medidas que acompanham a escala da peça (em mm).
+const LEN_KEYS = ['W', 'D', 'h', 'rBot', 'rTop', 'rBotW', 'rTopW', 'rTL', 'rTR', 'rBL', 'rBR', 'rEdge', 'groove', 'notchY', 'notchW', 'notchH',
+  'notchD', 'actW', 'actH', 'headH', 'stemD', 'stemH', 'guideW', 'guideH', 'nozzleL', 'armW', 'armT', 'droop', 'domeH', 'spoutD', 'collarR',
+  'discD', 'discDip', 'discRise', 'orifD', 'sealH', 'bandInset'];
+function scaleModule(m, f) { LEN_KEYS.forEach(k => { if (typeof m[k] === 'number') m[k] = r1(m[k] * f); }); return m; }
+// Peça nova herda o tamanho da trocada: corpo assume largura, profundidade e
+// altura; tampa/válvula escala por inteiro para ficar com a largura anterior.
+function adaptSwap(old, nw, label) {
+  if (label === 'Peça de encaixe') return nw;
+  if (label === 'Corpo') {
+    const f = old.W / nw.W;
+    scaleModule(nw, f);
+    nw.W = old.W; nw.D = old.D; nw.h = old.h;
+    return nw;
+  }
+  scaleModule(nw, old.W / nw.W);
+  // Sobre um gargalo: a rosca tem que caber por dentro e ficar coberta.
+  const below = S.modules[sel - 1];
+  if (below?.kind === 'gargalo') {
+    const minW = below.W + 0.6 + 2 * S.wall;
+    if (Math.min(nw.W, nw.D) < minW) scaleModule(nw, minW / Math.min(nw.W, nw.D));
+    const minH = r1(below.h - below.ringH + 0.3);
+    if (nw.h * Math.max(1, nw.rep) < minH) nw.h = minH;
+  }
+  return nw;
+}
 function renderSwap(ed, m) {
   const [label, keys] = categoryOf(m), cur = typeOf(m);
   const box = document.createElement('details'); box.open = true;
@@ -1257,8 +1283,8 @@ function renderSwap(ed, m) {
     card.innerHTML = `<img class="ph" alt=""><div>${LIB[k].name}</div>`;
     card.onclick = () => {
       if (k === cur) return;
-      // Mantém cor, acabamento, encaixe e deslocamento da peça trocada.
-      S.modules[sel] = M(k, { own: m.own, color: m.color, finish: m.finish, gap: m.gap, ox: m.ox });
+      // Mantém cor, acabamento, encaixe e deslocamento, e readapta o tamanho.
+      S.modules[sel] = adaptSwap(m, M(k, { own: m.own, color: m.color, finish: m.finish, gap: m.gap, ox: m.ox }), label);
       renderStack(); renderEditorKeepScroll(); build();
     };
     grid.appendChild(card);
