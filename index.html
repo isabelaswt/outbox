@@ -260,7 +260,8 @@ const PINK = '#e0306e', CREAM = '#f1e6cc';
 // Produtos 3D da Draft (draft.work). Por produto: nome, altura real típica em
 // mm (calibra a escala), se o corpo é de vidro, e as peças do corpo, da
 // tampa/válvula e do mecanismo interno (nomes normalizados por pn()).
-// cat: 'V' válvula, 'T' tampa. Sobretampas ficam de fora para mostrar a válvula.
+// cat: 'V' válvula, 'T' tampa; rot (graus) gira a frente do produto para a câmera.
+// Sobretampas ficam de fora para mostrar a válvula.
 const DRAFT = {
   '1027_vintage_pump_bottle': ['Vintage com pump', 190, true, ['BOTTLE'], ['PUMP', 'PUMP_1'], ['TUBE', 'MECHANISM'], 'V'],
   DRAFT_1005_SoapPump: ['Soap pump', 200, false, ['BODY'], ['PUMP', 'NECK'], ['TUBE', 'SPRING', 'BALL', 'CYLINDER1'], 'V'],
@@ -284,7 +285,7 @@ const DRAFT = {
   DRAFT_1014_Glass_Bottle_RC: ['Vidro com tampa', 150, true, ['BODY'], ['CAP'], [], 'T'],
   DRAFT_3002_Essential_Oil: ['Óleo essencial', 75, true, ['BODY_2'], ['CAP'], [], 'T'],
   DRAFT_3009_Ophthalmic_Nozzle: ['Colírio', 90, false, ['BODY'], ['CAP'], [], 'T'],
-  DRAFT_1039_Round_Bottle: ['Frasco redondo', 120, false, ['TUBE'], ['CAP', 'OPEN'], [], 'T'],
+  DRAFT_1039_Round_Bottle: ['Frasco redondo', 120, false, ['TUBE'], ['CAP', 'OPEN'], [], 'T', 90],
   DRAFT_1002_Tube: ['Bisnaga', 170, false, ['TUBE'], ['CAP'], [], 'T'],
   DRAFT_1033_HandCream_Tube: ['Tubo creme de mãos', 120, false, ['TUBE_2'], ['CAP'], [], 'T'],
   DRAFT_1037_Travelsize_Shampoo: ['Shampoo viagem', 110, false, ['TUBE', 'INNER'], ['CAP', 'CAP_2'], [], 'T'],
@@ -305,14 +306,15 @@ function draftBox(id, names) {
   return b;
 }
 function draftInfo(id) {
-  const [name, hMM, glass, body, closure, internal, cat] = DRAFT[id];
+  const [name, hMM, glass, body, closure, internal, cat, rot = 0] = DRAFT[id];
   const bb = draftBox(id, body), cb = draftBox(id, closure), all = bb.clone().union(cb);
   const k = hMM / (all.max.y - all.min.y); // unidades → mm
   const c = bb.getCenter(new THREE.Vector3());
-  return { name, glass, body, closure, internal, cat, k, cx: c.x, cz: c.z, bb, cb };
+  return { name, glass, body, closure, internal, cat, rot, k, cx: c.x, cz: c.z, bb, cb };
 }
 function draftModule(id, role) {
   const d = draftInfo(id), b = role === 'corpo' ? d.bb : d.cb, s = b.getSize(new THREE.Vector3()).multiplyScalar(d.k);
+  if (d.rot % 180) [s.x, s.z] = [s.z, s.x];
   const label = role === 'corpo' ? 'Corpo' : d.cat === 'V' ? 'Válvula' : 'Tampa';
   return { ...BASE, kind: 'malha', asset: id, role, type: `draft:${id}:${role}`, name: `${label} · ${d.name}`,
     W0: r1(s.x), D0: r1(s.z), h0: r1(s.y), W: r1(s.x), D: r1(s.z), h: r1(s.y), scl: 100,
@@ -348,6 +350,7 @@ function loadDraft(id) {
       g.setAttribute('normal', new THREE.BufferAttribute(nor, 3));
       if (src.index) g.setIndex(Array.from(src.index.array));
       g.applyMatrix4(o.matrixWorld); g.translate(-d.cx, 0, -d.cz); g.scale(d.k, d.k, d.k);
+      if (d.rot) g.rotateY(d.rot * Math.PI / 180);
       if (!Nn) g.computeVertexNormals();
       geo[pn(o.name)] = g;
     });
@@ -1059,8 +1062,8 @@ function updateStats() {
     <span>Altura total</span><b>${sz.y.toFixed(1)} mm</b>
     <span>Largura máx.</span><b>${sz.x.toFixed(1)} mm</b>
     <span>Profundidade máx.</span><b>${sz.z.toFixed(1)} mm</b>
-    <span>Volume externo do frasco</span><b>${v.ext.toFixed(0)} ml</b>
-    <span class="cap">Capacidade estimada</span><span class="cap"><b>${v.cap.toFixed(0)} ml</b></span>`;
+    <span>Volume externo do frasco</span><b>${v.ext ? v.ext.toFixed(0) + ' ml' : '—'}</b>
+    <span class="cap">Capacidade estimada</span><span class="cap"><b>${v.cap ? v.cap.toFixed(0) + ' ml' : '—'}</b></span>`;
 }
 
 // ───────────────────────── câmeras e vistas ─────────────────────────
