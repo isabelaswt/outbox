@@ -195,7 +195,7 @@ const BASE = {
   neckStd: '24/410', pitch: 3.18, turns: 1.5, threadD: 1, ringH: 1.6, ringW: 1.8, embed: 8,
   // válvula: W/h = virola que veste o gargalo; cabeça conforme o tipo; pescante até o fundo.
   sprayType: 'mist', actW: 20, actH: 16, stemH: 4, headH: 28, nozzleL: 14, dir: 0,
-  collarR: 1.2, stemD: 7, armW: 9, armT: 4.5, droop: 2, guideW: 0, guideH: 0,
+  collarR: 1.2, stemD: 7, armW: 9, armT: 4.5, droop: 2, guideW: 0, guideH: 0, guideLine: 28,
   pesc: true, pescD: 4, pescCurve: 0, pescWave: 0, pescGap: 3,
   mola: true, houseD: 8, springL: 18, coils: 11, sleeve: 'transparente',
   // sistema de abertura da tampa: flip-top (dobradiça na linha) ou disc-top.
@@ -434,11 +434,11 @@ function sprayGeo(m, y0, { lo = false } = {}) {
   const collar = moduleGeo({ ...BASE, kind: 'giro', W: m.W, D: m.W, h: m.h, rBot: 0.6, rTop: m.collarR, ridges: m.ridges, ridgeD: m.ridgeD }, y0, { lo });
   const top = y0 + m.h, head = [], holes = [];
   if (m.sprayType === 'mist') {
-    // Anel guia entre a virola e o atuador, com friso no meio.
+    // Anel guia entre a virola e o atuador, com friso perto da base.
     let yA = top;
     if (m.guideW > 0 && m.guideH > 0) {
       head.push(moduleGeo({ ...BASE, kind: 'giro', W: m.guideW, D: m.guideW, h: m.guideH, rBot: 0.3, rTop: 0.8,
-        groove: m.guideH / 2, grooveD: 0.35 }, top, { lo }));
+        groove: m.guideH * (1 - m.guideLine / 100), grooveD: 0.35 }, top, { lo }));
       yA = top + m.guideH;
     }
     if (m.stemH > 0) head.push(cyl(m.stemD / 2, yA - 1, m.stemH + 2, 0, 0, lo));
@@ -1004,6 +1004,7 @@ const MF = [
     K(['actH', 'Cabeça: altura', 6, 50, 0.5, 'mm', isType('mist')]),
     K(['guideW', 'Anel guia: diâmetro (0 = sem)', 0, 60, 0.5, 'mm', isType('mist')]),
     K(['guideH', 'Anel guia: altura', 0, 20, 0.5, 'mm', isType('mist')]),
+    K(['guideLine', 'Anel guia: altura do friso', 5, 95, 1, '%', isType('mist')]),
     K(['headH', 'Cabeça: altura', 10, 60, 0.5, 'mm', m => m.sprayType !== 'mist']),
     K(['nozzleL', 'Bico: comprimento', 0, 50, 0.5, 'mm', m => m.sprayType !== 'mist']),
     K(['armW', 'Bico: largura', 3, 30, 0.5, 'mm', isType('lamina')]),
