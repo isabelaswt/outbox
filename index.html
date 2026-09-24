@@ -183,7 +183,7 @@ const store = {
 // ───────────────────────── módulos ─────────────────────────
 const BASE = {
   name: 'Módulo', W: 50, D: 50, n: 2, h: 40, taper: 100, bulge: 0, bulgePos: 50,
-  rBot: 2, rTop: 2, gap: 0, rep: 1, repGap: 0.6,
+  rBot: 2, rTop: 2, gap: 0, rep: 1, repGap: 0,
   groove: 0, grooveD: 0.6,
   notch: false, notchLock: true, notchY: 12, notchW: 20, notchH: 8, notchD: 2, notchP: 2,
   ridges: 0, ridgeD: 0.6,
@@ -214,25 +214,25 @@ const M = (type, o = {}) => ({ ...BASE, ...LIB[type], ...o });
 const PINK = '#e0306e', CREAM = '#f1e6cc';
 const PRESETS = {
   'Cápsula + esfera': { color: PINK, finish: 'fosco', modules: [
-    M('capsula', { rBot: 12 }), M('esfera', { gap: -3 })] },
+    M('capsula', { rBot: 12 }), M('esfera')] },
   'Seixo com fenda': { color: CREAM, finish: 'fosco', modules: [
-    M('plano', { W: 78, D: 44, n: 3.2, h: 132, rBot: 16, rTop: 16 }), M('seixo', { gap: 0.8 })] },
+    M('plano', { W: 78, D: 44, n: 3.2, h: 132, rBot: 16, rTop: 16 }), M('seixo')] },
   'Domo meia-lua': { color: CREAM, finish: 'fosco', modules: [
-    M('plano', { W: 72, D: 42, n: 3, h: 128, rBot: 18, rTop: 18 }), M('domo', { gap: 0.8 })] },
+    M('plano', { W: 72, D: 42, n: 3, h: 128, rBot: 18, rTop: 18 }), M('domo')] },
   'Arco + tigela': { color: PINK, finish: 'fosco', modules: [
-    M('arco'), M('tigela'), M('disco', { W: 42, D: 42, gap: 0.6 })] },
+    M('arco'), M('tigela'), M('disco', { W: 42, D: 42 })] },
   'Anéis empilhados': { color: PINK, finish: 'fosco', modules: [
     M('plano', { W: 66, D: 34, n: 6, h: 120, rBot: 6, rTop: 14 }),
-    M('anel', { rep: 3, repGap: 0.6, gap: 0.6 }), M('disco', { W: 38, D: 38, h: 8, rBot: 3, rTop: 3, gap: 0.6 })] },
+    M('anel', { rep: 3 }), M('disco', { W: 38, D: 38, h: 8, rBot: 3, rTop: 3 })] },
   'Cone + tigela': { color: PINK, finish: 'fosco', modules: [
     M('cone'), M('tigela', { W: 36, D: 36, h: 18, rBot: 16 }), M('disco', { W: 38, D: 38, h: 5 })] },
   'Barril empilhado': { color: PINK, finish: 'fosco', modules: [
-    M('reto', { W: 54, D: 54, h: 95, rBot: 4, rTop: 4 }), M('barril', { gap: 0.6 }),
-    M('tigela', { W: 48, D: 48, h: 22, rBot: 20, gap: 0.6 }), M('disco', { W: 50, D: 50, h: 5, gap: 0.4 })] },
+    M('reto', { W: 54, D: 54, h: 95, rBot: 4, rTop: 4 }), M('barril'),
+    M('tigela', { W: 48, D: 48, h: 22, rBot: 20 }), M('disco', { W: 50, D: 50, h: 5 })] },
   'Gargalo flare': { color: PINK, finish: 'fosco', modules: [
-    M('reto', { W: 58, D: 58, h: 120, rBot: 10, rTop: 26 }), M('flare'), M('disco', { W: 46, D: 46, h: 7, gap: 0.5 })] },
+    M('reto', { W: 58, D: 58, h: 120, rBot: 10, rTop: 26 }), M('flare'), M('disco', { W: 46, D: 46, h: 7 })] },
   'Placa assimétrica + esfera': { color: '#c42b52', finish: 'fosco', modules: [
-    M('placa'), M('esfera', { W: 35, D: 35, h: 35, rBot: 17.5, rTop: 17.5, ox: -8, gap: -1.5, groove: 12,
+    M('placa'), M('esfera', { W: 35, D: 35, h: 35, rBot: 17.5, rTop: 17.5, ox: -8, groove: 12,
       notch: true, notchW: 11, notchH: 2.5, notchD: 1.4, notchP: 8 })] },
   'Oval flip-top 250 ml': { color: '#f28bb5', finish: 'acetinado', modules: [
     M('plano', { W: 66, D: 40, n: 3.4, h: 150, rBot: 18, rTop: 10, bulge: 3, bulgePos: 30 }),
@@ -764,7 +764,7 @@ function renderAll() { renderStack(); renderEditor(); renderGlobal(); renderPres
 $('#libType').innerHTML = Object.entries(LIB).map(([k, v]) => `<option value="${k}">${v.name}</option>`).join('');
 $('#addMod').onclick = () => {
   const t = $('#libType').value;
-  S.modules.splice(sel + 1, 0, M(t, { gap: LIB[t].vol ? 0 : 0.6 }));
+  S.modules.splice(sel + 1, 0, M(t));
   sel = sel + 1; renderStack(); renderEditor(); build();
 };
 $('#colorAll').onclick = () => { S.modules.forEach(m => m.own = false); renderStack(); renderEditor(); build(); };
