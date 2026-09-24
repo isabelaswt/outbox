@@ -188,6 +188,8 @@ const BASE = {
   notch: false, notchLock: true, notchY: 12, notchW: 20, notchH: 8, notchD: 2, notchP: 2,
   ridges: 0, ridgeD: 0.6,
   own: false, color: '#e0306e', finish: 'fosco', vol: false,
+  // kind 'giro': seção girando no eixo; 'placa': silhueta frontal extrudada na profundidade.
+  kind: 'giro', ox: 0, rTL: 6, rTR: 6, rBL: 6, rBR: 6, rEdge: 3, chamfer: false,
 };
 const LIB = {
   capsula: { name: 'Corpo cápsula', W: 58, D: 58, h: 160, rBot: 29, rTop: 29, vol: true },
@@ -204,6 +206,7 @@ const LIB = {
   esfera:  { name: 'Esfera', W: 44, D: 44, h: 44, rBot: 22, rTop: 22, groove: 15 },
   domo:    { name: 'Domo meia-lua', W: 46, D: 38, h: 38, rBot: 2, rTop: 24, groove: 15, notch: true, notchY: 15, notchW: 18, notchH: 9, notchD: 2.2, notchP: 2 },
   seixo:   { name: 'Seixo com fenda', W: 70, D: 40, n: 2.4, h: 34, rBot: 6, rTop: 18, groove: 13, notch: true, notchY: 13, notchW: 30, notchH: 6, notchD: 1.8, notchP: 8 },
+  placa:   { name: 'Corpo placa assimétrico', kind: 'placa', W: 66, D: 34, h: 134, rTL: 5, rTR: 30, rBL: 7, rBR: 7, rEdge: 5, chamfer: true, vol: true },
   flip:    { name: 'Tampa flip-top', W: 46, D: 34, n: 2.8, h: 24, rBot: 1, rTop: 3, groove: 6 },
 };
 const M = (type, o = {}) => ({ ...BASE, ...LIB[type], ...o });
@@ -228,6 +231,9 @@ const PRESETS = {
     M('tigela', { W: 48, D: 48, h: 22, rBot: 20, gap: 0.6 }), M('disco', { W: 50, D: 50, h: 5, gap: 0.4 })] },
   'Gargalo flare': { color: PINK, finish: 'fosco', modules: [
     M('reto', { W: 58, D: 58, h: 120, rBot: 10, rTop: 26 }), M('flare'), M('disco', { W: 46, D: 46, h: 7, gap: 0.5 })] },
+  'Placa assimétrica + esfera': { color: '#c42b52', finish: 'fosco', modules: [
+    M('placa'), M('esfera', { W: 35, D: 35, h: 35, rBot: 17.5, rTop: 17.5, ox: -8, gap: -1.5, groove: 12,
+      notch: true, notchW: 11, notchH: 2.5, notchD: 1.4, notchP: 8 })] },
   'Oval flip-top 250 ml': { color: '#f28bb5', finish: 'acetinado', modules: [
     M('plano', { W: 66, D: 40, n: 3.4, h: 150, rBot: 18, rTop: 10, bulge: 3, bulgePos: 30 }),
     M('flip', { own: true, color: '#ffd21f', finish: 'brilho' })] },
@@ -292,7 +298,6 @@ function ySamples(m, rB, rT, lo) {
 }
 
 function loft(rings, seg, disp) {
-  const P = [], I = [], R = rings.length;
   const pts = rings.map(r => {
     const out = new Array(seg);
     for (let j = 0; j < seg; j++) {
@@ -303,28 +308,74 @@ function loft(rings, seg, disp) {
     }
     return out;
   });
+  return loftPts(pts);
+}
+
+// Costura anéis de pontos (mesma contagem) e fecha as pontas com leques.
+function loftPts(pts) {
+  const P = [], I = [], R = pts.length, seg = pts[0].length;
   pts.forEach(ring => ring.forEach(q => P.push(q[0], q[1], q[2])));
   for (let i = 0; i < R - 1; i++) for (let j = 0; j < seg; j++) {
     const j2 = (j + 1) % seg, a = i * seg + j, b = i * seg + j2, c = (i + 1) * seg + j, d = (i + 1) * seg + j2;
     I.push(a, c, b, b, c, d);
   }
-  const fan = (ring, y, down) => {
-    const base = P.length / 3;
-    ring.forEach(q => P.push(q[0], q[1], q[2]));
-    const c = P.length / 3; P.push(0, y, 0);
+  const fan = (ring, down) => {
+    const base = P.length / 3, c0 = [0, 0, 0];
+    ring.forEach(q => { P.push(q[0], q[1], q[2]); c0[0] += q[0] / seg; c0[1] += q[1] / seg; c0[2] += q[2] / seg; });
+    const c = P.length / 3; P.push(...c0);
     for (let j = 0; j < seg; j++) { const j2 = (j + 1) % seg; down ? I.push(c, base + j, base + j2) : I.push(c, base + j2, base + j); }
   };
-  fan(pts[0], rings[0].y, true);
-  fan(pts[R - 1], rings[R - 1].y, false);
+  fan(pts[0], true);
+  fan(pts[R - 1], false);
   const g = new THREE.BufferGeometry();
   g.setAttribute('position', new THREE.Float32BufferAttribute(P, 3));
   g.setIndex(I);
+  // Garante normais para fora, qualquer que seja o sentido dos anéis.
+  if (signedVolume(g, true) < 0) { for (let i = 0; i < I.length; i += 3) [I[i + 1], I[i + 2]] = [I[i + 2], I[i + 1]]; g.setIndex(I); }
   g.computeVertexNormals();
   return g;
 }
 
+// Contorno frontal com 4 cantos independentes, recuado d mm.
+function slabOutline(m, y0, d, K) {
+  const W = m.W, H = m.h;
+  const fit = (a, b, L) => (a + b > L ? [a * L / (a + b), b * L / (a + b)] : [a, b]);
+  let [bl, br, tr, tl] = [m.rBL, m.rBR, m.rTR, m.rTL].map(r => Math.max(0, r));
+  [bl, br] = fit(bl, br, W); [tl, tr] = fit(tl, tr, W); [bl, tl] = fit(bl, tl, H); [br, tr] = fit(br, tr, H);
+  [bl, br, tr, tl] = [bl, br, tr, tl].map(r => Math.max(0, r - d));
+  const x0 = -W / 2 + d + m.ox, x1 = W / 2 - d + m.ox, ya = y0 + d, yb = y0 + H - d;
+  const corners = [[x0 + bl, ya + bl, bl, Math.PI], [x1 - br, ya + br, br, 1.5 * Math.PI], [x1 - tr, yb - tr, tr, 0], [x0 + tl, yb - tl, tl, 0.5 * Math.PI]];
+  const out = [];
+  for (const [cx, cy, r, a0] of corners) for (let i = 0; i <= K; i++) {
+    const a = a0 + i / K * Math.PI / 2; out.push([cx + r * Math.cos(a), cy + r * Math.sin(a)]);
+  }
+  return out;
+}
+
+function slabGeo(m0, y0, { inset = 0, lift = 0, lo = false } = {}) {
+  const m = inset ? { ...m0, W: m0.W - 2 * inset, D: m0.D - 2 * inset, h: m0.h - lift, rEdge: Math.max(0, m0.rEdge - inset),
+    rTL: m0.rTL - inset, rTR: m0.rTR - inset, rBL: m0.rBL - inset, rBR: m0.rBR - inset } : m0;
+  if (m.W <= 0.2 || m.D <= 0.2 || m.h <= 0.1) return null;
+  const K = lo ? 6 : 32, D = m.D, rE = clamp(m.rEdge, 0, Math.min(D / 2, m.W / 2, m.h / 2) * 0.98);
+  const ring = (z, d) => slabOutline(m, y0 + lift, d, K).map(([x, y]) => [x, y, z]);
+  const pts = [];
+  if (rE < 0.01) pts.push(ring(-D / 2, 0), ring(D / 2, 0));
+  else if (m.chamfer) {
+    // Anéis repetidos nas quinas mantêm o chanfro vivo.
+    const mid0 = ring(-D / 2 + rE, 0), mid1 = ring(D / 2 - rE, 0);
+    pts.push(ring(-D / 2, rE), mid0, mid0, mid1, mid1, ring(D / 2, rE));
+  } else {
+    const NE = lo ? 3 : 10;
+    for (let i = 0; i <= NE; i++) { const f = i / NE * Math.PI / 2; pts.push(ring(-D / 2 + rE * (1 - Math.cos(f)), rE * (1 - Math.sin(f)))); }
+    for (let i = NE; i >= 0; i--) { const f = i / NE * Math.PI / 2; pts.push(ring(D / 2 - rE * (1 - Math.cos(f)), rE * (1 - Math.sin(f)))); }
+  }
+  return loftPts(pts);
+}
+
 // inset/lift geram o volume interno (parede e fundo) para a capacidade.
-function moduleGeo(m0, y0, { inset = 0, lift = 0, lo = false } = {}) {
+function moduleGeo(m0, y0, opts = {}) {
+  if (m0.kind === 'placa') return slabGeo(m0, y0, opts);
+  const { inset = 0, lift = 0, lo = false } = opts;
   const m = inset ? { ...m0, W: m0.W - 2 * inset, D: m0.D - 2 * inset, h: m0.h - lift,
     rBot: Math.max(0, m0.rBot - inset), rTop: Math.max(0, m0.rTop - inset), groove: 0, notch: false, ridges: 0 } : m0;
   if (m.W <= 0.2 || m.D <= 0.2 || m.h <= 0.1) return null;
@@ -347,10 +398,12 @@ function moduleGeo(m0, y0, { inset = 0, lift = 0, lo = false } = {}) {
     }
     return [x, z];
   } : null;
-  return loft(rings, seg, disp);
+  const g = loft(rings, seg, disp);
+  if (m.ox) g.translate(m.ox, 0, 0);
+  return g;
 }
 
-function signedVolume(g) {
+function signedVolume(g, signed = false) {
   const p = g.attributes.position.array, idx = g.index.array; let v = 0;
   for (let i = 0; i < idx.length; i += 3) {
     const a = idx[i] * 3, b = idx[i + 1] * 3, c = idx[i + 2] * 3;
@@ -358,7 +411,7 @@ function signedVolume(g) {
        - p[a + 1] * (p[b] * p[c + 2] - p[b + 2] * p[c])
        + p[a + 2] * (p[b] * p[c + 1] - p[b + 1] * p[c]);
   }
-  return Math.abs(v / 6);
+  return signed ? v / 6 : Math.abs(v / 6);
 }
 
 // Posição vertical de cada peça (módulo × repetição).
@@ -558,6 +611,10 @@ function field(parent, obj, def, onChange) {
     el.innerHTML = `<div class="top"><label>${label}</label><input type="color"></div>`;
     const c = el.querySelector('input'); c.value = obj[k];
     c.oninput = () => { obj[k] = c.value; onChange(k); };
+  } else if (min === 'select') {
+    el.innerHTML = `<div class="top"><label>${label}</label></div><select>${max.map(([v, l]) => `<option value="${v}">${l}</option>`).join('')}</select>`;
+    const c = el.querySelector('select'); c.value = obj[k];
+    c.onchange = () => { obj[k] = c.value; onChange(k, true); };
   } else if (min === 'finish') {
     el.innerHTML = `<div class="top"><label>${label}</label></div><select>${FINISHES.map(([v, l]) => `<option value="${v}">${l}</option>`).join('')}</select>`;
     const c = el.querySelector('select'); c.value = obj[k];
@@ -577,37 +634,48 @@ function field(parent, obj, def, onChange) {
   return el;
 }
 
+// Campos que só valem para um tipo de forma.
+const only = (kind, d) => { const a = [...d]; while (a.length < 7) a.push(0); const prev = a[6]; a[6] = m => m.kind === kind && (!prev || prev(m)); return a; };
+const G = d => only('giro', d), P = d => only('placa', d);
 const MF = [
   ['Forma', [
+    ['kind', 'Tipo de forma', 'select', [['giro', 'Giro (redondo, oval, retangular)'], ['placa', 'Placa (silhueta frontal, cantos livres)']]],
     ['h', 'Altura', 1, 300, 0.5, 'mm'],
     ['W', 'Largura (frente)', 4, 200, 0.5, 'mm'],
     ['D', 'Profundidade (lado)', 4, 200, 0.5, 'mm'],
-    ['n', 'Seção: oval → retângulo', 2, 10, 0.1, ''],
-    ['taper', 'Topo em relação à base', 10, 250, 1, '%'],
-    ['bulge', 'Barriga (− cintura)', -35, 40, 0.5, '%'],
-    ['bulgePos', 'Altura da barriga', 5, 95, 1, '%'],
+    G(['n', 'Seção: oval → retângulo', 2, 10, 0.1, '']),
+    G(['taper', 'Topo em relação à base', 10, 250, 1, '%']),
+    G(['bulge', 'Barriga (− cintura)', -35, 40, 0.5, '%']),
+    G(['bulgePos', 'Altura da barriga', 5, 95, 1, '%']),
   ]],
   ['Arredondamento', [
-    ['rBot', 'Raio embaixo', 0, 150, 0.5, 'mm'],
-    ['rTop', 'Raio em cima', 0, 150, 0.5, 'mm'],
+    G(['rBot', 'Raio embaixo', 0, 150, 0.5, 'mm']),
+    G(['rTop', 'Raio em cima', 0, 150, 0.5, 'mm']),
+    P(['rTL', 'Canto superior esquerdo', 0, 150, 0.5, 'mm']),
+    P(['rTR', 'Canto superior direito', 0, 150, 0.5, 'mm']),
+    P(['rBL', 'Canto inferior esquerdo', 0, 150, 0.5, 'mm']),
+    P(['rBR', 'Canto inferior direito', 0, 150, 0.5, 'mm']),
+    P(['rEdge', 'Borda da frente e do verso', 0, 30, 0.1, 'mm']),
+    P(['chamfer', 'Borda chanfrada (em vez de redonda)', 'check']),
   ]],
   ['Encaixe', [
     ['gap', 'Distância do módulo de baixo', -40, 40, 0.1, 'mm'],
+    ['ox', 'Deslocar para o lado (− esquerda)', -100, 100, 0.5, 'mm'],
     ['rep', 'Repetir', 1, 8, 1, '×'],
     ['repGap', 'Espaço entre repetições', 0, 20, 0.1, 'mm', m => m.rep > 1],
   ]],
   ['Abertura e detalhes', [
-    ['groove', 'Linha de abertura (mm do topo, 0 = sem)', 0, 100, 0.5, 'mm'],
-    ['grooveD', 'Profundidade da linha', 0.1, 3, 0.1, 'mm', m => m.groove > 0],
-    ['notch', 'Entalhe de abertura (pega do dedo)', 'check'],
-    ['notchLock', 'Entalhe começa na linha de abertura', 'check', 0, 0, 0, m => m.notch],
-    ['notchY', 'Entalhe: começa a (mm do topo)', 0, 100, 0.5, 'mm', m => m.notch && !(m.notchLock && m.groove > 0)],
-    ['notchW', 'Entalhe: largura', 2, 120, 0.5, 'mm', m => m.notch],
-    ['notchH', 'Entalhe: altura', 1, 60, 0.5, 'mm', m => m.notch],
-    ['notchD', 'Entalhe: profundidade', 0.2, 8, 0.1, 'mm', m => m.notch],
-    ['notchP', 'Entalhe: meia-lua → fenda', 2, 12, 0.1, '', m => m.notch],
-    ['ridges', 'Frisos verticais', 0, 120, 1, ''],
-    ['ridgeD', 'Profundidade dos frisos', 0.1, 3, 0.1, 'mm', m => m.ridges > 0],
+    G(['groove', 'Linha de abertura (mm do topo, 0 = sem)', 0, 100, 0.5, 'mm']),
+    G(['grooveD', 'Profundidade da linha', 0.1, 3, 0.1, 'mm', m => m.groove > 0]),
+    G(['notch', 'Entalhe de abertura (pega do dedo)', 'check']),
+    G(['notchLock', 'Entalhe começa na linha de abertura', 'check', 0, 0, 0, m => m.notch]),
+    G(['notchY', 'Entalhe: começa a (mm do topo)', 0, 100, 0.5, 'mm', m => m.notch && !(m.notchLock && m.groove > 0)]),
+    G(['notchW', 'Entalhe: largura', 2, 120, 0.5, 'mm', m => m.notch]),
+    G(['notchH', 'Entalhe: altura', 1, 60, 0.5, 'mm', m => m.notch]),
+    G(['notchD', 'Entalhe: profundidade', 0.2, 8, 0.1, 'mm', m => m.notch]),
+    G(['notchP', 'Entalhe: meia-lua → fenda', 2, 12, 0.1, '', m => m.notch]),
+    G(['ridges', 'Frisos verticais', 0, 120, 1, '']),
+    G(['ridgeD', 'Profundidade dos frisos', 0.1, 3, 0.1, 'mm', m => m.ridges > 0]),
   ]],
   ['Cor', [
     ['own', 'Cor própria neste módulo', 'check'],
@@ -656,13 +724,19 @@ function renderEditor() {
   ed.appendChild(top);
   field(ed, m, ['vol', 'Faz parte do frasco (entra na capacidade)', 'check'], () => { renderStack(); queueBuild(); });
   for (const [title, defs] of MF) {
+    if (!defs.some(d => !d[6] || d[6](m))) continue;
     const h = document.createElement('h3'); h.textContent = title; ed.appendChild(h);
+    if (title === 'Arredondamento' && m.kind === 'placa') {
+      const b = document.createElement('button'); b.className = 'btn'; b.textContent = 'Espelhar ←→';
+      b.onclick = () => { [m.rTL, m.rTR, m.rBL, m.rBR, m.ox] = [m.rTR, m.rTL, m.rBR, m.rBL, -m.ox]; renderEditorKeepScroll(); queueBuild(); };
+      ed.appendChild(b);
+    }
     for (const def of defs) {
       const show = def[6];
       const el = field(ed, m, def, (k, structural) => {
         // Ligar o entalhe sem linha de abertura cria a linha junto.
         if (k === 'notch' && m.notch && !(m.groove > 0)) m.groove = r1(Math.min(12, m.h * 0.35));
-        if (structural || ['rep', 'groove', 'ridges', 'own'].includes(k)) renderEditorKeepScroll();
+        if (structural || ['rep', 'groove', 'ridges', 'own', 'kind'].includes(k)) renderEditorKeepScroll();
         renderStack(); queueBuild();
       });
       if (show && !show(m)) el.classList.add('hidden');
