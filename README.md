@@ -1,4 +1,4 @@
-# Shape de Embalagens
+# OUTBOX
 
 Gerador paramétrico de frascos e potes por **módulos empilhados**, direto no navegador.
 
