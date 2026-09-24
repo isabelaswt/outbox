@@ -196,7 +196,8 @@ const BASE = {
   // válvula: W/h = virola que veste o gargalo; cabeça conforme o tipo; pescante até o fundo.
   sprayType: 'mist', actW: 20, actH: 16, stemH: 4, headH: 28, nozzleL: 14, dir: 0,
   collarR: 1.2, stemD: 7, armW: 9, armT: 4.5, droop: 2,
-  pesc: true, pescD: 4, pescCurve: 0, pescGap: 3,
+  pesc: true, pescD: 4, pescCurve: 0, pescWave: 0, pescGap: 3,
+  mola: true, houseD: 8, springL: 18, coils: 11,
   // sistema de abertura da tampa: flip-top (dobradiça na linha) ou disc-top.
   topType: 'nenhum', openPct: 0, lidSide: 'cima', orifD: 4, discD: 26,
   // bisnaga: tubo que achata até a solda mantendo o perímetro.
@@ -218,7 +219,7 @@ const LIB = {
   esfera:  { name: 'Esfera', W: 44, D: 44, h: 44, rBot: 22, rTop: 22, groove: 15, topType: 'flip' },
   domo:    { name: 'Domo meia-lua', W: 46, D: 38, h: 38, rBot: 2, rTop: 24, groove: 15, notch: true, notchY: 15, notchW: 18, notchH: 9, notchD: 2.2, notchP: 2, topType: 'flip' },
   seixo:   { name: 'Seixo com fenda', W: 70, D: 40, n: 2.4, h: 34, rBot: 6, rTop: 18, groove: 13, notch: true, notchY: 13, notchW: 30, notchH: 6, notchD: 1.8, notchP: 8, topType: 'flip' },
-  spray:   { name: 'Válvula spray fina', kind: 'spray', sprayType: 'mist', W: 24, D: 24, h: 14, ridges: 48, actW: 18, actH: 16, stemH: 3, stemD: 4.8 },
+  spray:   { name: 'Válvula spray fina', kind: 'spray', sprayType: 'mist', W: 24, D: 24, h: 14, ridges: 48, actW: 18, actH: 16, stemH: 3, stemD: 4.8, houseD: 6.5, springL: 16 },
   lamina:  { name: 'Pump escultural (bico lâmina)', kind: 'spray', sprayType: 'lamina', W: 38.5, D: 38.5, h: 33, collarR: 14, stemD: 18, stemH: 13,
              actW: 26, headH: 9, nozzleL: 26, armW: 9, armT: 4.5, droop: 2.5 },
   pump:    { name: 'Válvula pump', kind: 'spray', sprayType: 'pump', W: 30, D: 30, h: 15, ridges: 36, actW: 26, stemH: 16, headH: 22, nozzleL: 16 },
@@ -427,25 +428,35 @@ function xCyl(r, len, x0, y, lo) { // cilindro deitado, apontando para +x
 // Válvula: virola que veste o gargalo + cabeça de spray fino ou pump.
 function sprayGeo(m, y0, { lo = false } = {}) {
   const collar = moduleGeo({ ...BASE, kind: 'giro', W: m.W, D: m.W, h: m.h, rBot: 0.6, rTop: m.collarR, ridges: m.ridges, ridgeD: m.ridgeD }, y0, { lo });
-  const top = y0 + m.h, head = [];
+  const top = y0 + m.h, head = [], holes = [];
   if (m.sprayType === 'mist') {
     head.push(cyl(m.stemD / 2, top - 1, m.stemH + 2, 0, 0, lo));
     // Atuador com orifício na frente.
     head.push(moduleGeo({ ...BASE, kind: 'giro', W: m.actW, D: m.actW, h: m.actH, rBot: 1, rTop: Math.min(4, m.actW / 4),
       notch: true, notchLock: false, notchY: m.actH * 0.3, notchW: 3.4, notchH: 1.8, notchD: 1, notchP: 2 }, top + m.stemH, { lo }));
+    const oh = cyl(0.9, 0, 1.2); oh.rotateX(Math.PI / 2); oh.translate(0, top + m.stemH + m.actH * 0.7 - 0.9, m.actW / 2 - 1.3);
+    holes.push(oh);
   } else if (m.sprayType === 'lamina') {
     head.push(cyl(m.stemD / 2, top - 1, m.stemH + 2, 0, 0, lo));
     head.push(bladeHeadGeo(m, top + m.stemH, lo));
+    // Saída na ponta da lâmina.
+    const rt = Math.min(m.armT / 2, m.armW / 2), tipX = m.actW / 2 + m.nozzleL;
+    holes.push(xCyl(rt * 0.42, 1.2, tipX - 1, top + m.stemH + m.headH * 0.38 + (m.headH - m.armT) * 0.4 - m.droop, lo));
   } else {
     head.push(cyl(m.stemD / 2, top - 1, m.stemH + 2, 0, 0, lo));
     const yH = top + m.stemH;
     head.push(moduleGeo({ ...BASE, kind: 'giro', W: m.actW, D: m.actW * 0.78, n: 3.2, h: m.headH, rBot: 1.5, rTop: Math.min(5, m.headH / 3) }, yH, { lo }));
-    if (m.nozzleL > 0) head.push(xCyl(3.2, m.actW / 2 - 2 + m.nozzleL, 0, yH + m.headH * 0.62, lo));
+    if (m.nozzleL > 0) {
+      const Ln = m.actW / 2 - 2 + m.nozzleL;
+      head.push(xCyl(3.2, Ln, 0, yH + m.headH * 0.62, lo));
+      holes.push(xCyl(1.6, 0.8, Ln - 0.5, yH + m.headH * 0.62, lo)); // furo de saída
+    }
   }
   const hg = mergeGeometries(head.filter(Boolean));
-  hg.rotateY(-m.dir * Math.PI / 180);
+  [hg, ...holes].forEach(x => { x.rotateY(-m.dir * Math.PI / 180); if (m.ox) x.translate(m.ox, 0, 0); });
+  if (m.ox) collar.translate(m.ox, 0, 0);
   const g = mergeGeometries([collar, hg]);
-  if (m.ox) g.translate(m.ox, 0, 0);
+  g.userData.extras = holes;
   return g;
 }
 
@@ -482,12 +493,32 @@ function bladeHeadGeo(m, yH, lo) {
 }
 
 // Pescante: tubo do fundo do frasco até a válvula, com curva opcional no pé.
+// Bomba sob a virola: carcaça, pistão com mola em hélice e assento cônico
+// que afunila até o pescante. Devolve as peças e onde o pescante começa.
+class Helix extends THREE.Curve {
+  constructor(r, y0, h, turns) { super(); Object.assign(this, { r, y0, h, turns }); }
+  getPoint(t, out = new THREE.Vector3()) {
+    const a = TAU * this.turns * t;
+    return out.set(this.r * Math.cos(a), this.y0 + this.h * t, this.r * Math.sin(a));
+  }
+}
+function pumpMechGeo(m, yTop) {
+  const R = m.houseD / 2, yS = yTop - 4, yB = yS - m.springL, parts = [];
+  parts.push(cyl(R + 0.6, yS, 4, 0, 0.6));                            // carcaça
+  parts.push(cyl(1.4, yB, m.springL, 0, 0));                          // pistão
+  parts.push(new THREE.TubeGeometry(new Helix(R - 0.5, yB, m.springL, m.coils), Math.round(m.coils * 24), 0.45, 8)); // mola
+  parts.push(moduleGeo({ ...BASE, kind: 'giro', W: m.pescD + 0.8, D: m.pescD + 0.8, h: 5,
+    taper: (2 * R) / (m.pescD + 0.8) * 100, rBot: 0, rTop: 0 }, yB - 5)); // assento cônico
+  parts.forEach(g => m.ox && g.translate(m.ox, 0, 0));
+  return { parts, yEnd: yB - 5 };
+}
+
 function pescanteGeo(m, yBot, yTop) {
   const len = yTop - yBot; if (len < 5) return null;
   const rings = [];
   for (let i = 0; i <= 40; i++) {
     const t = i / 40, y = yBot + len * t;
-    rings.push({ y, ly: y, a: m.pescD / 2, b: m.pescD / 2, n: 2, cx: m.ox + m.pescCurve * (1 - t) * (1 - t) });
+    rings.push({ y, ly: y, a: m.pescD / 2, b: m.pescD / 2, n: 2, cx: m.ox + m.pescCurve * (1 - t) * (1 - t) + m.pescWave * Math.sin(TAU * t) });
   }
   return loft(rings, 24);
 }
@@ -772,12 +803,12 @@ function build() {
     (g.userData.extras || []).forEach(xg => { const xm = new THREE.Mesh(xg, holeMat); xm.userData.idx = idx; product.add(xm); });
     if (m.kind === 'spray' && m.pesc && isFinite(floor)) {
       // Comprimento medido montado; na vista explodida desce junto com a válvula.
-      const len = base[i].y0 + m.h * 0.6 - (floor + S.wall + m.pescGap);
-      const pg = pescanteGeo(m, y0 + m.h * 0.6 - len, y0 + m.h * 0.6);
-      if (pg) {
-        const pm = new THREE.Mesh(pg, pescMat); pm.userData.idx = idx;
-        pm.name = `${String(idx + 1).padStart(2, '0')}_pescante`; product.add(pm);
-      }
+      const add = (geo, name) => { const pm = new THREE.Mesh(geo, pescMat); pm.userData.idx = idx; pm.name = `${String(idx + 1).padStart(2, '0')}_${name}`; product.add(pm); };
+      let yTop = y0 + m.h * 0.6;
+      if (m.mola) { const mech = pumpMechGeo(m, yTop); mech.parts.forEach(g => add(g, 'bomba')); yTop = mech.yEnd; }
+      const len = yTop - (y0 - base[i].y0) - (floor + S.wall + m.pescGap);
+      const pg = pescanteGeo(m, yTop - len, yTop);
+      if (pg) add(pg, 'pescante');
     }
   });
   scene.background = new THREE.Color(S.bg);
@@ -949,10 +980,15 @@ const MF = [
     K(['armT', 'Bico: espessura', 1.5, 15, 0.1, 'mm', isType('lamina')]),
     K(['droop', 'Bico: queda na ponta (− sobe)', -10, 15, 0.5, 'mm', isType('lamina')]),
     K(['dir', 'Direção do bico (giro)', -180, 180, 1, '°']),
+    K(['mola', 'Bomba com mola (visível no frasco transparente)', 'check']),
+    K(['houseD', 'Mola: diâmetro', 4, 20, 0.5, 'mm', m => m.mola]),
+    K(['springL', 'Mola: comprimento', 5, 60, 0.5, 'mm', m => m.mola]),
+    K(['coils', 'Mola: voltas', 3, 30, 1, '', m => m.mola]),
     K(['pesc', 'Pescante (tubo até o fundo)', 'check']),
     K(['pescD', 'Pescante: diâmetro', 2, 10, 0.1, 'mm', m => m.pesc]),
     K(['pescGap', 'Pescante: folga do fundo', 0, 20, 0.5, 'mm', m => m.pesc]),
     K(['pescCurve', 'Pescante: curva no pé (− esquerda)', -40, 40, 0.5, 'mm', m => m.pesc]),
+    K(['pescWave', 'Pescante: ondulação em S', -15, 15, 0.5, 'mm', m => m.pesc]),
     G(['n', 'Seção: oval → retângulo', 2, 10, 0.1, '']),
     G(['taper', 'Topo em relação à base', 10, 250, 1, '%']),
     G(['bulge', 'Barriga (− cintura)', -35, 40, 0.5, '%']),
