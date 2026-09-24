@@ -185,7 +185,7 @@ const BASE = {
   name: 'Módulo', W: 50, D: 50, n: 2, h: 40, taper: 100, bulge: 0, bulgePos: 50,
   rBot: 2, rTop: 2, gap: 0, rep: 1, repGap: 0.6,
   groove: 0, grooveD: 0.6,
-  notch: false, notchY: 12, notchW: 20, notchH: 8, notchD: 2, notchP: 2,
+  notch: false, notchLock: true, notchY: 12, notchW: 20, notchH: 8, notchD: 2, notchP: 2,
   ridges: 0, ridgeD: 0.6,
   own: false, color: '#e0306e', finish: 'fosco', vol: false,
 };
@@ -275,6 +275,9 @@ function sectionAt(m, y, rB, rT) {
   return [Math.max(a, 0.05), Math.max(b, 0.05)];
 }
 
+// Topo do entalhe: preso à linha de abertura, ou posição livre.
+const notchTop = m => (m.notchLock && m.groove > 0 ? m.groove : m.notchY);
+
 function ySamples(m, rB, rT, lo) {
   const h = m.h, S = [0, h], NF = lo ? 8 : 20;
   for (let i = 0; i <= NF; i++) {
@@ -284,7 +287,7 @@ function ySamples(m, rB, rT, lo) {
   const m0 = rB, m1 = h - rT, nm = Math.max(2, Math.ceil((m1 - m0) / (lo ? 8 : 2.5)));
   for (let i = 0; i <= nm; i++) S.push(m0 + (m1 - m0) * i / nm);
   if (!lo && m.groove > 0) { const yg = h - m.groove; [-.6, -.5, -.3, -.12, 0, .12, .3, .5, .6].forEach(d => S.push(yg + d)); }
-  if (!lo && m.notch) { const yt = h - m.notchY; for (let y = yt - m.notchH - 1; y <= yt; y += 0.35) S.push(y); S.push(yt + 0.03, yt - 0.03); }
+  if (!lo && m.notch) { const yt = h - notchTop(m); for (let y = yt - m.notchH - 1; y <= yt; y += 0.25) S.push(y); S.push(yt + 0.03, yt - 0.03); }
   return [...new Set(S.filter(y => y >= 0 && y <= h).map(y => +y.toFixed(3)))].sort((a, b) => a - b);
 }
 
@@ -331,15 +334,16 @@ function moduleGeo(m0, y0, { inset = 0, lift = 0, lo = false } = {}) {
     return { y: y0 + lift + ly, ly, a, b, n: m.n };
   });
   const detailed = !lo && (m.notch || m.ridges > 0);
-  const seg = lo ? 64 : detailed ? 320 : 200;
+  const seg = lo ? 64 : detailed ? 384 : 200;
   const disp = detailed ? (x, ly, z, th) => {
     if (m.ridges > 0 && ly > rB && ly < m.h - rT) {
       const rr = Math.hypot(x, z) || 1, d = m.ridgeD * (0.5 + 0.5 * Math.cos(m.ridges * th));
       x -= x / rr * d; z -= z / rr * d;
     }
     if (m.notch && z > 0) {
-      const u = Math.abs(x) / (m.notchW / 2), v = (m.h - m.notchY - ly) / m.notchH;
-      if (v >= 0 && u < 1.1) { const f = 1 - (Math.pow(u, m.notchP) + v * v); if (f > 0) z -= m.notchD * smooth(0, 0.18, f); }
+      // Concha: mais funda junto à linha, suavizando até a borda.
+      const u = Math.abs(x) / (m.notchW / 2), v = (m.h - notchTop(m) - ly) / m.notchH;
+      if (v >= 0 && u < 1.1) { const f = 1 - (Math.pow(u, m.notchP) + v * v); if (f > 0) z -= m.notchD * Math.sqrt(f); }
     }
     return [x, z];
   } : null;
@@ -592,11 +596,12 @@ const MF = [
     ['rep', 'Repetir', 1, 8, 1, '×'],
     ['repGap', 'Espaço entre repetições', 0, 20, 0.1, 'mm', m => m.rep > 1],
   ]],
-  ['Detalhes', [
+  ['Abertura e detalhes', [
     ['groove', 'Linha de abertura (mm do topo, 0 = sem)', 0, 100, 0.5, 'mm'],
     ['grooveD', 'Profundidade da linha', 0.1, 3, 0.1, 'mm', m => m.groove > 0],
-    ['notch', 'Entalhe frontal (pega do dedo)', 'check'],
-    ['notchY', 'Entalhe: começa a (mm do topo)', 0, 100, 0.5, 'mm', m => m.notch],
+    ['notch', 'Entalhe de abertura (pega do dedo)', 'check'],
+    ['notchLock', 'Entalhe começa na linha de abertura', 'check', 0, 0, 0, m => m.notch],
+    ['notchY', 'Entalhe: começa a (mm do topo)', 0, 100, 0.5, 'mm', m => m.notch && !(m.notchLock && m.groove > 0)],
     ['notchW', 'Entalhe: largura', 2, 120, 0.5, 'mm', m => m.notch],
     ['notchH', 'Entalhe: altura', 1, 60, 0.5, 'mm', m => m.notch],
     ['notchD', 'Entalhe: profundidade', 0.2, 8, 0.1, 'mm', m => m.notch],
@@ -655,6 +660,8 @@ function renderEditor() {
     for (const def of defs) {
       const show = def[6];
       const el = field(ed, m, def, (k, structural) => {
+        // Ligar o entalhe sem linha de abertura cria a linha junto.
+        if (k === 'notch' && m.notch && !(m.groove > 0)) m.groove = r1(Math.min(12, m.h * 0.35));
         if (structural || ['rep', 'groove', 'ridges', 'own'].includes(k)) renderEditorKeepScroll();
         renderStack(); queueBuild();
       });
