@@ -92,10 +92,8 @@ canvas{display:block;width:100%;height:100%;touch-action:none}
     <summary>Pilha de módulos</summary>
     <div class="tip">De cima para baixo, como a embalagem fica em pé. Clique num módulo (aqui ou no 3D) para editar.</div>
     <div class="stack" id="stack"></div>
-    <div class="row">
-      <select id="libType"></select>
-      <button class="btn pri sm" id="addMod" style="flex:0">+ Adicionar</button>
-    </div>
+    <div class="tip">Inserir acima do módulo selecionado:</div>
+    <div id="addRows"></div>
     <div class="edit" id="editor"></div>
   </details>
 
@@ -190,6 +188,9 @@ const BASE = {
   own: false, color: '#e0306e', finish: 'fosco', vol: false,
   // kind 'giro': seção girando no eixo; 'placa': silhueta frontal extrudada na profundidade.
   kind: 'giro', ox: 0, rTL: 6, rTR: 6, rBL: 6, rBR: 6, rEdge: 3, chamfer: false,
+  notchUp: false,
+  // bisnaga: tubo que achata até a solda mantendo o perímetro.
+  flatStart: 8, flatCurve: 1.15, sealH: 7, sealT: 1.4, sealW: 6,
 };
 const LIB = {
   capsula: { name: 'Corpo cápsula', W: 58, D: 58, h: 160, rBot: 29, rTop: 29, vol: true },
@@ -206,6 +207,8 @@ const LIB = {
   esfera:  { name: 'Esfera', W: 44, D: 44, h: 44, rBot: 22, rTop: 22, groove: 15 },
   domo:    { name: 'Domo meia-lua', W: 46, D: 38, h: 38, rBot: 2, rTop: 24, groove: 15, notch: true, notchY: 15, notchW: 18, notchH: 9, notchD: 2.2, notchP: 2 },
   seixo:   { name: 'Seixo com fenda', W: 70, D: 40, n: 2.4, h: 34, rBot: 6, rTop: 18, groove: 13, notch: true, notchY: 13, notchW: 30, notchH: 6, notchD: 1.8, notchP: 8 },
+  bisnaga: { name: 'Corpo bisnaga', kind: 'bisnaga', W: 45, D: 45, h: 165, rBot: 4, vol: true },
+  tampaBisnaga: { name: 'Tampa de bisnaga', W: 44, D: 44, h: 34, rBot: 2.5, rTop: 1, groove: 24, notch: true, notchUp: true, notchW: 18, notchH: 9, notchD: 1.4, notchP: 6 },
   placa:   { name: 'Corpo placa assimétrico', kind: 'placa', W: 66, D: 34, h: 134, rTL: 5, rTR: 30, rBL: 7, rBR: 7, rEdge: 5, chamfer: true, vol: true },
   flip:    { name: 'Tampa flip-top', W: 46, D: 34, n: 2.8, h: 24, rBot: 1, rTop: 3, groove: 6 },
 };
@@ -231,11 +234,13 @@ const PRESETS = {
     M('tigela', { W: 48, D: 48, h: 22, rBot: 20 }), M('disco', { W: 50, D: 50, h: 5 })] },
   'Gargalo flare': { color: PINK, finish: 'fosco', modules: [
     M('reto', { W: 58, D: 58, h: 120, rBot: 10, rTop: 26 }), M('flare'), M('disco', { W: 46, D: 46, h: 7 })] },
+  'Bisnaga 200 ml': { color: '#9a9a9c', finish: 'acetinado', modules: [
+    M('tampaBisnaga', { W: 47, D: 47 }), M('bisnaga', { W: 48.5, D: 48.5, h: 178, rBot: 4.3 })] },
   'Placa assimétrica + esfera': { color: '#c42b52', finish: 'fosco', modules: [
     M('placa'), M('esfera', { W: 35, D: 35, h: 35, rBot: 17.5, rTop: 17.5, ox: -8, groove: 12,
       notch: true, notchW: 11, notchH: 2.5, notchD: 1.4, notchP: 8 })] },
   'Oval flip-top 250 ml': { color: '#f28bb5', finish: 'acetinado', modules: [
-    M('plano', { W: 66, D: 40, n: 3.4, h: 150, rBot: 18, rTop: 10, bulge: 3, bulgePos: 30 }),
+    M('plano', { W: 61, D: 37, n: 3.4, h: 138.5, rBot: 16.6, rTop: 9.2, bulge: 3, bulgePos: 30 }),
     M('flip', { own: true, color: '#ffd21f', finish: 'brilho' })] },
 };
 
@@ -293,7 +298,10 @@ function ySamples(m, rB, rT, lo) {
   const m0 = rB, m1 = h - rT, nm = Math.max(2, Math.ceil((m1 - m0) / (lo ? 8 : 2.5)));
   for (let i = 0; i <= nm; i++) S.push(m0 + (m1 - m0) * i / nm);
   if (!lo && m.groove > 0) { const yg = h - m.groove; [-.6, -.5, -.3, -.12, 0, .12, .3, .5, .6].forEach(d => S.push(yg + d)); }
-  if (!lo && m.notch) { const yt = h - notchTop(m); for (let y = yt - m.notchH - 1; y <= yt; y += 0.25) S.push(y); S.push(yt + 0.03, yt - 0.03); }
+  if (!lo && m.notch) {
+    const yt = h - notchTop(m), y0n = m.notchUp ? yt : yt - m.notchH - 1, y1n = m.notchUp ? yt + m.notchH + 1 : yt;
+    for (let y = y0n; y <= y1n; y += 0.25) S.push(y); S.push(yt + 0.03, yt - 0.03);
+  }
   return [...new Set(S.filter(y => y >= 0 && y <= h).map(y => +y.toFixed(3)))].sort((a, b) => a - b);
 }
 
@@ -336,6 +344,40 @@ function loftPts(pts) {
   return g;
 }
 
+// Perímetro da elipse (Ramanujan).
+const perim = (a, b) => Math.PI * (3 * (a + b) - Math.sqrt((3 * a + b) * (a + 3 * b)));
+
+// Bisnaga: redonda embaixo, achata até a solda no topo com o mesmo perímetro.
+function tubeGeo(m0, y0, { inset = 0, lift = 0, lo = false } = {}) {
+  const m = inset ? { ...m0, W: m0.W - 2 * inset, D: m0.D - 2 * inset, h: m0.h - lift - m0.sealH, sealH: 0,
+    rBot: Math.max(0, m0.rBot - inset) } : m0;
+  if (m.W <= 0.2 || m.D <= 0.2 || m.h <= 0.1) return null;
+  const sealH = clamp(m.sealH, 0, m.h * 0.5), hb = m.h - sealH;
+  const a0 = m.W / 2, b0 = m.D / 2, P0 = perim(a0, b0), bEnd = Math.max(m.sealT / 2, 0.05);
+  const rB = clamp(m.rBot, 0, Math.min(hb * 0.5, a0, b0) * 0.98);
+  const aFor = b => { let lo2 = b, hi = P0 / 2; for (let i = 0; i < 40; i++) { const mid = (lo2 + hi) / 2; perim(mid, b) < P0 ? lo2 = mid : hi = mid; } return lo2; };
+  const fs = clamp(m.flatStart / 100, 0, 0.95);
+  const ys = new Set([0, hb]);
+  const NF = lo ? 6 : 16, NB = lo ? 16 : 70;
+  for (let i = 0; i <= NF; i++) ys.add(rB * (1 - Math.cos(i / NF * Math.PI / 2)));
+  for (let i = 0; i <= NB; i++) ys.add(rB + (hb - rB) * i / NB);
+  const rings = [...ys].filter(y => y >= 0 && y <= hb).sort((p, q) => p - q).map(ly => {
+    const t = hb > 0 ? ly / hb : 0, sF = t <= fs ? 0 : Math.pow((t - fs) / (1 - fs), m.flatCurve);
+    const b = b0 + (bEnd - b0) * sF;
+    let a = aFor(b), bb = b;
+    if (rB > 0 && ly < rB) { const c = 1 - ly / rB, f = 1 - Math.sqrt(Math.max(0, 1 - c * c)); a -= Math.min(rB, a) * f; bb -= Math.min(rB, bb) * f; }
+    return { y: y0 + lift + ly, ly, a: Math.max(a, 0.05), b: Math.max(bb, 0.05), n: 2 };
+  });
+  if (sealH > 0) {
+    // Solda: faixa reta, um pouco mais larga que o tubo achatado.
+    const aS = aFor(bEnd) * (1 + m.sealW / 100);
+    [0, 0.5, 1].forEach(k => rings.push({ y: y0 + lift + hb + sealH * k, ly: hb + sealH * k, a: aS, b: bEnd, n: 8 }));
+  }
+  const g = loft(rings, lo ? 64 : 240);
+  if (m.ox) g.translate(m.ox, 0, 0);
+  return g;
+}
+
 // Contorno frontal com 4 cantos independentes, recuado d mm.
 function slabOutline(m, y0, d, K) {
   const W = m.W, H = m.h;
@@ -375,6 +417,7 @@ function slabGeo(m0, y0, { inset = 0, lift = 0, lo = false } = {}) {
 // inset/lift geram o volume interno (parede e fundo) para a capacidade.
 function moduleGeo(m0, y0, opts = {}) {
   if (m0.kind === 'placa') return slabGeo(m0, y0, opts);
+  if (m0.kind === 'bisnaga') return tubeGeo(m0, y0, opts);
   const { inset = 0, lift = 0, lo = false } = opts;
   const m = inset ? { ...m0, W: m0.W - 2 * inset, D: m0.D - 2 * inset, h: m0.h - lift,
     rBot: Math.max(0, m0.rBot - inset), rTop: Math.max(0, m0.rTop - inset), groove: 0, notch: false, ridges: 0 } : m0;
@@ -392,8 +435,8 @@ function moduleGeo(m0, y0, opts = {}) {
       x -= x / rr * d; z -= z / rr * d;
     }
     if (m.notch && z > 0) {
-      // Concha: mais funda junto à linha, suavizando até a borda.
-      const u = Math.abs(x) / (m.notchW / 2), v = (m.h - notchTop(m) - ly) / m.notchH;
+      // Concha: mais funda junto à linha, suavizando até a borda (abaixo ou acima dela).
+      const yl = m.h - notchTop(m), u = Math.abs(x) / (m.notchW / 2), v = (m.notchUp ? ly - yl : yl - ly) / m.notchH;
       if (v >= 0 && u < 1.1) { const f = 1 - (Math.pow(u, m.notchP) + v * v); if (f > 0) z -= m.notchD * Math.sqrt(f); }
     }
     return [x, z];
@@ -636,10 +679,16 @@ function field(parent, obj, def, onChange) {
 
 // Campos que só valem para um tipo de forma.
 const only = (kind, d) => { const a = [...d]; while (a.length < 7) a.push(0); const prev = a[6]; a[6] = m => m.kind === kind && (!prev || prev(m)); return a; };
-const G = d => only('giro', d), P = d => only('placa', d);
+const G = d => only('giro', d), P = d => only('placa', d), B = d => only('bisnaga', d);
+const GB = d => { const a = [...d]; while (a.length < 7) a.push(0); const prev = a[6]; a[6] = m => m.kind !== 'placa' && (!prev || prev(m)); return a; };
 const MF = [
   ['Forma', [
-    ['kind', 'Tipo de forma', 'select', [['giro', 'Giro (redondo, oval, retangular)'], ['placa', 'Placa (silhueta frontal, cantos livres)']]],
+    ['kind', 'Tipo de forma', 'select', [['giro', 'Giro (redondo, oval, retangular)'], ['placa', 'Placa (silhueta frontal, cantos livres)'], ['bisnaga', 'Bisnaga (tubo que achata até a solda)']]],
+    B(['flatStart', 'Começa a achatar em', 0, 90, 1, '%']),
+    B(['flatCurve', 'Achatamento: reto → curvo', 0.5, 3, 0.05, '']),
+    B(['sealH', 'Altura da solda', 0, 30, 0.5, 'mm']),
+    B(['sealT', 'Espessura da solda', 0.4, 6, 0.1, 'mm']),
+    B(['sealW', 'Solda mais larga que o tubo', 0, 20, 0.5, '%']),
     ['h', 'Altura', 1, 300, 0.5, 'mm'],
     ['W', 'Largura (frente)', 4, 200, 0.5, 'mm'],
     ['D', 'Profundidade (lado)', 4, 200, 0.5, 'mm'],
@@ -649,7 +698,7 @@ const MF = [
     G(['bulgePos', 'Altura da barriga', 5, 95, 1, '%']),
   ]],
   ['Arredondamento', [
-    G(['rBot', 'Raio embaixo', 0, 150, 0.5, 'mm']),
+    GB(['rBot', 'Raio embaixo', 0, 150, 0.5, 'mm']),
     G(['rTop', 'Raio em cima', 0, 150, 0.5, 'mm']),
     P(['rTL', 'Canto superior esquerdo', 0, 150, 0.5, 'mm']),
     P(['rTR', 'Canto superior direito', 0, 150, 0.5, 'mm']),
@@ -674,6 +723,7 @@ const MF = [
     G(['notchH', 'Entalhe: altura', 1, 60, 0.5, 'mm', m => m.notch]),
     G(['notchD', 'Entalhe: profundidade', 0.2, 8, 0.1, 'mm', m => m.notch]),
     G(['notchP', 'Entalhe: meia-lua → fenda', 2, 12, 0.1, '', m => m.notch]),
+    G(['notchUp', 'Entalhe acima da linha', 'check', 0, 0, 0, m => m.notch]),
     G(['ridges', 'Frisos verticais', 0, 120, 1, '']),
     G(['ridgeD', 'Profundidade dos frisos', 0.1, 3, 0.1, 'mm', m => m.ridges > 0]),
   ]],
@@ -761,12 +811,22 @@ function renderGlobal() {
 function renderAll() { renderStack(); renderEditor(); renderGlobal(); renderPresets(); }
 
 // Biblioteca de módulos
-$('#libType').innerHTML = Object.entries(LIB).map(([k, v]) => `<option value="${k}">${v.name}</option>`).join('');
-$('#addMod').onclick = () => {
-  const t = $('#libType').value;
-  S.modules.splice(sel + 1, 0, M(t));
-  sel = sel + 1; renderStack(); renderEditor(); build();
-};
+// Corpo, tampa e peça de encaixe ficam em listas separadas.
+const CATS = [
+  ['Corpo', ['capsula', 'reto', 'plano', 'arco', 'cone', 'placa', 'bisnaga']],
+  ['Tampa', ['esfera', 'domo', 'seixo', 'flip', 'tampaBisnaga', 'disco']],
+  ['Peça de encaixe', ['colar', 'barril', 'flare', 'anel', 'tigela']],
+];
+CATS.forEach(([label, keys]) => {
+  const row = document.createElement('div'); row.className = 'row';
+  row.innerHTML = `<select>${keys.map(k => `<option value="${k}">${LIB[k].name}</option>`).join('')}</select>
+    <button class="btn pri sm" style="flex:0;min-width:118px">+ ${label}</button>`;
+  row.querySelector('button').onclick = () => {
+    S.modules.splice(sel + 1, 0, M(row.querySelector('select').value));
+    sel = sel + 1; renderStack(); renderEditor(); build();
+  };
+  $('#addRows').appendChild(row);
+});
 $('#colorAll').onclick = () => { S.modules.forEach(m => m.own = false); renderStack(); renderEditor(); build(); };
 
 // ───────────────────────── modelos (presets) ─────────────────────────
