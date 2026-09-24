@@ -280,7 +280,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-24.icone-mao';
+const BUILD = '2026-09-24.primeira-miniatura';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -1850,7 +1850,8 @@ function pumpThumbs() {
   if (job.img.isConnected) job.img.src = thumbOf(job.st);
   setTimeout(pumpThumbs, 16);
 }
-function queueThumb(img, st) { thumbQueue.push({ img, st }); if (!pumping) { pumping = true; pumpThumbs(); } }
+// Começa no próximo ciclo: a grade que pediu a miniatura já está na tela.
+function queueThumb(img, st) { thumbQueue.push({ img, st }); if (!pumping) { pumping = true; setTimeout(pumpThumbs, 0); } }
 function renderPresets() {
   const sv = saved(), gal = $('#gallery'), keepTop = gal.scrollTop;
   gal.innerHTML = '';
