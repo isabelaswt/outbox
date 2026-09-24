@@ -42,6 +42,12 @@ select,input[type=text]{font:inherit;font-size:12px;border:1px solid var(--line)
 .mod .dm{color:var(--muted);font-size:11px;white-space:nowrap}
 .mod .b{border:0;background:none;cursor:pointer;color:#888;padding:2px 4px;font-size:12px;border-radius:4px}
 .mod .b:hover{background:var(--soft);color:var(--ink)}
+.gallery{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;max-height:340px;overflow-y:auto;padding:2px;margin:6px 0}
+.gallery h4{grid-column:1/-1;margin:6px 0 0;font-size:10.5px;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);font-weight:600}
+.card{border:1px solid var(--line);border-radius:9px;background:var(--soft);cursor:pointer;padding:4px 4px 5px;text-align:center;font-size:10.5px;line-height:1.2;color:#444}
+.card:hover{border-color:#bdb8b0}
+.card.on{border-color:var(--ink);box-shadow:0 0 0 1px var(--ink) inset}
+.card .ph{width:100%;aspect-ratio:9/11;display:block;object-fit:contain;border-radius:6px;background:linear-gradient(180deg,#fff,#f1efeb)}
 .edit{background:var(--soft);border-radius:10px;padding:4px 10px 8px;margin-top:6px}
 .edit h3:first-child{margin-top:8px}
 main{position:relative;overflow:hidden}
@@ -77,7 +83,7 @@ canvas{display:block;width:100%;height:100%;touch-action:none}
 
   <details open>
     <summary>Modelo</summary>
-    <div class="row"><select id="preset"></select></div>
+    <div class="gallery" id="gallery"></div>
     <div class="row"><input type="text" id="projName" placeholder="Nome do projeto"></div>
     <div class="row">
       <button class="btn" id="savePreset">Salvar</button>
@@ -841,11 +847,20 @@ function material(color, finish) {
 }
 
 function build() {
+  buildInto(product, S, explode ? 18 : 0);
+  scene.background = new THREE.Color(S.bg);
+  updateStats();
+  store.set('shape.autosave', S);
+  req();
+}
+
+// Monta as peças de um modelo num grupo (cena principal ou miniatura).
+function buildInto(product, S, explodeAmt = 0) {
   product.children.forEach(o => o.geometry.dispose());
   product.clear();
   const base = layout(S), floor = Math.min(...base.filter(e => e.m.vol).map(e => e.y0));
   const glassBody = base.some(e => e.m.vol && (e.m.own ? e.m.finish : S.finish) === 'vidro');
-  layout(S, explode ? 18 : 0).forEach(({ m, idx, y0 }, i) => {
+  layout(S, explodeAmt).forEach(({ m, idx, y0 }, i) => {
     const g = moduleGeo(m, y0); if (!g) return;
     const mesh = new THREE.Mesh(g, material(m.own ? m.color : S.color, m.own ? m.finish : S.finish));
     mesh.castShadow = true; mesh.receiveShadow = true;
@@ -872,10 +887,6 @@ function build() {
       if (pg) add(pg, 'pescante');
     }
   });
-  scene.background = new THREE.Color(S.bg);
-  updateStats();
-  store.set('shape.autosave', S);
-  req();
 }
 
 function bounds() { return new THREE.Box3().setFromObject(product); }
@@ -1217,23 +1228,63 @@ $('#colorAll').onclick = () => { S.modules.forEach(m => m.own = false); renderSt
 
 // ───────────────────────── modelos (presets) ─────────────────────────
 const saved = () => store.get('shape.presets', {});
+// Galeria: cada modelo com miniatura 3D, gerada num renderizador pequeno à
+// parte, uma por vez para não travar a tela.
+const TW = 180, TH = 220;
+const thumbR = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
+thumbR.setSize(TW, TH); thumbR.toneMapping = THREE.NeutralToneMapping;
+const thumbScene = new THREE.Scene();
+thumbScene.environment = new THREE.PMREMGenerator(thumbR).fromScene(new RoomEnvironment(), 0.04).texture;
+thumbScene.environmentIntensity = 0.9;
+thumbScene.add(new THREE.HemisphereLight(0xffffff, 0xe6e0da, 0.4));
+const tSun = new THREE.DirectionalLight(0xffffff, 1.3); tSun.position.set(160, 420, 260); thumbScene.add(tSun);
+const thumbCam = new THREE.PerspectiveCamera(26, TW / TH, 1, 8000);
+const thumbCache = new Map();
+function thumbOf(st) {
+  const key = JSON.stringify(st);
+  if (thumbCache.has(key)) return thumbCache.get(key);
+  const g = new THREE.Group(); thumbScene.add(g);
+  buildInto(g, normalize(structuredClone(st)));
+  const b = new THREE.Box3().setFromObject(g), sz = b.getSize(new THREE.Vector3()), c = b.getCenter(new THREE.Vector3());
+  const dist = (Math.max(sz.y, sz.x / (TW / TH)) * 0.5 * 1.18) / Math.tan(THREE.MathUtils.degToRad(13)) + Math.max(sz.x, sz.z) / 2;
+  thumbCam.position.copy(c).addScaledVector(new THREE.Vector3(0.75, 0.3, 1).normalize(), dist); thumbCam.lookAt(c);
+  thumbR.render(thumbScene, thumbCam);
+  const url = thumbR.domElement.toDataURL('image/png');
+  g.children.forEach(o => o.geometry.dispose()); thumbScene.remove(g);
+  thumbCache.set(key, url);
+  return url;
+}
+let thumbQueue = [];
+function pumpThumbs() {
+  const job = thumbQueue.shift(); if (!job) return;
+  job.img.src = thumbOf(job.st);
+  setTimeout(pumpThumbs, 16);
+}
 function renderPresets() {
-  const sv = saved();
-  $('#preset').innerHTML =
-    `<option value="">— escolher modelo —</option><optgroup label="Base">${Object.keys(PRESETS).map(k => `<option value="b:${k}">${k}</option>`).join('')}</optgroup>` +
-    (Object.keys(sv).length ? `<optgroup label="Salvos">${Object.keys(sv).map(k => `<option value="s:${k}">${k}</option>`).join('')}</optgroup>` : '');
+  const sv = saved(), gal = $('#gallery');
+  gal.innerHTML = ''; thumbQueue = [];
+  const section = (title, entries, kind) => {
+    if (!entries.length) return;
+    const h = document.createElement('h4'); h.textContent = title; gal.appendChild(h);
+    for (const [name, st] of entries) {
+      const card = document.createElement('div');
+      card.className = 'card' + (S.name === name ? ' on' : '');
+      card.title = name;
+      card.innerHTML = `<img class="ph" alt=""><div>${name}</div>`;
+      card.onclick = () => { loadState(st, name); };
+      gal.appendChild(card);
+      thumbQueue.push({ img: card.querySelector('img'), st });
+    }
+  };
+  section('Modelos base', Object.entries(PRESETS), 'b');
+  section('Salvos', Object.entries(sv), 's');
+  pumpThumbs();
 }
 function loadState(s, name) {
   S = normalize(structuredClone({ wall: S.wall, bg: S.bg, ...s }));
   if (name) S.name = name;
   sel = 0; renderAll(); build(); fit();
 }
-$('#preset').onchange = e => {
-  const v = e.target.value; if (!v) return;
-  const [kind, name] = [v[0], v.slice(2)];
-  loadState(kind === 'b' ? PRESETS[name] : saved()[name], name);
-  e.target.value = '';
-};
 $('#projName').oninput = e => { S.name = e.target.value; store.set('shape.autosave', S); };
 $('#savePreset').onclick = () => {
   const name = (S.name || '').trim() || 'Sem nome';
