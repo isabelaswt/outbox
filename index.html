@@ -199,7 +199,7 @@ const BASE = {
   pesc: true, pescD: 4, pescCurve: 0, pescWave: 0, pescGap: 3,
   mola: true, houseD: 8, springL: 18, coils: 11, sleeve: 'transparente',
   // sistema de abertura da tampa: flip-top (dobradiça na linha) ou disc-top.
-  topType: 'nenhum', openPct: 0, lidSide: 'cima', orifD: 4, discD: 26,
+  topType: 'nenhum', openPct: 0, lidSide: 'cima', orifD: 4, discD: 36, discDip: 4,
   // bisnaga: tubo que achata até a solda mantendo o perímetro.
   flatStart: 8, flatCurve: 1.15, sealH: 7, sealT: 1.4, sealW: 6,
   sealShape: 'reta', sealArc: 4, sealR: 0, serr: true, serrP: 1, serrD: 0.25,
@@ -229,7 +229,7 @@ const LIB = {
   placa:   { name: 'Corpo placa assimétrico', kind: 'placa', W: 66, D: 34, h: 134, rTL: 5, rTR: 30, rBL: 7, rBR: 7, rEdge: 5, chamfer: true, vol: true },
   flip:    { name: 'Tampa flip-top', W: 46, D: 34, n: 2.8, h: 24, rBot: 1, rTop: 3, groove: 6, topType: 'flip' },
   sobretampa: { name: 'Sobretampa (cobre a válvula)', W: 30, D: 30, h: 42, rBot: 0.5, rTop: 2 },
-  disctop: { name: 'Tampa disc-top', W: 40, D: 40, h: 18, rBot: 1, rTop: 1.5, topType: 'disc', discD: 28 },
+  disctop: { name: 'Tampa disc-top', W: 40, D: 40, h: 26, rBot: 1, rTop: 0.8, topType: 'disc', discD: 37, discDip: 5 },
 };
 const M = (type, o = {}) => ({ ...BASE, ...LIB[type], ...o });
 
@@ -358,8 +358,9 @@ function loft(rings, seg, disp) {
     for (let j = 0; j < seg; j++) {
       const th = j / seg * TAU;
       let [x, z] = sp(r.a, r.b, r.n, th);
-      if (disp) [x, z] = disp(x, r.ly, z, th);
-      out[j] = [x + (r.cx || 0), r.y, z];
+      let dy = 0;
+      if (disp && !r.noDisp) [x, z, dy = 0] = disp(x, r.ly, z, th);
+      out[j] = [x + (r.cx || 0), r.y + dy, z];
     }
     return out;
   });
@@ -647,9 +648,12 @@ function moduleGeo(m0, y0, opts = {}) {
     const [a, b] = sectionAt(ms, ly, rB, rT);
     return { y: y0 + lift + ly, ly, a, b, n: m.n };
   });
-  const detailed = !lo && (m.notch || m.ridges > 0);
+  const saddle = !inset && m.topType === 'disc' && m.discDip > 0;
+  const detailed = !lo && (m.notch || m.ridges > 0 || saddle);
   const seg = lo ? 64 : detailed ? 384 : 200;
   const disp = detailed ? (x, ly, z, th) => {
+    // Disc-top: borda em sela, mais baixa na frente e atrás.
+    const dy = saddle ? -m.discDip * Math.sin(th) ** 2 * (ly / m.h) : 0;
     if (m.ridges > 0 && ly > rB && ly < m.h - rT) {
       const rr = Math.hypot(x, z) || 1, d = m.ridgeD * (0.5 + 0.5 * Math.cos(m.ridges * th));
       x -= x / rr * d; z -= z / rr * d;
@@ -659,7 +663,7 @@ function moduleGeo(m0, y0, opts = {}) {
       const yl = m.h - notchTop(m), u = Math.abs(x) / (m.notchW / 2), v = (m.notchUp ? ly - yl : yl - ly) / m.notchH;
       if (v >= 0 && u < 1.1) { const f = 1 - (Math.pow(u, m.notchP) + v * v); if (f > 0) z -= m.notchD * Math.sqrt(f); }
     }
-    return [x, z];
+    return [x, z, dy];
   } : null;
   let g, extras = [];
   if (flipOpen) [g, extras] = flipOpenGeo(m, y0, rings, seg, disp, ang);
@@ -676,26 +680,38 @@ function flipOpenGeo(m, y0, rings, seg, disp, ang) {
   const yg = m.h - m.groove, up = m.lidSide !== 'baixo';
   const lower = rings.filter(r => r.ly <= yg + 1e-6), upper = rings.filter(r => r.ly >= yg - 1e-6);
   const [baseR, lidR] = up ? [lower, upper] : [upper, lower];
-  const gBase = loft(baseR, seg, disp), gLid = loft(lidR, seg, disp);
+  const gBase = loft(baseR, seg, disp);
   const hinge = lidR.find(r => Math.abs(r.ly - yg) < 1e-6) || lidR[up ? 0 : lidR.length - 1];
   const hy = y0 + yg, hz = -hinge.b;
+  const ro = m.orifD / 2 + 1.2, sh = 3, zc = Math.min(hinge.b * 0.25, hinge.b - ro - 0.5);
+  // Tampinha oca: casca aberta do lado do corte (parede t), com o pino de
+  // vedação (macho) por dentro, alinhado ao furo do bico (fêmea).
+  const t = 1.2, dir = up ? 1 : -1, cut = up ? lidR : [...lidR].reverse(), far = cut[cut.length - 1].ly;
+  const inner = cut.filter(r => Math.abs(far - r.ly) >= t)
+    .map(r => ({ ...r, a: Math.max(r.a - t, 0.3), b: Math.max(r.b - t, 0.3), noDisp: true }));
+  const lidParts = [loft(inner.length >= 2 ? [...inner.reverse(), ...cut] : cut, seg, disp)];
+  const pinFrom = hy + dir * (sh - 1.5), pinTo = y0 + far - dir * t;
+  if ((pinTo - pinFrom) * dir > 0.5) {
+    const pin = cyl(m.orifD / 2 - 0.1, Math.min(pinFrom, pinTo), Math.abs(pinTo - pinFrom) + 0.3, 0, 0);
+    pin.translate(0, 0, zc); lidParts.push(pin);
+  }
+  const gLid = mergeGeometries(lidParts);
   gLid.translate(0, -hy, -hz); gLid.rotateX((up ? -1 : 1) * ang * 110 * Math.PI / 180); gLid.translate(0, hy, hz);
   // Bico no corte da base, com o furo escuro na ponta.
-  const ro = m.orifD / 2 + 1.2, sh = 3, zc = Math.min(hinge.b * 0.25, hinge.b - ro - 0.5);
   const spout = cyl(ro, up ? hy - 0.5 : hy - sh, sh + 0.5, up ? 0.6 : 0, up ? 0 : 0.6); spout.translate(0, 0, zc);
   const hole = cyl(m.orifD / 2, up ? hy + sh - 0.25 : hy - sh - 0.05, 0.3); hole.translate(0, 0, zc);
   return [mergeGeometries([gBase, gLid, spout]), [hole]];
 }
 
-// Disc-top: disco no topo com friso em volta; aberto, bascula e mostra o furo.
+// Disc-top: disco quase da largura da tampa, saltado no rebaixo da borda,
+// com a fenda de saída na lateral; apertando o outro lado, a fenda sobe.
 function discTopGeo(m, y0, ang, lo) {
-  const top = y0 + m.h, r = Math.min(m.discD, Math.min(m.W, m.D) - 2) / 2, tilt = ang * 18 * Math.PI / 180;
-  const disc = cyl(r, top - 0.3, 0.8, 0.3, 0, lo);
-  disc.translate(0, -top, 0); disc.rotateX(tilt); disc.translate(0, top, 0);
-  const gap = new THREE.RingGeometry(r, r + 0.45, 96); gap.rotateX(-Math.PI / 2); gap.translate(0, top + 0.02, 0);
-  const extras = [gap];
-  if (tilt > 0) { const hole = cyl(Math.min(m.orifD / 2, r * 0.3), top + 0.03, 0.2); hole.translate(0, 0, -r * 0.62); extras.push(hole); }
-  return [disc, extras];
+  const r = Math.min(m.discD, Math.min(m.W, m.D) - 2.4) / 2, yTop = y0 + m.h - m.discDip * 0.3, th = 2.6;
+  const disc = cyl(r, yTop - th, th, 0.9, 0, lo);
+  const slot = new THREE.BoxGeometry(1.4, 1.5, Math.min(5, r * 0.45)); slot.translate(-r + 0.55, yTop - 1.3, 0);
+  const tilt = ang * 12 * Math.PI / 180;
+  [disc, slot].forEach(g => { g.translate(0, -yTop, 0); g.rotateZ(-tilt); g.translate(0, yTop, 0); });
+  return [disc, [slot]];
 }
 
 function signedVolume(g, signed = false) {
@@ -1046,8 +1062,9 @@ const MF = [
     G(['topType', 'Sistema de abertura', 'select', [['nenhum', 'Nenhum'], ['flip', 'Flip-top (tampinha com dobradiça)'], ['disc', 'Disc-top (disco basculante)']]]),
     G(['openPct', 'Abrir', 0, 100, 1, '%', m => m.topType !== 'nenhum']),
     G(['lidSide', 'Tampinha fica', 'select', [['cima', 'Em cima'], ['baixo', 'Embaixo (bisnaga em pé na tampa)']], m => m.topType === 'flip']),
-    G(['orifD', 'Furo do bico: diâmetro', 1, 12, 0.1, 'mm', m => m.topType !== 'nenhum']),
-    G(['discD', 'Disco: diâmetro', 6, 80, 0.5, 'mm', m => m.topType === 'disc']),
+    G(['orifD', 'Furo do bico: diâmetro', 1, 12, 0.1, 'mm', m => m.topType === 'flip']),
+    G(['discD', 'Disco: diâmetro', 6, 120, 0.5, 'mm', m => m.topType === 'disc']),
+    G(['discDip', 'Rebaixo da borda (sela)', 0, 20, 0.5, 'mm', m => m.topType === 'disc']),
     G(['groove', 'Linha de abertura (mm do topo, 0 = sem)', 0, 100, 0.5, 'mm']),
     G(['grooveD', 'Profundidade da linha', 0.1, 3, 0.1, 'mm', m => m.groove > 0]),
     G(['notch', 'Entalhe de abertura (pega do dedo)', 'check']),
