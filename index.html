@@ -195,7 +195,7 @@ const BASE = {
   neckStd: '24/410', pitch: 3.18, turns: 1.5, threadD: 1, ringH: 1.6, ringW: 1.8, embed: 8,
   // válvula: W/h = virola que veste o gargalo; cabeça conforme o tipo; pescante até o fundo.
   sprayType: 'mist', actW: 20, actH: 16, stemH: 4, headH: 28, nozzleL: 14, dir: 0,
-  collarR: 1.2, stemD: 7, armW: 9, armT: 4.5, droop: 2,
+  collarR: 1.2, stemD: 7, armW: 9, armT: 4.5, droop: 2, guideW: 0, guideH: 0,
   pesc: true, pescD: 4, pescCurve: 0, pescWave: 0, pescGap: 3,
   mola: true, houseD: 8, springL: 18, coils: 11, sleeve: 'transparente',
   // sistema de abertura da tampa: flip-top (dobradiça na linha) ou disc-top.
@@ -219,7 +219,7 @@ const LIB = {
   esfera:  { name: 'Esfera', W: 44, D: 44, h: 44, rBot: 22, rTop: 22, groove: 15, topType: 'flip' },
   domo:    { name: 'Domo meia-lua', W: 46, D: 38, h: 38, rBot: 2, rTop: 24, groove: 15, notch: true, notchY: 15, notchW: 18, notchH: 9, notchD: 2.2, notchP: 2, topType: 'flip' },
   seixo:   { name: 'Seixo com fenda', W: 70, D: 40, n: 2.4, h: 34, rBot: 6, rTop: 18, groove: 13, notch: true, notchY: 13, notchW: 30, notchH: 6, notchD: 1.8, notchP: 8, topType: 'flip' },
-  spray:   { name: 'Válvula spray fina', kind: 'spray', sprayType: 'mist', W: 24, D: 24, h: 14, ridges: 48, actW: 18, actH: 16, stemH: 3, stemD: 4.8, houseD: 6.5, springL: 16 },
+  spray:   { name: 'Válvula spray fina', kind: 'spray', sprayType: 'mist', W: 24, D: 24, h: 14, ridges: 48, guideW: 17.5, guideH: 5.5, actW: 13.5, actH: 14, stemH: 0, stemD: 4.8, houseD: 6.5, springL: 16 },
   lamina:  { name: 'Pump escultural (bico lâmina)', kind: 'spray', sprayType: 'lamina', W: 38.5, D: 38.5, h: 33, collarR: 14, stemD: 18, stemH: 13,
              actW: 26, headH: 9, nozzleL: 26, armW: 9, armT: 4.5, droop: 2.5 },
   pump:    { name: 'Válvula pump', kind: 'spray', sprayType: 'pump', W: 30, D: 30, h: 15, ridges: 36, actW: 26, stemH: 16, headH: 22, nozzleL: 16 },
@@ -283,7 +283,7 @@ const PRESETS = {
       actW: 36, headH: 4.2, armT: 4.2, armW: 12, nozzleL: 22, droop: 0 })] },
   'Spray âmbar': { color: '#b8650f', finish: 'vidro', modules: [
     M('reto', { W: 50, D: 50, h: 96, rBot: 4, rTop: 17 }), NECK('24/410', { embed: 14 }),
-    M('spray', { W: 29, D: 29, h: 17, ridges: 0, actW: 21, actH: 20, stemH: 4, own: true, color: '#141414', finish: 'brilho', pescWave: 3 })] },
+    M('spray', { W: 29.7, D: 29.7, h: 18, ridges: 0, collarR: 0.8, guideW: 21.7, guideH: 7.5, actW: 16, actH: 16.5, stemH: 0, own: true, color: '#141414', finish: 'brilho', pescWave: 3 })] },
   'Frasco pump': { color: CREAM, finish: 'fosco', modules: [
     M('reto', { W: 50, D: 50, h: 110, rBot: 8, rTop: 20 }), NECK('24/410'), M('pump')] },
   'Oval flip-top 250 ml': { color: '#f28bb5', finish: 'acetinado', modules: [
@@ -434,12 +434,21 @@ function sprayGeo(m, y0, { lo = false } = {}) {
   const collar = moduleGeo({ ...BASE, kind: 'giro', W: m.W, D: m.W, h: m.h, rBot: 0.6, rTop: m.collarR, ridges: m.ridges, ridgeD: m.ridgeD }, y0, { lo });
   const top = y0 + m.h, head = [], holes = [];
   if (m.sprayType === 'mist') {
-    head.push(cyl(m.stemD / 2, top - 1, m.stemH + 2, 0, 0, lo));
-    // Atuador com orifício na frente.
-    head.push(moduleGeo({ ...BASE, kind: 'giro', W: m.actW, D: m.actW, h: m.actH, rBot: 1, rTop: Math.min(4, m.actW / 4),
-      notch: true, notchLock: false, notchY: m.actH * 0.3, notchW: 3.4, notchH: 1.8, notchD: 1, notchP: 2 }, top + m.stemH, { lo }));
-    const oh = cyl(0.9, 0, 1.2); oh.rotateX(Math.PI / 2); oh.translate(0, top + m.stemH + m.actH * 0.7 - 0.9, m.actW / 2 - 1.3);
-    holes.push(oh);
+    // Anel guia entre a virola e o atuador, com friso no meio.
+    let yA = top;
+    if (m.guideW > 0 && m.guideH > 0) {
+      head.push(moduleGeo({ ...BASE, kind: 'giro', W: m.guideW, D: m.guideW, h: m.guideH, rBot: 0.3, rTop: 0.8,
+        groove: m.guideH / 2, grooveD: 0.35 }, top, { lo }));
+      yA = top + m.guideH;
+    }
+    if (m.stemH > 0) head.push(cyl(m.stemD / 2, yA - 1, m.stemH + 2, 0, 0, lo));
+    const yAct = yA + m.stemH;
+    head.push(moduleGeo({ ...BASE, kind: 'giro', W: m.actW, D: m.actW, h: m.actH, rBot: 0.8, rTop: Math.min(1.8, m.actW / 6) }, yAct, { lo }));
+    // Orifício: pastilha clara com o furo escuro no centro.
+    const yo = yAct + m.actH * 0.66, zf = m.actW / 2;
+    const ins = cyl(1.5, 0, 1.2, 0.3, 0); ins.rotateX(Math.PI / 2); ins.translate(0, yo, zf - 1.05); ins.userData.mat = 'insert';
+    const oh = cyl(0.5, 0, 1.2); oh.rotateX(Math.PI / 2); oh.translate(0, yo, zf - 0.95);
+    holes.push(ins, oh);
   } else if (m.sprayType === 'lamina') {
     head.push(cyl(m.stemD / 2, top - 1, m.stemH + 2, 0, 0, lo));
     head.push(bladeHeadGeo(m, top + m.stemH, lo));
@@ -780,6 +789,7 @@ function makeControls(target) {
 
 const matCache = new Map();
 const sleeveMat = new THREE.MeshStandardMaterial({ color: '#dfe3e6', roughness: 0.3, transparent: true, opacity: 0.32, depthTest: false, depthWrite: false });
+const insertMat = new THREE.MeshStandardMaterial({ color: '#ececea', roughness: 0.35 });
 const holeMat = new THREE.MeshStandardMaterial({ color: '#151515', roughness: 0.8 });
 // Opaco: peças transmissivas não aparecem através do frasco transparente.
 const pescMat = new THREE.MeshPhysicalMaterial({ color: '#b9bec2', roughness: 0.35, clearcoat: 0.4 });
@@ -809,7 +819,7 @@ function build() {
     mesh.userData.idx = idx;
     mesh.name = `${String(idx + 1).padStart(2, '0')}_${m.name}`;
     product.add(mesh);
-    (g.userData.extras || []).forEach(xg => { const xm = new THREE.Mesh(xg, holeMat); xm.userData.idx = idx; product.add(xm); });
+    (g.userData.extras || []).forEach(xg => { const xm = new THREE.Mesh(xg, xg.userData.mat === 'insert' ? insertMat : holeMat); xm.userData.idx = idx; product.add(xm); });
     if (m.kind === 'spray' && m.pesc && isFinite(floor)) {
       // Comprimento medido montado; na vista explodida desce junto com a válvula.
       const add = (geo, name) => { const pm = new THREE.Mesh(geo, pescMat); pm.userData.idx = idx; pm.name = `${String(idx + 1).padStart(2, '0')}_${name}`; product.add(pm); };
@@ -992,6 +1002,8 @@ const MF = [
     K(['stemH', 'Haste: altura', 0, 40, 0.5, 'mm']),
     K(['actW', 'Cabeça: largura', 8, 60, 0.5, 'mm']),
     K(['actH', 'Cabeça: altura', 6, 50, 0.5, 'mm', isType('mist')]),
+    K(['guideW', 'Anel guia: diâmetro (0 = sem)', 0, 60, 0.5, 'mm', isType('mist')]),
+    K(['guideH', 'Anel guia: altura', 0, 20, 0.5, 'mm', isType('mist')]),
     K(['headH', 'Cabeça: altura', 10, 60, 0.5, 'mm', m => m.sprayType !== 'mist']),
     K(['nozzleL', 'Bico: comprimento', 0, 50, 0.5, 'mm', m => m.sprayType !== 'mist']),
     K(['armW', 'Bico: largura', 3, 30, 0.5, 'mm', isType('lamina')]),
