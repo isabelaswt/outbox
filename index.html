@@ -281,43 +281,57 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json')).json(); } catch { PERFIS = {}; }
 const DRAFT_KEYS = { corpo: [], tampa: [], valvula: [] };
+// Tubos viram a bisnaga do OUTBOX (solda, serrilhado, formatos de solda);
+// flip-tops ganham a abertura do OUTBOX.
+const TUBES = new Set(['DRAFT_1002_Tube', 'DRAFT_1033_HandCream_Tube', 'DRAFT_1040_toothpaste', 'DRAFT_1035_Tube_Pump', 'DRAFT_1007_Moist_Pump']);
+const FLIPS = new Set(['DRAFT_1025_Flip_top_Bottle', 'DRAFT_1002_Tube', 'DRAFT_1033_HandCream_Tube', 'DRAFT_1037_Travelsize_Shampoo']);
+function tubeFromProfile(d) {
+  // diâmetro do tubo: a seção redonda mais larga (antes de começar a achatar)
+  const P = d.body.prof, W = r1(Math.max(...P.map(r => Math.min(r[1] * d.body.W, r[2] * d.body.D))));
+  const flat = P.find(r => r[0] > 0.5 && Math.min(r[1] * d.body.W, r[2] * d.body.D) / 2 < 1.6);
+  const sealH = r1(clamp(flat ? (1 - flat[0]) * d.body.h : 7, 4, 14));
+  return { name: `${d.name}`, kind: 'bisnaga', vol: true, W, D: W, h: d.body.h, rBot: 3, sealH, sealT: 1.4, sealW: 6, serr: true };
+}
 for (const [id, d] of Object.entries(PERFIS)) {
   const k = id.replace(/^DRAFT_/, '').replace(/^(\d+)_.*/, '$1');
   const kb = `d${k}c`, kt = `d${k}t`, valve = d.cat === 'V';
-  LIB[kb] = { name: `${d.name}`, kind: 'perfil', vol: true, pesc: false, W: d.body.W, D: d.body.D, h: d.body.h, W0: d.body.W, prof: d.body.prof };
+  LIB[kb] = TUBES.has(id) ? tubeFromProfile(d) : { name: `${d.name}`, kind: 'perfil', vol: true, pesc: false, W: d.body.W, D: d.body.D, h: d.body.h, W0: d.body.W, prof: d.body.prof };
   LIB[kt] = { name: `${d.name}${valve ? ' (válvula)' : ' (tampa)'}`, kind: 'perfil', W: d.cap.W, D: d.cap.D, h: d.cap.h, W0: d.cap.W,
-    prof: d.cap.prof, spout: d.cap.spout, pesc: valve && !d.below, mola: false };
+    prof: d.cap.prof, spout: d.cap.spout, pesc: valve && !d.below, mola: false,
+    // tampas flip-top da Draft já vêm com a linha e a abertura do OUTBOX
+    ...(FLIPS.has(id) ? { topType: 'flip', groove: r1(d.cap.h * (d.below ? 0.72 : 0.3)), lidSide: d.below ? 'baixo' : 'cima' } : {}) };
   DRAFT_KEYS.corpo.push(kb); (valve ? DRAFT_KEYS.valvula : DRAFT_KEYS.tampa).push(kt);
 }
-// Perfil medido: anéis [t, meia-largura, meia-profundidade, quadratura] em
-// frações de W/D/h; mudar W, D ou h estica o perfil inteiro.
-function perfilGeo(m, y0, { inset = 0, lift = 0, lo = false } = {}) {
-  if (!m.prof?.length) return null;
-  const rings = [];
-  for (const [t, ra, rb, n] of m.prof) {
-    const ly = t * m.h;
-    if (inset && (ly < lift || ly > m.h - inset * 0.5)) continue;
-    rings.push({ y: y0 + ly, ly, a: Math.max(ra * m.W / 2 - inset, 0.2), b: Math.max(rb * m.D / 2 - inset, 0.2), n: clamp(n, 2, 12) });
+// Perfil medido (Draft): linhas [t, meia-largura, meia-profundidade, quadratura,
+// centro x, centro z, frisos, prof. do friso] em frações de W/D/h. Passa pelo
+// mesmo motor das peças redondas/ovais, então linha, entalhe, flip-top,
+// disc-top e frisos valem aqui também.
+function profAt(m, ly) {
+  const P = m.prof, t = clamp(ly / m.h, 0, 1);
+  let i = 0; while (i < P.length - 2 && P[i + 1][0] < t) i++;
+  const A = P[i], B = P[i + 1] || A, f = B[0] > A[0] ? clamp((t - A[0]) / (B[0] - A[0]), 0, 1) : 0;
+  const L = k => (A[k] ?? 0) + ((B[k] ?? 0) - (A[k] ?? 0)) * f, near = f < 0.5 ? A : B, sc = m.W / (m.W0 || m.W);
+  return { a: L(1) * m.W / 2, b: L(2) * m.D / 2, n: clamp(L(3), 2, 12), cx: L(4) * sc, cz: L(5) * sc, rk: near[6] || 0, rd: (near[7] || 0) * sc };
+}
+function profSamples(m, lo) {
+  const h = m.h, S = m.prof.map(r => r[0] * h);
+  if (!lo && m.groove > 0) { const yg = h - m.groove; [-.6, -.5, -.3, -.12, 0, .12, .3, .5, .6].forEach(d => S.push(yg + d)); }
+  if (!lo && m.notch) {
+    const yt = h - notchTop(m), y0n = m.notchUp ? yt : yt - m.notchH - 1, y1n = m.notchUp ? yt + m.notchH + 1 : yt;
+    for (let y = y0n; y <= y1n; y += 0.25) S.push(y); S.push(yt + 0.03, yt - 0.03);
   }
-  if (rings.length < 2) return null;
-  let g = loft(rings, lo ? 48 : 160);
-  const extras = [];
-  if (!inset && !lo && m.spout) {
-    // Bico da válvula medido no original, na escala atual.
-    const s = m.W / (m.W0 || m.W), sp = m.spout, V = THREE.Vector3;
-    const ys = y0 + sp.t * m.h, row = m.prof.reduce((best, r) => Math.abs(r[0] - sp.t) < Math.abs(best[0] - sp.t) ? r : best);
-    const x0 = row[1] * m.W / 2 - 1, L = sp.L * s, dr = sp.droop * s;
-    const curve = new THREE.CatmullRomCurve3([new V(x0 - 2, ys, 0), new V(x0 + L * 0.5, ys, 0), new V(x0 + L * 0.82, ys - dr * 0.4, 0), new V(x0 + L, ys - dr, 0)]);
-    const tube = new THREE.TubeGeometry(curve, 48, Math.max(sp.D * s / 2, 0.8), 16); tube.deleteAttribute('uv');
-    const tip = curve.getPoint(1), tan = curve.getTangent(1);
-    const hole = cyl(Math.max(sp.D * s / 2 - 0.4, 0.4), -0.2, 0.5);
-    hole.applyQuaternion(new THREE.Quaternion().setFromUnitVectors(new V(0, 1, 0), tan)); hole.translate(tip.x, tip.y, tip.z);
-    [tube, hole].forEach(x => x.rotateY(-(sp.dir + (m.dir || 0)) * Math.PI / 180));
-    g = mergeGeometries([g, tube]); extras.push(hole);
-  }
-  if (m.ox) { g.translate(m.ox, 0, 0); extras.forEach(e => e.translate(m.ox, 0, 0)); }
-  g.userData.extras = extras;
-  return g;
+  return [...new Set(S.filter(y => y >= 0 && y <= h).map(y => +y.toFixed(3)))].sort((a, b) => a - b);
+}
+// Bico da válvula medido no original, na escala atual.
+function spoutGeo(m, y0) {
+  const s = m.W / (m.W0 || m.W), sp = m.spout, V = THREE.Vector3, ys = y0 + sp.t * m.h, q = profAt(m, sp.t * m.h);
+  const x0 = q.a - 1, L = sp.L * s, dr = sp.droop * s;
+  const curve = new THREE.CatmullRomCurve3([new V(x0 - 2, ys, 0), new V(x0 + L * 0.5, ys, 0), new V(x0 + L * 0.82, ys - dr * 0.4, 0), new V(x0 + L, ys - dr, 0)]);
+  const tube = new THREE.TubeGeometry(curve, 48, Math.max(sp.D * s / 2, 0.8), 16); tube.deleteAttribute('uv');
+  const tip = curve.getPoint(1), tan = curve.getTangent(1), hole = cyl(Math.max(sp.D * s / 2 - 0.4, 0.4), -0.2, 0.5);
+  hole.applyQuaternion(new THREE.Quaternion().setFromUnitVectors(new V(0, 1, 0), tan)); hole.translate(tip.x, tip.y, tip.z);
+  [tube, hole].forEach(x => x.rotateY(-(sp.dir + (m.dir || 0)) * Math.PI / 180));
+  return [tube, hole];
 }
 
 // Acabamentos de mercado (padrão GPI). Medidas aproximadas: confirmar com o fornecedor.
@@ -397,8 +411,14 @@ for (const [id, d] of Object.entries(PERFIS)) {
     modules = [M(kb)];
     if (d.neck) {
       // O gargalo cabe dentro da virola (com parede) e fica coberto pela tampa.
-      const base = d.cap.prof.filter(r => r[0] <= 0.2), collar = Math.min(...base.map(r => Math.min(r[1] * d.cap.W, r[2] * d.cap.D)));
-      const nW = r1(Math.min(d.neck.W, collar - 3)), nH = r1(Math.min(d.neck.h, d.cap.h - 1));
+      const wAt = r => Math.min(r[1] * d.cap.W, r[2] * d.cap.D);
+      const base = d.cap.prof.filter(r => r[0] <= 0.2), collar = Math.min(...base.map(wAt));
+      const nW = r1(Math.min(d.neck.W, collar - 3));
+      // altura da virola: até onde a tampa ainda é mais larga que o gargalo
+      // (acima disso, em pumps, ela afina para a haste)
+      const narrow = d.cap.prof.find(r => r[0] > 0.02 && wAt(r) < nW + 2.4);
+      const collarH = (narrow ? narrow[0] : 1) * d.cap.h;
+      const nH = r1(Math.min(d.neck.h, collarH - 0.8));
       if (nW > 4 && nH > 1) modules.push(M('gargalo', { neckStd: 'livre', W: nW, D: nW, h: nH, ringH: 0.3, ringW: 0, embed: 3 }));
     }
     modules.push(M(kt));
@@ -480,8 +500,8 @@ function loft(rings, seg, disp) {
       const th = j / seg * TAU;
       let [x, z] = sp(r.a, r.b, r.n, th);
       let dy = 0;
-      if (disp && !r.noDisp) [x, z, dy = 0] = disp(x, r.ly, z, th);
-      out[j] = [x + (r.cx || 0), r.y + dy, z];
+      if (disp && !r.noDisp) [x, z, dy = 0] = disp(x, r.ly, z, th, r);
+      out[j] = [x + (r.cx || 0), r.y + dy, z + (r.cz || 0)];
     }
     return out;
   });
@@ -778,7 +798,6 @@ function slabGeo(m0, y0, { inset = 0, lift = 0, lo = false } = {}) {
 
 // inset/lift geram o volume interno (parede e fundo) para a capacidade.
 function moduleGeo(m0, y0, opts = {}) {
-  if (m0.kind === 'perfil') return perfilGeo(m0, y0, opts);
   if (m0.kind === 'placa') return slabGeo(m0, y0, opts);
   if (m0.kind === 'bisnaga') return tubeGeo(m0, y0, opts);
   if (m0.kind === 'gargalo') return opts.inset ? null : neckGeo(m0, y0, opts);
@@ -787,20 +806,27 @@ function moduleGeo(m0, y0, opts = {}) {
   const m = inset ? { ...m0, W: m0.W - 2 * inset, D: m0.D - 2 * inset, h: m0.h - lift,
     rBot: Math.max(0, m0.rBot - inset), rTop: Math.max(0, m0.rTop - inset), groove: 0, notch: false, ridges: 0 } : m0;
   if (m.W <= 0.2 || m.D <= 0.2 || m.h <= 0.1) return null;
-  const { rB, rT } = radii(m);
+  const isProf = !!m.prof?.length;
+  const { rB, rT } = isProf ? { rB: 0, rT: 0 } : radii(m);
   const ang = (m.openPct || 0) / 100, flipOpen = !inset && m.topType === 'flip' && m.groove > 0 && ang > 0;
   const ms = flipOpen ? { ...m, grooveD: 0 } : m; // aberta, a linha vira o corte
-  const rings = ySamples(m, rB, rT, lo).map(ly => {
-    const [a, b] = sectionAt(ms, ly, rB, rT);
-    return { y: y0 + lift + ly, ly, a, b, n: m.n };
+  let kmax = 0;
+  const rings = (isProf ? profSamples(m, lo) : ySamples(m, rB, rT, lo)).map(ly => {
+    if (!isProf) { const [a, b] = sectionAt(ms, ly, rB, rT); return { y: y0 + lift + ly, ly, a, b, n: m.n }; }
+    const q = profAt(m, ly), g = ms.groove > 0 ? ms.grooveD * Math.max(0, 1 - Math.abs(ly - (m.h - ms.groove)) / 0.5) : 0;
+    const rk = lo || inset ? 0 : q.rk; kmax = Math.max(kmax, rk);
+    return { y: y0 + lift + ly, ly, a: Math.max(q.a - g, 0.05), b: Math.max(q.b - g, 0.05), n: q.n, cx: q.cx, cz: q.cz, rk, rd: q.rd };
   });
+  if (rings.length < 2) return null;
   const saddle = !inset && m.topType === 'disc' && m.discDip > 0;
-  const detailed = !lo && (m.notch || m.ridges > 0 || saddle);
-  const seg = lo ? 64 : detailed ? 384 : 200;
-  const disp = detailed ? (x, ly, z, th) => {
+  const detailed = !lo && (m.notch || m.ridges > 0 || saddle || kmax > 0);
+  const seg = lo ? 64 : kmax ? clamp(kmax * 8, 384, 1400) : detailed ? 384 : 200;
+  const disp = detailed ? (x, ly, z, th, r) => {
+    // Frisos medidos no original (peças da Draft).
+    if (r?.rk) { const rr = Math.hypot(x, z) || 1, d = r.rd * (0.5 - 0.5 * Math.cos(r.rk * th)); x -= x / rr * d; z -= z / rr * d; }
     // Disc-top: borda em sela, mais baixa na frente e atrás.
     const dy = saddle ? -m.discDip * Math.sin(th) ** 2 * (ly / m.h) : 0;
-    if (m.ridges > 0 && ly > rB && ly < m.h - rT) {
+    if (m.ridges > 0 && ly > rB && ly < m.h - rT && !r?.rk) {
       const rr = Math.hypot(x, z) || 1, d = m.ridgeD * (0.5 + 0.5 * Math.cos(m.ridges * th));
       x -= x / rr * d; z -= z / rr * d;
     }
@@ -815,6 +841,7 @@ function moduleGeo(m0, y0, opts = {}) {
   if (flipOpen) [g, extras] = flipOpenGeo(m, y0, rings, seg, disp, ang);
   else g = loft(rings, seg, disp);
   if (!inset && m.topType === 'disc') { const [dg, dx] = discTopGeo(m, y0, ang, lo); g = mergeGeometries([g, dg]); extras.push(...dx); }
+  if (!inset && !lo && m.spout) { const [tube, hole] = spoutGeo(m, y0); g = mergeGeometries([g, tube]); extras.push(hole); }
   if (m.ox) { g.translate(m.ox, 0, 0); extras.forEach(e => e.translate(m.ox, 0, 0)); }
   g.userData.extras = extras; // peças em material escuro (furos)
   return g;
@@ -1386,6 +1413,7 @@ function field(parent, obj, def, onChange) {
 
 // Campos que só valem para um tipo de forma.
 const only = (kind, d) => { const a = [...d]; while (a.length < 7) a.push(0); const prev = a[6]; a[6] = m => m.kind === kind && (!prev || prev(m)); return a; };
+const GP = d => { const a = [...d]; while (a.length < 7) a.push(0); const prev = a[6]; a[6] = m => (m.kind === 'giro' || m.kind === 'perfil') && (!prev || prev(m)); return a; };
 const G = d => only('giro', d), P = d => only('placa', d), B = d => only('bisnaga', d), N = d => only('gargalo', d);
 const notK = (kinds, d) => { const a = [...d]; while (a.length < 7) a.push(0); a[6] = m => !kinds.includes(m.kind); return a; };
 const K = d => only('spray', d), isType = t => m => m.sprayType === t;
@@ -1470,26 +1498,26 @@ const MF = [
     ['repGap', 'Espaço entre repetições', 0, 20, 0.1, 'mm', m => m.rep > 1],
   ]],
   ['Abertura e detalhes', [
-    G(['topType', 'Sistema de abertura', 'select', [['nenhum', 'Nenhum'], ['flip', 'Flip-top (tampinha com dobradiça)'], ['disc', 'Disc-top (disco basculante)']]]),
-    G(['openPct', 'Abrir', 0, 100, 1, '%', m => m.topType !== 'nenhum']),
-    G(['lidSide', 'Tampinha fica', 'select', [['cima', 'Em cima'], ['baixo', 'Embaixo (bisnaga em pé na tampa)']], m => m.topType === 'flip']),
-    G(['orifD', 'Furo do bico: diâmetro', 1, 12, 0.1, 'mm', m => m.topType === 'flip']),
-    G(['discD', 'Disco: diâmetro', 6, 120, 0.5, 'mm', m => m.topType === 'disc']),
-    G(['discDip', 'Rebaixo da borda (sela)', 0, 20, 0.5, 'mm', m => m.topType === 'disc']),
-    G(['discRise', 'Disco sobressai da borda', 0, 10, 0.1, 'mm', m => m.topType === 'disc']),
-    G(['discDimple', 'Concavidade de apertar', 0, 4, 0.1, 'mm', m => m.topType === 'disc']),
-    G(['groove', 'Linha de abertura (mm do topo, 0 = sem)', 0, 100, 0.5, 'mm']),
-    G(['grooveD', 'Profundidade da linha', 0.1, 3, 0.1, 'mm', m => m.groove > 0]),
-    G(['notch', 'Entalhe de abertura (pega do dedo)', 'check']),
-    G(['notchLock', 'Entalhe começa na linha de abertura', 'check', 0, 0, 0, m => m.notch]),
-    G(['notchY', 'Entalhe: começa a (mm do topo)', 0, 100, 0.5, 'mm', m => m.notch && !(m.notchLock && m.groove > 0)]),
-    G(['notchW', 'Entalhe: largura', 2, 120, 0.5, 'mm', m => m.notch]),
-    G(['notchH', 'Entalhe: altura', 1, 60, 0.5, 'mm', m => m.notch]),
-    G(['notchD', 'Entalhe: profundidade', 0.2, 8, 0.1, 'mm', m => m.notch]),
-    G(['notchP', 'Entalhe: meia-lua → fenda', 2, 12, 0.1, '', m => m.notch]),
-    G(['notchUp', 'Entalhe acima da linha', 'check', 0, 0, 0, m => m.notch]),
-    G(['ridges', 'Frisos verticais', 0, 120, 1, '']),
-    G(['ridgeD', 'Profundidade dos frisos', 0.1, 3, 0.1, 'mm', m => m.ridges > 0]),
+    GP(['topType', 'Sistema de abertura', 'select', [['nenhum', 'Nenhum'], ['flip', 'Flip-top (tampinha com dobradiça)'], ['disc', 'Disc-top (disco basculante)']]]),
+    GP(['openPct', 'Abrir', 0, 100, 1, '%', m => m.topType !== 'nenhum']),
+    GP(['lidSide', 'Tampinha fica', 'select', [['cima', 'Em cima'], ['baixo', 'Embaixo (bisnaga em pé na tampa)']], m => m.topType === 'flip']),
+    GP(['orifD', 'Furo do bico: diâmetro', 1, 12, 0.1, 'mm', m => m.topType === 'flip']),
+    GP(['discD', 'Disco: diâmetro', 6, 120, 0.5, 'mm', m => m.topType === 'disc']),
+    GP(['discDip', 'Rebaixo da borda (sela)', 0, 20, 0.5, 'mm', m => m.topType === 'disc']),
+    GP(['discRise', 'Disco sobressai da borda', 0, 10, 0.1, 'mm', m => m.topType === 'disc']),
+    GP(['discDimple', 'Concavidade de apertar', 0, 4, 0.1, 'mm', m => m.topType === 'disc']),
+    GP(['groove', 'Linha de abertura (mm do topo, 0 = sem)', 0, 100, 0.5, 'mm']),
+    GP(['grooveD', 'Profundidade da linha', 0.1, 3, 0.1, 'mm', m => m.groove > 0]),
+    GP(['notch', 'Entalhe de abertura (pega do dedo)', 'check']),
+    GP(['notchLock', 'Entalhe começa na linha de abertura', 'check', 0, 0, 0, m => m.notch]),
+    GP(['notchY', 'Entalhe: começa a (mm do topo)', 0, 100, 0.5, 'mm', m => m.notch && !(m.notchLock && m.groove > 0)]),
+    GP(['notchW', 'Entalhe: largura', 2, 120, 0.5, 'mm', m => m.notch]),
+    GP(['notchH', 'Entalhe: altura', 1, 60, 0.5, 'mm', m => m.notch]),
+    GP(['notchD', 'Entalhe: profundidade', 0.2, 8, 0.1, 'mm', m => m.notch]),
+    GP(['notchP', 'Entalhe: meia-lua → fenda', 2, 12, 0.1, '', m => m.notch]),
+    GP(['notchUp', 'Entalhe acima da linha', 'check', 0, 0, 0, m => m.notch]),
+    GP(['ridges', 'Frisos verticais', 0, 120, 1, '']),
+    GP(['ridgeD', 'Profundidade dos frisos', 0.1, 3, 0.1, 'mm', m => m.ridges > 0]),
   ]],
   ['Cor', [
     ['own', 'Cor própria neste módulo', 'check'],

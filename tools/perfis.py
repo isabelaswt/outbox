@@ -46,19 +46,43 @@ def section(T, y):
         out.append(q[:, [0, 2]])
     return np.concatenate(out) if out else np.zeros((0, 2))
 
+def ridges(Q, cx, cz):
+    """Frisos verticais (grip) na seção: (quantidade, profundidade mm) ou (0, 0).
+    Raio externo por ângulo, tira a forma lenta e procura a ondulação regular."""
+    th = np.arctan2(Q[:, 1] - cz, Q[:, 0] - cx); r = np.hypot(Q[:, 0] - cx, Q[:, 1] - cz)
+    NB = 1024; bins = ((th + np.pi) / (2 * np.pi) * NB).astype(int) % NB
+    rb = np.full(NB, np.nan); np.fmax.at(rb, bins, r)
+    ok = ~np.isnan(rb)
+    if ok.sum() < NB * 0.5: return 0, 0.0
+    idx = np.arange(NB); rb = np.interp(idx, idx[ok], rb[ok], period=NB)
+    ker = np.ones(41) / 41; smooth = np.convolve(np.concatenate([rb[-20:], rb, rb[:20]]), ker, 'valid')
+    res = rb - smooth
+    spec = np.abs(np.fft.rfft(res)); spec[:10] = 0
+    k = int(np.argmax(spec[:260])); power = spec[k] ** 2 / max((spec ** 2).sum(), 1e-12)
+    # profundidade só da ondulação dos frisos (amplitude da componente k)
+    depth = min(float(4 * spec[k] / NB), 1.2)
+    if 12 <= k <= 240 and depth > 0.12 and power > 0.2: return k, round(depth, 3)
+    return 0, 0.0
+
 def slices(T, y0, y1, N, spout_axis=None):
-    """Perfil entre y0 e y1: [t, a, b, n]. Com spout_axis, usa o menor raio (ignora o bico)."""
+    """Perfil entre y0 e y1: [t, a, b, n, cx, cz, frisos, prof. do friso]. Com spout_axis, usa o menor raio (ignora o bico)."""
     out = []; H = y1 - y0
     for i in range(N + 1):
         t = (1 - math.cos(math.pi * i / N)) / 2
         y = y0 + H * min(max(t, 0.002), 0.998)   # evita o plano exato do fundo/topo
         Q = section(T, y)
         if len(Q) < 3: continue
-        a = float(np.abs(Q[:, 0]).max()); b = float(np.abs(Q[:, 1]).max())
-        if spout_axis: a = b = min(a, b)
+        # centro real da seção (sem o bico): evita perfil torto
+        x0, x1 = Q[:, 0].min(), Q[:, 0].max(); z0, z1 = Q[:, 1].min(), Q[:, 1].max()
+        cx, cz = (x0 + x1) / 2, (z0 + z1) / 2
+        if spout_axis: cx = cz = 0.0
+        a = float((x1 - x0) / 2); b = float((z1 - z0) / 2)
+        if spout_axis:
+            a = float(np.abs(Q[:, 0]).max()); b = float(np.abs(Q[:, 1]).max()); a = b = min(a, b)
         area = hull_area([tuple(q) for q in np.round(Q, 3)])
         n = n_from_ratio(area / (4 * a * b)) if a > 0 and b > 0 and not spout_axis else 2.0
-        out.append([round(t, 4), a, b, n])
+        k, dep = ridges(Q, cx, cz)
+        out.append([round(t, 4), a, b, n, round(float(cx), 3), round(float(cz), 3), k, dep])
     return out
 
 res = {}
@@ -102,10 +126,10 @@ for pid, row in table.items():
         while j > 0 and max(full[j][1], full[j][2]) < 0.62 * amax: j -= 1
         yneck = bmin + (bmax - bmin) * full[min(j + 1, len(full) - 1)][0]
         cut = yneck if bmax - yneck > 1 else (cy if cy < bmax - 0.5 else bmax)
-    bp = slices(TB, bmin, cut, 56)
+    bp = slices(TB, bmin, cut, 90)
     W = 2 * max(s[1] for s in bp); D = 2 * max(s[2] for s in bp); Hb = cut - bmin
     out['body'] = {'W': round(W, 2), 'D': round(D, 2), 'h': round(Hb, 2),
-                   'prof': [[s[0], round(2*s[1]/W, 4), round(2*s[2]/D, 4), s[3]] for s in bp]}
+                   'prof': [[s[0], round(2*s[1]/W, 4), round(2*s[2]/D, 4), s[3], s[4], s[5], s[6], s[7]] for s in bp]}
     out['neck'] = None
     if not below and bmax - cut > 1:
         Q = section(TB, cut + (bmax - cut) * 0.5)
@@ -134,11 +158,12 @@ for pid, row in table.items():
         if not 0.3 <= tt <= 1: tt = 0.85
         if abs(dr) > 0.35 * (cy1 - cy0): dr = 3.0
         spout = {'L': round(abs(far[ax]) - headR, 2), 'droop': round(dr, 2), 'D': round(spD, 2), 't': round(tt, 3), 'dir': dirdeg}
-    cp = slices(TCP, cy0, cy1, 40, spout_axis=bool(spout))
+    cp = slices(TCP, cy0, cy1, 110, spout_axis=bool(spout))
     CW = 2 * max(s[1] for s in cp); CD = 2 * max(s[2] for s in cp)
     out['cap'] = {'W': round(CW, 2), 'D': round(CD, 2), 'h': round(cy1 - cy0, 2),
-                  'prof': [[s[0], round(2*s[1]/CW, 4), round(2*s[2]/CD, 4), s[3]] for s in cp], 'spout': spout}
+                  'prof': [[s[0], round(2*s[1]/CW, 4), round(2*s[2]/CD, 4), s[3], s[4], s[5], s[6], s[7]] for s in cp], 'spout': spout}
     out['gapBelow'] = round(bmin - cmax, 2) if below else 0
     res[pid] = out
-    print(f"{pid:38s} corpo {W:5.1f}×{D:5.1f}×{Hb:5.1f}  gargalo {out['neck']}  tampa {CW:4.1f}×{out['cap']['h']:4.1f}  bico {spout}")
+    fr = sorted({(s[6], s[7]) for s in cp if s[6]} | {(s[6], s[7]) for s in bp if s[6]})
+    print(f"{pid:38s} frisos {fr[:3]}  corpo {W:5.1f}×{D:5.1f}×{Hb:5.1f}  gargalo {out['neck']}  tampa {CW:4.1f}×{out['cap']['h']:4.1f}  bico {spout}")
 json.dump(res, open(f'{root}/draft/perfis.json', 'w'), separators=(',', ':'))
