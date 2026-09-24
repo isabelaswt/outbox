@@ -94,7 +94,9 @@
      1.149
     ]
    }
-  ]
+  ],
+  "collarW": 4.5946,
+  "collarY": 25.508
  },
  "DRAFT_1002_Tube": {
   "file": "DRAFT_1002_Tube.glb",
@@ -126,7 +128,9 @@
      4.169
     ]
    }
-  ]
+  ],
+  "collarW": 7.6628,
+  "collarY": 5.0667
  },
  "DRAFT_1003_Jar": {
   "file": "DRAFT_1003_Jar.glb",
@@ -184,7 +188,9 @@
      3.084
     ]
    }
-  ]
+  ],
+  "collarW": 6.1674,
+  "collarY": 0.7505
  },
  "DRAFT_1005_SoapPump": {
   "file": "DRAFT_1005_SoapPump.glb",
@@ -294,7 +300,9 @@
      8.896
     ]
    }
-  ]
+  ],
+  "collarW": 4.0677,
+  "collarY": 39.3161
  },
  "DRAFT_1006_FoamSoap": {
   "file": "DRAFT_1006_FoamSoap.glb",
@@ -443,7 +451,9 @@
      1.51
     ]
    }
-  ]
+  ],
+  "collarW": 6.445,
+  "collarY": 3.3654
  },
  "DRAFT_1007_Moist_Pump": {
   "file": "DRAFT_1007_Moist_Pump.glb",
@@ -514,7 +524,9 @@
      2.457
     ]
    }
-  ]
+  ],
+  "collarW": 5.0472,
+  "collarY": 5.9869
  },
  "DRAFT_1008_Moist_Jar": {
   "file": "DRAFT_1008_Moist_Jar.glb",
@@ -572,7 +584,9 @@
      0.241
     ]
    }
-  ]
+  ],
+  "collarW": 0.4819,
+  "collarY": 0.232
  },
  "DRAFT_1009_Spray_Glass": {
   "file": "DRAFT_1009_Spray_Glass.glb",
@@ -695,7 +709,9 @@
      4.231
     ]
    }
-  ]
+  ],
+  "collarW": 4.7155,
+  "collarY": 28.2165
  },
  "DRAFT_1014_Glass_Bottle_RC": {
   "file": "DRAFT_1014_Glass_Bottle_RC.glb",
@@ -753,7 +769,9 @@
      6.223
     ]
    }
-  ]
+  ],
+  "collarW": 6.0299,
+  "collarY": 26.5014
  },
  "DRAFT_1015_Pump_Bottle": {
   "file": "DRAFT_1015_Pump_Bottle.glb",
@@ -837,7 +855,9 @@
      6.656
     ]
    }
-  ]
+  ],
+  "collarW": 6.6169,
+  "collarY": 30.0521
  },
  "DRAFT_1016_Eyelash": {
   "file": "DRAFT_1016_Eyelash.glb",
@@ -1005,7 +1025,9 @@
      6.457
     ]
    }
-  ]
+  ],
+  "collarW": 2.6618,
+  "collarY": 22.7671
  },
  "DRAFT_1019_Bottle_Push_Pull": {
   "file": "DRAFT_1019_Bottle_Push_Pull.glb",
@@ -1076,7 +1098,9 @@
      3.254
     ]
    }
-  ]
+  ],
+  "collarW": 3.349,
+  "collarY": 4.4003
  },
  "DRAFT_1020_Bottle_Pump": {
   "file": "DRAFT_1020_Bottle_Pump.glb",
@@ -1173,7 +1197,9 @@
      4.259
     ]
    }
-  ]
+  ],
+  "collarW": 4.349,
+  "collarY": 16.278
  },
  "DRAFT_1021_Bubble_Bath": {
   "file": "DRAFT_1021_Bubble_Bath.glb",
@@ -1218,7 +1244,9 @@
      2.338
     ]
    }
-  ]
+  ],
+  "collarW": 4.6746,
+  "collarY": 32.5209
  },
  "DRAFT_1022_Push_Pull_Short_Jar": {
   "file": "DRAFT_1022_Push_Pull_Short_Jar.glb",
@@ -1302,7 +1330,9 @@
      1.384
     ]
    }
-  ]
+  ],
+  "collarW": 2.7685,
+  "collarY": 6.9899
  },
  "DRAFT_1023_Push_Pull_Tall": {
   "file": "DRAFT_1023_Push_Pull_Tall.glb",
@@ -1386,7 +1416,9 @@
      4.083
     ]
    }
-  ]
+  ],
+  "collarW": 4.2494,
+  "collarY": 7.2048
  },
  "DRAFT_1024_Pump_Minimal": {
   "file": "DRAFT_1024_Pump_Minimal.glb",
@@ -1509,7 +1541,9 @@
      3.5
     ]
    }
-  ]
+  ],
+  "collarW": 3.3552,
+  "collarY": 13.9792
  },
  "DRAFT_1025_Flip_top_Bottle": {
   "file": "DRAFT_1025_Flip_top_Bottle.glb",
@@ -1580,7 +1614,9 @@
      1.679
     ]
    }
-  ]
+  ],
+  "collarW": 3.3665,
+  "collarY": 17.0414
  },
  "DRAFT_1026_nailpolish": {
   "file": "DRAFT_1026_nailpolish.glb",
@@ -1832,7 +1868,9 @@
      1.956
     ]
    }
-  ]
+  ],
+  "collarW": 3.9044,
+  "collarY": 15.7225
  },
  "DRAFT_1030_Foundation": {
   "file": "DRAFT_1030_Foundation.glb",
@@ -1942,7 +1980,9 @@
      3.503
     ]
    }
-  ]
+  ],
+  "collarW": 3.9419,
+  "collarY": 7.2877
  },
  "DRAFT_1031_Glass_Dropper": {
   "file": "DRAFT_1031_Glass_Dropper.glb",
@@ -2026,7 +2066,9 @@
      1.624
     ]
    }
-  ]
+  ],
+  "collarW": 2.3428,
+  "collarY": 1.3821
  },
  "DRAFT_1032_Concealer": {
   "file": "DRAFT_1032_Concealer.glb",
@@ -2207,7 +2249,9 @@
      2.247
     ]
    }
-  ]
+  ],
+  "collarW": 1.5966,
+  "collarY": 0.5599
  },
  "DRAFT_1034_HandCream_Tube_Smashed": {
   "file": "DRAFT_1034_HandCream_Tube_Smashed.glb",
@@ -2310,7 +2354,9 @@
      3.009
     ]
    }
-  ]
+  ],
+  "collarW": 3.2319,
+  "collarY": -4.2311
  },
  "DRAFT_1037_Travelsize_Shampoo": {
   "file": "DRAFT_1037_Travelsize_Shampoo.glb",
@@ -2368,7 +2414,9 @@
      1.081
     ]
    }
-  ]
+  ],
+  "collarW": 2.1614,
+  "collarY": 2.7487
  },
  "DRAFT_1039_Round_Bottle": {
   "file": "DRAFT_1039_Round_Bottle.glb",
@@ -2439,7 +2487,9 @@
      6.295
     ]
    }
-  ]
+  ],
+  "collarW": 3.6744,
+  "collarY": 4.7243
  },
  "DRAFT_1040_toothpaste": {
   "file": "DRAFT_1040_toothpaste.glb",
@@ -2484,7 +2534,9 @@
      3.578
     ]
    }
-  ]
+  ],
+  "collarW": 2.3588,
+  "collarY": 0.7806
  },
  "DRAFT_3001_Square_Jar": {
   "file": "DRAFT_3001_Square_Jar.glb",
@@ -4277,7 +4329,9 @@
      3.421
     ]
    }
-  ]
+  ],
+  "collarW": 6.843,
+  "collarY": 6.0383
  },
  "DRAFT_3002_Essential_Oil": {
   "file": "DRAFT_3002_Essential_Oil.glb",
@@ -4335,7 +4389,9 @@
      1.232
     ]
    }
-  ]
+  ],
+  "collarW": 2.2623,
+  "collarY": 4.4958
  },
  "DRAFT_3003_Tubewithseal": {
   "file": "DRAFT_3003_Tubewithseal.glb",
@@ -4393,7 +4449,9 @@
      2.881
     ]
    }
-  ]
+  ],
+  "collarW": 4.2471,
+  "collarY": 8.4385
  },
  "DRAFT_3005_Capsule_Jar": {
   "file": "DRAFT_3005_Capsule_Jar.glb",
@@ -8961,7 +9019,9 @@
      2.109
     ]
    }
-  ]
+  ],
+  "collarW": 2.986,
+  "collarY": 9.4047
  },
  "DRAFT_3009_Ophthalmic_Nozzle": {
   "file": "DRAFT_3009_Ophthalmic_Nozzle.glb",
@@ -9006,7 +9066,9 @@
      6.279
     ]
    }
-  ]
+  ],
+  "collarW": 12.5576,
+  "collarY": 40.2081
  },
  "DRAFT_3010_Pills_Bottle": {
   "file": "DRAFT_3010_Pills_Bottle.glb",
