@@ -268,6 +268,8 @@ const LIB = {
   placa:   { name: 'Corpo placa assimétrico', kind: 'placa', W: 66, D: 34, h: 134, rTL: 5, rTR: 30, rBL: 7, rBR: 7, rEdge: 5, chamfer: true, vol: true },
   flip:    { name: 'Tampa flip-top', W: 46, D: 34, n: 2.8, h: 24, rBot: 1, rTop: 3, groove: 6, topType: 'flip' },
   sobretampa: { name: 'Sobretampa (cobre a válvula)', W: 30, D: 30, h: 42, rBot: 0.5, rTop: 2 },
+  flipRedondo: { name: 'Tampa flip-top redonda', W: 40, D: 40, h: 30, rBot: 1, rTop: 2.5, groove: 10, notch: true, notchUp: false,
+    notchW: 17, notchH: 8, notchD: 1.4, notchP: 6, topType: 'flip', lidSide: 'cima' },
   disctop: { name: 'Tampa disc-top', W: 48.3, D: 48.3, h: 32.5, taper: 95, rBot: 1, rTop: 0.8, topType: 'disc', discD: 42.4, discDip: 5 },
 };
 const newUid = () => Math.random().toString(36).slice(2, 10);
@@ -280,7 +282,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-24.primeira-miniatura';
+const BUILD = '2026-09-24.flip-redondo';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -1800,7 +1802,7 @@ function renderAll() { renderStack(); renderEditor(); renderGlobal(); renderPres
 // Corpo, tampa e peça de encaixe ficam em listas separadas.
 const CATS = [
   ['Corpo', ['reto', 'boston', 'quadrado', 'capsula', 'plano', 'arco', 'cone', 'placa', 'bisnaga', ...DRAFT_KEYS.corpo]],
-  ['Tampa', ['esfera', 'domo', 'seixo', 'flip', 'disctop', 'sobretampa', 'tampaBisnaga', 'disco', ...DRAFT_KEYS.tampa]],
+  ['Tampa', ['esfera', 'domo', 'seixo', 'flip', 'flipRedondo', 'disctop', 'sobretampa', 'tampaBisnaga', 'disco', ...DRAFT_KEYS.tampa]],
   ['Válvula', ['pump', 'locao', 'espuma', 'spray', 'contaGotas', 'pushPull', 'lamina', ...DRAFT_KEYS.valvula]],
   ['Peça de encaixe', ['gargalo', 'colar', 'barril', 'flare', 'anel', 'tigela']],
 ];
