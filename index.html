@@ -167,6 +167,7 @@ import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { GLTFExporter } from 'three/addons/exporters/GLTFExporter.js';
 import { STLExporter } from 'three/addons/exporters/STLExporter.js';
 import { OBJExporter } from 'three/addons/exporters/OBJExporter.js';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
 const $ = s => document.querySelector(s);
 const TAU = Math.PI * 2;
@@ -191,6 +192,7 @@ const BASE = {
   notchUp: false,
   // bisnaga: tubo que achata até a solda mantendo o perímetro.
   flatStart: 8, flatCurve: 1.15, sealH: 7, sealT: 1.4, sealW: 6,
+  sealShape: 'reta', sealArc: 4, sealR: 0, serr: true, serrP: 1, serrD: 0.25,
 };
 const LIB = {
   capsula: { name: 'Corpo cápsula', W: 58, D: 58, h: 160, rBot: 29, rTop: 29, vol: true },
@@ -368,14 +370,35 @@ function tubeGeo(m0, y0, { inset = 0, lift = 0, lo = false } = {}) {
     if (rB > 0 && ly < rB) { const c = 1 - ly / rB, f = 1 - Math.sqrt(Math.max(0, 1 - c * c)); a -= Math.min(rB, a) * f; bb -= Math.min(rB, bb) * f; }
     return { y: y0 + lift + ly, ly, a: Math.max(a, 0.05), b: Math.max(bb, 0.05), n: 2 };
   });
-  if (sealH > 0) {
-    // Solda: faixa reta, um pouco mais larga que o tubo achatado.
-    const aS = aFor(bEnd) * (1 + m.sealW / 100);
-    [0, 0.5, 1].forEach(k => rings.push({ y: y0 + lift + hb + sealH * k, ly: hb + sealH * k, a: aS, b: bEnd, n: 8 }));
-  }
-  const g = loft(rings, lo ? 64 : 240);
+  let g = loft(rings, lo ? 64 : 240);
+  if (sealH > 0 && !lo) g = mergeGeometries([g, sealGeo(m, aFor(bEnd) * (1 + m.sealW / 100), y0 + lift + hb, sealH, bEnd)]);
   if (m.ox) g.translate(m.ox, 0, 0);
   return g;
+}
+
+// Solda da bisnaga: placa fina com topo reto, em arco, côncavo ou inclinado,
+// cantos arredondados e serrilhado vertical nas duas faces.
+function sealGeo(m, aS, yb, sealH, bEnd) {
+  const arc = clamp(m.sealArc, 0, sealH - 0.5), r = clamp(m.sealR, 0, Math.min(aS, sealH - 0.5));
+  const top = x => {
+    const u = x / aS; let y = yb + sealH;
+    if (m.sealShape === 'arco') y -= arc * u * u;
+    if (m.sealShape === 'concavo') y -= arc * (1 - u * u);
+    if (m.sealShape === 'inclinada') y -= arc * (1 - u) / 2;
+    const dx = Math.max(0, Math.abs(x) - (aS - r));
+    if (r > 0 && dx > 0) y -= r - Math.sqrt(Math.max(0, r * r - dx * dx));
+    return Math.max(y, yb + 0.3);
+  };
+  const serr = x => (m.serr ? m.serrD * (0.5 + 0.5 * Math.cos(TAU * x / Math.max(m.serrP, 0.2))) : 0);
+  const NX = clamp(Math.ceil(2 * aS / Math.max(m.serrP, 0.2) * (m.serr ? 8 : 0.5)) + 40, 60, 1400);
+  const pts = [];
+  for (let i = 0; i <= NX; i++) {
+    const x = -aS + 2 * aS * i / NX, yt = top(x), z = bEnd + serr(x);
+    // Cada quina repetida: faces com normais próprias (arestas vivas).
+    const A = [x, yb, -z], B = [x, yt, -z], C = [x, yt, z], D = [x, yb, z];
+    pts.push([A, B, [...B], C, [...C], D, [...D], [...A]]);
+  }
+  return loftPts(pts);
 }
 
 // Contorno frontal com 4 cantos independentes, recuado d mm.
@@ -689,6 +712,12 @@ const MF = [
     B(['sealH', 'Altura da solda', 0, 30, 0.5, 'mm']),
     B(['sealT', 'Espessura da solda', 0.4, 6, 0.1, 'mm']),
     B(['sealW', 'Solda mais larga que o tubo', 0, 20, 0.5, '%']),
+    B(['sealShape', 'Formato da solda', 'select', [['reta', 'Reta'], ['arco', 'Arco (topo arredondado)'], ['concavo', 'Côncava'], ['inclinada', 'Inclinada']]]),
+    B(['sealArc', 'Curvatura / inclinação da solda', 0, 30, 0.5, 'mm', m => m.sealShape !== 'reta']),
+    B(['sealR', 'Cantos da solda arredondados', 0, 40, 0.5, 'mm']),
+    B(['serr', 'Serrilhado na solda', 'check']),
+    B(['serrP', 'Serrilhado: passo', 0.4, 4, 0.1, 'mm', m => m.serr]),
+    B(['serrD', 'Serrilhado: profundidade', 0.05, 1, 0.05, 'mm', m => m.serr]),
     ['h', 'Altura', 1, 300, 0.5, 'mm'],
     ['W', 'Largura (frente)', 4, 200, 0.5, 'mm'],
     ['D', 'Profundidade (lado)', 4, 200, 0.5, 'mm'],
