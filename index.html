@@ -1,0 +1,834 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Shape de Embalagens</title>
+<style>
+:root{--bg:#f3f2ef;--panel:#fff;--ink:#1d1d1f;--muted:#7a7a7e;--line:#e6e3de;--soft:#f7f6f3;--accent:#d8246a}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);font:13px/1.35 -apple-system,BlinkMacSystemFont,"Inter","Segoe UI",sans-serif}
+.app{display:grid;grid-template-columns:360px 1fr;height:100vh}
+aside{background:var(--panel);border-right:1px solid var(--line);overflow-y:auto;padding:16px 16px 48px}
+h1{font-size:15px;margin:0}
+.sub{color:var(--muted);font-size:12px;margin:2px 0 12px}
+details{border-top:1px solid var(--line);padding:6px 0}
+summary{cursor:pointer;font-weight:650;font-size:11px;text-transform:uppercase;letter-spacing:.7px;padding:6px 0;list-style:none;color:#444}
+summary::-webkit-details-marker{display:none}
+summary::after{content:'+';float:right;color:var(--muted);font-weight:400}
+details[open]>summary::after{content:'–'}
+h3{font-size:11px;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);margin:14px 0 2px;font-weight:600}
+.f{margin:7px 0}
+.f .top{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.f label{color:#333}
+.num{display:flex;align-items:center;gap:4px;color:var(--muted);font-size:11px}
+.num input{width:64px;text-align:right;border:1px solid var(--line);border-radius:6px;padding:3px 6px;font:inherit;font-size:12px;color:var(--ink);background:var(--soft)}
+input[type=range]{width:100%;accent-color:var(--accent);margin:3px 0 0}
+input[type=color]{width:44px;height:24px;border:1px solid var(--line);border-radius:6px;padding:0;background:none}
+select,input[type=text]{font:inherit;font-size:12px;border:1px solid var(--line);border-radius:7px;padding:5px 7px;background:var(--soft);color:var(--ink);width:100%}
+.row{display:flex;gap:6px;align-items:center;margin:6px 0}
+.row>*{flex:1}
+.btn{font:inherit;font-size:12px;border:1px solid var(--line);background:var(--soft);border-radius:7px;padding:6px 9px;cursor:pointer;color:var(--ink);white-space:nowrap}
+.btn:hover{border-color:#cfcac2}
+.btn.pri{background:var(--ink);color:#fff;border-color:var(--ink)}
+.btn.sm{padding:3px 7px;font-size:11px;flex:0}
+.chk{display:flex;align-items:center;gap:7px;margin:7px 0;cursor:pointer}
+.tip{color:var(--muted);font-size:11.5px;margin:6px 0}
+.stack{display:flex;flex-direction:column;gap:4px;margin:8px 0}
+.mod{display:flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:9px;padding:6px 7px;cursor:pointer;background:#fff}
+.mod.sel{border-color:var(--ink);box-shadow:0 0 0 1px var(--ink) inset}
+.mod .sw{width:14px;height:14px;border-radius:50%;flex:none;border:1px solid rgba(0,0,0,.12)}
+.mod .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mod .dm{color:var(--muted);font-size:11px;white-space:nowrap}
+.mod .b{border:0;background:none;cursor:pointer;color:#888;padding:2px 4px;font-size:12px;border-radius:4px}
+.mod .b:hover{background:var(--soft);color:var(--ink)}
+.edit{background:var(--soft);border-radius:10px;padding:4px 10px 8px;margin-top:6px}
+.edit h3:first-child{margin-top:8px}
+main{position:relative;overflow:hidden}
+canvas{display:block;width:100%;height:100%;touch-action:none}
+.bar{position:absolute;top:12px;left:12px;right:12px;display:flex;gap:6px;flex-wrap:wrap;pointer-events:none}
+.bar>*{pointer-events:auto}
+.bar .btn{background:rgba(255,255,255,.88);backdrop-filter:blur(6px)}
+.bar .btn.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+.stats{position:absolute;left:12px;bottom:12px;background:rgba(255,255,255,.9);backdrop-filter:blur(6px);border:1px solid var(--line);border-radius:10px;padding:8px 12px;display:grid;grid-template-columns:auto auto;gap:2px 14px;font-size:12px}
+.stats b{font-weight:600;text-align:right;font-variant-numeric:tabular-nums}
+.stats .cap b{color:var(--accent)}
+.toast{position:absolute;right:12px;bottom:12px;background:var(--ink);color:#fff;border-radius:8px;padding:8px 12px;font-size:12px;opacity:0;transition:opacity .2s;pointer-events:none}
+.toast.on{opacity:1}
+.hidden{display:none!important}
+@media (max-width:820px){
+  .app{grid-template-columns:1fr;grid-template-rows:58vh auto;height:auto}
+  main{grid-row:1;height:58vh}
+  aside{grid-row:2;border-right:0;border-top:1px solid var(--line)}
+}
+</style>
+<script type="importmap">
+{"imports":{
+  "three":"https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js",
+  "three/addons/":"https://cdn.jsdelivr.net/npm/three@0.169.0/examples/jsm/"
+}}
+</script>
+</head>
+<body>
+<div class="app">
+<aside>
+  <h1>Shape de Embalagens</h1>
+  <div class="sub">Módulos empilhados · medidas em mm · volumetria ao vivo</div>
+
+  <details open>
+    <summary>Modelo</summary>
+    <div class="row"><select id="preset"></select></div>
+    <div class="row"><input type="text" id="projName" placeholder="Nome do projeto"></div>
+    <div class="row">
+      <button class="btn" id="savePreset">Salvar</button>
+      <button class="btn" id="delPreset">Excluir</button>
+      <button class="btn" id="exportJson">JSON ↓</button>
+      <button class="btn" id="importJsonBtn">JSON ↑</button>
+      <input type="file" id="importJson" accept=".json,application/json" class="hidden">
+    </div>
+  </details>
+
+  <details open>
+    <summary>Pilha de módulos</summary>
+    <div class="tip">De cima para baixo, como a embalagem fica em pé. Clique num módulo (aqui ou no 3D) para editar.</div>
+    <div class="stack" id="stack"></div>
+    <div class="row">
+      <select id="libType"></select>
+      <button class="btn pri sm" id="addMod" style="flex:0">+ Adicionar</button>
+    </div>
+    <div class="edit" id="editor"></div>
+  </details>
+
+  <details open>
+    <summary>Volumetria</summary>
+    <div id="volFields"></div>
+    <div class="tip">A capacidade soma os módulos marcados como “frasco”, descontando a parede. É uma estimativa de projeto, não substitui o desenho técnico do fornecedor.</div>
+    <h3>Ajustar para um volume</h3>
+    <div class="row">
+      <div class="num" style="flex:0"><input type="number" id="targetMl" value="250" min="1" step="1"> ml</div>
+      <select id="fitMode"><option value="prop">proporcional</option><option value="h">só altura</option><option value="w">só largura/prof.</option></select>
+      <button class="btn pri sm" id="fitBtn" style="flex:0">Ajustar</button>
+    </div>
+  </details>
+
+  <details>
+    <summary>Aparência</summary>
+    <div id="lookFields"></div>
+    <div class="row"><button class="btn" id="colorAll">Aplicar cor geral a todos os módulos</button></div>
+  </details>
+
+  <details>
+    <summary>Referência (imagem ou desenho técnico)</summary>
+    <div class="tip">Carregue a imagem e ela aparece na vista <b>Frente · ortográfica</b>, em escala de mm. Ajuste a altura até a embalagem da imagem bater com a grade.</div>
+    <div class="row">
+      <button class="btn" id="refBtn">Carregar imagem</button>
+      <button class="btn" id="refClear">Remover</button>
+      <input type="file" id="refFile" accept="image/*" class="hidden">
+    </div>
+    <div id="refFields"></div>
+  </details>
+
+  <details open>
+    <summary>Exportar</summary>
+    <h3>Imagem</h3>
+    <div class="row">
+      <select id="pngRes"><option value="2048">2048 px</option><option value="3072">3072 px</option><option value="4096" selected>4096 px</option></select>
+    </div>
+    <label class="chk"><input type="checkbox" id="pngTransp" checked> Fundo transparente</label>
+    <label class="chk"><input type="checkbox" id="pngShadow" checked> Incluir sombra</label>
+    <div class="row"><button class="btn pri" id="dlPng">Baixar PNG</button></div>
+    <h3>3D</h3>
+    <div class="row">
+      <button class="btn" id="dlGlb">GLB</button>
+      <button class="btn" id="dlObj">OBJ</button>
+      <button class="btn" id="dlStl">STL</button>
+    </div>
+    <div class="tip">GLB sai em metros (padrão glTF: Blender, Keyshot, Dimension, AR). OBJ e STL saem em milímetros. Cada módulo vira uma peça separada.</div>
+  </details>
+</aside>
+
+<main id="view">
+  <canvas id="c"></canvas>
+  <div class="bar">
+    <button class="btn" data-view="front">Frente</button>
+    <button class="btn" data-view="side">Lado</button>
+    <button class="btn" data-view="three">3/4</button>
+    <button class="btn" data-view="top">Topo</button>
+    <button class="btn" id="orthoBtn">Ortográfica</button>
+    <button class="btn" id="gridBtn">Grade 10 mm</button>
+  </div>
+  <div class="stats" id="stats"></div>
+  <div class="toast" id="toast"></div>
+</main>
+</div>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { GLTFExporter } from 'three/addons/exporters/GLTFExporter.js';
+import { STLExporter } from 'three/addons/exporters/STLExporter.js';
+import { OBJExporter } from 'three/addons/exporters/OBJExporter.js';
+
+const $ = s => document.querySelector(s);
+const TAU = Math.PI * 2;
+const clamp = (v, a, b) => Math.min(Math.max(v, a), b);
+const smooth = (a, b, x) => { const t = clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
+const r1 = v => Math.round(v * 10) / 10;
+const store = {
+  get(k, d) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch { return d; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} },
+};
+
+// ───────────────────────── módulos ─────────────────────────
+const BASE = {
+  name: 'Módulo', W: 50, D: 50, n: 2, h: 40, taper: 100, bulge: 0, bulgePos: 50,
+  rBot: 2, rTop: 2, gap: 0, rep: 1, repGap: 0.6,
+  groove: 0, grooveD: 0.6,
+  notch: false, notchY: 12, notchW: 20, notchH: 8, notchD: 2, notchP: 2,
+  ridges: 0, ridgeD: 0.6,
+  own: false, color: '#e0306e', finish: 'fosco', vol: false,
+};
+const LIB = {
+  capsula: { name: 'Corpo cápsula', W: 58, D: 58, h: 160, rBot: 29, rTop: 29, vol: true },
+  reto:    { name: 'Corpo reto', W: 58, D: 58, h: 140, rBot: 8, rTop: 12, vol: true },
+  plano:   { name: 'Corpo plano', W: 70, D: 40, n: 3.4, h: 130, rBot: 14, rTop: 14, vol: true },
+  arco:    { name: 'Corpo arco', W: 66, D: 36, n: 4, h: 125, rBot: 5, rTop: 33, vol: true },
+  cone:    { name: 'Corpo cone', W: 62, D: 62, h: 140, taper: 62, rBot: 8, rTop: 10, vol: true },
+  barril:  { name: 'Barril', W: 50, D: 50, h: 45, bulge: 8, rBot: 12, rTop: 12 },
+  colar:   { name: 'Colar', W: 62, D: 62, h: 28, rBot: 2, rTop: 2 },
+  flare:   { name: 'Gargalo flare', W: 26, D: 26, h: 40, taper: 175, bulge: -12, bulgePos: 40, rBot: 0, rTop: 3 },
+  anel:    { name: 'Anel', W: 36, D: 36, h: 9, rBot: 4.5, rTop: 4.5 },
+  disco:   { name: 'Disco', W: 40, D: 40, h: 6, rBot: 1.5, rTop: 2 },
+  tigela:  { name: 'Tigela', W: 40, D: 40, h: 20, rBot: 18, rTop: 1 },
+  esfera:  { name: 'Esfera', W: 44, D: 44, h: 44, rBot: 22, rTop: 22, groove: 15 },
+  domo:    { name: 'Domo meia-lua', W: 46, D: 38, h: 38, rBot: 2, rTop: 24, groove: 15, notch: true, notchY: 15, notchW: 18, notchH: 9, notchD: 2.2, notchP: 2 },
+  seixo:   { name: 'Seixo com fenda', W: 70, D: 40, n: 2.4, h: 34, rBot: 6, rTop: 18, groove: 13, notch: true, notchY: 13, notchW: 30, notchH: 6, notchD: 1.8, notchP: 8 },
+  flip:    { name: 'Tampa flip-top', W: 46, D: 34, n: 2.8, h: 24, rBot: 1, rTop: 3, groove: 6 },
+};
+const M = (type, o = {}) => ({ ...BASE, ...LIB[type], ...o });
+
+const PINK = '#e0306e', CREAM = '#f1e6cc';
+const PRESETS = {
+  'Cápsula + esfera': { color: PINK, finish: 'fosco', modules: [
+    M('capsula', { rBot: 12 }), M('esfera', { gap: -3 })] },
+  'Seixo com fenda': { color: CREAM, finish: 'fosco', modules: [
+    M('plano', { W: 78, D: 44, n: 3.2, h: 132, rBot: 16, rTop: 16 }), M('seixo', { gap: 0.8 })] },
+  'Domo meia-lua': { color: CREAM, finish: 'fosco', modules: [
+    M('plano', { W: 72, D: 42, n: 3, h: 128, rBot: 18, rTop: 18 }), M('domo', { gap: 0.8 })] },
+  'Arco + tigela': { color: PINK, finish: 'fosco', modules: [
+    M('arco'), M('tigela'), M('disco', { W: 42, D: 42, gap: 0.6 })] },
+  'Anéis empilhados': { color: PINK, finish: 'fosco', modules: [
+    M('plano', { W: 66, D: 34, n: 6, h: 120, rBot: 6, rTop: 14 }),
+    M('anel', { rep: 3, repGap: 0.6, gap: 0.6 }), M('disco', { W: 38, D: 38, h: 8, rBot: 3, rTop: 3, gap: 0.6 })] },
+  'Cone + tigela': { color: PINK, finish: 'fosco', modules: [
+    M('cone'), M('tigela', { W: 36, D: 36, h: 18, rBot: 16 }), M('disco', { W: 38, D: 38, h: 5 })] },
+  'Barril empilhado': { color: PINK, finish: 'fosco', modules: [
+    M('reto', { W: 54, D: 54, h: 95, rBot: 4, rTop: 4 }), M('barril', { gap: 0.6 }),
+    M('tigela', { W: 48, D: 48, h: 22, rBot: 20, gap: 0.6 }), M('disco', { W: 50, D: 50, h: 5, gap: 0.4 })] },
+  'Gargalo flare': { color: PINK, finish: 'fosco', modules: [
+    M('reto', { W: 58, D: 58, h: 120, rBot: 10, rTop: 26 }), M('flare'), M('disco', { W: 46, D: 46, h: 7, gap: 0.5 })] },
+  'Oval flip-top 250 ml': { color: '#f28bb5', finish: 'acetinado', modules: [
+    M('plano', { W: 66, D: 40, n: 3.4, h: 150, rBot: 18, rTop: 10, bulge: 3, bulgePos: 30 }),
+    M('flip', { own: true, color: '#ffd21f', finish: 'brilho' })] },
+};
+
+const FINISHES = [['fosco', 'Fosco'], ['acetinado', 'Acetinado'], ['brilho', 'Brilho'], ['perolado', 'Perolado'], ['vidro', 'Transparente / vidro'], ['metal', 'Metalizado']];
+
+let S = normalize(store.get('shape.autosave', null) || { name: 'Cápsula + esfera', wall: 1.2, bg: '#f1f0ed', ...structuredClone(PRESETS['Cápsula + esfera']) });
+let sel = 0;
+function normalize(s) {
+  s.wall ??= 1.2; s.bg ??= '#f1f0ed'; s.color ??= PINK; s.finish ??= 'fosco'; s.name ??= 'Sem nome';
+  s.modules = (s.modules || []).map(m => ({ ...BASE, ...m }));
+  if (!s.modules.length) s.modules = [M('reto')];
+  return s;
+}
+
+// ───────────────────────── geometria ─────────────────────────
+// Seção superelipse: n=2 é oval; n alto tende ao retângulo arredondado.
+function sp(a, b, n, th) {
+  const c = Math.cos(th), s = Math.sin(th), e = 2 / n;
+  return [a * Math.sign(c) * Math.pow(Math.abs(c), e), b * Math.sign(s) * Math.pow(Math.abs(s), e)];
+}
+
+function radii(m) {
+  let rB = clamp(m.rBot, 0, m.h), rT = clamp(m.rTop, 0, m.h);
+  if (rB + rT > m.h) { const k = m.h / (rB + rT); rB *= k; rT *= k; }
+  return { rB, rT };
+}
+
+// Meia-largura e meia-profundidade do módulo na altura local y.
+function sectionAt(m, y, rB, rT) {
+  const h = m.h, t = h > 0 ? y / h : 0;
+  const pp = clamp(m.bulgePos / 100, 0.05, 0.95);
+  const u = t < pp ? 0.5 * t / pp : 0.5 + 0.5 * (t - pp) / (1 - pp);
+  const sc = 1 + (m.taper / 100 - 1) * t + (m.bulge / 100) * Math.sin(Math.PI * clamp(u, 0, 1));
+  let a = Math.max(m.W / 2 * sc, 0.1), b = Math.max(m.D / 2 * sc, 0.1);
+  let r = 0, f = 0;
+  if (rB > 0 && y < rB) { const c = 1 - y / rB; f = 1 - Math.sqrt(Math.max(0, 1 - c * c)); r = rB; }
+  else if (rT > 0 && y > h - rT) { const c = 1 - (h - y) / rT; f = 1 - Math.sqrt(Math.max(0, 1 - c * c)); r = rT; }
+  a -= Math.min(r, a) * f; b -= Math.min(r, b) * f;
+  if (m.groove > 0) {
+    const g = m.grooveD * Math.max(0, 1 - Math.abs(y - (h - m.groove)) / 0.5);
+    a -= g; b -= g;
+  }
+  return [Math.max(a, 0.05), Math.max(b, 0.05)];
+}
+
+function ySamples(m, rB, rT, lo) {
+  const h = m.h, S = [0, h], NF = lo ? 8 : 20;
+  for (let i = 0; i <= NF; i++) {
+    const c = 1 - Math.cos(i / NF * Math.PI / 2);
+    S.push(rB * c, h - rT * c);
+  }
+  const m0 = rB, m1 = h - rT, nm = Math.max(2, Math.ceil((m1 - m0) / (lo ? 8 : 2.5)));
+  for (let i = 0; i <= nm; i++) S.push(m0 + (m1 - m0) * i / nm);
+  if (!lo && m.groove > 0) { const yg = h - m.groove; [-.6, -.5, -.3, -.12, 0, .12, .3, .5, .6].forEach(d => S.push(yg + d)); }
+  if (!lo && m.notch) { const yt = h - m.notchY; for (let y = yt - m.notchH - 1; y <= yt; y += 0.35) S.push(y); S.push(yt + 0.03, yt - 0.03); }
+  return [...new Set(S.filter(y => y >= 0 && y <= h).map(y => +y.toFixed(3)))].sort((a, b) => a - b);
+}
+
+function loft(rings, seg, disp) {
+  const P = [], I = [], R = rings.length;
+  const pts = rings.map(r => {
+    const out = new Array(seg);
+    for (let j = 0; j < seg; j++) {
+      const th = j / seg * TAU;
+      let [x, z] = sp(r.a, r.b, r.n, th);
+      if (disp) [x, z] = disp(x, r.ly, z, th);
+      out[j] = [x, r.y, z];
+    }
+    return out;
+  });
+  pts.forEach(ring => ring.forEach(q => P.push(q[0], q[1], q[2])));
+  for (let i = 0; i < R - 1; i++) for (let j = 0; j < seg; j++) {
+    const j2 = (j + 1) % seg, a = i * seg + j, b = i * seg + j2, c = (i + 1) * seg + j, d = (i + 1) * seg + j2;
+    I.push(a, c, b, b, c, d);
+  }
+  const fan = (ring, y, down) => {
+    const base = P.length / 3;
+    ring.forEach(q => P.push(q[0], q[1], q[2]));
+    const c = P.length / 3; P.push(0, y, 0);
+    for (let j = 0; j < seg; j++) { const j2 = (j + 1) % seg; down ? I.push(c, base + j, base + j2) : I.push(c, base + j2, base + j); }
+  };
+  fan(pts[0], rings[0].y, true);
+  fan(pts[R - 1], rings[R - 1].y, false);
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(P, 3));
+  g.setIndex(I);
+  g.computeVertexNormals();
+  return g;
+}
+
+// inset/lift geram o volume interno (parede e fundo) para a capacidade.
+function moduleGeo(m0, y0, { inset = 0, lift = 0, lo = false } = {}) {
+  const m = inset ? { ...m0, W: m0.W - 2 * inset, D: m0.D - 2 * inset, h: m0.h - lift,
+    rBot: Math.max(0, m0.rBot - inset), rTop: Math.max(0, m0.rTop - inset), groove: 0, notch: false, ridges: 0 } : m0;
+  if (m.W <= 0.2 || m.D <= 0.2 || m.h <= 0.1) return null;
+  const { rB, rT } = radii(m);
+  const rings = ySamples(m, rB, rT, lo).map(ly => {
+    const [a, b] = sectionAt(m, ly, rB, rT);
+    return { y: y0 + lift + ly, ly, a, b, n: m.n };
+  });
+  const detailed = !lo && (m.notch || m.ridges > 0);
+  const seg = lo ? 64 : detailed ? 320 : 200;
+  const disp = detailed ? (x, ly, z, th) => {
+    if (m.ridges > 0 && ly > rB && ly < m.h - rT) {
+      const rr = Math.hypot(x, z) || 1, d = m.ridgeD * (0.5 + 0.5 * Math.cos(m.ridges * th));
+      x -= x / rr * d; z -= z / rr * d;
+    }
+    if (m.notch && z > 0) {
+      const u = Math.abs(x) / (m.notchW / 2), v = (m.h - m.notchY - ly) / m.notchH;
+      if (v >= 0 && u < 1.1) { const f = 1 - (Math.pow(u, m.notchP) + v * v); if (f > 0) z -= m.notchD * smooth(0, 0.18, f); }
+    }
+    return [x, z];
+  } : null;
+  return loft(rings, seg, disp);
+}
+
+function signedVolume(g) {
+  const p = g.attributes.position.array, idx = g.index.array; let v = 0;
+  for (let i = 0; i < idx.length; i += 3) {
+    const a = idx[i] * 3, b = idx[i + 1] * 3, c = idx[i + 2] * 3;
+    v += p[a] * (p[b + 1] * p[c + 2] - p[b + 2] * p[c + 1])
+       - p[a + 1] * (p[b] * p[c + 2] - p[b + 2] * p[c])
+       + p[a + 2] * (p[b] * p[c + 1] - p[b + 1] * p[c]);
+  }
+  return Math.abs(v / 6);
+}
+
+// Posição vertical de cada peça (módulo × repetição).
+function layout(s) {
+  const out = []; let cur = 0;
+  s.modules.forEach((m, idx) => {
+    for (let r = 0; r < Math.max(1, Math.round(m.rep)); r++) {
+      const y0 = cur + (r === 0 ? m.gap : m.repGap);
+      out.push({ m, idx, y0 }); cur = y0 + m.h;
+    }
+  });
+  return out;
+}
+
+function volumes(s) {
+  let ext = 0, cap = 0, first = true;
+  for (const { m, y0 } of layout(s)) {
+    if (!m.vol) continue;
+    const ge = moduleGeo(m, y0, { lo: true }); if (ge) { ext += signedVolume(ge); ge.dispose(); }
+    const lift = first ? s.wall : 0;
+    const gi = moduleGeo(m, y0, { inset: s.wall, lift, lo: true }); if (gi) { cap += signedVolume(gi); gi.dispose(); }
+    first = false;
+  }
+  return { ext: ext / 1000, cap: cap / 1000 };
+}
+
+// ───────────────────────── cena ─────────────────────────
+const canvas = $('#c'), view = $('#view');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, preserveDrawingBuffer: true, alpha: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.toneMapping = THREE.NeutralToneMapping;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+const scene = new THREE.Scene();
+const pmrem = new THREE.PMREMGenerator(renderer);
+scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+scene.environmentIntensity = 0.9;
+scene.add(new THREE.HemisphereLight(0xffffff, 0xe6e0da, 0.35));
+const sun = new THREE.DirectionalLight(0xffffff, 1.5);
+sun.position.set(160, 420, 260); sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+Object.assign(sun.shadow.camera, { left: -300, right: 300, top: 300, bottom: -300, near: 10, far: 1500 });
+sun.shadow.bias = -0.0004; sun.shadow.normalBias = 0.4;
+scene.add(sun, sun.target);
+
+const ground = new THREE.Mesh(new THREE.PlaneGeometry(6000, 6000), new THREE.ShadowMaterial({ opacity: 0.16 }));
+ground.rotation.x = -Math.PI / 2; ground.position.y = -0.05; ground.receiveShadow = true;
+scene.add(ground);
+
+const grid = new THREE.GridHelper(800, 80, 0xb9b3aa, 0xd9d4cc);
+grid.rotation.x = Math.PI / 2; grid.position.set(0, 400, -400); grid.visible = false;
+scene.add(grid);
+
+const refMat = new THREE.MeshBasicMaterial({ transparent: true, opacity: 0.5, depthWrite: false, toneMapped: false });
+const refMesh = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), refMat);
+refMesh.visible = false; scene.add(refMesh);
+
+const product = new THREE.Group(); scene.add(product);
+
+const persp = new THREE.PerspectiveCamera(28, 1, 1, 20000);
+const ortho = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 20000);
+let cam = persp, controls, orthoHalf = 150, needs = true;
+const req = () => { needs = true; };
+function makeControls(target) {
+  controls?.dispose();
+  controls = new OrbitControls(cam, canvas);
+  controls.screenSpacePanning = true;
+  if (target) controls.target.copy(target);
+  controls.addEventListener('change', req);
+  controls.update();
+}
+
+const matCache = new Map();
+function material(color, finish) {
+  const key = color + finish;
+  if (matCache.has(key)) return matCache.get(key);
+  const m = new THREE.MeshPhysicalMaterial({ color, roughness: 0.5, metalness: 0 });
+  if (finish === 'fosco') { m.roughness = 0.62; m.sheen = 0.25; m.sheenRoughness = 0.8; m.sheenColor = new THREE.Color('#ffffff'); }
+  if (finish === 'acetinado') { m.roughness = 0.34; m.clearcoat = 0.25; m.clearcoatRoughness = 0.4; }
+  if (finish === 'brilho') { m.roughness = 0.14; m.clearcoat = 1; m.clearcoatRoughness = 0.06; }
+  if (finish === 'perolado') { m.roughness = 0.3; m.iridescence = 0.7; m.iridescenceIOR = 1.4; m.clearcoat = 0.4; }
+  if (finish === 'vidro') { m.roughness = 0.05; m.transmission = 1; m.thickness = 4; m.ior = 1.5; }
+  if (finish === 'metal') { m.metalness = 1; m.roughness = 0.24; }
+  matCache.set(key, m);
+  return m;
+}
+
+function build() {
+  product.children.forEach(o => o.geometry.dispose());
+  product.clear();
+  for (const { m, idx, y0 } of layout(S)) {
+    const g = moduleGeo(m, y0); if (!g) continue;
+    const mesh = new THREE.Mesh(g, material(m.own ? m.color : S.color, m.own ? m.finish : S.finish));
+    mesh.castShadow = true; mesh.receiveShadow = true;
+    mesh.userData.idx = idx;
+    mesh.name = `${String(idx + 1).padStart(2, '0')}_${m.name}`;
+    product.add(mesh);
+  }
+  scene.background = new THREE.Color(S.bg);
+  updateStats();
+  store.set('shape.autosave', S);
+  req();
+}
+
+function bounds() { return new THREE.Box3().setFromObject(product); }
+
+function updateStats() {
+  const b = bounds(), sz = b.getSize(new THREE.Vector3()), v = volumes(S);
+  $('#stats').innerHTML = `
+    <span>Altura total</span><b>${sz.y.toFixed(1)} mm</b>
+    <span>Largura máx.</span><b>${sz.x.toFixed(1)} mm</b>
+    <span>Profundidade máx.</span><b>${sz.z.toFixed(1)} mm</b>
+    <span>Volume externo do frasco</span><b>${v.ext.toFixed(0)} ml</b>
+    <span class="cap">Capacidade estimada</span><span class="cap"><b>${v.cap.toFixed(0)} ml</b></span>`;
+}
+
+// ───────────────────────── câmeras e vistas ─────────────────────────
+const VIEWS = { front: [0, 0.02, 1], side: [1, 0.02, 0], three: [0.75, 0.32, 1], top: [0, 1, 0.001] };
+let curView = 'three';
+function fit(viewName = curView) {
+  curView = viewName;
+  document.querySelectorAll('[data-view]').forEach(b => b.classList.toggle('on', b.dataset.view === viewName));
+  const b = bounds(); if (b.isEmpty()) return;
+  const sz = b.getSize(new THREE.Vector3()), c = b.getCenter(new THREE.Vector3());
+  const dir = new THREE.Vector3(...VIEWS[viewName]).normalize();
+  const aspect = view.clientWidth / Math.max(view.clientHeight, 1);
+  const vis = viewName === 'top' ? Math.max(sz.z, sz.x / aspect) : Math.max(sz.y, sz.x / aspect, sz.z / aspect);
+  if (cam === persp) {
+    const dist = (vis * 0.5 * 1.45) / Math.tan(THREE.MathUtils.degToRad(persp.fov / 2)) + Math.max(sz.x, sz.z) / 2;
+    persp.position.copy(c).addScaledVector(dir, dist);
+  } else {
+    orthoHalf = vis * 0.5 * 1.3; ortho.zoom = 1; resize();
+    ortho.position.copy(c).addScaledVector(dir, 3000);
+  }
+  cam.up.set(0, 1, 0);
+  cam.lookAt(c);
+  makeControls(c);
+  req();
+}
+function resize() {
+  const w = view.clientWidth, h = view.clientHeight; if (!w || !h) return;
+  renderer.setSize(w, h, false);
+  persp.aspect = w / h; persp.updateProjectionMatrix();
+  Object.assign(ortho, { left: -orthoHalf * w / h, right: orthoHalf * w / h, top: orthoHalf, bottom: -orthoHalf });
+  ortho.updateProjectionMatrix();
+  req();
+}
+new ResizeObserver(resize).observe(view);
+
+function setOrtho(on) {
+  cam = on ? ortho : persp;
+  $('#orthoBtn').classList.toggle('on', on);
+  fit();
+}
+document.querySelectorAll('[data-view]').forEach(b => b.onclick = () => fit(b.dataset.view));
+$('#orthoBtn').onclick = () => setOrtho(cam !== ortho);
+$('#gridBtn').onclick = () => { grid.visible = !grid.visible; $('#gridBtn').classList.toggle('on', grid.visible); req(); };
+
+// Clique no 3D seleciona o módulo.
+const ray = new THREE.Raycaster(); let downAt = null;
+canvas.addEventListener('pointerdown', e => { downAt = [e.clientX, e.clientY]; });
+canvas.addEventListener('pointerup', e => {
+  if (!downAt || Math.hypot(e.clientX - downAt[0], e.clientY - downAt[1]) > 4) return;
+  const r = canvas.getBoundingClientRect();
+  ray.setFromCamera(new THREE.Vector2((e.clientX - r.left) / r.width * 2 - 1, -(e.clientY - r.top) / r.height * 2 + 1), cam);
+  const hit = ray.intersectObjects(product.children)[0];
+  if (hit) { sel = hit.object.userData.idx; renderStack(); renderEditor(); }
+});
+// Duplo clique aproxima a câmera do ponto clicado.
+canvas.addEventListener('dblclick', e => {
+  const r = canvas.getBoundingClientRect();
+  ray.setFromCamera(new THREE.Vector2((e.clientX - r.left) / r.width * 2 - 1, -(e.clientY - r.top) / r.height * 2 + 1), cam);
+  const hit = ray.intersectObjects(product.children)[0]; if (!hit) return;
+  const off = cam.position.clone().sub(controls.target);
+  controls.target.copy(hit.point);
+  if (cam === persp) cam.position.copy(hit.point).add(off.multiplyScalar(0.45));
+  else { cam.position.copy(hit.point).add(off); ortho.zoom *= 2.2; ortho.updateProjectionMatrix(); }
+  controls.update(); req();
+});
+
+(function loop() {
+  requestAnimationFrame(loop);
+  if (needs) { renderer.render(scene, cam); needs = false; }
+})();
+
+// ───────────────────────── interface ─────────────────────────
+// Campo genérico: slider + número ligados a obj[k].
+function field(parent, obj, def, onChange) {
+  const [k, label, min, max, step, unit] = def;
+  const el = document.createElement('div'); el.className = 'f';
+  if (min === 'check') {
+    el.innerHTML = `<label class="chk"><input type="checkbox"> ${label}</label>`;
+    const c = el.querySelector('input'); c.checked = !!obj[k];
+    c.onchange = () => { obj[k] = c.checked; onChange(k, true); };
+  } else if (min === 'color') {
+    el.innerHTML = `<div class="top"><label>${label}</label><input type="color"></div>`;
+    const c = el.querySelector('input'); c.value = obj[k];
+    c.oninput = () => { obj[k] = c.value; onChange(k); };
+  } else if (min === 'finish') {
+    el.innerHTML = `<div class="top"><label>${label}</label></div><select>${FINISHES.map(([v, l]) => `<option value="${v}">${l}</option>`).join('')}</select>`;
+    const c = el.querySelector('select'); c.value = obj[k];
+    c.onchange = () => { obj[k] = c.value; onChange(k); };
+  } else {
+    el.innerHTML = `<div class="top"><label>${label}</label><span class="num"><input type="number" step="${step}"> ${unit || ''}</span></div><input type="range" min="${min}" max="${max}" step="${step}">`;
+    const num = el.querySelector('input[type=number]'), rng = el.querySelector('input[type=range]');
+    num.value = rng.value = obj[k];
+    rng.oninput = () => { obj[k] = +rng.value; num.value = rng.value; onChange(k); };
+    num.onchange = () => {
+      const v = +num.value; if (!isFinite(v)) return;
+      if (v > +rng.max) rng.max = v; if (v < +rng.min) rng.min = v;
+      obj[k] = v; rng.value = v; onChange(k);
+    };
+  }
+  parent.appendChild(el);
+  return el;
+}
+
+const MF = [
+  ['Forma', [
+    ['h', 'Altura', 1, 300, 0.5, 'mm'],
+    ['W', 'Largura (frente)', 4, 200, 0.5, 'mm'],
+    ['D', 'Profundidade (lado)', 4, 200, 0.5, 'mm'],
+    ['n', 'Seção: oval → retângulo', 2, 10, 0.1, ''],
+    ['taper', 'Topo em relação à base', 10, 250, 1, '%'],
+    ['bulge', 'Barriga (− cintura)', -35, 40, 0.5, '%'],
+    ['bulgePos', 'Altura da barriga', 5, 95, 1, '%'],
+  ]],
+  ['Arredondamento', [
+    ['rBot', 'Raio embaixo', 0, 150, 0.5, 'mm'],
+    ['rTop', 'Raio em cima', 0, 150, 0.5, 'mm'],
+  ]],
+  ['Encaixe', [
+    ['gap', 'Distância do módulo de baixo', -40, 40, 0.1, 'mm'],
+    ['rep', 'Repetir', 1, 8, 1, '×'],
+    ['repGap', 'Espaço entre repetições', 0, 20, 0.1, 'mm', m => m.rep > 1],
+  ]],
+  ['Detalhes', [
+    ['groove', 'Linha de abertura (mm do topo, 0 = sem)', 0, 100, 0.5, 'mm'],
+    ['grooveD', 'Profundidade da linha', 0.1, 3, 0.1, 'mm', m => m.groove > 0],
+    ['notch', 'Entalhe frontal (pega do dedo)', 'check'],
+    ['notchY', 'Entalhe: começa a (mm do topo)', 0, 100, 0.5, 'mm', m => m.notch],
+    ['notchW', 'Entalhe: largura', 2, 120, 0.5, 'mm', m => m.notch],
+    ['notchH', 'Entalhe: altura', 1, 60, 0.5, 'mm', m => m.notch],
+    ['notchD', 'Entalhe: profundidade', 0.2, 8, 0.1, 'mm', m => m.notch],
+    ['notchP', 'Entalhe: meia-lua → fenda', 2, 12, 0.1, '', m => m.notch],
+    ['ridges', 'Frisos verticais', 0, 120, 1, ''],
+    ['ridgeD', 'Profundidade dos frisos', 0.1, 3, 0.1, 'mm', m => m.ridges > 0],
+  ]],
+  ['Cor', [
+    ['own', 'Cor própria neste módulo', 'check'],
+    ['color', 'Cor', 'color', 0, 0, 0, m => m.own],
+    ['finish', 'Acabamento', 'finish', 0, 0, 0, m => m.own],
+  ]],
+];
+
+let rebuildQueued = false;
+function queueBuild() {
+  if (rebuildQueued) return; rebuildQueued = true;
+  requestAnimationFrame(() => { rebuildQueued = false; build(); });
+}
+
+function renderStack() {
+  const box = $('#stack'); box.innerHTML = '';
+  [...S.modules.keys()].reverse().forEach(i => {
+    const m = S.modules[i];
+    const el = document.createElement('div');
+    el.className = 'mod' + (i === sel ? ' sel' : '');
+    el.innerHTML = `<span class="sw" style="background:${m.own ? m.color : S.color}"></span>
+      <span class="nm">${m.name}${m.rep > 1 ? ` ×${m.rep}` : ''}${m.vol ? ' · frasco' : ''}</span>
+      <span class="dm">${r1(m.W)}×${r1(m.D)}×${r1(m.h)}</span>
+      <button class="b" data-a="up" title="Subir">↑</button><button class="b" data-a="down" title="Descer">↓</button>
+      <button class="b" data-a="dup" title="Duplicar">⧉</button><button class="b" data-a="del" title="Excluir">✕</button>`;
+    el.onclick = e => {
+      const a = e.target.dataset?.a;
+      if (a === 'up' && i < S.modules.length - 1) { [S.modules[i], S.modules[i + 1]] = [S.modules[i + 1], S.modules[i]]; sel = i + 1; }
+      else if (a === 'down' && i > 0) { [S.modules[i], S.modules[i - 1]] = [S.modules[i - 1], S.modules[i]]; sel = i - 1; }
+      else if (a === 'dup') { S.modules.splice(i + 1, 0, structuredClone(m)); sel = i + 1; }
+      else if (a === 'del') { if (S.modules.length > 1) { S.modules.splice(i, 1); sel = clamp(sel, 0, S.modules.length - 1); } }
+      else sel = i;
+      renderStack(); renderEditor(); if (a) queueBuild();
+    };
+    box.appendChild(el);
+  });
+}
+
+function renderEditor() {
+  const ed = $('#editor'); ed.innerHTML = '';
+  const m = S.modules[sel]; if (!m) return;
+  const top = document.createElement('div');
+  top.innerHTML = `<h3>Módulo selecionado</h3><div class="row"><input type="text" value=""></div>`;
+  const nm = top.querySelector('input'); nm.value = m.name;
+  nm.oninput = () => { m.name = nm.value; renderStack(); store.set('shape.autosave', S); };
+  ed.appendChild(top);
+  field(ed, m, ['vol', 'Faz parte do frasco (entra na capacidade)', 'check'], () => { renderStack(); queueBuild(); });
+  for (const [title, defs] of MF) {
+    const h = document.createElement('h3'); h.textContent = title; ed.appendChild(h);
+    for (const def of defs) {
+      const show = def[6];
+      const el = field(ed, m, def, (k, structural) => {
+        if (structural || ['rep', 'groove', 'ridges', 'own'].includes(k)) renderEditorKeepScroll();
+        renderStack(); queueBuild();
+      });
+      if (show && !show(m)) el.classList.add('hidden');
+    }
+  }
+}
+function renderEditorKeepScroll() {
+  const aside = document.querySelector('aside'), y = aside.scrollTop;
+  renderEditor(); aside.scrollTop = y;
+}
+
+function renderGlobal() {
+  const vf = $('#volFields'); vf.innerHTML = '';
+  field(vf, S, ['wall', 'Espessura da parede', 0.3, 4, 0.1, 'mm'], queueBuild);
+  const lf = $('#lookFields'); lf.innerHTML = '';
+  field(lf, S, ['color', 'Cor geral', 'color'], () => { renderStack(); queueBuild(); });
+  field(lf, S, ['finish', 'Acabamento geral', 'finish'], queueBuild);
+  field(lf, S, ['bg', 'Fundo da cena', 'color'], queueBuild);
+  $('#projName').value = S.name;
+}
+
+function renderAll() { renderStack(); renderEditor(); renderGlobal(); renderPresets(); }
+
+// Biblioteca de módulos
+$('#libType').innerHTML = Object.entries(LIB).map(([k, v]) => `<option value="${k}">${v.name}</option>`).join('');
+$('#addMod').onclick = () => {
+  const t = $('#libType').value;
+  S.modules.splice(sel + 1, 0, M(t, { gap: LIB[t].vol ? 0 : 0.6 }));
+  sel = sel + 1; renderStack(); renderEditor(); build();
+};
+$('#colorAll').onclick = () => { S.modules.forEach(m => m.own = false); renderStack(); renderEditor(); build(); };
+
+// ───────────────────────── modelos (presets) ─────────────────────────
+const saved = () => store.get('shape.presets', {});
+function renderPresets() {
+  const sv = saved();
+  $('#preset').innerHTML =
+    `<option value="">— escolher modelo —</option><optgroup label="Base">${Object.keys(PRESETS).map(k => `<option value="b:${k}">${k}</option>`).join('')}</optgroup>` +
+    (Object.keys(sv).length ? `<optgroup label="Salvos">${Object.keys(sv).map(k => `<option value="s:${k}">${k}</option>`).join('')}</optgroup>` : '');
+}
+function loadState(s, name) {
+  S = normalize(structuredClone({ wall: S.wall, bg: S.bg, ...s }));
+  if (name) S.name = name;
+  sel = 0; renderAll(); build(); fit();
+}
+$('#preset').onchange = e => {
+  const v = e.target.value; if (!v) return;
+  const [kind, name] = [v[0], v.slice(2)];
+  loadState(kind === 'b' ? PRESETS[name] : saved()[name], name);
+  e.target.value = '';
+};
+$('#projName').oninput = e => { S.name = e.target.value; store.set('shape.autosave', S); };
+$('#savePreset').onclick = () => {
+  const name = (S.name || '').trim() || 'Sem nome';
+  const sv = saved(); sv[name] = structuredClone(S); store.set('shape.presets', sv);
+  renderPresets(); toast(`Salvo: ${name}`);
+};
+$('#delPreset').onclick = () => {
+  const sv = saved(); if (!sv[S.name]) return toast('Esse nome não está entre os salvos');
+  delete sv[S.name]; store.set('shape.presets', sv); renderPresets(); toast(`Excluído: ${S.name}`);
+};
+$('#exportJson').onclick = () => download(new Blob([JSON.stringify(S, null, 2)], { type: 'application/json' }), fname('json'));
+$('#importJsonBtn').onclick = () => $('#importJson').click();
+$('#importJson').onchange = async e => {
+  const f = e.target.files[0]; if (!f) return;
+  try { loadState(JSON.parse(await f.text())); toast('Modelo importado'); } catch { toast('JSON inválido'); }
+  e.target.value = '';
+};
+
+// Ajustar capacidade para um volume-alvo
+$('#fitBtn').onclick = () => {
+  const target = +$('#targetMl').value, mode = $('#fitMode').value;
+  const cont = S.modules.filter(m => m.vol);
+  if (!(target > 0) || !cont.length) return toast('Marque ao menos um módulo como frasco');
+  for (let it = 0; it < 12; it++) {
+    const c = volumes(S).cap; if (c <= 0) break;
+    if (Math.abs(c - target) < 0.3) break;
+    const q = target / c;
+    cont.forEach(m => {
+      if (mode === 'h') { m.h *= q; }
+      else if (mode === 'w') { const f = Math.sqrt(q); m.W *= f; m.D *= f; }
+      else { const f = Math.cbrt(q); m.W *= f; m.D *= f; m.h *= f; m.rBot *= f; m.rTop *= f; }
+    });
+  }
+  cont.forEach(m => ['W', 'D', 'h', 'rBot', 'rTop'].forEach(k => m[k] = r1(m[k])));
+  renderStack(); renderEditor(); build(); fit();
+  toast(`Capacidade ajustada: ${volumes(S).cap.toFixed(0)} ml`);
+};
+
+// ───────────────────────── referência ─────────────────────────
+const REF = { opacity: 50, h: 200, x: 0, y: 0, front: true };
+function updateRef() {
+  const tex = refMat.map; refMesh.visible = !!tex;
+  if (!tex) return req();
+  const img = tex.image, h = REF.h, w = h * img.width / img.height;
+  refMesh.scale.set(w, h, 1);
+  refMesh.position.set(REF.x, REF.y + h / 2, REF.front ? 0 : -390);
+  refMat.opacity = REF.opacity / 100;
+  refMat.depthTest = !REF.front; refMesh.renderOrder = REF.front ? 10 : -1;
+  req();
+}
+(function renderRef() {
+  const rf = $('#refFields');
+  field(rf, REF, ['opacity', 'Opacidade', 0, 100, 1, '%'], updateRef);
+  field(rf, REF, ['h', 'Altura da imagem inteira', 10, 800, 0.5, 'mm'], updateRef);
+  field(rf, REF, ['x', 'Deslocar horizontal', -400, 400, 0.5, 'mm'], updateRef);
+  field(rf, REF, ['y', 'Deslocar vertical', -400, 400, 0.5, 'mm'], updateRef);
+  field(rf, REF, ['front', 'Mostrar por cima da embalagem', 'check'], updateRef);
+})();
+$('#refBtn').onclick = () => $('#refFile').click();
+$('#refFile').onchange = e => {
+  const f = e.target.files[0]; if (!f) return;
+  const url = URL.createObjectURL(f);
+  new THREE.TextureLoader().load(url, tex => {
+    tex.colorSpace = THREE.SRGBColorSpace;
+    refMat.map?.dispose(); refMat.map = tex; refMat.needsUpdate = true;
+    REF.h = Math.round(bounds().getSize(new THREE.Vector3()).y * 1.25);
+    $('#refFields').innerHTML = ''; // redesenha com a nova altura
+    field($('#refFields'), REF, ['opacity', 'Opacidade', 0, 100, 1, '%'], updateRef);
+    field($('#refFields'), REF, ['h', 'Altura da imagem inteira', 10, 800, 0.5, 'mm'], updateRef);
+    field($('#refFields'), REF, ['x', 'Deslocar horizontal', -400, 400, 0.5, 'mm'], updateRef);
+    field($('#refFields'), REF, ['y', 'Deslocar vertical', -400, 400, 0.5, 'mm'], updateRef);
+    field($('#refFields'), REF, ['front', 'Mostrar por cima da embalagem', 'check'], updateRef);
+    updateRef();
+    grid.visible = true; $('#gridBtn').classList.add('on');
+    cam = ortho; $('#orthoBtn').classList.add('on'); fit('front');
+  });
+  e.target.value = '';
+};
+$('#refClear').onclick = () => { refMat.map?.dispose(); refMat.map = null; updateRef(); };
+
+// ───────────────────────── exportação ─────────────────────────
+const fname = ext => `${(S.name || 'embalagem').trim().replace(/[^\w\-À-ú ]+/g, '').replace(/\s+/g, '_') || 'embalagem'}.${ext}`;
+function download(blob, name) {
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+}
+function toast(msg) { const t = $('#toast'); t.textContent = msg; t.classList.add('on'); clearTimeout(toast.t); toast.t = setTimeout(() => t.classList.remove('on'), 2200); }
+
+$('#dlPng').onclick = () => {
+  const res = +$('#pngRes').value, size = renderer.getSize(new THREE.Vector2()), pr = renderer.getPixelRatio();
+  const aspect = size.x / size.y;
+  const w = aspect >= 1 ? res : Math.round(res * aspect), h = aspect >= 1 ? Math.round(res / aspect) : res;
+  const keep = { grid: grid.visible, ref: refMesh.visible, bg: scene.background, ground: ground.visible };
+  grid.visible = false; refMesh.visible = false;
+  if ($('#pngTransp').checked) scene.background = null;
+  ground.visible = $('#pngShadow').checked;
+  renderer.setPixelRatio(1); renderer.setSize(w, h, false);
+  renderer.render(scene, cam);
+  const data = renderer.domElement.toDataURL('image/png');
+  grid.visible = keep.grid; refMesh.visible = keep.ref; scene.background = keep.bg; ground.visible = keep.ground;
+  renderer.setPixelRatio(pr); renderer.setSize(size.x, size.y, false); req();
+  fetch(data).then(r => r.blob()).then(b => download(b, fname('png')));
+};
+function exportRoot(scale) {
+  const root = new THREE.Group(); root.name = S.name || 'embalagem';
+  product.children.forEach(m => root.add(m.clone()));
+  root.scale.setScalar(scale); root.updateMatrixWorld(true);
+  return root;
+}
+$('#dlGlb').onclick = () => {
+  new GLTFExporter().parse(exportRoot(0.001), buf => download(new Blob([buf], { type: 'model/gltf-binary' }), fname('glb')),
+    err => toast('Erro ao gerar GLB: ' + err), { binary: true });
+};
+$('#dlStl').onclick = () => download(new Blob([new STLExporter().parse(exportRoot(1), { binary: true })], { type: 'model/stl' }), fname('stl'));
+$('#dlObj').onclick = () => download(new Blob([new OBJExporter().parse(exportRoot(1))], { type: 'text/plain' }), fname('obj'));
+
+// ───────────────────────── início ─────────────────────────
+resize();
+renderAll();
+build();
+fit('three');
+</script>
+</body>
+</html>
