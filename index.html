@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>OUTBOX</title>
 <style>
-:root{--bg:#f3f2ef;--panel:#fff;--ink:#1d1d1f;--muted:#7a7a7e;--line:#e6e3de;--soft:#f7f6f3;--accent:#d8246a}
+:root{--bg:#f3f2ef;--panel:#fff;--ink:#1d1d1f;--muted:#7a7a7e;--line:#e6e3de;--soft:#f7f6f3;--accent:#9a7a4f}
 *{box-sizing:border-box}
 html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);font:13px/1.35 -apple-system,BlinkMacSystemFont,"Inter","Segoe UI",sans-serif}
 .app{display:grid;grid-template-columns:360px 1fr;height:100vh}
@@ -188,8 +188,6 @@ import { GLTFExporter } from 'three/addons/exporters/GLTFExporter.js';
 import { STLExporter } from 'three/addons/exporters/STLExporter.js';
 import { OBJExporter } from 'three/addons/exporters/OBJExporter.js';
 import { mergeGeometries, mergeVertices } from 'three/addons/utils/BufferGeometryUtils.js';
-import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION } from 'three-bvh-csg';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
@@ -213,7 +211,7 @@ const BASE = {
   groove: 0, grooveD: 0.6,
   notch: false, notchLock: true, notchY: 12, notchW: 20, notchH: 8, notchD: 2, notchP: 2,
   ridges: 0, ridgeD: 0.6,
-  own: false, color: '#e0306e', finish: 'fosco', vol: false,
+  own: false, color: '#e8dcc6', finish: 'fosco', vol: false,
   // kind 'giro': seção girando no eixo; 'placa': silhueta frontal extrudada na profundidade.
   kind: 'giro', ox: 0, rTL: 6, rTR: 6, rBL: 6, rBR: 6, rEdge: 3, chamfer: false,
   notchUp: false,
@@ -273,134 +271,51 @@ const LIB = {
 const newUid = () => Math.random().toString(36).slice(2, 10);
 const M = (type, o = {}) => ({ ...BASE, ...LIB[type], type, uid: newUid(), ...o });
 
-const PINK = '#e0306e', CREAM = '#f1e6cc';
-// ───────────────────────── Draft (peças reais) ─────────────────────────
-// Produtos 3D da Draft (draft.work). Por produto: nome, altura real típica em
-// mm (calibra a escala), se o corpo é de vidro, e as peças do corpo, da
-// tampa/válvula e do mecanismo interno (nomes normalizados por pn()).
-// cat: 'V' válvula, 'T' tampa; rot (graus) gira a frente do produto para a câmera.
-// Sobretampas ficam de fora para mostrar a válvula.
-const DRAFT = {
-  '1027_vintage_pump_bottle': ['Vintage com pump', 190, true, ['BOTTLE'], ['PUMP', 'PUMP_1'], ['TUBE', 'MECHANISM'], 'V'],
-  DRAFT_1005_SoapPump: ['Soap pump', 200, false, ['BODY'], ['PUMP', 'NECK'], ['TUBE', 'SPRING', 'BALL', 'CYLINDER1'], 'V'],
-  DRAFT_1006_FoamSoap: ['Pump espuma', 190, false, ['BODY'], ['PUMP_REMESH', 'NECK', 'NECK_2', 'LID'], ['PRETUBE', 'TUBE', 'SPRING', 'BALL'], 'V'],
-  DRAFT_1015_Pump_Bottle: ['Pump bottle', 220, false, ['BODY'], ['PUMP'], ['NECKTUBE', 'TUBE_2'], 'V'],
-  DRAFT_1020_Bottle_Pump: ['Frasco com pump', 190, false, ['BOTTLE'], ['PUMP', 'NECK'], ['MECHANISM', 'TUBE'], 'V'],
-  DRAFT_1024_Pump_Minimal: ['Pump minimal', 180, false, ['BOTTLE'], ['PUMP_2', 'NECK', 'POLYGON', 'POLYGON_2'], ['SPRING', 'BALL', 'CYLINDER_1'], 'V'],
-  DRAFT_1009_Spray_Glass: ['Spray vidro', 140, true, ['GLASS_SPRAY'], ['SPRAY', 'NECK'], ['CYLINDER1', 'CYLINDER', 'CYLINDER2'], 'V'],
-  DRAFT_1017_Spray_Bottle: ['Spray plástico', 170, false, ['BOTTLE'], ['SPRAY', 'NECK_TUBE'], ['TUBE'], 'V'],
-  DRAFT_1029_Foundation: ['Base com pump', 110, true, ['BOTTLE'], ['PUMP_2', 'NECK'], ['CYLINDER', 'TUBE', 'MECHANISM'], 'V'],
-  DRAFT_1030_Foundation: ['Base com pump #2', 115, true, ['BODY'], ['PUMP_2', 'NECK'], ['TUBE', 'MECHANISM'], 'V'],
-  DRAFT_1031_Glass_Dropper: ['Conta-gotas vidro', 95, true, ['BOTTLE'], ['NECK', 'RUBBER'], ['TUBE'], 'V'],
-  DRAFT_3007_Dropper_RC: ['Conta-gotas', 100, true, ['BOTTLE'], ['NECK', 'RUBBER'], ['TUBE'], 'V'],
-  DRAFT_1007_Moist_Pump: ['Airless (tubo)', 150, false, ['TUBE_2'], ['PUMP_2', 'NECK_2', 'NECK_3', 'CAP'], [], 'V'],
-  DRAFT_1035_Tube_Pump: ['Tubo com pump', 160, false, ['TUBE_2'], ['CAP', 'NECK', 'PUMP', 'CACHE'], [], 'V'],
-  DRAFT_1025_Flip_top_Bottle: ['Flip-top', 170, false, ['BOTTLE'], ['CAP', 'NECK'], [], 'T'],
-  DRAFT_1019_Bottle_Push_Pull: ['Push-pull', 180, false, ['BODY'], ['NECK', 'CONE_PUSH_PULL', 'SEAL'], [], 'T'],
-  DRAFT_1022_Push_Pull_Short_Jar: ['Push-pull baixo', 120, false, ['BODY_3', 'BODY_2'], ['CONE_PUSH_PULL', 'SUB_NECK', 'NECK'], [], 'T'],
-  DRAFT_1023_Push_Pull_Tall: ['Push-pull alto', 200, false, ['BODY'], ['POLYGON', 'POLYGON_2', 'POLYGON_3'], [], 'T'],
-  DRAFT_1021_Bubble_Bath: ['Espuma de banho', 220, false, ['BODY'], ['CAP'], [], 'T'],
-  DRAFT_1014_Glass_Bottle_RC: ['Vidro com tampa', 150, true, ['BODY'], ['CAP'], [], 'T'],
-  DRAFT_3002_Essential_Oil: ['Óleo essencial', 75, true, ['BODY_2'], ['CAP'], [], 'T'],
-  DRAFT_3009_Ophthalmic_Nozzle: ['Colírio', 90, false, ['BODY'], ['CAP'], [], 'T'],
-  DRAFT_1039_Round_Bottle: ['Frasco redondo', 120, false, ['TUBE'], ['CAP', 'OPEN'], [], 'T', 90],
-  DRAFT_1002_Tube: ['Bisnaga', 170, false, ['TUBE'], ['CAP'], [], 'T'],
-  DRAFT_1033_HandCream_Tube: ['Tubo creme de mãos', 120, false, ['TUBE_2'], ['CAP'], [], 'T'],
-  DRAFT_1037_Travelsize_Shampoo: ['Shampoo viagem', 110, false, ['TUBE', 'INNER'], ['CAP', 'CAP_2'], [], 'T'],
-  DRAFT_1040_toothpaste: ['Creme dental', 190, false, ['TUBE'], ['NECK', 'SCREW_2'], [], 'T'],
-  DRAFT_3003_Tubewithseal: ['Tubo com lacre', 100, false, ['TUBE'], ['CAP', 'SEAL'], [], 'T'],
-  DRAFT_1003_Jar: ['Pote', 60, false, ['BOTTLE'], ['CAP'], [], 'T'],
-  DRAFT_1008_Moist_Jar: ['Pote hidratante', 45, false, ['BODY'], ['LID'], [], 'T'],
-  DRAFT_3001_Square_Jar_without_gummies: ['Pote quadrado', 90, false, ['BODY'], ['LID'], [], 'T'],
-};
-const pn = n => n.replace(/-Mesh$/, '').replace(/_Mesh\.?\d*$/, '').replace(/\./g, '').toUpperCase();
-let MAN = {};
-try { MAN = await (await fetch('draft/manifest.json')).json(); } catch { MAN = {}; }
-const hasDraft = id => DRAFT[id] && MAN[id];
-// Caixa (unidades do arquivo) de um grupo de peças.
-function draftBox(id, names) {
-  const b = new THREE.Box3();
-  for (const p of MAN[id].parts) if (names.includes(pn(p.name))) b.union(new THREE.Box3(new THREE.Vector3(...p.min), new THREE.Vector3(...p.max)));
-  return b;
+// Cor única da plataforma: bege.
+const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
+// ───────────────────────── Draft (reconstruída) ─────────────────────────
+// Produtos da Draft (draft.work) refeitos como módulos paramétricos: o perfil
+// de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
+// módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
+let PERFIS = {};
+try { PERFIS = await (await fetch('draft/perfis.json')).json(); } catch { PERFIS = {}; }
+const DRAFT_KEYS = { corpo: [], tampa: [], valvula: [] };
+for (const [id, d] of Object.entries(PERFIS)) {
+  const k = id.replace(/^DRAFT_/, '').replace(/^(\d+)_.*/, '$1');
+  const kb = `d${k}c`, kt = `d${k}t`, valve = d.cat === 'V';
+  LIB[kb] = { name: `${d.name}`, kind: 'perfil', vol: true, pesc: false, W: d.body.W, D: d.body.D, h: d.body.h, W0: d.body.W, prof: d.body.prof };
+  LIB[kt] = { name: `${d.name}${valve ? ' (válvula)' : ' (tampa)'}`, kind: 'perfil', W: d.cap.W, D: d.cap.D, h: d.cap.h, W0: d.cap.W,
+    prof: d.cap.prof, spout: d.cap.spout, pesc: valve && !d.below, mola: false };
+  DRAFT_KEYS.corpo.push(kb); (valve ? DRAFT_KEYS.valvula : DRAFT_KEYS.tampa).push(kt);
 }
-function draftInfo(id) {
-  const [name, hMM, glass, body, closure, internal, cat, rot = 0] = DRAFT[id];
-  const bb = draftBox(id, body), cb = draftBox(id, closure), all = bb.clone().union(cb);
-  const k = hMM / (all.max.y - all.min.y); // unidades → mm
-  const c = bb.getCenter(new THREE.Vector3());
-  // Base da virola (medida nos OBJs): é por ela que a tampa assenta; a haste
-  // e o pistão ficam abaixo, por dentro do frasco.
-  const below = cb.min.y < bb.min.y - 1e-6, cy = below ? cb.max.y : (MAN[id].collarY ?? cb.min.y);
-  return { name, glass, body, closure, internal, cat, rot, k, cx: c.x, cz: c.z, bb, cb, below, cy };
-}
-function draftModule(id, role) {
-  const d = draftInfo(id), b = role === 'corpo' ? d.bb : d.cb, s = b.getSize(new THREE.Vector3()).multiplyScalar(d.k);
-  if (d.rot % 180) [s.x, s.z] = [s.z, s.x];
-  if (role !== 'corpo' && !d.below) s.y = (d.cb.max.y - d.cy) * d.k; // altura a partir da virola
-  const label = role === 'corpo' ? 'Corpo' : d.cat === 'V' ? 'Válvula' : 'Tampa';
-  return { ...BASE, kind: 'malha', asset: id, role, type: `draft:${id}:${role}`, name: `${label} · ${d.name}`,
-    W0: r1(s.x), D0: r1(s.z), h0: r1(s.y), W: r1(s.x), D: r1(s.z), h: r1(s.y), scl: 100,
-    vol: role === 'corpo', showInt: d.glass && role !== 'corpo' };
-}
-// Quanto a tampa original desce abaixo do topo do corpo (gargalo de vidro
-// incluso no corpo) e a largura da tampa original: servem para assentar e
-// proporcionar peças de outros produtos neste corpo. Em mm, escala 100%.
-function draftSeat(id) { const d = draftInfo(id); return d.below ? 0 : Math.max(0, (d.bb.max.y - d.cy) * d.k); }
-// Largura da virola (onde a tampa encosta no corpo), medida nos OBJs, em mm.
-function draftCollar(id) { const d = draftInfo(id); return (MAN[id].collarW ?? (d.cb.max.x - d.cb.min.x)) * d.k; }
-const collarOf = m => m.kind === 'malha' ? draftCollar(m.asset) * m.scl / 100 : Math.min(m.W, m.D);
-
-// Produto inteiro: corpo + tampa/válvula na posição original do arquivo.
-function draftPreset(id) {
-  const d = draftInfo(id), body = draftModule(id, 'corpo'), clos = draftModule(id, 'tampa');
-  Object.assign(clos, { own: true, color: '#1e1e1e', finish: 'fosco' });
-  let modules;
-  if (d.below) { body.gap = r1((d.bb.min.y - d.cb.max.y) * d.k); modules = [clos, body]; }
-  else { clos.gap = r1((d.cy - d.bb.max.y) * d.k); modules = [body, clos]; }
-  return { name: `Draft · ${d.name}`, color: d.glass ? '#f2f4f3' : '#f3f1ec', finish: d.glass ? 'vidro' : 'fosco', modules };
-}
-// Malhas carregadas: geometria em mm, centrada no eixo do corpo.
-const gltfLoader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
-const draftCache = new Map();
-function loadDraft(id) {
-  if (draftCache.has(id) || !hasDraft(id)) return;
-  draftCache.set(id, 'loading');
-  gltfLoader.load(`draft/${id}.glb`, gltf => {
-    const d = draftInfo(id), geo = {};
-    gltf.scene.updateMatrixWorld(true);
-    gltf.scene.traverse(o => {
-      if (!o.isMesh) return;
-      const src = o.geometry, n = src.attributes.position.count, g = new THREE.BufferGeometry();
-      const pos = new Float32Array(n * 3), nor = new Float32Array(n * 3), P = src.attributes.position, Nn = src.attributes.normal;
-      for (let i = 0; i < n; i++) {
-        pos[i * 3] = P.getX(i); pos[i * 3 + 1] = P.getY(i); pos[i * 3 + 2] = P.getZ(i);
-        if (Nn) { nor[i * 3] = Nn.getX(i); nor[i * 3 + 1] = Nn.getY(i); nor[i * 3 + 2] = Nn.getZ(i); }
-      }
-      g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-      g.setAttribute('normal', new THREE.BufferAttribute(nor, 3));
-      if (src.index) g.setIndex(Array.from(src.index.array));
-      g.applyMatrix4(o.matrixWorld); g.translate(-d.cx, 0, -d.cz); g.scale(d.k, d.k, d.k);
-      if (d.rot) g.rotateY(d.rot * Math.PI / 180);
-      if (!Nn) g.computeVertexNormals();
-      geo[pn(o.name)] = g;
-    });
-    draftCache.set(id, { geo, d });
-    queueBuild(); renderPresets();
-  }, undefined, () => draftCache.delete(id));
-}
-function malhaGeo(m, y0, { inset = 0, lo = false } = {}) {
-  const c = draftCache.get(m.asset);
-  if (!c) { loadDraft(m.asset); return null; }
-  if (c === 'loading') return null;
-  const { geo, d } = c;
-  let names = m.role === 'corpo' ? d.body : [...d.closure, ...(m.showInt ? d.internal : [])];
-  // Volumetria do corpo: usa o líquido do próprio modelo.
-  if (inset || lo) { if (m.role !== 'corpo') return null; names = Object.keys(geo).filter(n => n.startsWith('LIQUID')); }
-  const parts = names.map(n => geo[n]).filter(Boolean).map(g => g.clone());
-  if (!parts.length) return null;
-  const g = parts.length > 1 ? mergeGeometries(parts) : parts[0];
-  const baseY = (m.role === 'corpo' ? d.bb.min.y : d.below ? d.cb.min.y : d.cy) * d.k, s = m.scl / 100;
-  g.translate(0, -baseY, 0); g.scale(s, s, s); g.translate(m.ox, y0, 0);
+// Perfil medido: anéis [t, meia-largura, meia-profundidade, quadratura] em
+// frações de W/D/h; mudar W, D ou h estica o perfil inteiro.
+function perfilGeo(m, y0, { inset = 0, lift = 0, lo = false } = {}) {
+  if (!m.prof?.length) return null;
+  const rings = [];
+  for (const [t, ra, rb, n] of m.prof) {
+    const ly = t * m.h;
+    if (inset && (ly < lift || ly > m.h - inset * 0.5)) continue;
+    rings.push({ y: y0 + ly, ly, a: Math.max(ra * m.W / 2 - inset, 0.2), b: Math.max(rb * m.D / 2 - inset, 0.2), n: clamp(n, 2, 12) });
+  }
+  if (rings.length < 2) return null;
+  let g = loft(rings, lo ? 48 : 160);
+  const extras = [];
+  if (!inset && !lo && m.spout) {
+    // Bico da válvula medido no original, na escala atual.
+    const s = m.W / (m.W0 || m.W), sp = m.spout, V = THREE.Vector3;
+    const ys = y0 + sp.t * m.h, row = m.prof.reduce((best, r) => Math.abs(r[0] - sp.t) < Math.abs(best[0] - sp.t) ? r : best);
+    const x0 = row[1] * m.W / 2 - 1, L = sp.L * s, dr = sp.droop * s;
+    const curve = new THREE.CatmullRomCurve3([new V(x0 - 2, ys, 0), new V(x0 + L * 0.5, ys, 0), new V(x0 + L * 0.82, ys - dr * 0.4, 0), new V(x0 + L, ys - dr, 0)]);
+    const tube = new THREE.TubeGeometry(curve, 48, Math.max(sp.D * s / 2, 0.8), 16); tube.deleteAttribute('uv');
+    const tip = curve.getPoint(1), tan = curve.getTangent(1);
+    const hole = cyl(Math.max(sp.D * s / 2 - 0.4, 0.4), -0.2, 0.5);
+    hole.applyQuaternion(new THREE.Quaternion().setFromUnitVectors(new V(0, 1, 0), tan)); hole.translate(tip.x, tip.y, tip.z);
+    [tube, hole].forEach(x => x.rotateY(-(sp.dir + (m.dir || 0)) * Math.PI / 180));
+    g = mergeGeometries([g, tube]); extras.push(hole);
+  }
+  if (m.ox) { g.translate(m.ox, 0, 0); extras.forEach(e => e.translate(m.ox, 0, 0)); }
+  g.userData.extras = extras;
   return g;
 }
 
@@ -420,67 +335,88 @@ const NECKS = {
 const NECK = (std, o = {}) => M('gargalo', { neckStd: std, ...NECKS[std], D: NECKS[std].W, ...o });
 
 const PRESETS = {
-  'Cápsula + esfera': { color: PINK, finish: 'fosco', modules: [
+  'Cápsula + esfera': { color: BEIGE, finish: 'fosco', modules: [
     M('capsula', { rBot: 12 }), NECK('24/410'), M('esfera')] },
-  'Seixo com fenda': { color: CREAM, finish: 'fosco', modules: [
+  'Seixo com fenda': { color: BEIGE, finish: 'fosco', modules: [
     M('plano', { W: 78, D: 44, n: 3.2, h: 132, rBot: 16, rTop: 16 }), NECK('24/410'), M('seixo')] },
-  'Domo meia-lua': { color: CREAM, finish: 'fosco', modules: [
+  'Domo meia-lua': { color: BEIGE, finish: 'fosco', modules: [
     M('plano', { W: 72, D: 42, n: 3, h: 128, rBot: 18, rTop: 18 }), NECK('24/410'), M('domo')] },
-  'Arco + tigela': { color: PINK, finish: 'fosco', modules: [
+  'Arco + tigela': { color: BEIGE, finish: 'fosco', modules: [
     M('arco'), NECK('28/410'), M('tigela'), M('disco', { W: 42, D: 42 })] },
-  'Anéis empilhados': { color: PINK, finish: 'fosco', modules: [
+  'Anéis empilhados': { color: BEIGE, finish: 'fosco', modules: [
     M('plano', { W: 66, D: 34, n: 6, h: 120, rBot: 6, rTop: 14 }), NECK('24/410'),
     M('anel', { rep: 3 }), M('disco', { W: 38, D: 38, h: 8, rBot: 3, rTop: 3 })] },
-  'Cone + tigela': { color: PINK, finish: 'fosco', modules: [
+  'Cone + tigela': { color: BEIGE, finish: 'fosco', modules: [
     M('cone'), NECK('28/410'), M('tigela', { W: 36, D: 36, h: 18, rBot: 16 }), M('disco', { W: 38, D: 38, h: 5 })] },
-  'Barril empilhado': { color: PINK, finish: 'fosco', modules: [
+  'Barril empilhado': { color: BEIGE, finish: 'fosco', modules: [
     M('reto', { W: 54, D: 54, h: 95, rBot: 4, rTop: 4 }), NECK('28/410'), M('barril'),
     M('tigela', { W: 48, D: 48, h: 22, rBot: 20 }), M('disco', { W: 50, D: 50, h: 5 })] },
-  'Gargalo flare': { color: PINK, finish: 'fosco', modules: [
+  'Gargalo flare': { color: BEIGE, finish: 'fosco', modules: [
     M('reto', { W: 58, D: 58, h: 120, rBot: 10, rTop: 26 }), NECK('24/410'), M('flare', { W: 30, D: 30 }), M('disco', { W: 46, D: 46, h: 7 })] },
-  'Bisnaga 200 ml': { color: '#9a9a9c', finish: 'acetinado', modules: [
+  'Bisnaga 200 ml': { color: BEIGE, finish: 'fosco', modules: [
     M('tampaBisnaga', { W: 47, D: 47 }), M('bisnaga', { W: 48.5, D: 48.5, h: 178, rBot: 4.3 })] },
-  'Placa assimétrica + esfera': { color: '#c42b52', finish: 'fosco', modules: [
+  'Placa assimétrica + esfera': { color: BEIGE, finish: 'fosco', modules: [
     M('placa'), NECK('24/410', { ox: -8 }), M('esfera', { W: 35, D: 35, h: 35, rBot: 17.5, rTop: 17.5, groove: 12,
       notch: true, notchW: 11, notchH: 2.5, notchD: 1.4, notchP: 8 })] },
-  'Spray fino': { color: PINK, finish: 'fosco', modules: [
+  'Spray fino': { color: BEIGE, finish: 'fosco', modules: [
     M('reto', { W: 38, D: 38, h: 105, rBot: 5, rTop: 14 }), NECK('20/410'), M('spray')] },
-  'Pump escultural': { color: '#f2f0ea', finish: 'fosco', modules: [
+  'Pump escultural': { color: BEIGE, finish: 'fosco', modules: [
     M('reto', { W: 62, D: 62, h: 104, rBot: 16, rTop: 16 }), NECK('24/410'), M('lamina')] },
-  'Pump cápsula (disco plano)': { color: '#f4f4f2', finish: 'fosco', modules: [
+  'Pump cápsula (disco plano)': { color: BEIGE, finish: 'fosco', modules: [
     M('reto', { W: 62, D: 62, h: 104, rBot: 20, rTop: 1 }), NECK('24/410'),
     M('lamina', { name: 'Pump domo + disco plano', W: 62, D: 62, h: 46, collarR: 30, stemD: 30, stemH: 8,
       actW: 36, headH: 4.2, armT: 4.2, armW: 12, nozzleL: 22, droop: 0 })] },
-  'Spray âmbar': { color: '#b8650f', finish: 'vidro', modules: [
+  'Spray âmbar': { color: BEIGE, finish: 'fosco', modules: [
     M('reto', { W: 50, D: 50, h: 96, rBot: 4, rTop: 17 }), NECK('24/410', { embed: 14 }),
-    M('spray', { W: 29.7, D: 29.7, h: 18, skirtPct: 100, ridges: 0, collarR: 0.8, guideW: 21.7, guideH: 7.5, actW: 16, actH: 16.5,
-      own: true, color: '#141414', finish: 'brilho', pescWave: 3 })] },
-  'Boston com pump': { color: '#a39228', finish: 'vidro', modules: [
-    M('boston'), NECK('24/410', { embed: 12 }), M('locao', { own: true, color: '#1c1c1c', finish: 'fosco' })] },
-  'Conta-gotas âmbar': { color: '#9a4e0c', finish: 'vidro', modules: [
+    M('spray', { W: 29.7, D: 29.7, h: 18, skirtPct: 100, ridges: 0, collarR: 0.8, guideW: 21.7, guideH: 7.5, actW: 16, actH: 16.5, pescWave: 3 })] },
+  'Boston com pump': { color: BEIGE, finish: 'fosco', modules: [
+    M('boston'), NECK('24/410', { embed: 12 }), M('locao')] },
+  'Conta-gotas âmbar': { color: BEIGE, finish: 'fosco', modules: [
     M('boston', { W: 34, D: 34, h: 62, rTop: 13, rBot: 3 }), NECK('18/410', { embed: 8 }),
-    M('contaGotas', { W: 21, D: 21, own: true, color: '#1c1c1c', finish: 'fosco' })] },
-  'Frasco espuma': { color: '#f3f1ec', finish: 'fosco', modules: [
+    M('contaGotas', { W: 21, D: 21 })] },
+  'Frasco espuma': { color: BEIGE, finish: 'fosco', modules: [
     M('reto', { W: 66, D: 66, h: 120, rBot: 10, rTop: 14 }), NECK('38/400'), M('espuma')] },
-  'Frasco disc-top': { color: '#f5f5f3', finish: 'fosco', modules: [
+  'Frasco disc-top': { color: BEIGE, finish: 'fosco', modules: [
     M('reto', { W: 64, D: 64, h: 109, rTop: 6, rBot: 33, rBotW: 7 }), NECK('24/410', { gap: -6.5 }),
     M('disctop', { W: 49, D: 49, h: 14.5, taper: 100, rTop: 1, discDip: 0, discRise: 2.5, discD: 42.4 })] },
-  'Frasco pump': { color: CREAM, finish: 'fosco', modules: [
+  'Frasco pump': { color: BEIGE, finish: 'fosco', modules: [
     M('placa', { name: 'Corpo placa', W: 76, D: 44, h: 87, rTL: 10, rTR: 10, rBL: 10, rBR: 10, rEdge: 5, chamfer: false }),
     NECK('24/410'), M('pump')] },
-  'Oval flip-top 250 ml': { color: '#f28bb5', finish: 'acetinado', modules: [
+  'Oval flip-top 250 ml': { color: BEIGE, finish: 'fosco', modules: [
     M('plano', { W: 61, D: 37, n: 3.4, h: 138.5, rBot: 16.6, rTop: 9.2, bulge: 3, bulgePos: 30 }), NECK('24/410'),
-    M('flip', { own: true, color: '#ffd21f', finish: 'brilho' })] },
+    M('flip')] },
 };
+
+// Modelos da Draft montados com os módulos reconstruídos, em cor única.
+for (const [id, d] of Object.entries(PERFIS)) {
+  const k = id.replace(/^DRAFT_/, '').replace(/^(\d+)_.*/, '$1'), kb = `d${k}c`, kt = `d${k}t`;
+  let modules;
+  if (d.below) modules = [M(kt), M(kb, { gap: d.gapBelow })];
+  else {
+    modules = [M(kb)];
+    if (d.neck) {
+      // O gargalo cabe dentro da virola (com parede) e fica coberto pela tampa.
+      const base = d.cap.prof.filter(r => r[0] <= 0.2), collar = Math.min(...base.map(r => Math.min(r[1] * d.cap.W, r[2] * d.cap.D)));
+      const nW = r1(Math.min(d.neck.W, collar - 3)), nH = r1(Math.min(d.neck.h, d.cap.h - 1));
+      if (nW > 4 && nH > 1) modules.push(M('gargalo', { neckStd: 'livre', W: nW, D: nW, h: nH, ringH: 0.3, ringW: 0, embed: 3 }));
+    }
+    modules.push(M(kt));
+  }
+  PRESETS[`Draft · ${d.name}`] = { color: BEIGE, finish: 'fosco', modules };
+}
 
 const FINISHES = [['fosco', 'Fosco'], ['acetinado', 'Acetinado'], ['brilho', 'Brilho'], ['perolado', 'Perolado'], ['vidro', 'Transparente / vidro'], ['metal', 'Metalizado']];
 
 let S = normalize(store.get('shape.autosave', null) || { name: 'Cápsula + esfera', wall: 1.2, bg: '#f1f0ed', ...structuredClone(PRESETS['Cápsula + esfera']) });
 let sel = 0;
 function normalize(s) {
-  s.wall ??= 1.2; s.bg ??= '#f1f0ed'; s.color ??= PINK; s.finish ??= 'fosco'; s.name ??= 'Sem nome';
+  // Rosa saiu da plataforma: trabalhos antigos em rosa passam para o bege.
+  const OLD_PINKS = ['#e0306e', '#c42b52', '#f28bb5', '#d8246a'], unpink = c => (OLD_PINKS.includes((c || '').toLowerCase()) ? BEIGE : c);
+  s.color = unpink(s.color);
+  s.wall ??= 1.2; s.bg ??= '#f1f0ed'; s.color ??= BEIGE; s.finish ??= 'fosco'; s.name ??= 'Sem nome';
   s.logos ??= [];
-  s.modules = (s.modules || []).map(m => ({ ...BASE, uid: newUid(), ...m, ...(m.sprayType === 'gatilho' ? { sprayType: 'mist' } : m.sprayType === 'pump' ? { sprayType: 'locao' } : {}) }));
+  // Peças em malha (versão antiga da Draft) não existem mais.
+  s.modules = (s.modules || []).filter(m => m.kind !== 'malha').map(m => ({ ...m, color: unpink(m.color) })).map(m => ({ ...BASE, uid: newUid(), ...m, ...(m.sprayType === 'gatilho' ? { sprayType: 'mist' } : m.sprayType === 'pump' ? { sprayType: 'locao' } : {}) }));
   if (!s.modules.length) s.modules = [M('reto')];
   return s;
 }
@@ -841,7 +777,7 @@ function slabGeo(m0, y0, { inset = 0, lift = 0, lo = false } = {}) {
 
 // inset/lift geram o volume interno (parede e fundo) para a capacidade.
 function moduleGeo(m0, y0, opts = {}) {
-  if (m0.kind === 'malha') return malhaGeo(m0, y0, opts);
+  if (m0.kind === 'perfil') return perfilGeo(m0, y0, opts);
   if (m0.kind === 'placa') return slabGeo(m0, y0, opts);
   if (m0.kind === 'bisnaga') return tubeGeo(m0, y0, opts);
   if (m0.kind === 'gargalo') return opts.inset ? null : neckGeo(m0, y0, opts);
@@ -948,23 +884,16 @@ function signedVolume(g, signed = false) {
 // A peça logo acima de um gargalo o veste: desce até o anel de apoio e se
 // alinha a ele. explode separa as peças para mostrar a junção.
 function layout(s, explode = 0) {
-  const out = []; let cur = 0, neck = null, prev = null;
+  const out = []; let cur = 0, neck = null;
   s.modules.forEach((m0, idx) => {
     const onNeck = neck && m0.kind !== 'gargalo';
     const m = onNeck ? { ...m0, ox: neck.m.ox } : m0;
-    // Peça real: o encaixe do arquivo só vale com o par original. Sobre um
-    // corpo da Draft, a peça assenta no ombro dele (gargalo de vidro por dentro).
-    const pair = prev && m.kind === 'malha' && prev.kind === 'malha' && prev.asset === m.asset;
-    const onDraftBody = prev && prev.kind === 'malha' && prev.role === 'corpo' && !pair;
-    const gap0 = pair ? m.gap : onDraftBody ? -draftSeat(prev.asset) * prev.scl / 100 + (m.kind === 'malha' ? 0 : m.gap)
-      : m.kind === 'malha' ? 0 : m.gap;
     let y0 = 0;
     for (let r = 0; r < Math.max(1, Math.round(m.rep)); r++) {
-      y0 = r === 0 && onNeck ? neck.y0 + neck.m.ringH + (m.kind === 'malha' ? 0 : m.gap) : cur + (r === 0 ? gap0 : m.repGap);
+      y0 = r === 0 && onNeck ? neck.y0 + neck.m.ringH + m.gap : cur + (r === 0 ? m.gap : m.repGap);
       out.push({ m, idx, y0: y0 + idx * explode }); cur = y0 + m.h;
     }
     neck = m0.kind === 'gargalo' ? { m: m0, y0 } : null;
-    prev = m0;
   });
   return out;
 }
@@ -1244,7 +1173,7 @@ function buildInto(product, S, explodeAmt = 0) {
     mesh.name = `${String(idx + 1).padStart(2, '0')}_${m.name}`;
     product.add(mesh);
     (g.userData.extras || []).forEach(xg => { const xm = new THREE.Mesh(xg, xg.userData.mat === 'insert' ? insertMat : holeMat); xm.userData.idx = idx; product.add(xm); });
-    if (m.kind === 'spray' && m.pesc && isFinite(floor)) {
+    if ((m.kind === 'spray' || (m.kind === 'perfil' && !m.vol)) && m.pesc && isFinite(floor)) {
       // Comprimento medido montado; na vista explodida desce junto com a válvula.
       const add = (geo, name) => { const pm = new THREE.Mesh(geo, pescMat); pm.userData.idx = idx; pm.name = `${String(idx + 1).padStart(2, '0')}_${name}`; product.add(pm); };
       let yTop = y0 + m.h * 0.6;
@@ -1419,11 +1348,9 @@ const MF = [
     B(['serr', 'Serrilhado na solda', 'check']),
     B(['serrP', 'Serrilhado: passo', 0.4, 4, 0.1, 'mm', m => m.serr]),
     B(['serrD', 'Serrilhado: profundidade', 0.05, 1, 0.05, 'mm', m => m.serr]),
-    notK(['spray', 'malha'], ['h', 'Altura', 1, 300, 0.5, 'mm']),
-    only('malha', ['scl', 'Escala (100% = tamanho típico)', 20, 300, 1, '%']),
-    only('malha', ['showInt', 'Mostrar mecanismo interno (tubo, mola)', 'check', 0, 0, 0, m => m.role !== 'corpo']),
-    notK(['gargalo', 'spray', 'malha'], ['W', 'Largura (frente)', 4, 200, 0.5, 'mm']),
-    notK(['gargalo', 'spray', 'malha'], ['D', 'Profundidade (lado)', 4, 200, 0.5, 'mm']),
+    notK(['spray'], ['h', 'Altura', 1, 300, 0.5, 'mm']),
+    notK(['gargalo', 'spray'], ['W', 'Largura (frente)', 4, 200, 0.5, 'mm']),
+    notK(['gargalo', 'spray'], ['D', 'Profundidade (lado)', 4, 200, 0.5, 'mm']),
     K(['sprayType', 'Tipo de válvula', 'select', [['mist', 'Spray fino (névoa)'], ['locao', 'Pump loção / espuma (bico curvo)'], ['lamina', 'Pump com alavanca / bico lâmina'], ['gotas', 'Conta-gotas'], ['pushpull', 'Push-pull']]]),
     K(['W', 'Virola: diâmetro', 10, 80, 0.5, 'mm']),
     K(['h', 'Virola: altura', 4, 40, 0.5, 'mm']),
@@ -1574,7 +1501,6 @@ function renderEditor() {
         if (k === 'topType' && m.topType === 'flip' && !(m.groove > 0)) m.groove = r1(Math.min(12, m.h * 0.35));
         if (k === 'neckStd' && NECKS[m.neckStd]) Object.assign(m, NECKS[m.neckStd], { D: NECKS[m.neckStd].W });
         if ((m.kind === 'gargalo' || m.kind === 'spray') && k === 'W') m.D = m.W;
-        if (m.kind === 'malha' && k === 'scl') { const s = m.scl / 100; m.W = r1(m.W0 * s); m.D = r1(m.D0 * s); m.h = r1(m.h0 * s); }
         if (structural || ['rep', 'groove', 'ridges', 'own'].includes(k)) renderEditorKeepScroll();
         renderStack(); queueBuild();
       });
@@ -1587,7 +1513,6 @@ const typeOf = m => m.type || Object.keys(LIB).find(k => LIB[k].name === m.name)
 function categoryOf(m) {
   const t = typeOf(m), c = CATS.find(([, keys]) => keys.includes(t));
   if (c) return c;
-  if (m.kind === 'malha') return CATS.find(([l]) => l === (m.role === 'corpo' ? 'Corpo' : DRAFT[m.asset]?.[6] === 'V' ? 'Válvula' : 'Tampa'));
   const label = m.kind === 'spray' ? 'Válvula' : m.kind === 'gargalo' ? 'Peça de encaixe' : m.vol ? 'Corpo' : 'Tampa';
   return CATS.find(([l]) => l === label);
 }
@@ -1595,35 +1520,23 @@ function categoryOf(m) {
 const LEN_KEYS = ['W', 'D', 'h', 'rBot', 'rTop', 'rBotW', 'rTopW', 'rTL', 'rTR', 'rBL', 'rBR', 'rEdge', 'groove', 'notchY', 'notchW', 'notchH',
   'notchD', 'actW', 'actH', 'headH', 'stemD', 'stemH', 'guideW', 'guideH', 'nozzleL', 'armW', 'armT', 'droop', 'domeH', 'spoutD', 'collarR',
   'discD', 'discDip', 'discRise', 'orifD', 'sealH', 'bandInset'];
+// Largura da virola (onde a peça encosta): a menor medida da base.
+const collarOf = m => Math.min(m.W, m.D);
 function scaleModule(m, f) {
   LEN_KEYS.forEach(k => { if (typeof m[k] === 'number') m[k] = r1(m[k] * f); });
-  if (m.kind === 'malha') { m.scl = r1(m.scl * f); m.gap = r1(m.gap * f); }
   return m;
 }
 // Peça nova herda o tamanho da trocada: corpo assume largura, profundidade e
 // altura; tampa/válvula escala por inteiro para ficar com a largura anterior.
 function adaptSwap(old, nw, label) {
   if (label === 'Peça de encaixe') return nw;
-  if (label === 'Corpo' && nw.kind === 'malha') {
-    // Corpo da Draft entra no tamanho real dele (a escala já é calibrada);
-    // a tampa de cima se readapta ao gargalo (ver refitAbove).
-    nw.showInt = false;
-    return nw;
-  }
-  if (nw.kind === 'malha') nw.showInt = false; // mecanismo foi feito para o corpo original
   if (label === 'Corpo') {
     const f = old.W / nw.W;
     scaleModule(nw, f);
     nw.W = old.W; nw.D = old.D; nw.h = old.h;
     return nw;
   }
-  // Tampa sobre corpo da Draft: largura da tampa original daquele corpo.
-  const under = S.modules[sel - 1];
-  const onDraft = under?.kind === 'malha' && under.role === 'corpo';
-  const refW = onDraft ? draftCollar(under.asset) * under.scl / 100 : collarOf(old);
-  scaleModule(nw, refW / collarOf(nw));
-  // Sobre corpo da Draft, a virola precisa cobrir o gargalo de vidro dele.
-  if (onDraft && nw.kind !== 'malha') nw.h = Math.max(nw.h, r1(draftSeat(under.asset) * under.scl / 100 + 0.5));
+  scaleModule(nw, collarOf(old) / collarOf(nw));
   // Sobre um gargalo: a rosca tem que caber por dentro e ficar coberta.
   const below = S.modules[sel - 1];
   if (below?.kind === 'gargalo') {
@@ -1633,14 +1546,6 @@ function adaptSwap(old, nw, label) {
     if (nw.h * Math.max(1, nw.rep) < minH) nw.h = minH;
   }
   return nw;
-}
-// Depois de trocar um corpo, a peça de cima se ajusta ao gargalo novo.
-function refitAbove() {
-  const body = S.modules[sel], above = S.modules[sel + 1];
-  if (!above || above.kind === 'gargalo' || body.kind !== 'malha' || body.role !== 'corpo') return;
-  scaleModule(above, draftCollar(body.asset) * body.scl / 100 / collarOf(above));
-  if (above.kind !== 'malha') above.h = Math.max(above.h, r1(draftSeat(body.asset) * body.scl / 100 + 0.5));
-  if (above.kind === 'malha') above.showInt = false;
 }
 function renderSwap(ed, m) {
   const [label, keys] = categoryOf(m), cur = typeOf(m);
@@ -1654,30 +1559,11 @@ function renderSwap(ed, m) {
     card.onclick = () => {
       if (k === cur) return;
       // Mantém cor, acabamento, encaixe e deslocamento, e readapta o tamanho.
-      S.modules[sel] = adaptSwap(m, M(k, { own: m.own, color: m.color, finish: m.finish, gap: m.kind === 'malha' ? 0 : m.gap, ox: m.ox, uid: m.uid }), label);
+      S.modules[sel] = adaptSwap(m, M(k, { own: m.own, color: m.color, finish: m.finish, gap: m.gap, ox: m.ox, uid: m.uid }), label);
       renderStack(); renderEditorKeepScroll(); build();
     };
     grid.appendChild(card);
     queueThumb(card.querySelector('img'), { color: S.color, finish: S.finish, modules: [M(k)] });
-  }
-  // Peças reais da Draft da mesma categoria.
-  const role = label === 'Corpo' ? 'corpo' : 'tampa';
-  const ids = Object.keys(DRAFT).filter(id => hasDraft(id) && (label === 'Corpo' || (label === 'Válvula') === (DRAFT[id][6] === 'V')));
-  if (label !== 'Peça de encaixe' && ids.length) {
-    const h = document.createElement('h4'); h.textContent = 'Draft (peças reais)'; grid.appendChild(h);
-    for (const id of ids) {
-      const t = `draft:${id}:${role}`, card = document.createElement('div');
-      card.className = 'card' + (t === cur ? ' on' : ''); card.title = DRAFT[id][0];
-      card.innerHTML = `<img class="ph" alt="" src="draft/thumbs/${id}.jpg"><div>${DRAFT[id][0]}</div>`;
-      card.onclick = () => {
-        if (t === cur) return;
-        const nw = Object.assign(draftModule(id, role), { own: m.own, color: m.color, finish: m.finish, ox: m.ox, uid: m.uid });
-        S.modules[sel] = adaptSwap(m, nw, label);
-        if (label === 'Corpo') refitAbove();
-        renderStack(); renderEditorKeepScroll(); build();
-      };
-      grid.appendChild(card);
-    }
   }
   ed.appendChild(box);
 }
@@ -1702,9 +1588,9 @@ function renderAll() { renderStack(); renderEditor(); renderGlobal(); renderPres
 // Biblioteca de módulos
 // Corpo, tampa e peça de encaixe ficam em listas separadas.
 const CATS = [
-  ['Corpo', ['reto', 'boston', 'quadrado', 'capsula', 'plano', 'arco', 'cone', 'placa', 'bisnaga']],
-  ['Tampa', ['esfera', 'domo', 'seixo', 'flip', 'disctop', 'sobretampa', 'tampaBisnaga', 'disco']],
-  ['Válvula', ['pump', 'locao', 'espuma', 'spray', 'contaGotas', 'pushPull', 'lamina']],
+  ['Corpo', ['reto', 'boston', 'quadrado', 'capsula', 'plano', 'arco', 'cone', 'placa', 'bisnaga', ...DRAFT_KEYS.corpo]],
+  ['Tampa', ['esfera', 'domo', 'seixo', 'flip', 'disctop', 'sobretampa', 'tampaBisnaga', 'disco', ...DRAFT_KEYS.tampa]],
+  ['Válvula', ['pump', 'locao', 'espuma', 'spray', 'contaGotas', 'pushPull', 'lamina', ...DRAFT_KEYS.valvula]],
   ['Peça de encaixe', ['gargalo', 'colar', 'barril', 'flare', 'anel', 'tigela']],
 ];
 CATS.forEach(([label, keys]) => {
@@ -1770,20 +1656,11 @@ function renderPresets() {
       queueThumb(card.querySelector('img'), st);
     }
   };
-  section('Modelos base', Object.entries(PRESETS), 'b');
+  const P = Object.entries(PRESETS);
+  section('Modelos base', P.filter(([n]) => !n.startsWith('Draft ·')), 'b');
   section('Salvos', Object.entries(sv), 's');
-  // Draft: miniaturas das renders originais.
-  const ids = Object.keys(DRAFT).filter(hasDraft);
-  if (ids.length) {
-    const h = document.createElement('h4'); h.textContent = 'Draft (peças reais)'; gal.appendChild(h);
-    for (const id of ids) {
-      const name = `Draft · ${DRAFT[id][0]}`, card = document.createElement('div');
-      card.className = 'card' + (S.name === name ? ' on' : ''); card.title = name;
-      card.innerHTML = `<img class="ph" alt="" src="draft/thumbs/${id}.jpg"><div>${DRAFT[id][0]}</div>`;
-      card.onclick = () => loadState(draftPreset(id), name);
-      gal.appendChild(card);
-    }
-  }
+  section('Draft', P.filter(([n]) => n.startsWith('Draft ·')), 'b');
+
 }
 function loadState(s, name) {
   S = normalize(structuredClone({ wall: S.wall, bg: S.bg, ...s }));
@@ -1909,7 +1786,7 @@ $('#dlObj').onclick = () => download(new Blob([new OBJExporter().parse(exportRoo
 
 // ───────────────────────── início ─────────────────────────
 // Acesso para inspeção no console do navegador.
-window.OUTBOX = { get S() { return S; }, product, layout, draftInfo, draftSeat, draftCollar };
+window.OUTBOX = { get S() { return S; }, product, layout };
 
 resize();
 renderAll();

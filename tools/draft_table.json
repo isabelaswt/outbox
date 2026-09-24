@@ -1,0 +1,480 @@
+{
+ "1027_vintage_pump_bottle": [
+  "Vintage com pump",
+  190,
+  true,
+  [
+   "BOTTLE"
+  ],
+  [
+   "PUMP",
+   "PUMP_1"
+  ],
+  [
+   "TUBE",
+   "MECHANISM"
+  ],
+  "V"
+ ],
+ "DRAFT_1005_SoapPump": [
+  "Soap pump",
+  200,
+  false,
+  [
+   "BODY"
+  ],
+  [
+   "PUMP",
+   "NECK"
+  ],
+  [
+   "TUBE",
+   "SPRING",
+   "BALL",
+   "CYLINDER1"
+  ],
+  "V"
+ ],
+ "DRAFT_1006_FoamSoap": [
+  "Pump espuma",
+  190,
+  false,
+  [
+   "BODY"
+  ],
+  [
+   "PUMP_REMESH",
+   "NECK",
+   "NECK_2",
+   "LID"
+  ],
+  [
+   "PRETUBE",
+   "TUBE",
+   "SPRING",
+   "BALL"
+  ],
+  "V"
+ ],
+ "DRAFT_1015_Pump_Bottle": [
+  "Pump bottle",
+  220,
+  false,
+  [
+   "BODY"
+  ],
+  [
+   "PUMP"
+  ],
+  [
+   "NECKTUBE",
+   "TUBE_2"
+  ],
+  "V"
+ ],
+ "DRAFT_1020_Bottle_Pump": [
+  "Frasco com pump",
+  190,
+  false,
+  [
+   "BOTTLE"
+  ],
+  [
+   "PUMP",
+   "NECK"
+  ],
+  [
+   "MECHANISM",
+   "TUBE"
+  ],
+  "V"
+ ],
+ "DRAFT_1024_Pump_Minimal": [
+  "Pump minimal",
+  180,
+  false,
+  [
+   "BOTTLE"
+  ],
+  [
+   "PUMP_2",
+   "NECK",
+   "POLYGON",
+   "POLYGON_2"
+  ],
+  [
+   "SPRING",
+   "BALL",
+   "CYLINDER_1"
+  ],
+  "V"
+ ],
+ "DRAFT_1009_Spray_Glass": [
+  "Spray vidro",
+  140,
+  true,
+  [
+   "GLASS_SPRAY"
+  ],
+  [
+   "SPRAY",
+   "NECK"
+  ],
+  [
+   "CYLINDER1",
+   "CYLINDER",
+   "CYLINDER2"
+  ],
+  "V"
+ ],
+ "DRAFT_1017_Spray_Bottle": [
+  "Spray plástico",
+  170,
+  false,
+  [
+   "BOTTLE"
+  ],
+  [
+   "SPRAY",
+   "NECK_TUBE"
+  ],
+  [
+   "TUBE"
+  ],
+  "V"
+ ],
+ "DRAFT_1029_Foundation": [
+  "Base com pump",
+  110,
+  true,
+  [
+   "BOTTLE"
+  ],
+  [
+   "PUMP_2",
+   "NECK"
+  ],
+  [
+   "CYLINDER",
+   "TUBE",
+   "MECHANISM"
+  ],
+  "V"
+ ],
+ "DRAFT_1030_Foundation": [
+  "Base com pump #2",
+  115,
+  true,
+  [
+   "BODY"
+  ],
+  [
+   "PUMP_2",
+   "NECK"
+  ],
+  [
+   "TUBE",
+   "MECHANISM"
+  ],
+  "V"
+ ],
+ "DRAFT_1031_Glass_Dropper": [
+  "Conta-gotas vidro",
+  95,
+  true,
+  [
+   "BOTTLE"
+  ],
+  [
+   "NECK",
+   "RUBBER"
+  ],
+  [
+   "TUBE"
+  ],
+  "V"
+ ],
+ "DRAFT_3007_Dropper_RC": [
+  "Conta-gotas",
+  100,
+  true,
+  [
+   "BOTTLE"
+  ],
+  [
+   "NECK",
+   "RUBBER"
+  ],
+  [
+   "TUBE"
+  ],
+  "V"
+ ],
+ "DRAFT_1007_Moist_Pump": [
+  "Airless (tubo)",
+  150,
+  false,
+  [
+   "TUBE_2"
+  ],
+  [
+   "PUMP_2",
+   "NECK_2",
+   "NECK_3",
+   "CAP"
+  ],
+  [],
+  "V"
+ ],
+ "DRAFT_1035_Tube_Pump": [
+  "Tubo com pump",
+  160,
+  false,
+  [
+   "TUBE_2"
+  ],
+  [
+   "CAP",
+   "NECK",
+   "PUMP",
+   "CACHE"
+  ],
+  [],
+  "V"
+ ],
+ "DRAFT_1025_Flip_top_Bottle": [
+  "Flip-top",
+  170,
+  false,
+  [
+   "BOTTLE"
+  ],
+  [
+   "CAP",
+   "NECK"
+  ],
+  [],
+  "T"
+ ],
+ "DRAFT_1019_Bottle_Push_Pull": [
+  "Push-pull",
+  180,
+  false,
+  [
+   "BODY"
+  ],
+  [
+   "NECK",
+   "CONE_PUSH_PULL",
+   "SEAL"
+  ],
+  [],
+  "T"
+ ],
+ "DRAFT_1022_Push_Pull_Short_Jar": [
+  "Push-pull baixo",
+  120,
+  false,
+  [
+   "BODY_3",
+   "BODY_2"
+  ],
+  [
+   "CONE_PUSH_PULL",
+   "SUB_NECK",
+   "NECK"
+  ],
+  [],
+  "T"
+ ],
+ "DRAFT_1023_Push_Pull_Tall": [
+  "Push-pull alto",
+  200,
+  false,
+  [
+   "BODY"
+  ],
+  [
+   "POLYGON",
+   "POLYGON_2",
+   "POLYGON_3"
+  ],
+  [],
+  "T"
+ ],
+ "DRAFT_1021_Bubble_Bath": [
+  "Espuma de banho",
+  220,
+  false,
+  [
+   "BODY"
+  ],
+  [
+   "CAP"
+  ],
+  [],
+  "T"
+ ],
+ "DRAFT_1014_Glass_Bottle_RC": [
+  "Vidro com tampa",
+  150,
+  true,
+  [
+   "BODY"
+  ],
+  [
+   "CAP"
+  ],
+  [],
+  "T"
+ ],
+ "DRAFT_3002_Essential_Oil": [
+  "Óleo essencial",
+  75,
+  true,
+  [
+   "BODY_2"
+  ],
+  [
+   "CAP"
+  ],
+  [],
+  "T"
+ ],
+ "DRAFT_3009_Ophthalmic_Nozzle": [
+  "Colírio",
+  90,
+  false,
+  [
+   "BODY"
+  ],
+  [
+   "CAP"
+  ],
+  [],
+  "T"
+ ],
+ "DRAFT_1039_Round_Bottle": [
+  "Frasco redondo",
+  120,
+  false,
+  [
+   "TUBE"
+  ],
+  [
+   "CAP",
+   "OPEN"
+  ],
+  [],
+  "T",
+  90
+ ],
+ "DRAFT_1002_Tube": [
+  "Bisnaga",
+  170,
+  false,
+  [
+   "TUBE"
+  ],
+  [
+   "CAP"
+  ],
+  [],
+  "T"
+ ],
+ "DRAFT_1033_HandCream_Tube": [
+  "Tubo creme de mãos",
+  120,
+  false,
+  [
+   "TUBE_2"
+  ],
+  [
+   "CAP"
+  ],
+  [],
+  "T"
+ ],
+ "DRAFT_1037_Travelsize_Shampoo": [
+  "Shampoo viagem",
+  110,
+  false,
+  [
+   "TUBE",
+   "INNER"
+  ],
+  [
+   "CAP",
+   "CAP_2"
+  ],
+  [],
+  "T"
+ ],
+ "DRAFT_1040_toothpaste": [
+  "Creme dental",
+  190,
+  false,
+  [
+   "TUBE"
+  ],
+  [
+   "NECK",
+   "SCREW_2"
+  ],
+  [],
+  "T"
+ ],
+ "DRAFT_3003_Tubewithseal": [
+  "Tubo com lacre",
+  100,
+  false,
+  [
+   "TUBE"
+  ],
+  [
+   "CAP",
+   "SEAL"
+  ],
+  [],
+  "T"
+ ],
+ "DRAFT_1003_Jar": [
+  "Pote",
+  60,
+  false,
+  [
+   "BOTTLE"
+  ],
+  [
+   "CAP"
+  ],
+  [],
+  "T"
+ ],
+ "DRAFT_1008_Moist_Jar": [
+  "Pote hidratante",
+  45,
+  false,
+  [
+   "BODY"
+  ],
+  [
+   "LID"
+  ],
+  [],
+  "T"
+ ],
+ "DRAFT_3001_Square_Jar_without_gummies": [
+  "Pote quadrado",
+  90,
+  false,
+  [
+   "BODY"
+  ],
+  [
+   "LID"
+  ],
+  [],
+  "T"
+ ]
+}

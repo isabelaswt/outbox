@@ -16,3 +16,14 @@ python3 -m http.server 8765
 
 e acessar http://localhost:8765. Precisa de internet (o Three.js vem do CDN jsDelivr).
 Modelos salvos ficam no navegador; use **JSON ↓** para guardar ou compartilhar um modelo.
+
+## Modelos da Draft
+
+Os produtos da Draft são reconstruídos como módulos paramétricos (tipo "perfil"):
+`tools/perfis.py` lê os OBJs em `_ref/obj/` (fora do git), corta a malha em fatias
+e grava o perfil de cada corpo, gargalo e tampa/válvula em `draft/perfis.json`.
+A tabela de produtos (altura real, peças de corpo/tampa) fica em `tools/draft_table.json`.
+
+```
+python3 tools/perfis.py
+```
