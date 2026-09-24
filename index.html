@@ -197,7 +197,7 @@ const BASE = {
   sprayType: 'mist', actW: 20, actH: 16, stemH: 4, headH: 28, nozzleL: 14, dir: 0,
   collarR: 1.2, stemD: 7, armW: 9, armT: 4.5, droop: 2,
   pesc: true, pescD: 4, pescCurve: 0, pescWave: 0, pescGap: 3,
-  mola: true, houseD: 8, springL: 18, coils: 11,
+  mola: true, houseD: 8, springL: 18, coils: 11, sleeve: 'transparente',
   // sistema de abertura da tampa: flip-top (dobradiça na linha) ou disc-top.
   topType: 'nenhum', openPct: 0, lidSide: 'cima', orifD: 4, discD: 26,
   // bisnaga: tubo que achata até a solda mantendo o perímetro.
@@ -228,6 +228,7 @@ const LIB = {
   tampaBisnaga: { name: 'Tampa de bisnaga', W: 44, D: 44, h: 34, rBot: 2.5, rTop: 1, groove: 24, notch: true, notchUp: true, notchW: 18, notchH: 9, notchD: 1.4, notchP: 6, topType: 'flip', lidSide: 'baixo' },
   placa:   { name: 'Corpo placa assimétrico', kind: 'placa', W: 66, D: 34, h: 134, rTL: 5, rTR: 30, rBL: 7, rBR: 7, rEdge: 5, chamfer: true, vol: true },
   flip:    { name: 'Tampa flip-top', W: 46, D: 34, n: 2.8, h: 24, rBot: 1, rTop: 3, groove: 6, topType: 'flip' },
+  sobretampa: { name: 'Sobretampa (cobre a válvula)', W: 30, D: 30, h: 42, rBot: 0.5, rTop: 2 },
   disctop: { name: 'Tampa disc-top', W: 40, D: 40, h: 18, rBot: 1, rTop: 1.5, topType: 'disc', discD: 28 },
 };
 const M = (type, o = {}) => ({ ...BASE, ...LIB[type], ...o });
@@ -280,6 +281,9 @@ const PRESETS = {
     M('reto', { W: 62, D: 62, h: 104, rBot: 20, rTop: 1 }), NECK('24/410'),
     M('lamina', { name: 'Pump domo + disco plano', W: 62, D: 62, h: 46, collarR: 30, stemD: 30, stemH: 8,
       actW: 36, headH: 4.2, armT: 4.2, armW: 12, nozzleL: 22, droop: 0 })] },
+  'Spray âmbar': { color: '#b8650f', finish: 'vidro', modules: [
+    M('reto', { W: 50, D: 50, h: 96, rBot: 4, rTop: 17 }), NECK('24/410', { embed: 14 }),
+    M('spray', { W: 29, D: 29, h: 17, ridges: 0, actW: 21, actH: 20, stemH: 4, own: true, color: '#141414', finish: 'brilho', pescWave: 3 })] },
   'Frasco pump': { color: CREAM, finish: 'fosco', modules: [
     M('reto', { W: 50, D: 50, h: 110, rBot: 8, rTop: 20 }), NECK('24/410'), M('pump')] },
   'Oval flip-top 250 ml': { color: '#f28bb5', finish: 'acetinado', modules: [
@@ -502,15 +506,18 @@ class Helix extends THREE.Curve {
     return out.set(this.r * Math.cos(a), this.y0 + this.h * t, this.r * Math.sin(a));
   }
 }
-function pumpMechGeo(m, yTop) {
+function pumpMechGeo(m, yTop, yCollar) {
   const R = m.houseD / 2, yS = yTop - 4, yB = yS - m.springL, parts = [];
   parts.push(cyl(R + 0.6, yS, 4, 0, 0.6));                            // carcaça
   parts.push(cyl(1.4, yB, m.springL, 0, 0));                          // pistão
   parts.push(new THREE.TubeGeometry(new Helix(R - 0.5, yB, m.springL, m.coils), Math.round(m.coils * 24), 0.45, 8)); // mola
   parts.push(moduleGeo({ ...BASE, kind: 'giro', W: m.pescD + 0.8, D: m.pescD + 0.8, h: 5,
     taper: (2 * R) / (m.pescD + 0.8) * 100, rBot: 0, rTop: 0 }, yB - 5)); // assento cônico
-  parts.forEach(g => m.ox && g.translate(m.ox, 0, 0));
-  return { parts, yEnd: yB - 5 };
+  // Carcaça em volta da mola (o corpo da bomba), só abaixo da virola.
+  const sTop = Math.min(yS + 0.5, yCollar - 0.3);
+  const sleeve = m.sleeve === 'nenhuma' || sTop - yB < 1 ? null : cyl(R + 0.9, yB, sTop - yB, 0, 0);
+  [...parts, sleeve].forEach(g => g && m.ox && g.translate(m.ox, 0, 0));
+  return { parts, sleeve, yEnd: yB - 5 };
 }
 
 function pescanteGeo(m, yBot, yTop) {
@@ -772,6 +779,7 @@ function makeControls(target) {
 }
 
 const matCache = new Map();
+const sleeveMat = new THREE.MeshStandardMaterial({ color: '#dfe3e6', roughness: 0.3, transparent: true, opacity: 0.32, depthTest: false, depthWrite: false });
 const holeMat = new THREE.MeshStandardMaterial({ color: '#151515', roughness: 0.8 });
 // Opaco: peças transmissivas não aparecem através do frasco transparente.
 const pescMat = new THREE.MeshPhysicalMaterial({ color: '#b9bec2', roughness: 0.35, clearcoat: 0.4 });
@@ -793,6 +801,7 @@ function build() {
   product.children.forEach(o => o.geometry.dispose());
   product.clear();
   const base = layout(S), floor = Math.min(...base.filter(e => e.m.vol).map(e => e.y0));
+  const glassBody = base.some(e => e.m.vol && (e.m.own ? e.m.finish : S.finish) === 'vidro');
   layout(S, explode ? 18 : 0).forEach(({ m, idx, y0 }, i) => {
     const g = moduleGeo(m, y0); if (!g) return;
     const mesh = new THREE.Mesh(g, material(m.own ? m.color : S.color, m.own ? m.finish : S.finish));
@@ -805,7 +814,16 @@ function build() {
       // Comprimento medido montado; na vista explodida desce junto com a válvula.
       const add = (geo, name) => { const pm = new THREE.Mesh(geo, pescMat); pm.userData.idx = idx; pm.name = `${String(idx + 1).padStart(2, '0')}_${name}`; product.add(pm); };
       let yTop = y0 + m.h * 0.6;
-      if (m.mola) { const mech = pumpMechGeo(m, yTop); mech.parts.forEach(g => add(g, 'bomba')); yTop = mech.yEnd; }
+      if (m.mola) {
+        const mech = pumpMechGeo(m, yTop, y0); mech.parts.forEach(g => add(g, 'bomba')); yTop = mech.yEnd;
+        if (mech.sleeve) {
+          // Transparente só se o frasco for de vidro: por cima de tudo, como
+          // plástico claro visto através do vidro (senão fica escondida dentro).
+          const see = m.sleeve === 'transparente' && glassBody;
+          const sm = new THREE.Mesh(mech.sleeve, see ? sleeveMat : pescMat); sm.userData.idx = idx;
+          sm.name = `${String(idx + 1).padStart(2, '0')}_carcaca`; if (see) sm.renderOrder = 20; product.add(sm);
+        }
+      }
       const len = yTop - (y0 - base[i].y0) - (floor + S.wall + m.pescGap);
       const pg = pescanteGeo(m, yTop - len, yTop);
       if (pg) add(pg, 'pescante');
@@ -984,6 +1002,7 @@ const MF = [
     K(['houseD', 'Mola: diâmetro', 4, 20, 0.5, 'mm', m => m.mola]),
     K(['springL', 'Mola: comprimento', 5, 60, 0.5, 'mm', m => m.mola]),
     K(['coils', 'Mola: voltas', 3, 30, 1, '', m => m.mola]),
+    K(['sleeve', 'Carcaça da mola', 'select', [['transparente', 'Transparente (mostra a mola)'], ['fechada', 'Fechada'], ['nenhuma', 'Sem carcaça']], m => m.mola]),
     K(['pesc', 'Pescante (tubo até o fundo)', 'check']),
     K(['pescD', 'Pescante: diâmetro', 2, 10, 0.1, 'mm', m => m.pesc]),
     K(['pescGap', 'Pescante: folga do fundo', 0, 20, 0.5, 'mm', m => m.pesc]),
@@ -1129,7 +1148,7 @@ function renderAll() { renderStack(); renderEditor(); renderGlobal(); renderPres
 // Corpo, tampa e peça de encaixe ficam em listas separadas.
 const CATS = [
   ['Corpo', ['capsula', 'reto', 'plano', 'arco', 'cone', 'placa', 'bisnaga']],
-  ['Tampa', ['esfera', 'domo', 'seixo', 'flip', 'disctop', 'tampaBisnaga', 'disco']],
+  ['Tampa', ['esfera', 'domo', 'seixo', 'flip', 'disctop', 'sobretampa', 'tampaBisnaga', 'disco']],
   ['Válvula', ['lamina', 'pump', 'spray']],
   ['Peça de encaixe', ['gargalo', 'colar', 'barril', 'flare', 'anel', 'tigela']],
 ];
