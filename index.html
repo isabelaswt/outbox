@@ -199,7 +199,7 @@ const BASE = {
   pesc: true, pescD: 4, pescCurve: 0, pescWave: 0, pescGap: 3,
   mola: true, houseD: 8, springL: 18, coils: 11, sleeve: 'transparente',
   // sistema de abertura da tampa: flip-top (dobradiça na linha) ou disc-top.
-  topType: 'nenhum', openPct: 0, lidSide: 'cima', orifD: 4, discD: 36, discDip: 4,
+  topType: 'nenhum', openPct: 0, lidSide: 'cima', orifD: 4, discD: 36, discDip: 4, discDimple: 1.2,
   // bisnaga: tubo que achata até a solda mantendo o perímetro.
   flatStart: 8, flatCurve: 1.15, sealH: 7, sealT: 1.4, sealW: 6,
   sealShape: 'reta', sealArc: 4, sealR: 0, serr: true, serrP: 1, serrD: 0.25,
@@ -229,7 +229,7 @@ const LIB = {
   placa:   { name: 'Corpo placa assimétrico', kind: 'placa', W: 66, D: 34, h: 134, rTL: 5, rTR: 30, rBL: 7, rBR: 7, rEdge: 5, chamfer: true, vol: true },
   flip:    { name: 'Tampa flip-top', W: 46, D: 34, n: 2.8, h: 24, rBot: 1, rTop: 3, groove: 6, topType: 'flip' },
   sobretampa: { name: 'Sobretampa (cobre a válvula)', W: 30, D: 30, h: 42, rBot: 0.5, rTop: 2 },
-  disctop: { name: 'Tampa disc-top', W: 40, D: 40, h: 26, rBot: 1, rTop: 0.8, topType: 'disc', discD: 37, discDip: 5 },
+  disctop: { name: 'Tampa disc-top', W: 48.3, D: 48.3, h: 32.5, taper: 95, rBot: 1, rTop: 0.8, topType: 'disc', discD: 42.4, discDip: 5 },
 };
 const M = (type, o = {}) => ({ ...BASE, ...LIB[type], ...o });
 
@@ -706,11 +706,21 @@ function flipOpenGeo(m, y0, rings, seg, disp, ang) {
 // Disc-top: disco quase da largura da tampa, saltado no rebaixo da borda,
 // com a fenda de saída na lateral; apertando o outro lado, a fenda sobe.
 function discTopGeo(m, y0, ang, lo) {
-  const r = Math.min(m.discD, Math.min(m.W, m.D) - 2.4) / 2, yTop = y0 + m.h - m.discDip * 0.3, th = 2.6;
-  const disc = cyl(r, yTop - th, th, 0.9, 0, lo);
-  const slot = new THREE.BoxGeometry(1.4, 1.5, Math.min(5, r * 0.45)); slot.translate(-r + 0.55, yTop - 1.3, 0);
-  const tilt = ang * 12 * Math.PI / 180;
-  [disc, slot].forEach(g => { g.translate(0, -yTop, 0); g.rotateZ(-tilt); g.translate(0, yTop, 0); });
+  const r = Math.min(m.discD, Math.min(m.W, m.D) * m.taper / 100 - 2.4) / 2, yTop = y0 + m.h - m.discDip * 0.3, th = 4;
+  // Disco em anéis concêntricos: borda chanfrada e a concavidade de apertar
+  // atrás; a fenda de saída fica na frente, alinhada ao rebaixo da borda.
+  const bev = 0.8, rd = r * 0.42, czD = -r * 0.45, seg = lo ? 32 : 128, K = lo ? 6 : 36;
+  const dimple = (x, z) => { const d = Math.hypot(x, z - czD) / rd; return d < 1 ? -m.discDimple * 0.5 * (1 + Math.cos(Math.PI * d)) : 0; };
+  const loop = (rr, yFn) => Array.from({ length: seg }, (_, j) => {
+    const a = j / seg * TAU, x = rr * Math.cos(a), z = rr * Math.sin(a); return [x, yFn(x, z), z];
+  });
+  const rings = [loop(r, () => yTop - th), loop(r, () => yTop - bev)];
+  for (let k = 0; k < K; k++) { const rr = (r - bev) * (1 - k / K); rings.push(loop(Math.max(rr, 0.05), (x, z) => yTop + dimple(x, z))); }
+  const disc = loftPts(rings);
+  const slot = new THREE.BoxGeometry(Math.min(6, r * 0.45), 2.4, 1.4); slot.translate(0, yTop - 1.9, r - 0.55);
+  // Aberto: aperta atrás, sobe só a frente (onde sai o produto).
+  const tilt = ang * 22 * Math.PI / 180;
+  [disc, slot].forEach(g => { g.translate(0, -yTop, 0); g.rotateX(-tilt); g.translate(0, yTop, 0); });
   return [disc, [slot]];
 }
 
@@ -1065,6 +1075,7 @@ const MF = [
     G(['orifD', 'Furo do bico: diâmetro', 1, 12, 0.1, 'mm', m => m.topType === 'flip']),
     G(['discD', 'Disco: diâmetro', 6, 120, 0.5, 'mm', m => m.topType === 'disc']),
     G(['discDip', 'Rebaixo da borda (sela)', 0, 20, 0.5, 'mm', m => m.topType === 'disc']),
+    G(['discDimple', 'Concavidade de apertar', 0, 4, 0.1, 'mm', m => m.topType === 'disc']),
     G(['groove', 'Linha de abertura (mm do topo, 0 = sem)', 0, 100, 0.5, 'mm']),
     G(['grooveD', 'Profundidade da linha', 0.1, 3, 0.1, 'mm', m => m.groove > 0]),
     G(['notch', 'Entalhe de abertura (pega do dedo)', 'check']),
