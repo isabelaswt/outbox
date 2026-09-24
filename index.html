@@ -188,6 +188,7 @@ import { GLTFExporter } from 'three/addons/exporters/GLTFExporter.js';
 import { STLExporter } from 'three/addons/exporters/STLExporter.js';
 import { OBJExporter } from 'three/addons/exporters/OBJExporter.js';
 import { mergeGeometries, mergeVertices } from 'three/addons/utils/BufferGeometryUtils.js';
+import { DecalGeometry } from 'three/addons/geometries/DecalGeometry.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION } from 'three-bvh-csg';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
@@ -1124,8 +1125,70 @@ async function applyLogos() {
   });
   req();
 }
-let placing = null;
-function startPlacing(L) { placing = L; canvas.style.cursor = 'crosshair'; toast('Clique no shape onde o logo vai ficar'); }
+let placing = null, placingMask = null, preview = null;
+// Imagem da prévia: área clara com borda e o desenho do logo por cima.
+const previewTex = new Map();
+function previewTexture(M) {
+  if (previewTex.has(M)) return previewTex.get(M);
+  const cv = document.createElement('canvas'); cv.width = M.w; cv.height = M.h;
+  const cx = cv.getContext('2d'), img = cx.createImageData(M.w, M.h);
+  for (let i = 0; i < M.w * M.h; i++) {
+    const v = M.m[i], k = i * 4;
+    // fundo cor de destaque translúcido; desenho quase preto por cima
+    img.data[k] = 29 + (154 - 29) * (1 - v); img.data[k + 1] = 29 + (122 - 29) * (1 - v); img.data[k + 2] = 31 + (79 - 31) * (1 - v);
+    img.data[k + 3] = 70 + 170 * v;
+  }
+  cx.putImageData(img, 0, 0);
+  cx.strokeStyle = '#5c4527'; cx.lineWidth = Math.max(3, M.w / 110); cx.setLineDash([M.w / 40, M.w / 60]);
+  cx.strokeRect(1, 1, M.w - 2, M.h - 2);
+  const t = new THREE.CanvasTexture(cv); t.colorSpace = THREE.SRGBColorSpace;
+  previewTex.set(M, t);
+  return t;
+}
+function clearPreview() { if (preview) { preview.geometry.dispose(); scene.remove(preview); preview = null; req(); } }
+// Projeta a prévia na peça sob o cursor, com o tamanho e a rotação do logo.
+function showPreview(hit) {
+  const L = placing, M = placingMask; if (!L || !M) return;
+  const V = THREE.Vector3, n = hit.face.normal.clone().normalize();
+  const up = Math.abs(n.y) > 0.95 ? new V(0, 0, 1) : new V(0, 1, 0);
+  let T = new V().crossVectors(up, n).normalize(), B = new V().crossVectors(n, T);
+  const a = L.rot * Math.PI / 180, ca = Math.cos(a), sa = Math.sin(a);
+  [T, B] = [T.clone().multiplyScalar(ca).addScaledVector(B, sa), B.clone().multiplyScalar(ca).addScaledVector(T, -sa)];
+  const rot = new THREE.Euler().setFromRotationMatrix(new THREE.Matrix4().makeBasis(T, B, n));
+  const g = new DecalGeometry(hit.object, hit.point, rot, new V(L.size, L.size * M.h / M.w, 40));
+  if (!preview) {
+    preview = new THREE.Mesh(g, new THREE.MeshBasicMaterial({ map: previewTexture(M), transparent: true, depthWrite: false,
+      polygonOffset: true, polygonOffsetFactor: -4, toneMapped: false }));
+    preview.renderOrder = 30; scene.add(preview);
+  } else { preview.geometry.dispose(); preview.geometry = g; preview.material.map = previewTexture(M); }
+  req();
+}
+function startPlacing(L) {
+  placing = L; placingMask = null; canvas.style.cursor = 'crosshair';
+  logoMask(L.svg).then(M => { if (placing === L) placingMask = M; });
+  toast('Passe o mouse sobre o shape e clique para fixar o logo (Esc cancela)');
+}
+function stopPlacing() { placing = null; placingMask = null; canvas.style.cursor = ''; clearPreview(); }
+let moveQueued = null;
+canvas.addEventListener('pointermove', e => {
+  if (!placing) return;
+  const first = !moveQueued; moveQueued = e;
+  if (!first) return;
+  requestAnimationFrame(() => {
+    const ev = moveQueued; moveQueued = null; if (!placing) return;
+    const r = canvas.getBoundingClientRect();
+    ray.setFromCamera(new THREE.Vector2((ev.clientX - r.left) / r.width * 2 - 1, -(ev.clientY - r.top) / r.height * 2 + 1), cam);
+    const hit = ray.intersectObjects(product.children.filter(o => o.userData.main))[0];
+    hit ? showPreview(hit) : clearPreview();
+  });
+});
+canvas.addEventListener('pointerleave', () => { if (placing) clearPreview(); });
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Escape' || !placing) return;
+  const L = placing; stopPlacing();
+  if (!L.n) { S.logos = S.logos.filter(x => x !== L); } // logo novo sem posição: descarta
+  renderLogos(); toast('Posicionamento cancelado');
+});
 function renderLogos() {
   const box = $('#logoList'); box.innerHTML = '';
   S.logos.forEach((L, i) => {
@@ -1261,7 +1324,7 @@ canvas.addEventListener('pointerup', e => {
     if (!hit) return toast('Clique em cima do shape');
     const { uid, y0, ox } = hit.object.userData;
     Object.assign(placing, { uid, p: [hit.point.x - ox, hit.point.y - y0, hit.point.z], n: hit.face.normal.toArray() });
-    placing = null; canvas.style.cursor = '';
+    stopPlacing();
     renderLogos(); store.set('shape.autosave', S); build();
     return;
   }
