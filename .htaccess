@@ -1,0 +1,7 @@
+# OUTBOX: o navegador sempre confere se há versão nova do HTML e dos dados
+# (evita ver a ferramenta antiga depois de um deploy).
+<IfModule mod_headers.c>
+  <FilesMatch "\.(html|json)$">
+    Header set Cache-Control "no-cache, must-revalidate"
+  </FilesMatch>
+</IfModule>

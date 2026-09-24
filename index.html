@@ -174,6 +174,7 @@ canvas{display:block;width:100%;height:100%;touch-action:none}
     <button class="btn" id="orthoBtn">Ortográfica</button>
     <button class="btn" id="gridBtn">Grade 10 mm</button>
     <button class="btn" id="explodeBtn">Explodir</button>
+    <button class="btn" id="handBtn" title="Arrastar para mover a vista (ou segure a barra de espaço)">✋ Mão</button>
   </div>
   <div class="stats" id="stats"></div>
   <div class="toast" id="toast"></div>
@@ -279,7 +280,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-24.raios-em-tudo';
+const BUILD = '2026-09-24.mao-e-zoom';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -1042,9 +1043,19 @@ function makeControls(target) {
   controls?.dispose();
   controls = new OrbitControls(cam, canvas);
   controls.screenSpacePanning = true;
+  controls.zoomToCursor = true; // a roda aproxima do ponto sob o mouse
   if (target) controls.target.copy(target);
   controls.addEventListener('change', req);
+  applyHand();
   controls.update();
+}
+// Mão: arrastar move a vista em vez de girar (botão ou barra de espaço).
+let handOn = false, spaceHeld = false;
+function applyHand() {
+  const pan = handOn || spaceHeld;
+  if (controls) controls.mouseButtons.LEFT = pan ? THREE.MOUSE.PAN : THREE.MOUSE.ROTATE;
+  if (!placing) canvas.style.cursor = pan ? 'grab' : '';
+  $('#handBtn')?.classList.toggle('on', handOn);
 }
 
 const matCache = new Map();
@@ -1256,7 +1267,7 @@ function startPlacing(L) {
   logoMask(L.svg).then(M => { if (placing === L) placingMask = M; });
   toast('Passe o mouse sobre o shape e clique para fixar o logo (Esc cancela)');
 }
-function stopPlacing() { placing = null; placingMask = null; canvas.style.cursor = ''; clearPreview(); }
+function stopPlacing() { placing = null; placingMask = null; canvas.style.cursor = ''; clearPreview(); applyHand(); }
 let moveQueued = null;
 canvas.addEventListener('pointermove', e => {
   if (!placing) return;
@@ -1398,6 +1409,13 @@ function setOrtho(on) {
 document.querySelectorAll('[data-view]').forEach(b => b.onclick = () => fit(b.dataset.view));
 $('#orthoBtn').onclick = () => setOrtho(cam !== ortho);
 $('#explodeBtn').onclick = () => { explode = !explode; $('#explodeBtn').classList.toggle('on', explode); build(); fit(); };
+$('#handBtn').onclick = () => { handOn = !handOn; applyHand(); };
+// Segurar espaço = mão temporária (fora de campos de texto).
+const typing = () => /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement?.tagName);
+document.addEventListener('keydown', e => { if (e.code === 'Space' && !typing() && !spaceHeld) { spaceHeld = true; applyHand(); e.preventDefault(); } });
+document.addEventListener('keyup', e => { if (e.code === 'Space' && spaceHeld) { spaceHeld = false; applyHand(); } });
+canvas.addEventListener('pointerdown', () => { if (handOn || spaceHeld) canvas.style.cursor = 'grabbing'; });
+canvas.addEventListener('pointerup', () => { if ((handOn || spaceHeld) && !placing) canvas.style.cursor = 'grab'; });
 $('#gridBtn').onclick = () => { grid.visible = !grid.visible; $('#gridBtn').classList.toggle('on', grid.visible); req(); };
 
 // Clique no 3D seleciona o módulo.
