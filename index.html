@@ -154,6 +154,7 @@ canvas{display:block;width:100%;height:100%;touch-action:none}
     <button class="btn" data-view="top">Topo</button>
     <button class="btn" id="orthoBtn">Ortográfica</button>
     <button class="btn" id="gridBtn">Grade 10 mm</button>
+    <button class="btn" id="explodeBtn">Explodir</button>
   </div>
   <div class="stats" id="stats"></div>
   <div class="toast" id="toast"></div>
@@ -190,6 +191,8 @@ const BASE = {
   // kind 'giro': seção girando no eixo; 'placa': silhueta frontal extrudada na profundidade.
   kind: 'giro', ox: 0, rTL: 6, rTR: 6, rBL: 6, rBR: 6, rEdge: 3, chamfer: false,
   notchUp: false,
+  // gargalo: rosca helicoidal + anel de apoio; W = diâmetro da rosca (T).
+  neckStd: '24/410', pitch: 3.18, turns: 1.5, threadD: 1, ringH: 1.6, ringW: 1.8, embed: 8,
   // bisnaga: tubo que achata até a solda mantendo o perímetro.
   flatStart: 8, flatCurve: 1.15, sealH: 7, sealT: 1.4, sealW: 6,
   sealShape: 'reta', sealArc: 4, sealR: 0, serr: true, serrP: 1, serrD: 0.25,
@@ -209,6 +212,7 @@ const LIB = {
   esfera:  { name: 'Esfera', W: 44, D: 44, h: 44, rBot: 22, rTop: 22, groove: 15 },
   domo:    { name: 'Domo meia-lua', W: 46, D: 38, h: 38, rBot: 2, rTop: 24, groove: 15, notch: true, notchY: 15, notchW: 18, notchH: 9, notchD: 2.2, notchP: 2 },
   seixo:   { name: 'Seixo com fenda', W: 70, D: 40, n: 2.4, h: 34, rBot: 6, rTop: 18, groove: 13, notch: true, notchY: 13, notchW: 30, notchH: 6, notchD: 1.8, notchP: 8 },
+  gargalo: { name: 'Gargalo com rosca', kind: 'gargalo', W: 23.9, D: 23.9, h: 16, neckStd: '24/410', pitch: 3.18, turns: 1.5 },
   bisnaga: { name: 'Corpo bisnaga', kind: 'bisnaga', W: 45, D: 45, h: 165, rBot: 4, vol: true },
   tampaBisnaga: { name: 'Tampa de bisnaga', W: 44, D: 44, h: 34, rBot: 2.5, rTop: 1, groove: 24, notch: true, notchUp: true, notchW: 18, notchH: 9, notchD: 1.4, notchP: 6 },
   placa:   { name: 'Corpo placa assimétrico', kind: 'placa', W: 66, D: 34, h: 134, rTL: 5, rTR: 30, rBL: 7, rBR: 7, rEdge: 5, chamfer: true, vol: true },
@@ -217,32 +221,47 @@ const LIB = {
 const M = (type, o = {}) => ({ ...BASE, ...LIB[type], ...o });
 
 const PINK = '#e0306e', CREAM = '#f1e6cc';
+// Acabamentos de mercado (padrão GPI). Medidas aproximadas: confirmar com o fornecedor.
+const NECKS = {
+  '18/410': { W: 17.8, h: 13.5, pitch: 3.18, turns: 1.5 },
+  '20/410': { W: 19.7, h: 14.7, pitch: 3.18, turns: 1.5 },
+  '24/410': { W: 23.9, h: 16, pitch: 3.18, turns: 1.5 },
+  '24/415': { W: 23.9, h: 19.7, pitch: 3.18, turns: 2 },
+  '28/400': { W: 27.4, h: 9.8, pitch: 4.23, turns: 1 },
+  '28/410': { W: 27.4, h: 18.3, pitch: 4.23, turns: 1.5 },
+  '38/400': { W: 37.6, h: 10.2, pitch: 4.23, turns: 1 },
+  '53/400': { W: 52.6, h: 11, pitch: 4.23, turns: 1 },
+  '70/400': { W: 69.6, h: 12.2, pitch: 4.23, turns: 1 },
+  '89/400': { W: 88.4, h: 13, pitch: 4.23, turns: 1 },
+};
+const NECK = (std, o = {}) => M('gargalo', { neckStd: std, ...NECKS[std], D: NECKS[std].W, ...o });
+
 const PRESETS = {
   'Cápsula + esfera': { color: PINK, finish: 'fosco', modules: [
-    M('capsula', { rBot: 12 }), M('esfera')] },
+    M('capsula', { rBot: 12 }), NECK('24/410'), M('esfera')] },
   'Seixo com fenda': { color: CREAM, finish: 'fosco', modules: [
-    M('plano', { W: 78, D: 44, n: 3.2, h: 132, rBot: 16, rTop: 16 }), M('seixo')] },
+    M('plano', { W: 78, D: 44, n: 3.2, h: 132, rBot: 16, rTop: 16 }), NECK('24/410'), M('seixo')] },
   'Domo meia-lua': { color: CREAM, finish: 'fosco', modules: [
-    M('plano', { W: 72, D: 42, n: 3, h: 128, rBot: 18, rTop: 18 }), M('domo')] },
+    M('plano', { W: 72, D: 42, n: 3, h: 128, rBot: 18, rTop: 18 }), NECK('24/410'), M('domo')] },
   'Arco + tigela': { color: PINK, finish: 'fosco', modules: [
-    M('arco'), M('tigela'), M('disco', { W: 42, D: 42 })] },
+    M('arco'), NECK('28/410'), M('tigela'), M('disco', { W: 42, D: 42 })] },
   'Anéis empilhados': { color: PINK, finish: 'fosco', modules: [
-    M('plano', { W: 66, D: 34, n: 6, h: 120, rBot: 6, rTop: 14 }),
+    M('plano', { W: 66, D: 34, n: 6, h: 120, rBot: 6, rTop: 14 }), NECK('24/410'),
     M('anel', { rep: 3 }), M('disco', { W: 38, D: 38, h: 8, rBot: 3, rTop: 3 })] },
   'Cone + tigela': { color: PINK, finish: 'fosco', modules: [
-    M('cone'), M('tigela', { W: 36, D: 36, h: 18, rBot: 16 }), M('disco', { W: 38, D: 38, h: 5 })] },
+    M('cone'), NECK('28/410'), M('tigela', { W: 36, D: 36, h: 18, rBot: 16 }), M('disco', { W: 38, D: 38, h: 5 })] },
   'Barril empilhado': { color: PINK, finish: 'fosco', modules: [
-    M('reto', { W: 54, D: 54, h: 95, rBot: 4, rTop: 4 }), M('barril'),
+    M('reto', { W: 54, D: 54, h: 95, rBot: 4, rTop: 4 }), NECK('28/410'), M('barril'),
     M('tigela', { W: 48, D: 48, h: 22, rBot: 20 }), M('disco', { W: 50, D: 50, h: 5 })] },
   'Gargalo flare': { color: PINK, finish: 'fosco', modules: [
-    M('reto', { W: 58, D: 58, h: 120, rBot: 10, rTop: 26 }), M('flare'), M('disco', { W: 46, D: 46, h: 7 })] },
+    M('reto', { W: 58, D: 58, h: 120, rBot: 10, rTop: 26 }), NECK('24/410'), M('flare', { W: 30, D: 30 }), M('disco', { W: 46, D: 46, h: 7 })] },
   'Bisnaga 200 ml': { color: '#9a9a9c', finish: 'acetinado', modules: [
     M('tampaBisnaga', { W: 47, D: 47 }), M('bisnaga', { W: 48.5, D: 48.5, h: 178, rBot: 4.3 })] },
   'Placa assimétrica + esfera': { color: '#c42b52', finish: 'fosco', modules: [
-    M('placa'), M('esfera', { W: 35, D: 35, h: 35, rBot: 17.5, rTop: 17.5, ox: -8, groove: 12,
+    M('placa'), NECK('24/410', { ox: -8 }), M('esfera', { W: 35, D: 35, h: 35, rBot: 17.5, rTop: 17.5, groove: 12,
       notch: true, notchW: 11, notchH: 2.5, notchD: 1.4, notchP: 8 })] },
   'Oval flip-top 250 ml': { color: '#f28bb5', finish: 'acetinado', modules: [
-    M('plano', { W: 61, D: 37, n: 3.4, h: 138.5, rBot: 16.6, rTop: 9.2, bulge: 3, bulgePos: 30 }),
+    M('plano', { W: 61, D: 37, n: 3.4, h: 138.5, rBot: 16.6, rTop: 9.2, bulge: 3, bulgePos: 30 }), NECK('24/410'),
     M('flip', { own: true, color: '#ffd21f', finish: 'brilho' })] },
 };
 
@@ -346,6 +365,37 @@ function loftPts(pts) {
   return g;
 }
 
+// Gargalo: base que entra no corpo, anel de apoio e rosca helicoidal.
+function neckGeo(m, y0, { lo = false } = {}) {
+  const R0 = m.W / 2, E = Math.max(R0 - m.threadD, 1), ringR = E + m.threadD + m.ringW, rh = m.ringH, h = m.h;
+  const prof = [[-m.embed, E], [0, E]];
+  if (rh > 0) prof.push([0.01, ringR - 0.4], [Math.min(0.4, rh / 2), ringR], [Math.max(rh - 0.4, rh / 2), ringR], [rh, ringR - 0.4], [rh + 0.01, E]);
+  const step = lo ? 2 : 0.18;
+  for (let y = rh + 0.2; y < h - 0.8; y += step) prof.push([y, E]);
+  prof.push([h - 0.8, E], [h - 0.3, E - 0.25], [h, E - 0.8]);
+  const rings = prof.filter((q, i, a) => i === 0 || q[0] > a[i - 1][0]).map(([ly, a]) => ({ y: y0 + ly, ly, a, b: a, n: 2 }));
+  // A hélice termina perto da boca, como no gargalo real.
+  const pitch = Math.max(m.pitch, 0.5), w = pitch * 0.45, yT1 = h - 1.2 - pitch * 0.25;
+  const turns = Math.min(m.turns, Math.max(0, (yT1 - (rh + 1.2)) / pitch)), yT0 = yT1 - turns * pitch;
+  const disp = lo || turns <= 0 ? null : (x, ly, z, th) => {
+    if (ly < yT0 - w || ly > yT1 + w) return [x, z];
+    let f = 0;
+    const k = Math.round((ly - yT0) / pitch - th / TAU);
+    for (let kk = k - 1; kk <= k + 1; kk++) {
+      const phi = th + TAU * kk; if (phi < 0 || phi > turns * TAU) continue;
+      const dy = Math.abs(ly - (yT0 + pitch * phi / TAU));
+      // Filete trapezoidal, com as pontas afinando em 45°.
+      const ends = clamp(Math.min(phi, turns * TAU - phi) / (Math.PI / 4), 0, 1);
+      f = Math.max(f, clamp((w / 2 - dy) / (w * 0.3), 0, 1) * ends);
+    }
+    if (f > 0) { const rr = Math.hypot(x, z) || 1; x += x / rr * m.threadD * f; z += z / rr * m.threadD * f; }
+    return [x, z];
+  };
+  const g = loft(rings, lo ? 48 : 256, disp);
+  if (m.ox) g.translate(m.ox, 0, 0);
+  return g;
+}
+
 // Perímetro da elipse (Ramanujan).
 const perim = (a, b) => Math.PI * (3 * (a + b) - Math.sqrt((3 * a + b) * (a + 3 * b)));
 
@@ -441,6 +491,7 @@ function slabGeo(m0, y0, { inset = 0, lift = 0, lo = false } = {}) {
 function moduleGeo(m0, y0, opts = {}) {
   if (m0.kind === 'placa') return slabGeo(m0, y0, opts);
   if (m0.kind === 'bisnaga') return tubeGeo(m0, y0, opts);
+  if (m0.kind === 'gargalo') return opts.inset ? null : neckGeo(m0, y0, opts);
   const { inset = 0, lift = 0, lo = false } = opts;
   const m = inset ? { ...m0, W: m0.W - 2 * inset, D: m0.D - 2 * inset, h: m0.h - lift,
     rBot: Math.max(0, m0.rBot - inset), rTop: Math.max(0, m0.rTop - inset), groove: 0, notch: false, ridges: 0 } : m0;
@@ -481,16 +532,23 @@ function signedVolume(g, signed = false) {
 }
 
 // Posição vertical de cada peça (módulo × repetição).
-function layout(s) {
-  const out = []; let cur = 0;
-  s.modules.forEach((m, idx) => {
+// A peça logo acima de um gargalo o veste: desce até o anel de apoio e se
+// alinha a ele. explode separa as peças para mostrar a junção.
+function layout(s, explode = 0) {
+  const out = []; let cur = 0, neck = null;
+  s.modules.forEach((m0, idx) => {
+    const onNeck = neck && m0.kind !== 'gargalo';
+    const m = onNeck ? { ...m0, ox: neck.m.ox } : m0;
+    let y0 = 0;
     for (let r = 0; r < Math.max(1, Math.round(m.rep)); r++) {
-      const y0 = cur + (r === 0 ? m.gap : m.repGap);
-      out.push({ m, idx, y0 }); cur = y0 + m.h;
+      y0 = r === 0 && onNeck ? neck.y0 + neck.m.ringH + m.gap : cur + (r === 0 ? m.gap : m.repGap);
+      out.push({ m, idx, y0: y0 + idx * explode }); cur = y0 + m.h;
     }
+    neck = m0.kind === 'gargalo' ? { m: m0, y0 } : null;
   });
   return out;
 }
+let explode = false;
 
 function volumes(s) {
   let ext = 0, cap = 0, first = true;
@@ -569,7 +627,7 @@ function material(color, finish) {
 function build() {
   product.children.forEach(o => o.geometry.dispose());
   product.clear();
-  for (const { m, idx, y0 } of layout(S)) {
+  for (const { m, idx, y0 } of layout(S, explode ? 18 : 0)) {
     const g = moduleGeo(m, y0); if (!g) continue;
     const mesh = new THREE.Mesh(g, material(m.own ? m.color : S.color, m.own ? m.finish : S.finish));
     mesh.castShadow = true; mesh.receiveShadow = true;
@@ -635,6 +693,7 @@ function setOrtho(on) {
 }
 document.querySelectorAll('[data-view]').forEach(b => b.onclick = () => fit(b.dataset.view));
 $('#orthoBtn').onclick = () => setOrtho(cam !== ortho);
+$('#explodeBtn').onclick = () => { explode = !explode; $('#explodeBtn').classList.toggle('on', explode); build(); fit(); };
 $('#gridBtn').onclick = () => { grid.visible = !grid.visible; $('#gridBtn').classList.toggle('on', grid.visible); req(); };
 
 // Clique no 3D seleciona o módulo.
@@ -704,14 +763,24 @@ const KIND_TIP = {
   giro: 'A forma nasce do corte visto de cima (redondo → oval → quadrado) e do perfil de lado. Serve para a maioria dos frascos, tampas e peças.',
   placa: 'A forma é desenhada de frente, com cada canto ajustável, e ganha espessura na profundidade. Use para frascos assimétricos.',
   bisnaga: 'Tubo redondo junto da tampa que vai achatando até a solda no topo.',
+  gargalo: 'Rosca e anel de apoio. A peça logo acima veste o gargalo: desce até o anel e esconde a rosca. Use Explodir para ver a junção.',
 };
 // Campos que só valem para um tipo de forma.
 const only = (kind, d) => { const a = [...d]; while (a.length < 7) a.push(0); const prev = a[6]; a[6] = m => m.kind === kind && (!prev || prev(m)); return a; };
-const G = d => only('giro', d), P = d => only('placa', d), B = d => only('bisnaga', d);
+const G = d => only('giro', d), P = d => only('placa', d), B = d => only('bisnaga', d), N = d => only('gargalo', d);
+const notNeck = d => { const a = [...d]; while (a.length < 7) a.push(0); a[6] = m => m.kind !== 'gargalo'; return a; };
 const GB = d => { const a = [...d]; while (a.length < 7) a.push(0); const prev = a[6]; a[6] = m => m.kind !== 'placa' && (!prev || prev(m)); return a; };
 const MF = [
   ['Forma', [
-    ['kind', 'Tipo de forma', 'select', [['giro', 'Seção: redonda, oval ou quadrada'], ['placa', 'Silhueta: desenho de frente, cantos livres'], ['bisnaga', 'Bisnaga: tubo que achata até a solda']]],
+    ['kind', 'Tipo de forma', 'select', [['giro', 'Seção: redonda, oval ou quadrada'], ['placa', 'Silhueta: desenho de frente, cantos livres'], ['bisnaga', 'Bisnaga: tubo que achata até a solda'], ['gargalo', 'Gargalo com rosca']]],
+    N(['neckStd', 'Padrão do acabamento (aprox.)', 'select', [...Object.keys(NECKS).map(k => [k, k]), ['livre', 'Livre']]]),
+    N(['W', 'Diâmetro da rosca (T)', 8, 120, 0.1, 'mm']),
+    N(['pitch', 'Passo da rosca', 1, 6, 0.01, 'mm']),
+    N(['turns', 'Voltas da rosca', 0.5, 4, 0.25, '']),
+    N(['threadD', 'Profundidade da rosca', 0.3, 2.5, 0.05, 'mm']),
+    N(['ringH', 'Anel de apoio: altura', 0, 5, 0.1, 'mm']),
+    N(['ringW', 'Anel de apoio: aba', 0, 6, 0.1, 'mm']),
+    N(['embed', 'Base que entra no corpo', 0, 30, 0.5, 'mm']),
     B(['flatStart', 'Começa a achatar em', 0, 90, 1, '%']),
     B(['flatCurve', 'Achatamento: reto → curvo', 0.5, 3, 0.05, '']),
     B(['sealH', 'Altura da solda', 0, 30, 0.5, 'mm']),
@@ -724,8 +793,8 @@ const MF = [
     B(['serrP', 'Serrilhado: passo', 0.4, 4, 0.1, 'mm', m => m.serr]),
     B(['serrD', 'Serrilhado: profundidade', 0.05, 1, 0.05, 'mm', m => m.serr]),
     ['h', 'Altura', 1, 300, 0.5, 'mm'],
-    ['W', 'Largura (frente)', 4, 200, 0.5, 'mm'],
-    ['D', 'Profundidade (lado)', 4, 200, 0.5, 'mm'],
+    notNeck(['W', 'Largura (frente)', 4, 200, 0.5, 'mm']),
+    notNeck(['D', 'Profundidade (lado)', 4, 200, 0.5, 'mm']),
     G(['n', 'Seção: oval → retângulo', 2, 10, 0.1, '']),
     G(['taper', 'Topo em relação à base', 10, 250, 1, '%']),
     G(['bulge', 'Barriga (− cintura)', -35, 40, 0.5, '%']),
@@ -807,6 +876,16 @@ function renderEditor() {
   nm.oninput = () => { m.name = nm.value; renderStack(); store.set('shape.autosave', S); };
   ed.appendChild(top);
   field(ed, m, ['vol', 'Faz parte do frasco (entra na capacidade)', 'check'], () => { renderStack(); queueBuild(); });
+  const below = S.modules[sel - 1];
+  if (below?.kind === 'gargalo' && m.kind !== 'gargalo') {
+    // Tampa sobre gargalo: precisa caber a rosca por dentro, com parede.
+    const inner = Math.min(m.W, m.D) - 2 * S.wall, need = below.W + 0.6, deep = m.h * Math.max(1, m.rep) >= below.h - below.ringH;
+    const tip = document.createElement('div'); tip.className = 'tip';
+    tip.innerHTML = `Veste o gargalo ${below.neckStd !== 'livre' ? below.neckStd : ''} (rosca Ø${r1(below.W)} mm).<br>` +
+      (inner >= need ? `✓ Cabe por dentro (interno ≈ ${r1(inner)} mm).` : `⚠ Estreita demais: interno ≈ ${r1(inner)} mm, precisa de ≥ ${r1(need)} mm.`) +
+      (deep ? '' : `<br>⚠ Baixa demais: a rosca aparece acima da tampa.`);
+    ed.appendChild(tip);
+  }
   for (const [title, defs] of MF) {
     if (!defs.some(d => !d[6] || d[6](m))) continue;
     const h = document.createElement('h3'); h.textContent = title; ed.appendChild(h);
@@ -820,6 +899,9 @@ function renderEditor() {
       const el = field(ed, m, def, (k, structural) => {
         // Ligar o entalhe sem linha de abertura cria a linha junto.
         if (k === 'notch' && m.notch && !(m.groove > 0)) m.groove = r1(Math.min(12, m.h * 0.35));
+        if (k === 'neckStd' && NECKS[m.neckStd]) Object.assign(m, NECKS[m.neckStd], { D: NECKS[m.neckStd].W });
+        if (k === 'kind' && m.kind === 'gargalo' && NECKS[m.neckStd]) Object.assign(m, NECKS[m.neckStd], { D: NECKS[m.neckStd].W });
+        if (m.kind === 'gargalo' && k === 'W') m.D = m.W;
         if (structural || ['rep', 'groove', 'ridges', 'own', 'kind'].includes(k)) renderEditorKeepScroll();
         renderStack(); queueBuild();
       });
@@ -853,7 +935,7 @@ function renderAll() { renderStack(); renderEditor(); renderGlobal(); renderPres
 const CATS = [
   ['Corpo', ['capsula', 'reto', 'plano', 'arco', 'cone', 'placa', 'bisnaga']],
   ['Tampa', ['esfera', 'domo', 'seixo', 'flip', 'tampaBisnaga', 'disco']],
-  ['Peça de encaixe', ['colar', 'barril', 'flare', 'anel', 'tigela']],
+  ['Peça de encaixe', ['gargalo', 'colar', 'barril', 'flare', 'anel', 'tigela']],
 ];
 CATS.forEach(([label, keys]) => {
   const row = document.createElement('div'); row.className = 'row';
