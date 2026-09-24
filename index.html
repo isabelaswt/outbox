@@ -183,7 +183,7 @@ const store = {
 // ───────────────────────── módulos ─────────────────────────
 const BASE = {
   name: 'Módulo', W: 50, D: 50, n: 2, h: 40, taper: 100, bulge: 0, bulgePos: 50,
-  rBot: 2, rTop: 2, gap: 0, rep: 1, repGap: 0,
+  rBot: 2, rTop: 2, rBotW: 0, rTopW: 0, gap: 0, rep: 1, repGap: 0,
   groove: 0, grooveD: 0.6,
   notch: false, notchLock: true, notchY: 12, notchW: 20, notchH: 8, notchD: 2, notchP: 2,
   ridges: 0, ridgeD: 0.6,
@@ -199,7 +199,7 @@ const BASE = {
   pesc: true, pescD: 4, pescCurve: 0, pescWave: 0, pescGap: 3,
   mola: true, houseD: 8, springL: 18, coils: 11, sleeve: 'transparente',
   // sistema de abertura da tampa: flip-top (dobradiça na linha) ou disc-top.
-  topType: 'nenhum', openPct: 0, lidSide: 'cima', orifD: 4, discD: 36, discDip: 4, discDimple: 1.2,
+  topType: 'nenhum', openPct: 0, lidSide: 'cima', orifD: 4, discD: 36, discDip: 4, discDimple: 1.2, discRise: 0,
   // bisnaga: tubo que achata até a solda mantendo o perímetro.
   flatStart: 8, flatCurve: 1.15, sealH: 7, sealT: 1.4, sealW: 6,
   sealShape: 'reta', sealArc: 4, sealR: 0, serr: true, serrP: 1, serrD: 0.25,
@@ -222,7 +222,9 @@ const LIB = {
   spray:   { name: 'Válvula spray fina', kind: 'spray', sprayType: 'mist', W: 24, D: 24, h: 14, ridges: 48, guideW: 17.5, guideH: 5.5, actW: 13.5, actH: 14, stemH: 0, stemD: 4.8, houseD: 6.5, springL: 16 },
   lamina:  { name: 'Pump escultural (bico lâmina)', kind: 'spray', sprayType: 'lamina', W: 38.5, D: 38.5, h: 33, collarR: 14, stemD: 18, stemH: 13,
              actW: 26, headH: 9, nozzleL: 26, armW: 9, armT: 4.5, droop: 2.5 },
-  pump:    { name: 'Válvula pump', kind: 'spray', sprayType: 'pump', W: 30, D: 30, h: 15, ridges: 36, actW: 26, stemH: 16, headH: 22, nozzleL: 16 },
+  pump:    { name: 'Válvula pump', kind: 'spray', sprayType: 'lamina', W: 26.3, D: 26.3, h: 14.5, collarR: 1, stemD: 15, stemH: 14,
+             actW: 19, headH: 4.2, armT: 4.2, armW: 12, nozzleL: 25.5, droop: 1.2 },
+  pumpBloco: { name: 'Pump clássico (cabeça em bloco)', kind: 'spray', sprayType: 'pump', W: 30, D: 30, h: 15, ridges: 36, actW: 26, stemH: 16, headH: 22, nozzleL: 16 },
   gargalo: { name: 'Gargalo com rosca', kind: 'gargalo', W: 23.9, D: 23.9, h: 16, neckStd: '24/410', pitch: 3.18, turns: 1.5 },
   bisnaga: { name: 'Corpo bisnaga', kind: 'bisnaga', W: 45, D: 45, h: 165, rBot: 4, vol: true },
   tampaBisnaga: { name: 'Tampa de bisnaga', W: 44, D: 44, h: 34, rBot: 2.5, rTop: 1, groove: 24, notch: true, notchUp: true, notchW: 18, notchH: 9, notchD: 1.4, notchP: 6, topType: 'flip', lidSide: 'baixo' },
@@ -284,8 +286,12 @@ const PRESETS = {
   'Spray âmbar': { color: '#b8650f', finish: 'vidro', modules: [
     M('reto', { W: 50, D: 50, h: 96, rBot: 4, rTop: 17 }), NECK('24/410', { embed: 14 }),
     M('spray', { W: 29.7, D: 29.7, h: 18, ridges: 0, collarR: 0.8, guideW: 21.7, guideH: 7.5, actW: 16, actH: 16.5, stemH: 0, own: true, color: '#141414', finish: 'brilho', pescWave: 3 })] },
+  'Frasco disc-top': { color: '#f5f5f3', finish: 'fosco', modules: [
+    M('reto', { W: 64, D: 64, h: 109, rTop: 6, rBot: 33, rBotW: 7 }), NECK('24/410', { gap: -6.5 }),
+    M('disctop', { W: 49, D: 49, h: 14.5, taper: 100, rTop: 1, discDip: 0, discRise: 2.5, discD: 42.4 })] },
   'Frasco pump': { color: CREAM, finish: 'fosco', modules: [
-    M('reto', { W: 50, D: 50, h: 110, rBot: 8, rTop: 20 }), NECK('24/410'), M('pump')] },
+    M('placa', { name: 'Corpo placa', W: 76, D: 44, h: 87, rTL: 10, rTR: 10, rBL: 10, rBR: 10, rEdge: 5, chamfer: false }),
+    NECK('24/410'), M('pump')] },
   'Oval flip-top 250 ml': { color: '#f28bb5', finish: 'acetinado', modules: [
     M('plano', { W: 61, D: 37, n: 3.4, h: 138.5, rBot: 16.6, rTop: 9.2, bulge: 3, bulgePos: 30 }), NECK('24/410'),
     M('flip', { own: true, color: '#ffd21f', finish: 'brilho' })] },
@@ -322,9 +328,10 @@ function sectionAt(m, y, rB, rT) {
   const u = t < pp ? 0.5 * t / pp : 0.5 + 0.5 * (t - pp) / (1 - pp);
   const sc = 1 + (m.taper / 100 - 1) * t + (m.bulge / 100) * Math.sin(Math.PI * clamp(u, 0, 1));
   let a = Math.max(m.W / 2 * sc, 0.1), b = Math.max(m.D / 2 * sc, 0.1);
+  // Raio na altura (rB/rT) e recuo na largura (rBotW/rTopW; 0 = igual ao raio).
   let r = 0, f = 0;
-  if (rB > 0 && y < rB) { const c = 1 - y / rB; f = 1 - Math.sqrt(Math.max(0, 1 - c * c)); r = rB; }
-  else if (rT > 0 && y > h - rT) { const c = 1 - (h - y) / rT; f = 1 - Math.sqrt(Math.max(0, 1 - c * c)); r = rT; }
+  if (rB > 0 && y < rB) { const c = 1 - y / rB; f = 1 - Math.sqrt(Math.max(0, 1 - c * c)); r = m.rBotW > 0 ? m.rBotW : rB; }
+  else if (rT > 0 && y > h - rT) { const c = 1 - (h - y) / rT; f = 1 - Math.sqrt(Math.max(0, 1 - c * c)); r = m.rTopW > 0 ? m.rTopW : rT; }
   a -= Math.min(r, a) * f; b -= Math.min(r, b) * f;
   if (m.groove > 0) {
     const g = m.grooveD * Math.max(0, 1 - Math.abs(y - (h - m.groove)) / 0.5);
@@ -706,7 +713,7 @@ function flipOpenGeo(m, y0, rings, seg, disp, ang) {
 // Disc-top: disco quase da largura da tampa, saltado no rebaixo da borda,
 // com a fenda de saída na lateral; apertando o outro lado, a fenda sobe.
 function discTopGeo(m, y0, ang, lo) {
-  const r = Math.min(m.discD, Math.min(m.W, m.D) * m.taper / 100 - 2.4) / 2, yTop = y0 + m.h - m.discDip * 0.3, th = 4;
+  const r = Math.min(m.discD, Math.min(m.W, m.D) * m.taper / 100 - 2.4) / 2, yTop = y0 + m.h - m.discDip * 0.3 + m.discRise, th = 4 + m.discRise;
   // Disco em anéis concêntricos: borda chanfrada e a concavidade de apertar
   // atrás; a fenda de saída fica na frente, alinhada ao rebaixo da borda.
   const bev = 0.8, rd = r * 0.42, czD = -r * 0.45, seg = lo ? 32 : 128, K = lo ? 6 : 36;
@@ -1019,7 +1026,7 @@ const MF = [
     notK(['spray'], ['h', 'Altura', 1, 300, 0.5, 'mm']),
     notK(['gargalo', 'spray'], ['W', 'Largura (frente)', 4, 200, 0.5, 'mm']),
     notK(['gargalo', 'spray'], ['D', 'Profundidade (lado)', 4, 200, 0.5, 'mm']),
-    K(['sprayType', 'Tipo de válvula', 'select', [['mist', 'Spray fino (névoa)'], ['pump', 'Pump (loção)'], ['lamina', 'Pump escultural (bico lâmina)']]]),
+    K(['sprayType', 'Tipo de válvula', 'select', [['mist', 'Spray fino (névoa)'], ['lamina', 'Pump com alavanca / bico lâmina'], ['pump', 'Pump clássico (cabeça em bloco)']]]),
     K(['W', 'Virola: diâmetro', 10, 80, 0.5, 'mm']),
     K(['h', 'Virola: altura', 4, 40, 0.5, 'mm']),
     K(['ridges', 'Virola: frisos', 0, 120, 1, '']),
@@ -1054,7 +1061,9 @@ const MF = [
   ]],
   ['Arredondamento', [
     GB(['rBot', 'Raio embaixo', 0, 150, 0.5, 'mm']),
+    G(['rBotW', 'Raio embaixo: recuo lateral (0 = igual)', 0, 100, 0.5, 'mm', m => m.rBot > 0]),
     G(['rTop', 'Raio em cima', 0, 150, 0.5, 'mm']),
+    G(['rTopW', 'Raio em cima: recuo lateral (0 = igual)', 0, 100, 0.5, 'mm', m => m.rTop > 0]),
     P(['rTL', 'Canto superior esquerdo', 0, 150, 0.5, 'mm']),
     P(['rTR', 'Canto superior direito', 0, 150, 0.5, 'mm']),
     P(['rBL', 'Canto inferior esquerdo', 0, 150, 0.5, 'mm']),
@@ -1075,6 +1084,7 @@ const MF = [
     G(['orifD', 'Furo do bico: diâmetro', 1, 12, 0.1, 'mm', m => m.topType === 'flip']),
     G(['discD', 'Disco: diâmetro', 6, 120, 0.5, 'mm', m => m.topType === 'disc']),
     G(['discDip', 'Rebaixo da borda (sela)', 0, 20, 0.5, 'mm', m => m.topType === 'disc']),
+    G(['discRise', 'Disco sobressai da borda', 0, 10, 0.1, 'mm', m => m.topType === 'disc']),
     G(['discDimple', 'Concavidade de apertar', 0, 4, 0.1, 'mm', m => m.topType === 'disc']),
     G(['groove', 'Linha de abertura (mm do topo, 0 = sem)', 0, 100, 0.5, 'mm']),
     G(['grooveD', 'Profundidade da linha', 0.1, 3, 0.1, 'mm', m => m.groove > 0]),
@@ -1190,7 +1200,7 @@ function renderAll() { renderStack(); renderEditor(); renderGlobal(); renderPres
 const CATS = [
   ['Corpo', ['capsula', 'reto', 'plano', 'arco', 'cone', 'placa', 'bisnaga']],
   ['Tampa', ['esfera', 'domo', 'seixo', 'flip', 'disctop', 'sobretampa', 'tampaBisnaga', 'disco']],
-  ['Válvula', ['lamina', 'pump', 'spray']],
+  ['Válvula', ['pump', 'lamina', 'pumpBloco', 'spray']],
   ['Peça de encaixe', ['gargalo', 'colar', 'barril', 'flare', 'anel', 'tigela']],
 ];
 CATS.forEach(([label, keys]) => {
