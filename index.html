@@ -44,6 +44,7 @@ select,input[type=text]{font:inherit;font-size:12px;border:1px solid var(--line)
 .mod .b:hover{background:var(--soft);color:var(--ink)}
 .gallery{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;max-height:340px;overflow-y:auto;padding:2px;margin:6px 0}
 .gallery h4{grid-column:1/-1;margin:6px 0 0;font-size:10.5px;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);font-weight:600}
+.gallery.swap{grid-template-columns:repeat(4,1fr);max-height:240px}
 .card{border:1px solid var(--line);border-radius:9px;background:var(--soft);cursor:pointer;padding:4px 4px 5px;text-align:center;font-size:10.5px;line-height:1.2;color:#444}
 .card:hover{border-color:#bdb8b0}
 .card.on{border-color:var(--ink);box-shadow:0 0 0 1px var(--ink) inset}
@@ -202,6 +203,7 @@ const BASE = {
   // válvula: W/h = virola que veste o gargalo; cabeça conforme o tipo; pescante até o fundo.
   sprayType: 'mist', actW: 20, actH: 16, stemH: 4, headH: 28, nozzleL: 14, dir: 0,
   collarR: 1.2, stemD: 7, armW: 9, armT: 4.5, droop: 2, guideW: 0, guideH: 0, guideLine: 28,
+  skirtPct: 100, bandInset: 1.5, domeH: 4.5, spoutD: 3.2,
   pesc: true, pescD: 4, pescCurve: 0, pescWave: 0, pescGap: 3,
   mola: true, houseD: 8, springL: 18, coils: 11, sleeve: 'transparente',
   // sistema de abertura da tampa: flip-top (dobradiça na linha) ou disc-top.
@@ -213,6 +215,8 @@ const BASE = {
 const LIB = {
   capsula: { name: 'Corpo cápsula', W: 58, D: 58, h: 160, rBot: 29, rTop: 29, vol: true },
   reto:    { name: 'Corpo reto', W: 58, D: 58, h: 140, rBot: 8, rTop: 12, vol: true },
+  boston:  { name: 'Corpo Boston (farmacêutico)', W: 60, D: 60, h: 130, rBot: 4, rTop: 24, vol: true },
+  quadrado: { name: 'Corpo quadrado', W: 56, D: 56, n: 7, h: 118, rBot: 5, rTop: 9, vol: true },
   plano:   { name: 'Corpo plano', W: 70, D: 40, n: 3.4, h: 130, rBot: 14, rTop: 14, vol: true },
   arco:    { name: 'Corpo arco', W: 66, D: 36, n: 4, h: 125, rBot: 5, rTop: 33, vol: true },
   cone:    { name: 'Corpo cone', W: 62, D: 62, h: 140, taper: 62, rBot: 8, rTop: 10, vol: true },
@@ -225,12 +229,20 @@ const LIB = {
   esfera:  { name: 'Esfera', W: 44, D: 44, h: 44, rBot: 22, rTop: 22, groove: 15, topType: 'flip' },
   domo:    { name: 'Domo meia-lua', W: 46, D: 38, h: 38, rBot: 2, rTop: 24, groove: 15, notch: true, notchY: 15, notchW: 18, notchH: 9, notchD: 2.2, notchP: 2, topType: 'flip' },
   seixo:   { name: 'Seixo com fenda', W: 70, D: 40, n: 2.4, h: 34, rBot: 6, rTop: 18, groove: 13, notch: true, notchY: 13, notchW: 30, notchH: 6, notchD: 1.8, notchP: 8, topType: 'flip' },
-  spray:   { name: 'Válvula spray fina', kind: 'spray', sprayType: 'mist', W: 24, D: 24, h: 14, ridges: 48, guideW: 17.5, guideH: 5.5, actW: 13.5, actH: 14, stemH: 0, stemD: 4.8, houseD: 6.5, springL: 16 },
+  spray:   { name: 'Válvula spray fina', kind: 'spray', sprayType: 'mist', W: 26, D: 26, h: 21, skirtPct: 35, bandInset: 1.4, ridges: 64,
+             guideW: 19, guideH: 5.5, actW: 14.5, actH: 14.5, stemH: 0, stemD: 4.8, houseD: 6.5, springL: 16 },
   lamina:  { name: 'Pump escultural (bico lâmina)', kind: 'spray', sprayType: 'lamina', W: 38.5, D: 38.5, h: 33, collarR: 14, stemD: 18, stemH: 13,
              actW: 26, headH: 9, nozzleL: 26, armW: 9, armT: 4.5, droop: 2.5 },
   pump:    { name: 'Válvula pump', kind: 'spray', sprayType: 'lamina', W: 26.3, D: 26.3, h: 14.5, collarR: 1, stemD: 15, stemH: 14,
              actW: 19, headH: 4.2, armT: 4.2, armW: 12, nozzleL: 25.5, droop: 1.2 },
-  pumpBloco: { name: 'Pump clássico (cabeça em bloco)', kind: 'spray', sprayType: 'pump', W: 30, D: 30, h: 15, ridges: 36, actW: 26, stemH: 16, headH: 22, nozzleL: 16 },
+  locao:   { name: 'Pump loção (bico curvo)', kind: 'spray', sprayType: 'locao', W: 24.5, D: 24.5, h: 10.8, collarR: 0.8, stemD: 15.5, stemH: 7.3,
+             actW: 18.8, headH: 19.7, domeH: 4.5, nozzleL: 30, droop: 6, spoutD: 3 },
+  espuma:  { name: 'Pump espuma', kind: 'spray', sprayType: 'locao', W: 43, D: 43, h: 15, collarR: 1, stemD: 26, stemH: 5,
+             actW: 31, headH: 16, domeH: 1.5, nozzleL: 13, droop: 1.5, spoutD: 6.5, houseD: 16, springL: 26 },
+  contaGotas: { name: 'Conta-gotas', kind: 'spray', sprayType: 'gotas', W: 22, D: 22, h: 13, ridges: 48, actW: 15, actH: 24,
+             mola: false, pescD: 6.5, pescGap: 12 },
+  pushPull: { name: 'Tampa push-pull', kind: 'spray', sprayType: 'pushpull', W: 30, D: 30, h: 13, collarR: 1.2, ridges: 40,
+             actW: 13, actH: 10, mola: false, pesc: false },
   gargalo: { name: 'Gargalo com rosca', kind: 'gargalo', W: 23.9, D: 23.9, h: 16, neckStd: '24/410', pitch: 3.18, turns: 1.5 },
   bisnaga: { name: 'Corpo bisnaga', kind: 'bisnaga', W: 45, D: 45, h: 165, rBot: 4, vol: true },
   tampaBisnaga: { name: 'Tampa de bisnaga', W: 44, D: 44, h: 34, rBot: 2.5, rTop: 1, groove: 24, notch: true, notchUp: true, notchW: 18, notchH: 9, notchD: 1.4, notchP: 6, topType: 'flip', lidSide: 'baixo' },
@@ -239,7 +251,7 @@ const LIB = {
   sobretampa: { name: 'Sobretampa (cobre a válvula)', W: 30, D: 30, h: 42, rBot: 0.5, rTop: 2 },
   disctop: { name: 'Tampa disc-top', W: 48.3, D: 48.3, h: 32.5, taper: 95, rBot: 1, rTop: 0.8, topType: 'disc', discD: 42.4, discDip: 5 },
 };
-const M = (type, o = {}) => ({ ...BASE, ...LIB[type], ...o });
+const M = (type, o = {}) => ({ ...BASE, ...LIB[type], type, ...o });
 
 const PINK = '#e0306e', CREAM = '#f1e6cc';
 // Acabamentos de mercado (padrão GPI). Medidas aproximadas: confirmar com o fornecedor.
@@ -291,7 +303,15 @@ const PRESETS = {
       actW: 36, headH: 4.2, armT: 4.2, armW: 12, nozzleL: 22, droop: 0 })] },
   'Spray âmbar': { color: '#b8650f', finish: 'vidro', modules: [
     M('reto', { W: 50, D: 50, h: 96, rBot: 4, rTop: 17 }), NECK('24/410', { embed: 14 }),
-    M('spray', { W: 29.7, D: 29.7, h: 18, ridges: 0, collarR: 0.8, guideW: 21.7, guideH: 7.5, actW: 16, actH: 16.5, stemH: 0, own: true, color: '#141414', finish: 'brilho', pescWave: 3 })] },
+    M('spray', { W: 29.7, D: 29.7, h: 18, skirtPct: 100, ridges: 0, collarR: 0.8, guideW: 21.7, guideH: 7.5, actW: 16, actH: 16.5,
+      own: true, color: '#141414', finish: 'brilho', pescWave: 3 })] },
+  'Boston com pump': { color: '#a39228', finish: 'vidro', modules: [
+    M('boston'), NECK('24/410', { embed: 12 }), M('locao', { own: true, color: '#1c1c1c', finish: 'fosco' })] },
+  'Conta-gotas âmbar': { color: '#9a4e0c', finish: 'vidro', modules: [
+    M('boston', { W: 34, D: 34, h: 62, rTop: 13, rBot: 3 }), NECK('18/410', { embed: 8 }),
+    M('contaGotas', { W: 21, D: 21, own: true, color: '#1c1c1c', finish: 'fosco' })] },
+  'Frasco espuma': { color: '#f3f1ec', finish: 'fosco', modules: [
+    M('reto', { W: 66, D: 66, h: 120, rBot: 10, rTop: 14 }), NECK('38/400'), M('espuma')] },
   'Frasco disc-top': { color: '#f5f5f3', finish: 'fosco', modules: [
     M('reto', { W: 64, D: 64, h: 109, rTop: 6, rBot: 33, rBotW: 7 }), NECK('24/410', { gap: -6.5 }),
     M('disctop', { W: 49, D: 49, h: 14.5, taper: 100, rTop: 1, discDip: 0, discRise: 2.5, discD: 42.4 })] },
@@ -309,7 +329,7 @@ let S = normalize(store.get('shape.autosave', null) || { name: 'Cápsula + esfer
 let sel = 0;
 function normalize(s) {
   s.wall ??= 1.2; s.bg ??= '#f1f0ed'; s.color ??= PINK; s.finish ??= 'fosco'; s.name ??= 'Sem nome';
-  s.modules = (s.modules || []).map(m => ({ ...BASE, ...m, ...(m.sprayType === 'gatilho' ? { sprayType: 'mist' } : {}) }));
+  s.modules = (s.modules || []).map(m => ({ ...BASE, ...m, ...(m.sprayType === 'gatilho' ? { sprayType: 'mist' } : m.sprayType === 'pump' ? { sprayType: 'locao' } : {}) }));
   if (!s.modules.length) s.modules = [M('reto')];
   return s;
 }
@@ -445,7 +465,14 @@ function xCyl(r, len, x0, y, lo) { // cilindro deitado, apontando para +x
 
 // Válvula: virola que veste o gargalo + cabeça de spray fino ou pump.
 function sprayGeo(m, y0, { lo = false } = {}) {
-  const collar = moduleGeo({ ...BASE, kind: 'giro', W: m.W, D: m.W, h: m.h, rBot: 0.6, rTop: m.collarR, ridges: m.ridges, ridgeD: m.ridgeD }, y0, { lo });
+  const ring = (W, h, y, o = {}) => moduleGeo({ ...BASE, kind: 'giro', W, D: W, h, ...o }, y, { lo });
+  let collar;
+  if (m.sprayType === 'mist' && m.skirtPct < 99) {
+    // Virola do spray: saia lisa embaixo + faixa serrilhada um pouco mais estreita.
+    const sk = m.h * m.skirtPct / 100, bw = m.W - 2 * m.bandInset;
+    collar = mergeGeometries([ring(m.W, sk, y0, { rBot: 0.6, rTop: 0.8 }),
+      ring(bw, m.h - sk + 0.05, y0 + sk - 0.05, { rBot: 0, rTop: 0.6, ridges: m.ridges, ridgeD: 0.35 })]);
+  } else collar = ring(m.W, m.h, y0, { rBot: 0.6, rTop: m.collarR, ridges: m.ridges, ridgeD: m.ridgeD });
   const top = y0 + m.h, head = [], holes = [];
   if (m.sprayType === 'mist') {
     // Anel guia entre a virola e o atuador, com friso perto da base.
@@ -458,25 +485,41 @@ function sprayGeo(m, y0, { lo = false } = {}) {
     if (m.stemH > 0) head.push(cyl(m.stemD / 2, yA - 1, m.stemH + 2, 0, 0, lo));
     const yAct = yA + m.stemH;
     head.push(moduleGeo({ ...BASE, kind: 'giro', W: m.actW, D: m.actW, h: m.actH, rBot: 0.8, rTop: Math.min(1.8, m.actW / 6) }, yAct, { lo }));
-    // Orifício: pastilha clara com o furo escuro no centro.
-    const yo = yAct + m.actH * 0.66, zf = m.actW / 2;
-    const ins = cyl(1.5, 0, 1.2, 0.3, 0); ins.rotateX(Math.PI / 2); ins.translate(0, yo, zf - 1.05); ins.userData.mat = 'insert';
-    const oh = cyl(0.5, 0, 1.2); oh.rotateX(Math.PI / 2); oh.translate(0, yo, zf - 0.95);
-    holes.push(ins, oh);
+    // Orifício em botão: círculo marcado com o furinho no centro.
+    const yo = yAct + m.actH * 0.66, zf = m.actW / 2, rb = Math.max(1.4, m.actW * 0.16);
+    const btn = new THREE.TorusGeometry(rb, 0.13, 8, 48); btn.translate(0, yo, zf + 0.02);
+    const oh = cyl(0.42, 0, 1.2); oh.rotateX(Math.PI / 2); oh.translate(0, yo, zf - 0.95);
+    holes.push(btn, oh);
   } else if (m.sprayType === 'lamina') {
     head.push(cyl(m.stemD / 2, top - 1, m.stemH + 2, 0, 0, lo));
     head.push(bladeHeadGeo(m, top + m.stemH, lo));
     // Saída na ponta da lâmina.
     const rt = Math.min(m.armT / 2, m.armW / 2), tipX = m.actW / 2 + m.nozzleL;
     holes.push(xCyl(rt * 0.42, 1.2, tipX - 1, top + m.stemH + m.headH * 0.38 + (m.headH - m.armT) * 0.4 - m.droop, lo));
+  } else if (m.sprayType === 'gotas') {
+    // Conta-gotas: bulbo de borracha com topo em domo.
+    head.push(ring(m.actW, m.actH, top - 0.5, { rBot: 1.5, rTop: m.actW / 2, bulge: -6, bulgePos: 30 }));
+  } else if (m.sprayType === 'pushpull') {
+    // Push-pull: bico cônico com a ponta que sobe para abrir.
+    head.push(ring(m.actW, m.actH, top - 0.5, { taper: 62, rBot: 0, rTop: 0.8 }));
+    head.push(ring(m.actW * 0.72, 3, top + m.actH - 1, { rBot: 0.6, rTop: 1 }));
+    const oh = cyl(1.1, top + m.actH + 1.85, 0.3); holes.push(oh);
   } else {
+    // Pump de loção/espuma: haste grossa, cabeça com topo em domo e bico em
+    // tubo que sai reto e curva para baixo.
     head.push(cyl(m.stemD / 2, top - 1, m.stemH + 2, 0, 0, lo));
     const yH = top + m.stemH;
-    head.push(moduleGeo({ ...BASE, kind: 'giro', W: m.actW, D: m.actW * 0.78, n: 3.2, h: m.headH, rBot: 1.5, rTop: Math.min(5, m.headH / 3) }, yH, { lo }));
+    head.push(ring(m.actW, m.headH, yH, { rBot: 0.8, rTop: m.domeH, rTopW: m.actW / 2 }));
     if (m.nozzleL > 0) {
-      const Ln = m.actW / 2 - 2 + m.nozzleL;
-      head.push(xCyl(3.2, Ln, 0, yH + m.headH * 0.62, lo));
-      holes.push(xCyl(1.6, 0.8, Ln - 0.5, yH + m.headH * 0.62, lo)); // furo de saída
+      const V = THREE.Vector3, ys = yH + (m.headH - m.domeH) * 0.8, x0 = m.actW / 2 - 1.5, L = m.nozzleL;
+      const curve = new THREE.CatmullRomCurve3([new V(x0 - 3, ys, 0), new V(x0 + L * 0.5, ys, 0),
+        new V(x0 + L * 0.82, ys - m.droop * 0.4, 0), new V(x0 + L, ys - m.droop, 0)]);
+      const tube = new THREE.TubeGeometry(curve, lo ? 12 : 64, m.spoutD / 2, lo ? 8 : 20);
+      tube.deleteAttribute('uv'); head.push(tube);
+      const tip = curve.getPoint(1), tan = curve.getTangent(1);
+      const hole = cyl(Math.max(m.spoutD / 2 - 0.4, 0.4), -0.2, 0.5);
+      hole.applyQuaternion(new THREE.Quaternion().setFromUnitVectors(new V(0, 1, 0), tan)); hole.translate(tip.x, tip.y, tip.z);
+      holes.push(hole);
     }
   }
   const hg = mergeGeometries(head.filter(Boolean));
@@ -548,7 +591,8 @@ function pescanteGeo(m, yBot, yTop) {
   const rings = [];
   for (let i = 0; i <= 40; i++) {
     const t = i / 40, y = yBot + len * t;
-    rings.push({ y, ly: y, a: m.pescD / 2, b: m.pescD / 2, n: 2, cx: m.ox + m.pescCurve * (1 - t) * (1 - t) + m.pescWave * Math.sin(TAU * t) });
+    const rp = m.sprayType === 'gotas' ? m.pescD / 2 * (t < 0.15 ? 0.3 + 0.7 * t / 0.15 : 1) : m.pescD / 2;
+    rings.push({ y, ly: y, a: rp, b: rp, n: 2, cx: m.ox + m.pescCurve * (1 - t) * (1 - t) + m.pescWave * Math.sin(TAU * t) });
   }
   return loft(rings, 24);
 }
@@ -1037,23 +1081,27 @@ const MF = [
     notK(['spray'], ['h', 'Altura', 1, 300, 0.5, 'mm']),
     notK(['gargalo', 'spray'], ['W', 'Largura (frente)', 4, 200, 0.5, 'mm']),
     notK(['gargalo', 'spray'], ['D', 'Profundidade (lado)', 4, 200, 0.5, 'mm']),
-    K(['sprayType', 'Tipo de válvula', 'select', [['mist', 'Spray fino (névoa)'], ['lamina', 'Pump com alavanca / bico lâmina'], ['pump', 'Pump clássico (cabeça em bloco)']]]),
+    K(['sprayType', 'Tipo de válvula', 'select', [['mist', 'Spray fino (névoa)'], ['locao', 'Pump loção / espuma (bico curvo)'], ['lamina', 'Pump com alavanca / bico lâmina'], ['gotas', 'Conta-gotas'], ['pushpull', 'Push-pull']]]),
     K(['W', 'Virola: diâmetro', 10, 80, 0.5, 'mm']),
     K(['h', 'Virola: altura', 4, 40, 0.5, 'mm']),
     K(['ridges', 'Virola: frisos', 0, 120, 1, '']),
+    K(['skirtPct', 'Virola: altura da saia lisa (100 = sem serrilhado)', 10, 100, 1, '%', isType('mist')]),
+    K(['bandInset', 'Virola: recuo da faixa serrilhada', 0, 5, 0.1, 'mm', m => m.sprayType === 'mist' && m.skirtPct < 99]),
     K(['collarR', 'Virola: arredondamento do topo', 0, 40, 0.5, 'mm']),
     K(['stemD', 'Haste: diâmetro', 3, 40, 0.5, 'mm']),
     K(['stemH', 'Haste: altura', 0, 40, 0.5, 'mm']),
     K(['actW', 'Cabeça: largura', 8, 60, 0.5, 'mm']),
-    K(['actH', 'Cabeça: altura', 6, 50, 0.5, 'mm', isType('mist')]),
+    K(['actH', 'Cabeça: altura', 6, 50, 0.5, 'mm', m => ['mist', 'gotas', 'pushpull'].includes(m.sprayType)]),
     K(['guideW', 'Anel guia: diâmetro (0 = sem)', 0, 60, 0.5, 'mm', isType('mist')]),
     K(['guideH', 'Anel guia: altura', 0, 20, 0.5, 'mm', isType('mist')]),
     K(['guideLine', 'Anel guia: altura do friso', 5, 95, 1, '%', isType('mist')]),
-    K(['headH', 'Cabeça: altura', 10, 60, 0.5, 'mm', m => m.sprayType !== 'mist']),
-    K(['nozzleL', 'Bico: comprimento', 0, 50, 0.5, 'mm', m => m.sprayType !== 'mist']),
+    K(['headH', 'Cabeça: altura', 6, 60, 0.5, 'mm', m => ['locao', 'lamina'].includes(m.sprayType)]),
+    K(['nozzleL', 'Bico: comprimento', 0, 60, 0.5, 'mm', m => ['locao', 'lamina'].includes(m.sprayType)]),
+    K(['domeH', 'Cabeça: altura do domo', 0, 20, 0.5, 'mm', isType('locao')]),
+    K(['spoutD', 'Bico: diâmetro do tubo', 1.5, 10, 0.1, 'mm', isType('locao')]),
     K(['armW', 'Bico: largura', 3, 30, 0.5, 'mm', isType('lamina')]),
     K(['armT', 'Bico: espessura', 1.5, 15, 0.1, 'mm', isType('lamina')]),
-    K(['droop', 'Bico: queda na ponta (− sobe)', -10, 15, 0.5, 'mm', isType('lamina')]),
+    K(['droop', 'Bico: queda na ponta (− sobe)', -10, 15, 0.5, 'mm', m => ['locao', 'lamina'].includes(m.sprayType)]),
     K(['dir', 'Direção do bico (giro)', -180, 180, 1, '°']),
     K(['mola', 'Bomba com mola (visível no frasco transparente)', 'check']),
     K(['houseD', 'Mola: diâmetro', 4, 20, 0.5, 'mm', m => m.mola]),
@@ -1155,6 +1203,7 @@ function renderEditor() {
   const nm = top.querySelector('input'); nm.value = m.name;
   nm.oninput = () => { m.name = nm.value; renderStack(); store.set('shape.autosave', S); };
   ed.appendChild(top);
+  renderSwap(ed, m);
   field(ed, m, ['vol', 'Faz parte do frasco (entra na capacidade)', 'check'], () => { renderStack(); queueBuild(); });
   const below = S.modules[sel - 1];
   if (below?.kind === 'gargalo' && m.kind !== 'gargalo') {
@@ -1189,6 +1238,35 @@ function renderEditor() {
     }
   }
 }
+// Trocar o módulo selecionado por outro da mesma categoria, vendo as opções.
+const typeOf = m => m.type || Object.keys(LIB).find(k => LIB[k].name === m.name);
+function categoryOf(m) {
+  const t = typeOf(m), c = CATS.find(([, keys]) => keys.includes(t));
+  if (c) return c;
+  const label = m.kind === 'spray' ? 'Válvula' : m.kind === 'gargalo' ? 'Peça de encaixe' : m.vol ? 'Corpo' : 'Tampa';
+  return CATS.find(([l]) => l === label);
+}
+function renderSwap(ed, m) {
+  const [label, keys] = categoryOf(m), cur = typeOf(m);
+  const box = document.createElement('details'); box.open = true;
+  box.innerHTML = `<summary style="text-transform:none;letter-spacing:0;font-size:12px">Trocar por outro(a) ${label.toLowerCase()}</summary><div class="gallery swap"></div>`;
+  const grid = box.querySelector('.gallery');
+  for (const k of keys) {
+    const card = document.createElement('div');
+    card.className = 'card' + (k === cur ? ' on' : ''); card.title = LIB[k].name;
+    card.innerHTML = `<img class="ph" alt=""><div>${LIB[k].name}</div>`;
+    card.onclick = () => {
+      if (k === cur) return;
+      // Mantém cor, acabamento, encaixe e deslocamento da peça trocada.
+      S.modules[sel] = M(k, { own: m.own, color: m.color, finish: m.finish, gap: m.gap, ox: m.ox });
+      renderStack(); renderEditorKeepScroll(); build();
+    };
+    grid.appendChild(card);
+    queueThumb(card.querySelector('img'), { color: S.color, finish: S.finish, modules: [M(k)] });
+  }
+  ed.appendChild(box);
+}
+
 function renderEditorKeepScroll() {
   const aside = document.querySelector('aside'), y = aside.scrollTop;
   renderEditor(); aside.scrollTop = y;
@@ -1209,9 +1287,9 @@ function renderAll() { renderStack(); renderEditor(); renderGlobal(); renderPres
 // Biblioteca de módulos
 // Corpo, tampa e peça de encaixe ficam em listas separadas.
 const CATS = [
-  ['Corpo', ['capsula', 'reto', 'plano', 'arco', 'cone', 'placa', 'bisnaga']],
+  ['Corpo', ['reto', 'boston', 'quadrado', 'capsula', 'plano', 'arco', 'cone', 'placa', 'bisnaga']],
   ['Tampa', ['esfera', 'domo', 'seixo', 'flip', 'disctop', 'sobretampa', 'tampaBisnaga', 'disco']],
-  ['Válvula', ['pump', 'lamina', 'pumpBloco', 'spray']],
+  ['Válvula', ['pump', 'locao', 'espuma', 'spray', 'contaGotas', 'pushPull', 'lamina']],
   ['Peça de encaixe', ['gargalo', 'colar', 'barril', 'flare', 'anel', 'tigela']],
 ];
 CATS.forEach(([label, keys]) => {
@@ -1254,15 +1332,16 @@ function thumbOf(st) {
   thumbCache.set(key, url);
   return url;
 }
-let thumbQueue = [];
+let thumbQueue = [], pumping = false;
 function pumpThumbs() {
-  const job = thumbQueue.shift(); if (!job) return;
-  job.img.src = thumbOf(job.st);
+  const job = thumbQueue.shift(); if (!job) { pumping = false; return; }
+  if (job.img.isConnected) job.img.src = thumbOf(job.st);
   setTimeout(pumpThumbs, 16);
 }
+function queueThumb(img, st) { thumbQueue.push({ img, st }); if (!pumping) { pumping = true; pumpThumbs(); } }
 function renderPresets() {
   const sv = saved(), gal = $('#gallery');
-  gal.innerHTML = ''; thumbQueue = [];
+  gal.innerHTML = '';
   const section = (title, entries, kind) => {
     if (!entries.length) return;
     const h = document.createElement('h4'); h.textContent = title; gal.appendChild(h);
@@ -1273,12 +1352,11 @@ function renderPresets() {
       card.innerHTML = `<img class="ph" alt=""><div>${name}</div>`;
       card.onclick = () => { loadState(st, name); };
       gal.appendChild(card);
-      thumbQueue.push({ img: card.querySelector('img'), st });
+      queueThumb(card.querySelector('img'), st);
     }
   };
   section('Modelos base', Object.entries(PRESETS), 'b');
   section('Salvos', Object.entries(sv), 's');
-  pumpThumbs();
 }
 function loadState(s, name) {
   S = normalize(structuredClone({ wall: S.wall, bg: S.bg, ...s }));
