@@ -700,13 +700,18 @@ function field(parent, obj, def, onChange) {
   return el;
 }
 
+const KIND_TIP = {
+  giro: 'A forma nasce do corte visto de cima (redondo → oval → quadrado) e do perfil de lado. Serve para a maioria dos frascos, tampas e peças.',
+  placa: 'A forma é desenhada de frente, com cada canto ajustável, e ganha espessura na profundidade. Use para frascos assimétricos.',
+  bisnaga: 'Tubo redondo junto da tampa que vai achatando até a solda no topo.',
+};
 // Campos que só valem para um tipo de forma.
 const only = (kind, d) => { const a = [...d]; while (a.length < 7) a.push(0); const prev = a[6]; a[6] = m => m.kind === kind && (!prev || prev(m)); return a; };
 const G = d => only('giro', d), P = d => only('placa', d), B = d => only('bisnaga', d);
 const GB = d => { const a = [...d]; while (a.length < 7) a.push(0); const prev = a[6]; a[6] = m => m.kind !== 'placa' && (!prev || prev(m)); return a; };
 const MF = [
   ['Forma', [
-    ['kind', 'Tipo de forma', 'select', [['giro', 'Giro (redondo, oval, retangular)'], ['placa', 'Placa (silhueta frontal, cantos livres)'], ['bisnaga', 'Bisnaga (tubo que achata até a solda)']]],
+    ['kind', 'Tipo de forma', 'select', [['giro', 'Seção: redonda, oval ou quadrada'], ['placa', 'Silhueta: desenho de frente, cantos livres'], ['bisnaga', 'Bisnaga: tubo que achata até a solda']]],
     B(['flatStart', 'Começa a achatar em', 0, 90, 1, '%']),
     B(['flatCurve', 'Achatamento: reto → curvo', 0.5, 3, 0.05, '']),
     B(['sealH', 'Altura da solda', 0, 30, 0.5, 'mm']),
@@ -819,6 +824,10 @@ function renderEditor() {
         renderStack(); queueBuild();
       });
       if (show && !show(m)) el.classList.add('hidden');
+      if (def[0] === 'kind') {
+        const tip = document.createElement('div'); tip.className = 'tip'; tip.textContent = KIND_TIP[m.kind] || '';
+        ed.appendChild(tip);
+      }
     }
   }
 }
