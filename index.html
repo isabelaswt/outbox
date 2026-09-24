@@ -279,7 +279,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-24.detalhes-juntos';
+const BUILD = '2026-09-24.raios-em-tudo';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -288,6 +288,33 @@ const DRAFT_KEYS = { corpo: [], tampa: [], valvula: [] };
 // flip-tops ganham a abertura do OUTBOX.
 const TUBES = new Set(['DRAFT_1002_Tube', 'DRAFT_1033_HandCream_Tube', 'DRAFT_1040_toothpaste', 'DRAFT_1035_Tube_Pump', 'DRAFT_1007_Moist_Pump']);
 const FLIPS = new Set(['DRAFT_1025_Flip_top_Bottle', 'DRAFT_1002_Tube', 'DRAFT_1033_HandCream_Tube', 'DRAFT_1037_Travelsize_Shampoo']);
+// Frisos medidos fatia a fatia viram faixas limpas: trechos contínuos com
+// frisos, uma quantidade (a mais comum) e a profundidade típica da faixa.
+function ribBands(prof, h) {
+  const bands = []; let cur = null;
+  const close = () => {
+    if (!cur) return;
+    const ks = cur.ks.sort((a, b) => a - b), ds = cur.ds.sort((a, b) => a - b);
+    const k = ks[Math.floor(ks.length / 2)], d = ds[Math.floor(ds.length / 2)];
+    if ((cur.t1 - cur.t0) * h >= 1.2) bands.push({ y0: r1(cur.t0 * h), y1: r1(cur.t1 * h), k: Math.round(k / 2) * 2, d: r1(clamp(d, 0.2, 0.8)), shape: 'onda' });
+    cur = null;
+  };
+  for (const r of prof) {
+    if (r[6]) { if (!cur) cur = { t0: r[0], t1: r[0], ks: [], ds: [] }; cur.t1 = r[0]; cur.ks.push(r[6]); cur.ds.push(r[7]); }
+    else close();
+  }
+  close();
+  return bands;
+}
+// Perfil limpo: sem frisos por fatia (viram faixas), centro só quando é
+// deslocamento de verdade, quadratura suavizada (mediana de 5).
+function cleanProf(prof) {
+  return prof.map((r, i) => {
+    const ns = prof.slice(Math.max(0, i - 2), i + 3).map(x => x[3]).sort((a, b) => a - b);
+    const cx = Math.abs(r[4] || 0) < 0.4 ? 0 : r[4], cz = Math.abs(r[5] || 0) < 0.4 ? 0 : r[5];
+    return [r[0], r[1], r[2], ns[Math.floor(ns.length / 2)], cx, cz];
+  });
+}
 function tubeFromProfile(d) {
   // diâmetro do tubo: a seção redonda mais larga (antes de começar a achatar)
   const P = d.body.prof, W = r1(Math.max(...P.map(r => Math.min(r[1] * d.body.W, r[2] * d.body.D))));
@@ -298,9 +325,10 @@ function tubeFromProfile(d) {
 for (const [id, d] of Object.entries(PERFIS)) {
   const k = id.replace(/^DRAFT_/, '').replace(/^(\d+)_.*/, '$1');
   const kb = `d${k}c`, kt = `d${k}t`, valve = d.cat === 'V';
-  LIB[kb] = TUBES.has(id) ? tubeFromProfile(d) : { name: `${d.name}`, kind: 'perfil', vol: true, pesc: false, W: d.body.W, D: d.body.D, h: d.body.h, W0: d.body.W, prof: d.body.prof };
-  LIB[kt] = { name: `${d.name}${valve ? ' (válvula)' : ' (tampa)'}`, kind: 'perfil', W: d.cap.W, D: d.cap.D, h: d.cap.h, W0: d.cap.W,
-    prof: d.cap.prof, spout: d.cap.spout, pesc: valve && !d.below, mola: false,
+  LIB[kb] = TUBES.has(id) ? tubeFromProfile(d) : { name: `${d.name}`, kind: 'perfil', vol: true, pesc: false, rBot: 0, rTop: 0, W: d.body.W, D: d.body.D, h: d.body.h, W0: d.body.W,
+    prof: cleanProf(d.body.prof), ribs: ribBands(d.body.prof, d.body.h) };
+  LIB[kt] = { name: `${d.name}${valve ? ' (válvula)' : ' (tampa)'}`, kind: 'perfil', rBot: 0, rTop: 0, W: d.cap.W, D: d.cap.D, h: d.cap.h, W0: d.cap.W,
+    prof: cleanProf(d.cap.prof), ribs: ribBands(d.cap.prof, d.cap.h), spout: d.cap.spout, pesc: valve && !d.below, mola: false,
     // tampas flip-top da Draft já vêm com a linha e a abertura do OUTBOX
     ...(FLIPS.has(id) ? { topType: 'flip', groove: r1(d.cap.h * (d.below ? 0.72 : 0.3)), lidSide: d.below ? 'baixo' : 'cima' } : {}) };
   DRAFT_KEYS.corpo.push(kb); (valve ? DRAFT_KEYS.valvula : DRAFT_KEYS.tampa).push(kt);
@@ -313,16 +341,18 @@ function profAt(m, ly) {
   const P = m.prof, t = clamp(ly / m.h, 0, 1);
   let i = 0; while (i < P.length - 2 && P[i + 1][0] < t) i++;
   const A = P[i], B = P[i + 1] || A, f = B[0] > A[0] ? clamp((t - A[0]) / (B[0] - A[0]), 0, 1) : 0;
-  const L = k => (A[k] ?? 0) + ((B[k] ?? 0) - (A[k] ?? 0)) * f, near = f < 0.5 ? A : B, sc = m.W / (m.W0 || m.W);
-  return { a: L(1) * m.W / 2, b: L(2) * m.D / 2, n: clamp(L(3), 2, 12), cx: L(4) * sc, cz: L(5) * sc, rk: near[6] || 0, rd: (near[7] || 0) * sc };
+  const L = k => (A[k] ?? 0) + ((B[k] ?? 0) - (A[k] ?? 0)) * f, sc = m.W / (m.W0 || m.W);
+  return { a: L(1) * m.W / 2, b: L(2) * m.D / 2, n: clamp(L(3), 2, 12), cx: L(4) * sc, cz: L(5) * sc };
 }
 function profSamples(m, lo) {
-  const h = m.h, S = m.prof.map(r => r[0] * h);
+  const h = m.h, S = m.prof.map(r => r[0] * h), { rB, rT } = radii(m);
+  for (let i = 0; i <= 20; i++) { const c = 1 - Math.cos(i / 20 * Math.PI / 2); S.push(rB * c, h - rT * c); }
   if (!lo && m.groove > 0) { const yg = h - m.groove; [-.6, -.5, -.3, -.12, 0, .12, .3, .5, .6].forEach(d => S.push(yg + d)); }
   if (!lo && m.notch) {
     const yt = h - notchTop(m), y0n = m.notchUp ? yt : yt - m.notchH - 1, y1n = m.notchUp ? yt + m.notchH + 1 : yt;
     for (let y = y0n; y <= y1n; y += 0.25) S.push(y); S.push(yt + 0.03, yt - 0.03);
   }
+  ribSamples(m, S);
   return [...new Set(S.filter(y => y >= 0 && y <= h).map(y => +y.toFixed(3)))].sort((a, b) => a - b);
 }
 // Bico da válvula medido no original, na escala atual.
@@ -494,7 +524,28 @@ function ySamples(m, rB, rT, lo) {
     const yt = h - notchTop(m), y0n = m.notchUp ? yt : yt - m.notchH - 1, y1n = m.notchUp ? yt + m.notchH + 1 : yt;
     for (let y = y0n; y <= y1n; y += 0.25) S.push(y); S.push(yt + 0.03, yt - 0.03);
   }
+  if (!lo) ribSamples(m, S);
   return [...new Set(S.filter(y => y >= 0 && y <= h).map(y => +y.toFixed(3)))].sort((a, b) => a - b);
+}
+// Anéis extras onde as faixas de frisos começam e terminam (bordas nítidas).
+function ribSamples(m, S) {
+  for (const b of m.ribs || []) {
+    for (let y = b.y0 - 0.6; y <= b.y1 + 0.6; y += 0.4) S.push(y);
+    [0, 0.15, 0.3, 0.6].forEach(e => S.push(b.y0 + e, b.y1 - e));
+  }
+}
+// Frisos de uma faixa na altura ly: fator 0..1 da profundidade no ângulo th.
+function ribAt(m, ly, th) {
+  let best = null;
+  for (const b of m.ribs || []) {
+    if (ly < b.y0 || ly > b.y1 || !(b.k > 0)) continue;
+    const edge = smooth(0, 0.6, Math.min(ly - b.y0, b.y1 - ly)), c = Math.cos(b.k * th);
+    // onda: ondulação suave; reto: canelado com fundo e topo planos
+    const f = b.shape === 'reto' ? 0.5 - 0.5 * Math.tanh(3 * c) / Math.tanh(3) : 0.5 - 0.5 * c;
+    const v = b.d * f * edge;
+    if (!best || v > best) best = v;
+  }
+  return best || 0;
 }
 
 function loft(rings, seg, disp) {
@@ -812,25 +863,31 @@ function moduleGeo(m0, y0, opts = {}) {
   if (m.W <= 0.2 || m.D <= 0.2 || m.h <= 0.1) return null;
   const isProf = !!m.prof?.length;
   const { rB, rT } = isProf ? { rB: 0, rT: 0 } : radii(m);
+  const { rB: pB, rT: pT } = isProf ? radii(m) : { rB: 0, rT: 0 };
   const ang = (m.openPct || 0) / 100, flipOpen = !inset && m.topType === 'flip' && m.groove > 0 && ang > 0;
   const ms = flipOpen ? { ...m, grooveD: 0 } : m; // aberta, a linha vira o corte
   let kmax = 0;
   const rings = (isProf ? profSamples(m, lo) : ySamples(m, rB, rT, lo)).map(ly => {
     if (!isProf) { const [a, b] = sectionAt(ms, ly, rB, rT); return { y: y0 + lift + ly, ly, a, b, n: m.n }; }
     const q = profAt(m, ly), g = ms.groove > 0 ? ms.grooveD * Math.max(0, 1 - Math.abs(ly - (m.h - ms.groove)) / 0.5) : 0;
-    const rk = lo || inset ? 0 : q.rk; kmax = Math.max(kmax, rk);
-    return { y: y0 + lift + ly, ly, a: Math.max(q.a - g, 0.05), b: Math.max(q.b - g, 0.05), n: q.n, cx: q.cx, cz: q.cz, rk, rd: q.rd };
+    // Raios de baixo/de cima aplicados por cima do perfil medido.
+    let r = 0, f = 0;
+    if (pB > 0 && ly < pB) { const c = 1 - ly / pB; f = 1 - Math.sqrt(Math.max(0, 1 - c * c)); r = m.rBotW > 0 ? m.rBotW : pB; }
+    else if (pT > 0 && ly > m.h - pT) { const c = 1 - (m.h - ly) / pT; f = 1 - Math.sqrt(Math.max(0, 1 - c * c)); r = m.rTopW > 0 ? m.rTopW : pT; }
+    const a = q.a - Math.min(r, q.a) * f, b = q.b - Math.min(r, q.b) * f;
+    return { y: y0 + lift + ly, ly, a: Math.max(a - g, 0.05), b: Math.max(b - g, 0.05), n: q.n, cx: q.cx, cz: q.cz };
   });
+  if (!lo && !inset) for (const b of m.ribs || []) kmax = Math.max(kmax, b.k || 0);
   if (rings.length < 2) return null;
   const saddle = !inset && m.topType === 'disc' && m.discDip > 0;
   const detailed = !lo && (m.notch || m.ridges > 0 || saddle || kmax > 0);
-  const seg = lo ? 64 : kmax ? clamp(kmax * 8, 384, 1400) : detailed ? 384 : 200;
+  const seg = lo ? 64 : kmax ? clamp(kmax * 12, 384, 2000) : detailed ? 384 : 200;
   const disp = detailed ? (x, ly, z, th, r) => {
-    // Frisos medidos no original (peças da Draft).
-    if (r?.rk) { const rr = Math.hypot(x, z) || 1, d = r.rd * (0.5 - 0.5 * Math.cos(r.rk * th)); x -= x / rr * d; z -= z / rr * d; }
+    // Faixas de frisos (medidas no original ou criadas no editor).
+    if (kmax) { const d = ribAt(m, ly, th); if (d) { const rr = Math.hypot(x, z) || 1; x -= x / rr * d; z -= z / rr * d; } }
     // Disc-top: borda em sela, mais baixa na frente e atrás.
     const dy = saddle ? -m.discDip * Math.sin(th) ** 2 * (ly / m.h) : 0;
-    if (m.ridges > 0 && ly > rB && ly < m.h - rT && !r?.rk) {
+    if (m.ridges > 0 && ly > rB && ly < m.h - rT) {
       const rr = Math.hypot(x, z) || 1, d = m.ridgeD * (0.5 + 0.5 * Math.cos(m.ridges * th));
       x -= x / rr * d; z -= z / rr * d;
     }
@@ -1485,9 +1542,9 @@ const MF = [
   ]],
   ['Arredondamento', [
     GB(['rBot', 'Raio embaixo', 0, 150, 0.5, 'mm']),
-    G(['rBotW', 'Raio embaixo: recuo lateral (0 = igual)', 0, 100, 0.5, 'mm', m => m.rBot > 0]),
-    G(['rTop', 'Raio em cima', 0, 150, 0.5, 'mm']),
-    G(['rTopW', 'Raio em cima: recuo lateral (0 = igual)', 0, 100, 0.5, 'mm', m => m.rTop > 0]),
+    GP(['rBotW', 'Raio embaixo: recuo lateral (0 = igual)', 0, 100, 0.5, 'mm', m => m.rBot > 0]),
+    GP(['rTop', 'Raio em cima', 0, 150, 0.5, 'mm']),
+    GP(['rTopW', 'Raio em cima: recuo lateral (0 = igual)', 0, 100, 0.5, 'mm', m => m.rTop > 0]),
     P(['rTL', 'Canto superior esquerdo', 0, 150, 0.5, 'mm']),
     P(['rTR', 'Canto superior direito', 0, 150, 0.5, 'mm']),
     P(['rBL', 'Canto inferior esquerdo', 0, 150, 0.5, 'mm']),
@@ -1520,8 +1577,8 @@ const MF = [
     GP(['notchD', 'Entalhe: profundidade', 0.2, 8, 0.1, 'mm', m => m.notch]),
     GP(['notchP', 'Entalhe: meia-lua → fenda', 2, 12, 0.1, '', m => m.notch]),
     GP(['notchUp', 'Entalhe acima da linha', 'check', 0, 0, 0, m => m.notch]),
-    GP(['ridges', 'Frisos verticais', 0, 120, 1, '']),
-    GP(['ridgeD', 'Profundidade dos frisos', 0.1, 3, 0.1, 'mm', m => m.ridges > 0]),
+    G(['ridges', 'Frisos verticais (faixa reta do meio)', 0, 120, 1, '']),
+    G(['ridgeD', 'Profundidade dos frisos', 0.1, 3, 0.1, 'mm', m => m.ridges > 0]),
   ]],
   ['Cor', [
     ['own', 'Cor própria neste módulo', 'check'],
@@ -1581,6 +1638,7 @@ function renderEditor() {
     ed.appendChild(tip);
   }
   for (const [title, defs] of MF) {
+    if (title === 'Cor' && (m.kind === 'giro' || m.kind === 'perfil')) renderRibs(ed, m);
     if (!defs.some(d => !d[6] || d[6](m))) continue;
     const h = document.createElement('h3'); h.textContent = title; ed.appendChild(h);
     if (title === 'Arredondamento' && m.kind === 'placa') {
@@ -1619,6 +1677,7 @@ const LEN_KEYS = ['W', 'D', 'h', 'rBot', 'rTop', 'rBotW', 'rTopW', 'rTL', 'rTR',
 const collarOf = m => Math.min(m.W, m.D);
 function scaleModule(m, f) {
   LEN_KEYS.forEach(k => { if (typeof m[k] === 'number') m[k] = r1(m[k] * f); });
+  (m.ribs || []).forEach(b => { b.y0 = r1(b.y0 * f); b.y1 = r1(b.y1 * f); b.d = r1(b.d * f); });
   return m;
 }
 // Peça nova herda o tamanho da trocada: corpo assume largura, profundidade e
@@ -1642,6 +1701,8 @@ function adaptSwap(old, nw, label) {
   }
   return nw;
 }
+// Posição do scroll da grade de troca (não volta ao topo a cada clique).
+let swapScroll = { key: '', top: 0 };
 function renderSwap(ed, m) {
   const [label, keys] = categoryOf(m), cur = typeOf(m);
   const box = document.createElement('details'); box.open = true;
@@ -1653,6 +1714,7 @@ function renderSwap(ed, m) {
     card.innerHTML = `<img class="ph" alt=""><div>${LIB[k].name}</div>`;
     card.onclick = () => {
       if (k === cur) return;
+      swapScroll = { key: sel + ':' + label, top: grid.scrollTop }; // volta para o mesmo ponto
       // Mantém cor, acabamento, encaixe e deslocamento, e readapta o tamanho.
       S.modules[sel] = adaptSwap(m, M(k, { own: m.own, color: m.color, finish: m.finish, gap: m.gap, ox: m.ox, uid: m.uid }), label);
       renderStack(); renderEditorKeepScroll(); build();
@@ -1661,8 +1723,32 @@ function renderSwap(ed, m) {
     queueThumb(card.querySelector('img'), { color: S.color, finish: S.finish, modules: [M(k)] });
   }
   ed.appendChild(box);
+  const key = sel + ':' + label;
+  if (swapScroll.key !== key) swapScroll = { key, top: 0 };
+  grid.scrollTop = swapScroll.top;
+  grid.addEventListener('scroll', () => { swapScroll.top = grid.scrollTop; });
 }
 
+function renderRibs(ed, m) {
+  const box = document.createElement('div');
+  box.innerHTML = '<h3>Faixas de frisos</h3><div class="tip">Serrilhado de grip em trechos da peça. Altura medida a partir da base da peça.</div>';
+  (m.ribs ||= []).forEach((b, i) => {
+    const el = document.createElement('div'); el.className = 'edit'; el.style.cssText = 'background:#fff;margin:6px 0';
+    el.innerHTML = `<div class="row" style="margin-top:6px"><b style="flex:1">Faixa ${i + 1}</b><button class="btn sm">Remover</button></div>`;
+    el.querySelector('button').onclick = () => { m.ribs.splice(i, 1); renderEditorKeepScroll(); queueBuild(); };
+    const ch = () => { if (b.y1 < b.y0) [b.y0, b.y1] = [b.y1, b.y0]; queueBuild(); };
+    field(el, b, ['y0', 'Começa em', 0, Math.max(1, r1(m.h)), 0.1, 'mm'], ch);
+    field(el, b, ['y1', 'Termina em', 0, Math.max(1, r1(m.h)), 0.1, 'mm'], ch);
+    field(el, b, ['k', 'Quantidade de frisos', 4, 240, 1, ''], ch);
+    field(el, b, ['d', 'Profundidade', 0.05, 2, 0.05, 'mm'], ch);
+    field(el, b, ['shape', 'Formato', 'select', [['onda', 'Ondulado (suave)'], ['reto', 'Canelado (reto)']]], ch);
+    box.appendChild(el);
+  });
+  const add = document.createElement('button'); add.className = 'btn'; add.textContent = '+ Faixa de frisos';
+  add.onclick = () => { m.ribs.push({ y0: r1(m.h * 0.2), y1: r1(m.h * 0.8), k: 48, d: 0.4, shape: 'onda' }); renderEditorKeepScroll(); queueBuild(); };
+  box.appendChild(add);
+  ed.appendChild(box);
+}
 function renderEditorKeepScroll() {
   const aside = document.querySelector('aside'), y = aside.scrollTop;
   renderEditor(); aside.scrollTop = y;
@@ -1736,7 +1822,7 @@ function pumpThumbs() {
 }
 function queueThumb(img, st) { thumbQueue.push({ img, st }); if (!pumping) { pumping = true; pumpThumbs(); } }
 function renderPresets() {
-  const sv = saved(), gal = $('#gallery');
+  const sv = saved(), gal = $('#gallery'), keepTop = gal.scrollTop;
   gal.innerHTML = '';
   const section = (title, entries, kind) => {
     if (!entries.length) return;
@@ -1753,6 +1839,7 @@ function renderPresets() {
   };
   section('Modelos base', Object.entries(PRESETS), 'b');
   section('Salvos', Object.entries(sv), 's');
+  gal.scrollTop = keepTop;
 
 }
 function loadState(s, name) {
@@ -1879,7 +1966,7 @@ $('#dlObj').onclick = () => download(new Blob([new OBJExporter().parse(exportRoo
 
 // ───────────────────────── início ─────────────────────────
 // Acesso para inspeção no console do navegador.
-window.OUTBOX = { get S() { return S; }, product, layout };
+window.OUTBOX = { get S() { return S; }, get swapScroll() { return swapScroll; }, product, layout };
 
 resize();
 renderAll();
