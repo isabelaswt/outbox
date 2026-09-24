@@ -193,6 +193,9 @@ const BASE = {
   notchUp: false,
   // gargalo: rosca helicoidal + anel de apoio; W = diâmetro da rosca (T).
   neckStd: '24/410', pitch: 3.18, turns: 1.5, threadD: 1, ringH: 1.6, ringW: 1.8, embed: 8,
+  // válvula: W/h = virola que veste o gargalo; cabeça conforme o tipo; pescante até o fundo.
+  sprayType: 'mist', actW: 20, actH: 16, stemH: 4, headL: 55, headH: 28, nozzleL: 14, dir: 0,
+  pesc: true, pescD: 4, pescCurve: 0, pescGap: 3,
   // bisnaga: tubo que achata até a solda mantendo o perímetro.
   flatStart: 8, flatCurve: 1.15, sealH: 7, sealT: 1.4, sealW: 6,
   sealShape: 'reta', sealArc: 4, sealR: 0, serr: true, serrP: 1, serrD: 0.25,
@@ -212,6 +215,9 @@ const LIB = {
   esfera:  { name: 'Esfera', W: 44, D: 44, h: 44, rBot: 22, rTop: 22, groove: 15 },
   domo:    { name: 'Domo meia-lua', W: 46, D: 38, h: 38, rBot: 2, rTop: 24, groove: 15, notch: true, notchY: 15, notchW: 18, notchH: 9, notchD: 2.2, notchP: 2 },
   seixo:   { name: 'Seixo com fenda', W: 70, D: 40, n: 2.4, h: 34, rBot: 6, rTop: 18, groove: 13, notch: true, notchY: 13, notchW: 30, notchH: 6, notchD: 1.8, notchP: 8 },
+  spray:   { name: 'Válvula spray fina', kind: 'spray', sprayType: 'mist', W: 24, D: 24, h: 14, ridges: 48, actW: 18, actH: 16, stemH: 3 },
+  gatilho: { name: 'Spray gatilho', kind: 'spray', sprayType: 'gatilho', W: 32, D: 32, h: 17, actW: 24, stemH: 14, headL: 58, headH: 30, nozzleL: 10 },
+  pump:    { name: 'Válvula pump', kind: 'spray', sprayType: 'pump', W: 30, D: 30, h: 15, ridges: 36, actW: 26, stemH: 16, headH: 22, nozzleL: 16 },
   gargalo: { name: 'Gargalo com rosca', kind: 'gargalo', W: 23.9, D: 23.9, h: 16, neckStd: '24/410', pitch: 3.18, turns: 1.5 },
   bisnaga: { name: 'Corpo bisnaga', kind: 'bisnaga', W: 45, D: 45, h: 165, rBot: 4, vol: true },
   tampaBisnaga: { name: 'Tampa de bisnaga', W: 44, D: 44, h: 34, rBot: 2.5, rTop: 1, groove: 24, notch: true, notchUp: true, notchW: 18, notchH: 9, notchD: 1.4, notchP: 6 },
@@ -260,6 +266,12 @@ const PRESETS = {
   'Placa assimétrica + esfera': { color: '#c42b52', finish: 'fosco', modules: [
     M('placa'), NECK('24/410', { ox: -8 }), M('esfera', { W: 35, D: 35, h: 35, rBot: 17.5, rTop: 17.5, groove: 12,
       notch: true, notchW: 11, notchH: 2.5, notchD: 1.4, notchP: 8 })] },
+  'Spray gatilho': { color: '#f28bb5', finish: 'acetinado', modules: [
+    M('reto', { W: 48, D: 48, h: 150, rBot: 6, rTop: 18 }), NECK('28/410'), M('gatilho', { own: true, color: '#ffd21f', finish: 'brilho' })] },
+  'Spray fino': { color: PINK, finish: 'fosco', modules: [
+    M('reto', { W: 38, D: 38, h: 105, rBot: 5, rTop: 14 }), NECK('20/410'), M('spray')] },
+  'Frasco pump': { color: CREAM, finish: 'fosco', modules: [
+    M('reto', { W: 50, D: 50, h: 110, rBot: 8, rTop: 20 }), NECK('24/410'), M('pump')] },
   'Oval flip-top 250 ml': { color: '#f28bb5', finish: 'acetinado', modules: [
     M('plano', { W: 61, D: 37, n: 3.4, h: 138.5, rBot: 16.6, rTop: 9.2, bulge: 3, bulgePos: 30 }), NECK('24/410'),
     M('flip', { own: true, color: '#ffd21f', finish: 'brilho' })] },
@@ -333,7 +345,7 @@ function loft(rings, seg, disp) {
       const th = j / seg * TAU;
       let [x, z] = sp(r.a, r.b, r.n, th);
       if (disp) [x, z] = disp(x, r.ly, z, th);
-      out[j] = [x, r.y, z];
+      out[j] = [x + (r.cx || 0), r.y, z];
     }
     return out;
   });
@@ -394,6 +406,57 @@ function neckGeo(m, y0, { lo = false } = {}) {
   const g = loft(rings, lo ? 48 : 256, disp);
   if (m.ox) g.translate(m.ox, 0, 0);
   return g;
+}
+
+// Peças auxiliares centradas no eixo.
+const cyl = (r, y0, h, rTop = 0, rBot = 0, lo = false) =>
+  moduleGeo({ ...BASE, kind: 'giro', W: 2 * r, D: 2 * r, h, rTop, rBot }, y0, { lo });
+function xCyl(r, len, x0, y, lo) { // cilindro deitado, apontando para +x
+  const g = cyl(r, 0, len, 0.6, 0, lo); g.rotateZ(-Math.PI / 2); g.translate(x0, y, 0); return g;
+}
+
+// Válvula: virola que veste o gargalo + cabeça de spray fino, gatilho ou pump.
+function sprayGeo(m, y0, { lo = false } = {}) {
+  const collar = moduleGeo({ ...BASE, kind: 'giro', W: m.W, D: m.W, h: m.h, rBot: 0.6, rTop: 1.2, ridges: m.ridges, ridgeD: m.ridgeD }, y0, { lo });
+  const top = y0 + m.h, head = [];
+  if (m.sprayType === 'mist') {
+    head.push(cyl(2.4, top - 1, m.stemH + 2, 0, 0, lo));
+    // Atuador com orifício na frente.
+    head.push(moduleGeo({ ...BASE, kind: 'giro', W: m.actW, D: m.actW, h: m.actH, rBot: 1, rTop: Math.min(4, m.actW / 4),
+      notch: true, notchLock: false, notchY: m.actH * 0.3, notchW: 3.4, notchH: 1.8, notchD: 1, notchP: 2 }, top + m.stemH, { lo }));
+  } else if (m.sprayType === 'gatilho') {
+    const postR = Math.max(m.W * 0.28, 6), yS = top + m.stemH, L = m.headL, H = m.headH, back = -postR - 3;
+    head.push(cyl(postR, top - 1, m.stemH + 2, 0, 0, lo));
+    head.push(slabGeo({ ...BASE, kind: 'placa', W: L, h: H, D: m.actW, rTL: H * 0.35, rTR: H * 0.3, rBL: 3, rBR: H * 0.2,
+      rEdge: Math.min(4, m.actW / 4), chamfer: false, ox: back + L / 2 }, yS, { lo }));
+    if (m.nozzleL > 0) head.push(xCyl(Math.min(H * 0.18, 5.5), m.nozzleL, back + L - 2, yS + H * 0.62, lo));
+    // Gatilho pendurado sob a cabeça, inclinado para a frente.
+    const tH = H * 1.05, tg = slabGeo({ ...BASE, kind: 'placa', W: 9, h: tH, D: Math.min(m.actW * 0.55, 12),
+      rTL: 2, rTR: 2, rBL: 4.4, rBR: 4.4, rEdge: 2 }, -tH, { lo });
+    tg.rotateZ(0.28); tg.translate(back + L * 0.62, yS + 4, 0);
+    head.push(tg);
+  } else {
+    head.push(cyl(3.5, top - 1, m.stemH + 2, 0, 0, lo));
+    const yH = top + m.stemH;
+    head.push(moduleGeo({ ...BASE, kind: 'giro', W: m.actW, D: m.actW * 0.78, n: 3.2, h: m.headH, rBot: 1.5, rTop: Math.min(5, m.headH / 3) }, yH, { lo }));
+    if (m.nozzleL > 0) head.push(xCyl(3.2, m.actW / 2 - 2 + m.nozzleL, 0, yH + m.headH * 0.62, lo));
+  }
+  const hg = mergeGeometries(head.filter(Boolean));
+  hg.rotateY(-m.dir * Math.PI / 180);
+  const g = mergeGeometries([collar, hg]);
+  if (m.ox) g.translate(m.ox, 0, 0);
+  return g;
+}
+
+// Pescante: tubo do fundo do frasco até a válvula, com curva opcional no pé.
+function pescanteGeo(m, yBot, yTop) {
+  const len = yTop - yBot; if (len < 5) return null;
+  const rings = [];
+  for (let i = 0; i <= 40; i++) {
+    const t = i / 40, y = yBot + len * t;
+    rings.push({ y, ly: y, a: m.pescD / 2, b: m.pescD / 2, n: 2, cx: m.ox + m.pescCurve * (1 - t) * (1 - t) });
+  }
+  return loft(rings, 24);
 }
 
 // Perímetro da elipse (Ramanujan).
@@ -492,6 +555,7 @@ function moduleGeo(m0, y0, opts = {}) {
   if (m0.kind === 'placa') return slabGeo(m0, y0, opts);
   if (m0.kind === 'bisnaga') return tubeGeo(m0, y0, opts);
   if (m0.kind === 'gargalo') return opts.inset ? null : neckGeo(m0, y0, opts);
+  if (m0.kind === 'spray') return opts.inset ? null : sprayGeo(m0, y0, opts);
   const { inset = 0, lift = 0, lo = false } = opts;
   const m = inset ? { ...m0, W: m0.W - 2 * inset, D: m0.D - 2 * inset, h: m0.h - lift,
     rBot: Math.max(0, m0.rBot - inset), rTop: Math.max(0, m0.rTop - inset), groove: 0, notch: false, ridges: 0 } : m0;
@@ -610,6 +674,8 @@ function makeControls(target) {
 }
 
 const matCache = new Map();
+// Opaco: peças transmissivas não aparecem através do frasco transparente.
+const pescMat = new THREE.MeshPhysicalMaterial({ color: '#b9bec2', roughness: 0.35, clearcoat: 0.4 });
 function material(color, finish) {
   const key = color + finish;
   if (matCache.has(key)) return matCache.get(key);
@@ -627,14 +693,24 @@ function material(color, finish) {
 function build() {
   product.children.forEach(o => o.geometry.dispose());
   product.clear();
-  for (const { m, idx, y0 } of layout(S, explode ? 18 : 0)) {
-    const g = moduleGeo(m, y0); if (!g) continue;
+  const base = layout(S), floor = Math.min(...base.filter(e => e.m.vol).map(e => e.y0));
+  layout(S, explode ? 18 : 0).forEach(({ m, idx, y0 }, i) => {
+    const g = moduleGeo(m, y0); if (!g) return;
     const mesh = new THREE.Mesh(g, material(m.own ? m.color : S.color, m.own ? m.finish : S.finish));
     mesh.castShadow = true; mesh.receiveShadow = true;
     mesh.userData.idx = idx;
     mesh.name = `${String(idx + 1).padStart(2, '0')}_${m.name}`;
     product.add(mesh);
-  }
+    if (m.kind === 'spray' && m.pesc && isFinite(floor)) {
+      // Comprimento medido montado; na vista explodida desce junto com a válvula.
+      const len = base[i].y0 + m.h * 0.6 - (floor + S.wall + m.pescGap);
+      const pg = pescanteGeo(m, y0 + m.h * 0.6 - len, y0 + m.h * 0.6);
+      if (pg) {
+        const pm = new THREE.Mesh(pg, pescMat); pm.userData.idx = idx;
+        pm.name = `${String(idx + 1).padStart(2, '0')}_pescante`; product.add(pm);
+      }
+    }
+  });
   scene.background = new THREE.Color(S.bg);
   updateStats();
   store.set('shape.autosave', S);
@@ -763,16 +839,18 @@ const KIND_TIP = {
   giro: 'A forma nasce do corte visto de cima (redondo → oval → quadrado) e do perfil de lado. Serve para a maioria dos frascos, tampas e peças.',
   placa: 'A forma é desenhada de frente, com cada canto ajustável, e ganha espessura na profundidade. Use para frascos assimétricos.',
   bisnaga: 'Tubo redondo junto da tampa que vai achatando até a solda no topo.',
+  spray: 'A virola (anel de rosca) veste o gargalo. O pescante desce até o fundo: para vê-lo, use acabamento Transparente no corpo ou Explodir.',
   gargalo: 'Rosca e anel de apoio. A peça logo acima veste o gargalo: desce até o anel e esconde a rosca. Use Explodir para ver a junção.',
 };
 // Campos que só valem para um tipo de forma.
 const only = (kind, d) => { const a = [...d]; while (a.length < 7) a.push(0); const prev = a[6]; a[6] = m => m.kind === kind && (!prev || prev(m)); return a; };
 const G = d => only('giro', d), P = d => only('placa', d), B = d => only('bisnaga', d), N = d => only('gargalo', d);
-const notNeck = d => { const a = [...d]; while (a.length < 7) a.push(0); a[6] = m => m.kind !== 'gargalo'; return a; };
+const notK = (kinds, d) => { const a = [...d]; while (a.length < 7) a.push(0); a[6] = m => !kinds.includes(m.kind); return a; };
+const K = d => only('spray', d), isType = t => m => m.sprayType === t;
 const GB = d => { const a = [...d]; while (a.length < 7) a.push(0); const prev = a[6]; a[6] = m => m.kind !== 'placa' && (!prev || prev(m)); return a; };
 const MF = [
   ['Forma', [
-    ['kind', 'Tipo de forma', 'select', [['giro', 'Seção: redonda, oval ou quadrada'], ['placa', 'Silhueta: desenho de frente, cantos livres'], ['bisnaga', 'Bisnaga: tubo que achata até a solda'], ['gargalo', 'Gargalo com rosca']]],
+    ['kind', 'Tipo de forma', 'select', [['giro', 'Seção: redonda, oval ou quadrada'], ['placa', 'Silhueta: desenho de frente, cantos livres'], ['bisnaga', 'Bisnaga: tubo que achata até a solda'], ['gargalo', 'Gargalo com rosca'], ['spray', 'Válvula: spray, gatilho ou pump']]],
     N(['neckStd', 'Padrão do acabamento (aprox.)', 'select', [...Object.keys(NECKS).map(k => [k, k]), ['livre', 'Livre']]]),
     N(['W', 'Diâmetro da rosca (T)', 8, 120, 0.1, 'mm']),
     N(['pitch', 'Passo da rosca', 1, 6, 0.01, 'mm']),
@@ -792,9 +870,24 @@ const MF = [
     B(['serr', 'Serrilhado na solda', 'check']),
     B(['serrP', 'Serrilhado: passo', 0.4, 4, 0.1, 'mm', m => m.serr]),
     B(['serrD', 'Serrilhado: profundidade', 0.05, 1, 0.05, 'mm', m => m.serr]),
-    ['h', 'Altura', 1, 300, 0.5, 'mm'],
-    notNeck(['W', 'Largura (frente)', 4, 200, 0.5, 'mm']),
-    notNeck(['D', 'Profundidade (lado)', 4, 200, 0.5, 'mm']),
+    notK(['spray'], ['h', 'Altura', 1, 300, 0.5, 'mm']),
+    notK(['gargalo', 'spray'], ['W', 'Largura (frente)', 4, 200, 0.5, 'mm']),
+    notK(['gargalo', 'spray'], ['D', 'Profundidade (lado)', 4, 200, 0.5, 'mm']),
+    K(['sprayType', 'Tipo de válvula', 'select', [['mist', 'Spray fino (névoa)'], ['gatilho', 'Spray gatilho'], ['pump', 'Pump (loção)']]]),
+    K(['W', 'Virola: diâmetro', 10, 80, 0.5, 'mm']),
+    K(['h', 'Virola: altura', 4, 40, 0.5, 'mm']),
+    K(['ridges', 'Virola: frisos', 0, 120, 1, '']),
+    K(['stemH', 'Haste: altura', 0, 40, 0.5, 'mm']),
+    K(['actW', 'Cabeça: largura', 8, 60, 0.5, 'mm']),
+    K(['actH', 'Cabeça: altura', 6, 50, 0.5, 'mm', isType('mist')]),
+    K(['headH', 'Cabeça: altura', 10, 60, 0.5, 'mm', m => m.sprayType !== 'mist']),
+    K(['headL', 'Gatilho: comprimento', 30, 100, 0.5, 'mm', isType('gatilho')]),
+    K(['nozzleL', 'Bico: comprimento', 0, 50, 0.5, 'mm', m => m.sprayType !== 'mist']),
+    K(['dir', 'Direção do bico (giro)', -180, 180, 1, '°']),
+    K(['pesc', 'Pescante (tubo até o fundo)', 'check']),
+    K(['pescD', 'Pescante: diâmetro', 2, 10, 0.1, 'mm', m => m.pesc]),
+    K(['pescGap', 'Pescante: folga do fundo', 0, 20, 0.5, 'mm', m => m.pesc]),
+    K(['pescCurve', 'Pescante: curva no pé (− esquerda)', -40, 40, 0.5, 'mm', m => m.pesc]),
     G(['n', 'Seção: oval → retângulo', 2, 10, 0.1, '']),
     G(['taper', 'Topo em relação à base', 10, 250, 1, '%']),
     G(['bulge', 'Barriga (− cintura)', -35, 40, 0.5, '%']),
@@ -901,7 +994,7 @@ function renderEditor() {
         if (k === 'notch' && m.notch && !(m.groove > 0)) m.groove = r1(Math.min(12, m.h * 0.35));
         if (k === 'neckStd' && NECKS[m.neckStd]) Object.assign(m, NECKS[m.neckStd], { D: NECKS[m.neckStd].W });
         if (k === 'kind' && m.kind === 'gargalo' && NECKS[m.neckStd]) Object.assign(m, NECKS[m.neckStd], { D: NECKS[m.neckStd].W });
-        if (m.kind === 'gargalo' && k === 'W') m.D = m.W;
+        if ((m.kind === 'gargalo' || m.kind === 'spray') && k === 'W') m.D = m.W;
         if (structural || ['rep', 'groove', 'ridges', 'own', 'kind'].includes(k)) renderEditorKeepScroll();
         renderStack(); queueBuild();
       });
@@ -935,6 +1028,7 @@ function renderAll() { renderStack(); renderEditor(); renderGlobal(); renderPres
 const CATS = [
   ['Corpo', ['capsula', 'reto', 'plano', 'arco', 'cone', 'placa', 'bisnaga']],
   ['Tampa', ['esfera', 'domo', 'seixo', 'flip', 'tampaBisnaga', 'disco']],
+  ['Válvula', ['gatilho', 'spray', 'pump']],
   ['Peça de encaixe', ['gargalo', 'colar', 'barril', 'flare', 'anel', 'tigela']],
 ];
 CATS.forEach(([label, keys]) => {
