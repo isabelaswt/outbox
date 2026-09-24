@@ -82,7 +82,7 @@ canvas{display:block;width:100%;height:100%;touch-action:none}
 <div class="app">
 <aside>
   <h1>OUTBOX</h1>
-  <div class="sub">Shapes de embalagem · módulos empilhados · mm · volumetria ao vivo</div>
+  <div class="sub">Shapes de embalagem · módulos empilhados · mm · volumetria ao vivo<br><span id="build" style="font-variant-numeric:tabular-nums"></span></div>
 
   <details open>
     <summary>Modelo</summary>
@@ -278,8 +278,11 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // Produtos da Draft (draft.work) refeitos como módulos paramétricos: o perfil
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
+// Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
+const BUILD = '2026-09-24.detalhes-juntos';
+document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
-try { PERFIS = await (await fetch('draft/perfis.json')).json(); } catch { PERFIS = {}; }
+try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
 const DRAFT_KEYS = { corpo: [], tampa: [], valvula: [] };
 // Tubos viram a bisnaga do OUTBOX (solda, serrilhado, formatos de solda);
 // flip-tops ganham a abertura do OUTBOX.
@@ -423,7 +426,8 @@ for (const [id, d] of Object.entries(PERFIS)) {
     }
     modules.push(M(kt));
   }
-  PRESETS[`Draft · ${d.name}`] = { color: BEIGE, finish: 'fosco', modules };
+  const nm = PRESETS[d.name] ? `${d.name} 2` : d.name; // evita nome repetido
+  PRESETS[nm] = { color: BEIGE, finish: 'fosco', modules };
 }
 
 const FINISHES = [['fosco', 'Fosco'], ['acetinado', 'Acetinado'], ['brilho', 'Brilho'], ['perolado', 'Perolado'], ['vidro', 'Transparente / vidro'], ['metal', 'Metalizado']];
@@ -1747,10 +1751,8 @@ function renderPresets() {
       queueThumb(card.querySelector('img'), st);
     }
   };
-  const P = Object.entries(PRESETS);
-  section('Modelos base', P.filter(([n]) => !n.startsWith('Draft ·')), 'b');
+  section('Modelos base', Object.entries(PRESETS), 'b');
   section('Salvos', Object.entries(sv), 's');
-  section('Draft', P.filter(([n]) => n.startsWith('Draft ·')), 'b');
 
 }
 function loadState(s, name) {
