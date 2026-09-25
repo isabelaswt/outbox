@@ -266,7 +266,8 @@ const LIB = {
              actW: 18.8, headH: 19.7, domeH: 4.5, nozzleL: 30, droop: 6, spoutD: 3 },
   pumpFrisos: { name: 'Pump loção com frisos', kind: 'spray', sprayType: 'locao', W: 38, D: 38, h: 22, collarR: 1.2,
              ridges: 76, ridgeD: 0.95, stemD: 15.5, stemH: 18, actW: 19, headH: 13, domeH: 2,
-             nozzleL: 31, droop: 3.2, spoutD: 3.8, own: true, color: '#050505', finish: 'fosco' },
+             nozzleL: 31, droop: 3.2, spoutD: 3.8, mola: false, pescD: 3.2, pescGap: 3,
+             own: true, color: '#050505', finish: 'fosco' },
   espuma:  { name: 'Pump espuma / foam', kind: 'spray', sprayType: 'foam', W: 43, D: 43, h: 17, collarR: 1.2, ridges: 0,
              actW: 22, actH: 36, armW: 11, armT: 5.5, nozzleL: 17, stemD: 16, stemH: 5, houseD: 16, springL: 26 },
   contaGotas: { name: 'Conta-gotas', kind: 'spray', sprayType: 'gotas', W: 22, D: 22, h: 13, ridges: 48, actW: 15, actH: 24,
@@ -295,7 +296,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-24.bico-dosador.ribbed-pump';
+const BUILD = '2026-09-24.bico-dosador.ribbed-pump-compact';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
