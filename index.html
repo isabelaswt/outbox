@@ -311,6 +311,8 @@ const LIB = {
   tigela:  { name: 'Tigela', W: 40, D: 40, h: 20, rBot: 18, rTop: 1 },
   bola:    { name: 'Bola', W: 34, D: 34, h: 34, rBot: 17, rTop: 17 },
   sextavado: { name: 'Sextavado', W: 36, D: 36, h: 16, sides: 6, sideR: 0.08, rBot: 0.8, rTop: 0.8 },
+  // Variações do sextavado (só para modelos salvos): na lista fica um só, e os
+  // lados/afunilamento se ajustam em Formato.
   octogono: { name: 'Octógono facetado', W: 38, D: 38, h: 12, sides: 8, sideR: 0.05, rBot: 1.5, rTop: 1.5 },
   cubo:    { name: 'Cubo', W: 30, D: 30, h: 30, sides: 4, sideR: 0.22, rBot: 3, rTop: 3 },
   piramide: { name: 'Pirâmide cortada', W: 40, D: 40, h: 22, sides: 4, sideR: 0.12, taper: 55, rBot: 1, rTop: 1.5 },
@@ -374,7 +376,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-25.pecas-criativas';
+const BUILD = '2026-09-25.um-facetado';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -2449,7 +2451,7 @@ const typeOf = m => m.type || Object.keys(LIB).find(k => LIB[k].name === m.name)
 function categoryOf(m) {
   const t = typeOf(m), c = CATS.find(([, keys]) => keys.includes(t));
   if (c) return c;
-  const label = m.kind === 'spray' ? 'Válvula' : m.kind === 'gargalo' ? 'Peça de encaixe' : m.vol ? 'Corpo' : 'Tampa';
+  const label = m.kind === 'spray' ? 'Válvula' : m.kind === 'gargalo' || ['octogono', 'cubo', 'piramide', 'prisma'].includes(t) ? 'Peça de encaixe' : m.vol ? 'Corpo' : 'Tampa';
   return CATS.find(([l]) => l === label);
 }
 // Medidas que acompanham a escala da peça (em mm).
@@ -2573,7 +2575,7 @@ const CATS = [
   ['Corpo', ['reto', 'boston', 'quadrado', 'capsula', 'perfumeOval', 'plano', 'arco', 'cone', 'placa', 'bisnaga', ...DRAFT_KEYS.corpo]],
   ['Tampa', ['esfera', 'esferaBisnaga', 'taca', 'domo', 'seixo', 'flip', 'flipRedondo', 'disctop', 'sobretampa', 'tampaBisnaga', 'tampaSextavada', 'disco']],
   ['Válvula', ['pump', 'pumpFrisos', 'locao', 'espuma', 'spray', 'contaGotas', 'pushPull', 'pushSport', 'bicoDosador', 'lamina', 'pumpOnda', 'gatilho', 'pumpBisnaga']],
-  ['Peça de encaixe', ['gargalo', 'colar', 'barril', 'flare', 'anel', 'tigela', 'bola', 'sextavado', 'octogono', 'cubo', 'piramide', 'prisma', 'canelado']],
+  ['Peça de encaixe', ['gargalo', 'colar', 'barril', 'flare', 'anel', 'tigela', 'bola', 'sextavado', 'canelado']],
 ];
 CATS.forEach(([label, keys]) => {
   const row = document.createElement('div'); row.className = 'row';
