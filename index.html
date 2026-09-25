@@ -264,9 +264,9 @@ const LIB = {
              actW: 19, headH: 4.2, armT: 4.2, armW: 12, nozzleL: 25.5, droop: 1.2 },
   locao:   { name: 'Pump loção (bico curvo)', kind: 'spray', sprayType: 'locao', W: 24.5, D: 24.5, h: 10.8, collarR: 0.8, stemD: 15.5, stemH: 7.3,
              actW: 18.8, headH: 19.7, domeH: 4.5, nozzleL: 30, droop: 6, spoutD: 3 },
-  pumpFrisos: { name: 'Pump loção com frisos', kind: 'spray', sprayType: 'lamina', W: 38, D: 38, h: 17.5, collarR: 1,
-             ridges: 82, ridgeD: 0.78, stemD: 11.5, stemH: 12, actW: 17, headH: 5.8,
-             nozzleL: 30, armW: 9.2, armT: 3, droop: 4.5, bladeLift: 2.4, bladeStyle: 'draft1015',
+  pumpFrisos: { name: 'Pump loção com frisos', kind: 'spray', sprayType: 'draftpump', W: 38, D: 38, h: 17.5, collarR: 1,
+             ridges: 82, ridgeD: 0.78, stemD: 11.5, stemH: 12, actW: 17, headH: 5.4,
+             nozzleL: 30, armW: 9.5, armT: 3.1, droop: 4.2, bladeLift: 2.4, outletD: 2.8,
              mola: false, pescD: 2.8, pescGap: 3,
              own: true, color: '#e8dcc6', finish: 'fosco' },
   espuma:  { name: 'Pump espuma / foam', kind: 'spray', sprayType: 'foam', W: 43, D: 43, h: 17, collarR: 1.2, ridges: 0,
@@ -297,7 +297,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-24.bico-dosador.sculptural-pump-outlet';
+const BUILD = '2026-09-24.bico-dosador.draft-pump-head';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -674,6 +674,27 @@ function boxGeo(w, h, d, x, y, z) {
   const g = new THREE.BoxGeometry(w, h, d);
   g.deleteAttribute('uv'); g.translate(x, y, z); return g;
 }
+function draftPumpHeadGeo(m, yH, lo) {
+  const L = m.nozzleL, H = m.headH, T = m.armT, W = m.armW / 2, R = m.actW / 2;
+  const x0 = -R * 0.75, x1 = R + L, N = lo ? 32 : 120, seg = lo ? 20 : 48, rings = [];
+  for (let i = 0; i <= N; i++) {
+    const q = i / N, e = (1 - Math.cos(Math.PI * q)) / 2, x = x0 + (x1 - x0) * e;
+    const t = clamp((x - R * 0.2) / Math.max(L, 1e-6), 0, 1);
+    const root = Math.exp(-(((x + R * 0.15) / (R * 0.9)) ** 2));
+    const end = Math.sin(Math.PI * q);
+    const cy = yH + H * 0.34 - 0.45 * root + (m.bladeLift || 0) * Math.sin(Math.PI * t) * 0.62 - m.droop * Math.pow(t, 1.45);
+    const hz = W * (1.18 - 0.3 * t + 0.24 * root) * Math.max(0.16, end ** 0.25);
+    const hTop = (T * 0.55 + H * 0.35 * root) * Math.max(0.18, end ** 0.35);
+    const hBot = (T * 0.45 + H * 0.18 * root) * Math.max(0.18, end ** 0.35);
+    const ring = [];
+    for (let j = 0; j < seg; j++) {
+      const th = j / seg * TAU, [zz, yy] = sp(hz, 1, 2.2, th);
+      ring.push([x, cy + yy * (yy > 0 ? hTop : hBot), zz]);
+    }
+    rings.push(ring);
+  }
+  return loftPts(rings);
+}
 
 // Válvula: virola que veste o gargalo + cabeça de spray fino ou pump.
 function sprayGeo(m, y0, { lo = false } = {}) {
@@ -703,6 +724,11 @@ function sprayGeo(m, y0, { lo = false } = {}) {
     head.push(btn);
     const oh = cyl(0.42, 0, 1.5); oh.rotateX(Math.PI / 2); oh.translate(0, yo, zf - 1.1);
     holes.push(oh);
+  } else if (m.sprayType === 'draftpump') {
+    head.push(cyl(m.stemD / 2, top - 1, m.stemH + 2, 0, 0, lo));
+    head.push(draftPumpHeadGeo(m, top + m.stemH, lo));
+    const tipX = m.actW / 2 + m.nozzleL, ro = Math.min(m.armT * 0.42, (m.outletD || 2.2) / 2);
+    holes.push(xCyl(ro, 1.6, tipX - 0.8, top + m.stemH + m.headH * 0.34 - m.droop, lo));
   } else if (m.sprayType === 'lamina') {
     head.push(cyl(m.stemD / 2, top - 1, m.stemH + 2, 0, 0, lo));
     head.push(bladeHeadGeo(m, top + m.stemH, lo));
@@ -1750,7 +1776,7 @@ const MF = [
     notK(['gargalo', 'spray'], ['D', 'Profundidade (lado)', 4, 200, 0.5, 'mm']),
     N(['neckStd', 'Padrão do acabamento (aprox.)', 'select', [...Object.keys(NECKS).map(k => [k, k]), ['livre', 'Livre']]]),
     N(['W', 'Diâmetro da rosca (T)', 8, 120, 0.1, 'mm']),
-    K(['sprayType', 'Tipo de válvula', 'select', [['mist', 'Spray fino (névoa)'], ['locao', 'Pump loção (bico curvo)'], ['foam', 'Pump espuma / foam'], ['lamina', 'Pump com alavanca / bico lâmina'], ['gotas', 'Conta-gotas'], ['pushpull', 'Push-pull'], ['bico', 'Bico dosador']]]),
+    K(['sprayType', 'Tipo de válvula', 'select', [['mist', 'Spray fino (névoa)'], ['locao', 'Pump loção (bico curvo)'], ['draftpump', 'Pump loção com frisos'], ['foam', 'Pump espuma / foam'], ['lamina', 'Pump com alavanca / bico lâmina'], ['gotas', 'Conta-gotas'], ['pushpull', 'Push-pull'], ['bico', 'Bico dosador']]]),
   ]],
   ['Formato', [
     G(['n', 'Seção: oval → retângulo', 2, 10, 0.1, '']),
@@ -1803,7 +1829,7 @@ const MF = [
   ['Cabeça e haste', [
     K(['actW', 'Cabeça: largura', 8, 60, 0.5, 'mm']),
     K(['actH', 'Cabeça: altura', 6, 60, 0.5, 'mm', m => ['mist', 'gotas', 'pushpull', 'bico', 'foam'].includes(m.sprayType)]),
-    K(['headH', 'Cabeça: altura', 6, 60, 0.5, 'mm', m => ['locao', 'lamina'].includes(m.sprayType)]),
+    K(['headH', 'Cabeça: altura', 2, 60, 0.5, 'mm', m => ['locao', 'lamina', 'draftpump'].includes(m.sprayType)]),
     K(['domeH', 'Cabeça: altura do domo', 0, 20, 0.5, 'mm', isType('locao')]),
     K(['stemD', 'Haste: diâmetro', 3, 40, 0.5, 'mm']),
     K(['stemH', 'Haste: altura', 0, 40, 0.5, 'mm']),
@@ -1812,12 +1838,12 @@ const MF = [
     K(['guideLine', 'Anel guia: altura do friso', 5, 95, 1, '%', isType('mist')]),
   ]],
   ['Bico', [
-    K(['nozzleL', 'Comprimento', 0, 60, 0.5, 'mm', m => ['locao', 'lamina', 'bico', 'foam'].includes(m.sprayType)]),
+    K(['nozzleL', 'Comprimento', 0, 60, 0.5, 'mm', m => ['locao', 'lamina', 'bico', 'foam', 'draftpump'].includes(m.sprayType)]),
     K(['spoutD', 'Diâmetro do tubo', 1.5, 10, 0.1, 'mm', m => ['locao', 'bico'].includes(m.sprayType)]),
-    K(['armW', 'Largura', 3, 30, 0.5, 'mm', m => ['lamina', 'foam'].includes(m.sprayType)]),
-    K(['armT', 'Espessura', 1.5, 15, 0.1, 'mm', m => ['lamina', 'foam'].includes(m.sprayType)]),
-    K(['outletD', 'Furo de saída', 0.5, 8, 0.1, 'mm', isType('lamina')]),
-    K(['droop', 'Queda na ponta (− sobe)', -10, 15, 0.5, 'mm', m => ['locao', 'lamina'].includes(m.sprayType)]),
+    K(['armW', 'Largura', 3, 30, 0.5, 'mm', m => ['lamina', 'foam', 'draftpump'].includes(m.sprayType)]),
+    K(['armT', 'Espessura', 1.5, 15, 0.1, 'mm', m => ['lamina', 'foam', 'draftpump'].includes(m.sprayType)]),
+    K(['outletD', 'Furo de saída', 0.5, 8, 0.1, 'mm', m => ['lamina', 'draftpump'].includes(m.sprayType)]),
+    K(['droop', 'Queda na ponta (− sobe)', -10, 15, 0.5, 'mm', m => ['locao', 'lamina', 'draftpump'].includes(m.sprayType)]),
     K(['dir', 'Direção (giro)', -180, 180, 1, '°']),
   ]],
   ['Mola e pescante', [
