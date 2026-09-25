@@ -21,6 +21,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);font:13px/1
 .login-card input[readonly]{color:#8f867a}
 .login-link{background:none;border:0;color:#8f867a;font:inherit;font-size:12px;cursor:pointer;text-decoration:underline}
 .login-note{color:#c9c1b4;text-align:center;font-size:12px;min-height:0}
+.line-row{display:flex;align-items:center;gap:6px;padding:5px 6px;border:1px solid var(--line);border-radius:8px;margin-bottom:4px;cursor:pointer}
+.line-row.on{border-color:var(--ink)}
+.line-row .who{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.line-row .who small{color:var(--muted);margin-left:4px}
 .team-row{display:flex;align-items:center;gap:6px;padding:6px 0;border-bottom:1px solid var(--line)}
 .team-row .who{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .team-row .who small{display:block;color:var(--muted)}
@@ -133,6 +137,14 @@ canvas{display:block;width:100%;height:100%;touch-action:none}
       <button class="btn" id="importJsonBtn">JSON ↑</button>
       <input type="file" id="importJson" accept=".json,application/json" class="hidden">
     </div>
+  </details>
+
+  <details open id="lineBox">
+    <summary>Lado a lado</summary>
+    <div class="tip">Outros produtos da linha, ao lado deste. Clique num deles (aqui ou no 3D) para editar.</div>
+    <div id="lineup"></div>
+    <div class="row"><select id="lineAdd"></select><button class="btn pri sm" id="lineAddBtn" style="flex:0;min-width:104px">+ Produto</button></div>
+    <div id="lineGap"></div>
   </details>
 
   <details open>
@@ -376,7 +388,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-25.pescante-na-valvula';
+const BUILD = '2026-09-25.lado-a-lado';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -618,6 +630,9 @@ function normalize(s) {
   s.color = unpink(s.color);
   s.wall ??= 1.2; s.bg ??= '#f1f0ed'; s.color ??= BEIGE; s.finish ??= 'fosco'; s.name ??= 'Sem nome';
   s.logos ??= [];
+  // Lado a lado: outros produtos da linha (cada um com o próprio modelo e cor).
+  s.slot ??= 0; s.gap ??= 25;
+  s.side = (s.side || []).map(it => { const n = normalize({ wall: s.wall, bg: s.bg, ...it, side: [] }); delete n.side; delete n.gap; return n; });
   // Peças em malha (versão antiga da Draft) não existem mais.
   s.modules = (s.modules || []).filter(m => m.kind !== 'malha').map(m => ({ ...m, color: unpink(m.color) })).map(m => ({ ...BASE, uid: newUid(), ...m, ...(m.sprayType === 'pump' ? { sprayType: 'locao' } : m.sprayType === 'foamInc' ? { sprayType: 'foam' } : m.sprayType === 'foam' && m.actW > 20 ? { actW: 15, actH: 24, nozzleL: 2.6 } : {}) }));
   s.modules.forEach(m => {
@@ -1525,6 +1540,7 @@ const refMesh = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), refMat);
 refMesh.visible = false; scene.add(refMesh);
 
 const product = new THREE.Group(); scene.add(product);
+const sideRoot = new THREE.Group(); scene.add(sideRoot); // produtos ao lado (fileira)
 
 const persp = new THREE.PerspectiveCamera(28, 1, 1, 20000);
 const ortho = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 20000);
@@ -1577,6 +1593,7 @@ function material(color, finish) {
 function build() {
   holeMat.color.set(S.color).multiplyScalar(0.55);
   buildInto(product, S, explode ? 18 : 0);
+  buildLineup();
   record();
   scheduleLogos();
   scene.background = new THREE.Color(S.bg);
@@ -1757,11 +1774,18 @@ let logoRun = 0;
 function scheduleLogos() { clearTimeout(logoTimer); if (S.logos?.length) logoTimer = setTimeout(applyLogos, 120); }
 async function applyLogos() {
   const run = ++logoRun;
-  const masks = await Promise.all(S.logos.map(L => logoMask(L.svg)));
-  if (run !== logoRun) return; // já veio outra montagem
-  S.logos.forEach((L, li) => {
+  await applyLogosTo(product, S, () => run === logoRun); // já veio outra montagem?
+}
+// Relevo dos logos num grupo (produto em edição ou um dos que estão ao lado).
+// O cálculo é feito com o grupo na origem e depois ele volta para o lugar.
+async function applyLogosTo(group, st, alive) {
+  if (!st.logos?.length) return;
+  const masks = await Promise.all(st.logos.map(L => logoMask(L.svg)));
+  if (!alive()) return;
+  const px = group.position.x; group.position.x = 0; group.updateMatrixWorld(true);
+  st.logos.forEach((L, li) => {
     const M = masks[li]; if (!L.n || !M) return;
-    const target = product.children.find(o => o.userData.main && o.userData.uid === L.uid); if (!target) return;
+    const target = group.children.find(o => o.userData.main && o.userData.uid === L.uid); if (!target) return;
     if (!target.geometry.boundsTree) target.geometry.computeBoundsTree();
     const F = logoFrame(L, target, M);
     const emboss = L.depth >= 0;
@@ -1771,8 +1795,9 @@ async function applyLogos() {
     const lm = new THREE.Mesh(skin, emboss && L.own ? material(L.color, L.finish) : target.material);
     if (!emboss) { lm.material = lm.material.clone(); lm.material.depthTest = false; lm.renderOrder = 20; }
     lm.castShadow = true; lm.receiveShadow = true; lm.userData = { logo: true, idx: target.userData.idx }; lm.name = `logo_${L.name}`;
-    product.add(lm);
+    group.add(lm);
   });
+  group.position.x = px; group.updateMatrixWorld(true);
   req();
 }
 let placing = null, placingMask = null, preview = null;
@@ -2018,6 +2043,61 @@ function buildInto(product, S, explodeAmt = 0) {
 }
 
 function bounds() { return new THREE.Box3().setFromObject(product); }
+function boundsAll() { const b = bounds(); sideRoot.children.forEach(g => b.union(new THREE.Box3().setFromObject(g))); return b; }
+
+// ───────────────────────── lado a lado ─────────────────────────
+// O produto em edição fica na origem; os outros entram à esquerda/direita na
+// ordem de "slot", com S.gap mm entre as caixas.
+function buildLineup() {
+  sideRoot.children.slice().forEach(g => { g.traverse(o => o.geometry?.dispose()); sideRoot.remove(g); });
+  const groups = S.side.map(it => { const g = new THREE.Group(); buildInto(g, it, 0); sideRoot.add(g); return g; });
+  const all = [{ slot: S.slot, g: product }, ...S.side.map((it, i) => ({ slot: it.slot, g: groups[i] }))].sort((a, b) => a.slot - b.slot);
+  let x = 0; const pos = new Map();
+  for (const e of all) { const b = new THREE.Box3().setFromObject(e.g); if (b.isEmpty()) continue; pos.set(e.g, x - b.min.x); x += b.max.x - b.min.x + S.gap; }
+  const shift = pos.get(product) || 0;
+  groups.forEach(g => { g.position.x = (pos.get(g) ?? 0) - shift; });
+  groups.forEach((g, i) => applyLogosTo(g, S.side[i], () => g.parent === sideRoot));
+}
+const LINE_KEYS = ['name', 'color', 'finish', 'modules', 'logos', 'slot'];
+function editSide(i) {
+  const it = S.side[i], cur = {};
+  LINE_KEYS.forEach(k => { cur[k] = S[k]; S[k] = it[k]; });
+  cur.wall = S.wall; S.side[i] = cur; sel = 0; renderAll(); build();
+}
+function copyProduct(src, name, slot) {
+  const st = normalize(structuredClone({ wall: S.wall, bg: S.bg, ...src, side: [] })), ids = new Map();
+  const modules = st.modules.map(m => { const u = newUid(); ids.set(m.uid, u); return { ...m, uid: u }; });
+  const logos = (st.logos || []).map(L => ({ ...L, uid: ids.get(L.uid) || L.uid }));
+  return { name, color: st.color, finish: st.finish, modules, logos, slot, wall: st.wall };
+}
+function renderLineup() {
+  const box = $('#lineup'); box.innerHTML = '';
+  const rows = [{ i: -1, it: S }, ...S.side.map((it, i) => ({ i, it }))].sort((a, b) => a.it.slot - b.it.slot);
+  if (rows.length > 1) rows.forEach(({ i, it }, k) => {
+    const r = document.createElement('div'); r.className = 'line-row' + (i < 0 ? ' on' : '');
+    const who = document.createElement('span'); who.className = 'who'; who.textContent = it.name || 'Sem nome';
+    if (i < 0) { const t = document.createElement('small'); t.textContent = 'editando'; who.append(t); }
+    r.append(who);
+    const btn = (t, title, fn) => { const b = document.createElement('button'); b.className = 'b'; b.textContent = t; b.title = title; b.onclick = e => { e.stopPropagation(); fn(); }; r.append(b); };
+    const swapWith = o => { const a = rows[k].it, b = rows[o]?.it; if (!b) return; [a.slot, b.slot] = [b.slot, a.slot]; renderLineup(); build(); fit(); };
+    btn('←', 'Mover para a esquerda', () => swapWith(k - 1));
+    btn('→', 'Mover para a direita', () => swapWith(k + 1));
+    if (i >= 0) btn('✕', 'Tirar da fileira', () => { S.side.splice(i, 1); renderLineup(); build(); fit(); });
+    if (i >= 0) r.onclick = () => editSide(i);
+    box.append(r);
+  });
+  const sv = saved(), opts = [['__atual', 'Cópia deste produto'], ...Object.keys(PRESETS).map(k => [k, k]), ...Object.keys(sv).map(k => ['s:' + k, k + ' (salvo)'])];
+  $('#lineAdd').innerHTML = opts.map(([v, l]) => `<option value="${v.replace(/"/g, '&quot;')}">${l.replace(/</g, '&lt;')}</option>`).join('');
+  const g = $('#lineGap'); g.innerHTML = '';
+  if (S.side.length) field(g, S, ['gap', 'Espaço entre os produtos', 0, 200, 1, 'mm'], () => { build(); fit(); });
+}
+$('#lineAddBtn').onclick = () => {
+  const v = $('#lineAdd').value, slot = Math.max(S.slot, ...S.side.map(it => it.slot)) + 1;
+  const src = v === '__atual' ? S : v.startsWith('s:') ? saved()[v.slice(2)] : PRESETS[v];
+  if (!src) return;
+  S.side.push(copyProduct(src, v === '__atual' ? `${S.name} (cópia)` : v.replace(/^s:/, ''), slot));
+  renderLineup(); build(); fit();
+};
 
 function updateStats() {
   const b = bounds(), sz = b.getSize(new THREE.Vector3()), v = volumes(S);
@@ -2035,7 +2115,7 @@ let curView = 'three';
 function fit(viewName = curView) {
   curView = viewName;
   document.querySelectorAll('[data-view]').forEach(b => b.classList.toggle('on', b.dataset.view === viewName));
-  const b = bounds(); if (b.isEmpty()) return;
+  const b = boundsAll(); if (b.isEmpty()) return;
   const sz = b.getSize(new THREE.Vector3()), c = b.getCenter(new THREE.Vector3());
   const dir = new THREE.Vector3(...VIEWS[viewName]).normalize();
   const aspect = view.clientWidth / Math.max(view.clientHeight, 1);
@@ -2105,7 +2185,12 @@ canvas.addEventListener('pointerup', e => {
     renderLogos(); store.set('shape.autosave', S); build();
     return;
   }
-  const hit = ray.intersectObjects(product.children)[0];
+  const hit = ray.intersectObjects(product.children)[0], sh = ray.intersectObject(sideRoot, true)[0];
+  if (sh && (!hit || sh.distance < hit.distance)) {
+    let g = sh.object; while (g.parent && g.parent !== sideRoot) g = g.parent;
+    const i = sideRoot.children.indexOf(g); if (i >= 0) editSide(i);
+    return;
+  }
   if (hit) { sel = ownerOf(hit.object.userData.idx); renderStack(); renderEditor(); }
 });
 // Duplo clique aproxima a câmera do ponto clicado.
@@ -2594,7 +2679,7 @@ function renderGlobal() {
   $('#projName').value = S.name;
 }
 
-function renderAll() { renderStack(); renderEditor(); renderGlobal(); renderPresets(); renderLogos(); }
+function renderAll() { renderStack(); renderEditor(); renderGlobal(); renderPresets(); renderLogos(); renderLineup(); }
 
 // Biblioteca de módulos
 // Corpo, tampa e peça de encaixe ficam em listas separadas.
@@ -2693,7 +2778,8 @@ function renderPresets() {
 
 }
 function loadState(s, name) {
-  S = normalize(structuredClone({ wall: S.wall, bg: S.bg, ...s }));
+  const keep = s.side?.length ? {} : { side: S.side, slot: S.slot, gap: S.gap }; // troca só o produto em edição
+  S = normalize(structuredClone({ wall: S.wall, bg: S.bg, ...s, ...keep }));
   if (name) S.name = name;
   sel = 0; renderAll(); build(); fit();
 }
@@ -2867,6 +2953,7 @@ $('#dlPng').onclick = () => {
 function exportRoot(scale) {
   const root = new THREE.Group(); root.name = S.name || 'embalagem';
   product.children.forEach(m => root.add(m.clone()));
+  sideRoot.children.forEach(g => root.add(g.clone())); // produtos ao lado, já na posição
   root.scale.setScalar(scale); root.updateMatrixWorld(true);
   return root;
 }
