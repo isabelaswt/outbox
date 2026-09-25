@@ -388,7 +388,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-25.gargalo-no-frasco';
+const BUILD = '2026-09-25.frisos-uniformes';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -765,6 +765,38 @@ function ribSamples(m, S) {
   }
 }
 // Frisos de uma faixa na altura ly: fator 0..1 da profundidade no ângulo th.
+// Ângulo "por comprimento de contorno": em seção achatada/quadrada o ângulo do
+// parâmetro anda devagar nas faces e rápido nos cantos; frisos distribuídos por ele
+// ficam amontoados. Aqui o ângulo é convertido para a fração do perímetro percorrida.
+const arcTabs = new Map();
+const roundRing = r => !r || (r.n <= 2.05 && !(r.sides >= 3) && Math.abs(r.a - r.b) < 0.01);
+function arcTab(r) {
+  const key = `${r.a.toFixed(2)}|${r.b.toFixed(2)}|${r.n}|${r.sides | 0}|${r.round}`;
+  let T = arcTabs.get(key);
+  if (!T) {
+    const M = 720, P = [];
+    for (let i = 0; i <= M; i++) { const t = i / M * TAU; P.push(r.sides >= 3 ? polyPt(r.a, r.b, r.sides, r.round, t) : sp(r.a, r.b, r.n, t)); }
+    T = new Float64Array(M + 1);
+    for (let i = 1; i <= M; i++) T[i] = T[i - 1] + Math.hypot(P[i][0] - P[i - 1][0], P[i][1] - P[i - 1][1]);
+    if (arcTabs.size > 4000) arcTabs.clear();
+    arcTabs.set(key, T);
+  }
+  return T;
+}
+function arcTheta(r, th) {
+  if (roundRing(r)) return th; // círculo: já é uniforme
+  const T = arcTab(r), M = T.length - 1, u = ((th % TAU) + TAU) % TAU / TAU * M, i = Math.min(M - 1, Math.floor(u)), f = u - i;
+  return (T[i] + (T[i + 1] - T[i]) * f) / T[M] * TAU;
+}
+// Inversa: dado o ângulo "por comprimento", o ângulo do parâmetro (pontos igualmente
+// espaçados no contorno, para os frisos terem malha suficiente nas faces retas).
+function invArc(r, tu) {
+  if (roundRing(r)) return tu;
+  const T = arcTab(r), M = T.length - 1, want = tu / TAU * T[M];
+  let lo = 0, hi = M; while (hi - lo > 1) { const mid = (lo + hi) >> 1; T[mid] < want ? lo = mid : hi = mid; }
+  const f = T[hi] > T[lo] ? (want - T[lo]) / (T[hi] - T[lo]) : 0;
+  return (lo + f) / M * TAU;
+}
 function ribAt(m, ly, th) {
   let best = null;
   for (const b of m.ribs || []) {
@@ -786,11 +818,11 @@ function polyPt(a, b, sides, round, th) {
   return [a * (Ri * Math.cos(ps) + rr * Math.cos(th)), b * (Ri * Math.sin(ps) + rr * Math.sin(th))];
 }
 
-function loft(rings, seg, disp) {
+function loft(rings, seg, disp, uniform = false) {
   const pts = rings.map(r => {
     const out = new Array(seg);
     for (let j = 0; j < seg; j++) {
-      const th = j / seg * TAU;
+      const th = uniform ? invArc(r, j / seg * TAU) : j / seg * TAU;
       let [x, z] = r.sides >= 3 ? polyPt(r.a, r.b, r.sides, r.round, th) : sp(r.a, r.b, r.n, th);
       let dy = 0;
       if (disp && !r.noDisp) [x, z, dy = 0] = disp(x, r.ly, z, th, r);
@@ -1401,12 +1433,20 @@ function moduleGeo(m0, y0, opts = {}) {
   const seg = lo ? 64 : kmax ? clamp(kmax * 12, 384, 2000) : logoQuality ? 960 : m.notch ? 720 : detailed ? 384 : 200;
   const disp = detailed ? (x, ly, z, th, r) => {
     // Faixas de frisos (medidas no original ou criadas no editor).
-    if (kmax) { const d = ribAt(m, ly, th); if (d) { const rr = Math.hypot(x, z) || 1; x -= x / rr * d; z -= z / rr * d; } }
+    const tu = (kmax || m.ridges > 0) ? arcTheta(r, th) : th; // frisos com espaçamento igual no contorno
+    // Frisos entram perpendiculares à superfície (não na direção do centro, que
+    // escorrega nos cantos de seção achatada e junta/espalha os frisos).
+    const nrm = () => {
+      if (r.sides >= 3) return [Math.cos(th), Math.sin(th)];
+      const e = Math.max(r.n, 2) - 1, gx = Math.sign(x) * Math.pow(Math.abs(x / r.a), e) / r.a, gz = Math.sign(z) * Math.pow(Math.abs(z / r.b), e) / r.b, gl = Math.hypot(gx, gz) || 1;
+      return [gx / gl, gz / gl];
+    };
+    if (kmax) { const d = ribAt(m, ly, tu); if (d) { const [nx, nz] = nrm(); x -= nx * d; z -= nz * d; } }
     // Disc-top: borda em sela, mais baixa na frente e atrás.
     const dy = saddle ? -m.discDip * Math.sin(th) ** 2 * (ly / m.h) : 0;
     if (m.ridges > 0 && ly > rB && ly < m.h - rT) {
-      const rr = Math.hypot(x, z) || 1, d = m.ridgeD * (0.5 + 0.5 * Math.cos(m.ridges * th));
-      x -= x / rr * d; z -= z / rr * d;
+      const d = m.ridgeD * (0.5 + 0.5 * Math.cos(m.ridges * tu)), [nx, nz] = nrm();
+      x -= nx * d; z -= nz * d;
     }
     if (m.notch && z > 0) {
       // Concha: mais funda junto à linha, suavizando até a borda (abaixo ou acima dela).
@@ -1418,7 +1458,7 @@ function moduleGeo(m0, y0, opts = {}) {
   } : null;
   let g, extras = [];
   if (flipOpen) [g, extras] = flipOpenGeo(m, y0, rings, seg, disp, ang);
-  else g = loft(rings, seg, disp);
+  else g = loft(rings, seg, disp, !!(disp && (kmax || m.ridges > 0)));
   if (!inset && m.topType === 'disc') { const [dg, dx] = discTopGeo(m, y0, ang, lo); g = mergeGeometries([g, dg]); extras.push(...dx); }
   if (!inset && !lo && m.spout) { const [tube, hole] = spoutGeo(m, y0); g = mergeGeometries([g, tube]); extras.push(hole); }
   if (m.ox) { g.translate(m.ox, 0, 0); extras.forEach(e => e.translate(m.ox, 0, 0)); }
