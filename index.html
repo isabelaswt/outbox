@@ -161,6 +161,7 @@ canvas{display:block;width:100%;height:100%;touch-action:none}
       <button class="btn" id="hdrBtn">Carregar HDR</button>
       <input type="file" id="hdrFile" accept=".hdr,image/vnd.radiance" class="hidden">
     </div>
+    <div id="hdrControls"></div>
     <label class="chk"><input type="checkbox" id="pngTransp" checked> Fundo transparente</label>
     <label class="chk"><input type="checkbox" id="pngShadow" checked> Incluir sombra</label>
     <div class="row"><button class="btn pri" id="dlPng">Baixar PNG</button></div>
@@ -307,7 +308,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-24.bico-dosador.hdr-preview-light';
+const BUILD = '2026-09-24.bico-dosador.hdr-rotate-strength';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -1165,7 +1166,7 @@ sun.shadow.mapSize.set(2048, 2048);
 Object.assign(sun.shadow.camera, { left: -300, right: 300, top: 300, bottom: -300, near: 10, far: 1500 });
 sun.shadow.bias = -0.0004; sun.shadow.normalBias = 0.4;
 scene.add(sun, sun.target);
-const baseLight = { env: roomEnv, envI: 0.9, hemi: 0.35, sun: 1.5, sunPos: sun.position.clone() };
+const baseLight = { env: roomEnv, envI: 0.9, envRot: scene.environmentRotation?.clone(), hemi: 0.35, sun: 1.5, sunPos: sun.position.clone() };
 
 const ground = new THREE.Mesh(new THREE.PlaneGeometry(6000, 6000), new THREE.ShadowMaterial({ opacity: 0.16 }));
 ground.rotation.x = -Math.PI / 2; ground.position.y = -0.05; ground.receiveShadow = true;
@@ -2380,12 +2381,19 @@ function download(blob, name) {
 }
 function toast(msg) { const t = $('#toast'); t.textContent = msg; t.classList.add('on'); clearTimeout(toast.t); toast.t = setTimeout(() => t.classList.remove('on'), 2200); }
 
-const HDR = { env: null, url: null, name: '' };
+const HDR = { env: null, url: null, name: '', rot: 0, strength: 100 };
 function snapshotLighting() {
-  return { env: scene.environment, envI: scene.environmentIntensity, hemi: hemi.intensity, sun: sun.intensity, sunPos: sun.position.clone() };
+  return { env: scene.environment, envI: scene.environmentIntensity, envRot: scene.environmentRotation?.clone(), hemi: hemi.intensity, sun: sun.intensity, sunPos: sun.position.clone() };
 }
 function setLighting(keep) {
   scene.environment = keep.env; scene.environmentIntensity = keep.envI; hemi.intensity = keep.hemi; sun.intensity = keep.sun; sun.position.copy(keep.sunPos);
+  if (scene.environmentRotation && keep.envRot) scene.environmentRotation.copy(keep.envRot);
+}
+function setEnvRotation(deg) {
+  if (scene.environmentRotation) scene.environmentRotation.set(0, THREE.MathUtils.degToRad(deg), 0);
+}
+function envStrength(v) {
+  return Math.max(0, (v || 100) / 100);
 }
 function applyLightingMode(mode) {
   if (mode === 'atual') {
@@ -2393,13 +2401,15 @@ function applyLightingMode(mode) {
     return;
   }
   const env = mode === 'hdr' && HDR.env ? HDR.env : roomEnv;
+  const boost = envStrength(HDR.strength);
   scene.environment = env;
+  setEnvRotation(HDR.rot);
   if (mode === 'soft') {
-    scene.environmentIntensity = 1.05; hemi.intensity = 0.55; sun.intensity = 0.85; sun.position.set(140, 360, 280);
+    scene.environmentIntensity = 1.05 * boost; hemi.intensity = 0.55; sun.intensity = 0.85; sun.position.set(140, 360, 280);
   } else if (mode === 'contrast') {
-    scene.environmentIntensity = 1.15; hemi.intensity = 0.18; sun.intensity = 2.1; sun.position.set(-180, 460, 220);
+    scene.environmentIntensity = 1.15 * boost; hemi.intensity = 0.18; sun.intensity = 2.1; sun.position.set(-180, 460, 220);
   } else {
-    scene.environmentIntensity = HDR.env && mode === 'hdr' ? 1.25 : 1.35; hemi.intensity = 0.42; sun.intensity = 1.15; sun.position.set(180, 420, 300);
+    scene.environmentIntensity = (HDR.env && mode === 'hdr' ? 1.25 : 1.35) * boost; hemi.intensity = 0.42; sun.intensity = 1.15; sun.position.set(180, 420, 300);
   }
 }
 function applyPngLighting(mode) {
@@ -2407,6 +2417,9 @@ function applyPngLighting(mode) {
   applyLightingMode(mode);
   return keep;
 }
+const hdrCh = () => { applyLightingMode($('#pngLight').value); req(); };
+field($('#hdrControls'), HDR, ['rot', 'Rotação do HDR', -180, 180, 1, '°'], hdrCh);
+field($('#hdrControls'), HDR, ['strength', 'Força do HDR', 0, 300, 1, '%'], hdrCh);
 $('#pngLight').onchange = () => { applyLightingMode($('#pngLight').value); req(); };
 $('#hdrBtn').onclick = () => $('#hdrFile').click();
 $('#hdrFile').onchange = e => {
