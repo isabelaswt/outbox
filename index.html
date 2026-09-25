@@ -233,6 +233,8 @@ const BASE = {
   mola: true, houseD: 8, springL: 18, coils: 11, sleeve: 'transparente',
   // pescante do corpo (quando não há válvula na pilha)
   bpesc: false, bpescD: 4, bpescGap: 3, bpescCurve: 0, bpescWave: 0,
+  // líquido dentro do corpo
+  liq: false, liqLevel: 80, liqColor: '#c9a45c',
   // sistema de abertura da tampa: flip-top (dobradiça na linha) ou disc-top.
   topType: 'nenhum', openPct: 0, lidSide: 'cima', orifD: 4, discD: 36, discDip: 4, discDimple: 1.2, discRise: 0,
   // bisnaga: tubo que achata até a solda mantendo o perímetro.
@@ -290,7 +292,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-24.pescante-em-todo-corpo';
+const BUILD = '2026-09-24.liquido';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -1044,6 +1046,7 @@ const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, preserveDraw
 renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
 renderer.toneMapping = THREE.NeutralToneMapping;
 renderer.shadowMap.enabled = true;
+renderer.localClippingEnabled = true; // corte do líquido no nível
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
 const scene = new THREE.Scene();
@@ -1389,6 +1392,42 @@ $('#logoFile').onchange = async e => {
   e.target.value = '';
 };
 
+// ───────────────────────── líquido ─────────────────────────
+// Volume interno do corpo (parede descontada) cortado no nível: plano de corte
+// no material e uma "tampa" plana na superfície (seção interna naquele nível).
+function levelCap(geo, y) {
+  const p = geo.attributes.position.array, I = geo.index ? geo.index.array : null, pts = [];
+  const nT = I ? I.length / 3 : p.length / 9, vi = (t, k) => (I ? I[t * 3 + k] : t * 3 + k) * 3;
+  for (let t = 0; t < nT; t++) for (const [a, b] of [[0, 1], [1, 2], [2, 0]]) {
+    const A = vi(t, a), B = vi(t, b), ya = p[A + 1], yb = p[B + 1];
+    if ((ya - y) * (yb - y) > 0 || ya === yb) continue;
+    const f = (y - ya) / (yb - ya); pts.push([p[A] + (p[B] - p[A]) * f, p[A + 2] + (p[B + 2] - p[A + 2]) * f]);
+  }
+  if (pts.length < 3) return null;
+  // contorno convexo (seções dos corpos são convexas ou quase)
+  pts.sort((u, v) => u[0] - v[0] || u[1] - v[1]);
+  const cr = (o, a, b) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]), lo = [], up = [];
+  for (const q of pts) { while (lo.length >= 2 && cr(lo[lo.length - 2], lo[lo.length - 1], q) <= 0) lo.pop(); lo.push(q); }
+  for (const q of [...pts].reverse()) { while (up.length >= 2 && cr(up[up.length - 2], up[up.length - 1], q) <= 0) up.pop(); up.push(q); }
+  const h = lo.slice(0, -1).concat(up.slice(0, -1)); if (h.length < 3) return null;
+  const cx = h.reduce((s, q) => s + q[0], 0) / h.length, cz = h.reduce((s, q) => s + q[1], 0) / h.length, pos = [cx, y, cz], idx = [];
+  h.forEach(q => pos.push(q[0], y, q[1]));
+  for (let i = 1; i <= h.length; i++) idx.push(0, 1 + (i % h.length), i); // normal para cima
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setIndex(idx); g.computeVertexNormals();
+  return g;
+}
+function liquidMeshes(m, y0) {
+  const inner = moduleGeo(m, y0, { inset: S.wall + 0.3, lift: S.wall, lo: false }); if (!inner) return [];
+  inner.computeBoundingBox();
+  const b = inner.boundingBox, level = b.min.y + (b.max.y - b.min.y) * clamp(m.liqLevel, 0, 100) / 100;
+  const mat = new THREE.MeshPhysicalMaterial({ color: m.liqColor, roughness: 0.12, clearcoat: 0.6, clippingPlanes: [new THREE.Plane(new THREE.Vector3(0, -1, 0), level)] });
+  const out = [new THREE.Mesh(inner, mat)];
+  const cap = m.liqLevel < 99.5 ? levelCap(inner, level - 0.01) : null;
+  if (cap) out.push(new THREE.Mesh(cap, new THREE.MeshPhysicalMaterial({ color: m.liqColor, roughness: 0.08, clearcoat: 0.8 })));
+  out.forEach(o => { o.userData.liquid = true; o.name = 'liquido'; });
+  return out;
+}
+
 // ───────────────────────── desfazer / refazer ─────────────────────────
 // Cada montagem guarda o estado; mudanças seguidas (arrastar um slider) viram
 // um passo só.
@@ -1418,7 +1457,7 @@ function updateUndoBtns() {
 
 // Monta as peças de um modelo num grupo (cena principal ou miniatura).
 function buildInto(product, S, explodeAmt = 0) {
-  product.children.forEach(o => o.geometry.dispose());
+  product.children.forEach(o => { o.geometry.dispose(); if (o.userData.liquid) o.material.dispose(); });
   product.clear();
   const base = layout(S), floor = Math.min(...base.filter(e => e.m.vol).map(e => e.y0));
   const glassBody = base.some(e => e.m.vol && (e.m.own ? e.m.finish : S.finish) === 'vidro');
@@ -1461,6 +1500,8 @@ function buildInto(product, S, explodeAmt = 0) {
       const pg = pescanteGeo(m, yTop - len, yTop);
       if (pg) add(pg, 'pescante');
     }
+    // Líquido dentro do corpo, até o nível escolhido.
+    if (m0.vol && m0.liq) liquidMeshes(m0, y0).forEach(o => { o.userData.idx = idx; product.add(o); });
     // Pescante do próprio corpo: do topo do gargalo (ou do corpo) até o fundo.
     if (m0.vol && m0.bpesc && !valvePesc && isFinite(floor)) {
       const nx = L[i + 1]?.m.kind === 'gargalo' ? L[i + 1] : null;
@@ -1835,7 +1876,25 @@ function renderEditor() {
     }
     if (ribsHere) renderRibs(grp, m);
   }
-  if (isBody(m)) renderBodyPescante(ed);
+  if (isBody(m)) { renderBodyPescante(ed); renderBodyLiquid(ed, m); }
+}
+// Líquido no corpo: liga, nível e cor.
+function renderBodyLiquid(ed, m) {
+  const openG = store.get('shape.openGroups', { Medidas: true, Formato: true });
+  const grp = document.createElement('details'); grp.className = 'grp'; grp.open = !!openG['Líquido'];
+  grp.innerHTML = '<summary>Líquido</summary>';
+  grp.addEventListener('toggle', () => { const o = store.get('shape.openGroups', { Medidas: true, Formato: true }); o['Líquido'] = grp.open; store.set('shape.openGroups', o); });
+  const before = [...ed.querySelectorAll('.grp')].find(g => ['Encaixe', 'Cor'].includes(g.querySelector('summary').textContent));
+  before ? ed.insertBefore(grp, before) : ed.appendChild(grp);
+  const ch = (k, structural) => {
+    if (k === 'liq' && m.liq && (m.own ? m.finish : S.finish) !== 'vidro') toast('Para ver o líquido, deixe o corpo em Transparente / vidro (Aparência)');
+    if (structural) renderEditorKeepScroll(); queueBuild();
+  };
+  field(grp, m, ['liq', 'Líquido dentro', 'check'], ch);
+  if (m.liq) {
+    field(grp, m, ['liqLevel', 'Nível', 0, 100, 1, '%'], ch);
+    field(grp, m, ['liqColor', 'Cor do líquido', 'color'], ch);
+  }
 }
 // No corpo: editar o pescante da válvula que está na pilha (ele fica dentro
 // do frasco). Mesmos valores do grupo "Mola e pescante" da válvula.
@@ -2002,7 +2061,7 @@ const saved = () => store.get('shape.presets', {});
 // parte, uma por vez para não travar a tela.
 const TW = 180, TH = 220;
 const thumbR = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
-thumbR.setSize(TW, TH); thumbR.toneMapping = THREE.NeutralToneMapping;
+thumbR.setSize(TW, TH); thumbR.toneMapping = THREE.NeutralToneMapping; thumbR.localClippingEnabled = true;
 const thumbScene = new THREE.Scene();
 thumbScene.environment = new THREE.PMREMGenerator(thumbR).fromScene(new RoomEnvironment(), 0.04).texture;
 thumbScene.environmentIntensity = 0.9;
