@@ -283,7 +283,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-24.reaproveita-tampas';
+const BUILD = '2026-09-24.galeria-sem-piscar';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -1879,9 +1879,22 @@ function pumpThumbs() {
   setTimeout(pumpThumbs, 16);
 }
 // Começa no próximo ciclo: a grade que pediu a miniatura já está na tela.
-function queueThumb(img, st) { thumbQueue.push({ img, st }); if (!pumping) { pumping = true; setTimeout(pumpThumbs, 0); } }
+function queueThumb(img, st) {
+  const hit = thumbCache.get(JSON.stringify(st));
+  if (hit) { img.src = hit; return; }
+  thumbQueue.push({ img, st }); if (!pumping) { pumping = true; setTimeout(pumpThumbs, 0); }
+}
+// Só redesenha a galeria quando a lista muda (salvar/excluir/importar);
+// escolher um modelo apenas move o destaque, sem recarregar miniaturas.
+let galleryKey = '';
 function renderPresets() {
   const sv = saved(), gal = $('#gallery'), keepTop = gal.scrollTop;
+  const key = Object.keys(PRESETS).join('|') + '#' + Object.keys(sv).join('|');
+  if (key === galleryKey && gal.children.length) {
+    gal.querySelectorAll('.card').forEach(c => c.classList.toggle('on', c.title === S.name));
+    return;
+  }
+  galleryKey = key;
   gal.innerHTML = '';
   const section = (title, entries, kind) => {
     if (!entries.length) return;
@@ -1910,7 +1923,7 @@ $('#projName').oninput = e => { S.name = e.target.value; store.set('shape.autosa
 $('#savePreset').onclick = () => {
   const name = (S.name || '').trim() || 'Sem nome';
   const sv = saved(); sv[name] = structuredClone(S); store.set('shape.presets', sv);
-  renderPresets(); toast(`Salvo: ${name}`);
+  galleryKey = ''; renderPresets(); toast(`Salvo: ${name}`); // miniatura do salvo é refeita
 };
 $('#delPreset').onclick = () => {
   const sv = saved(); if (!sv[S.name]) return toast('Esse nome não está entre os salvos');
