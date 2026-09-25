@@ -279,8 +279,8 @@ const BASE = {
   // sistema de abertura da tampa: flip-top (dobradiça na linha) ou disc-top.
   topType: 'nenhum', openPct: 0, lidSide: 'cima', orifD: 4, discD: 36, discDip: 4, discDimple: 1.2, discRise: 0,
   // bisnaga: tubo que achata até a solda mantendo o perímetro.
-  flatStart: 8, flatCurve: 1.15, sealH: 7, sealT: 1.4, sealW: 6,
-  sealShape: 'reta', sealArc: 4, sealR: 0, serr: true, serrP: 1, serrD: 0.25,
+  flatStart: 8, flatCurve: 1.15, sealH: 7, sealT: 1.4, sealW: 2,
+  sealShape: 'reta', sealArc: 4, sealR: 1.8, serr: true, serrP: 1, serrD: 0.18,
 };
 const LIB = {
   capsula: { name: 'Corpo cápsula', W: 58, D: 58, h: 160, rBot: 29, rTop: 29, vol: true },
@@ -332,8 +332,8 @@ const LIB = {
   bicoDosador: { name: 'Bico dosador', kind: 'spray', sprayType: 'bico', W: 32, D: 32, h: 18, collarR: 0.8, ridges: 76, ridgeD: 0.32,
              actW: 22, actH: 24, nozzleL: 24, spoutD: 2.7, mola: false, pesc: false },
   gargalo: { name: 'Gargalo com rosca', kind: 'gargalo', W: 23.9, D: 23.9, h: 16, neckStd: '24/410', pitch: 3.18, turns: 1.5 },
-  bisnaga: { name: 'Corpo bisnaga', kind: 'bisnaga', W: 45, D: 45, h: 165, rBot: 4, vol: true },
-  tampaBisnaga: { name: 'Tampa de bisnaga', W: 44, D: 44, h: 34, rBot: 2.5, rTop: 1, groove: 24, notch: true, notchUp: true, notchW: 18, notchH: 9, notchD: 1.4, notchP: 6, topType: 'flip', lidSide: 'baixo' },
+  bisnaga: { name: 'Corpo bisnaga', kind: 'bisnaga', W: 45, D: 45, h: 165, rBot: 4, flatStart: 10, sealH: 5.5, sealT: 1.2, sealW: 1.5, sealR: 2, serrD: 0.16, vol: true },
+  tampaBisnaga: { name: 'Tampa de bisnaga', W: 49, D: 49, h: 28, rBot: 8, rTop: 3, groove: 19, notch: true, notchUp: true, notchW: 13, notchH: 5, notchD: 0.9, notchP: 7, orifD: 3, topType: 'flip', lidSide: 'baixo' },
   placa:   { name: 'Corpo placa assimétrico', kind: 'placa', W: 66, D: 34, h: 134, rTL: 5, rTR: 30, rBL: 7, rBR: 7, rEdge: 5, chamfer: true, vol: true },
   flip:    { name: 'Tampa flip-top', W: 46, D: 34, n: 2.8, h: 24, rBot: 1, rTop: 3, groove: 6, topType: 'flip' },
   sobretampa: { name: 'Sobretampa (cobre a válvula)', W: 30, D: 30, h: 42, rBot: 0.5, rTop: 2 },
@@ -351,7 +351,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-25.login-ferramenta-clara';
+const BUILD = '2026-09-25.bisnaga-polida';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -390,7 +390,7 @@ function tubeFromProfile(d) {
   const P = d.body.prof, W = r1(Math.max(...P.map(r => Math.min(r[1] * d.body.W, r[2] * d.body.D))));
   const flat = P.find(r => r[0] > 0.5 && Math.min(r[1] * d.body.W, r[2] * d.body.D) / 2 < 1.6);
   const sealH = r1(clamp(flat ? (1 - flat[0]) * d.body.h : 7, 4, 14));
-  return { name: `${d.name}`, kind: 'bisnaga', vol: true, pesc: false, bpesc: false, W, D: W, h: d.body.h, rBot: 3, sealH, sealT: 1.4, sealW: 6, serr: true };
+  return { name: `${d.name}`, kind: 'bisnaga', vol: true, pesc: false, bpesc: false, W, D: W, h: d.body.h, rBot: 3, sealH, sealT: 1.2, sealW: 2, sealR: 1.6, serr: true, serrD: 0.18 };
 }
 for (const [id, d] of Object.entries(PERFIS)) {
   const k = id.replace(/^DRAFT_/, '').replace(/^(\d+)_.*/, '$1');
@@ -468,7 +468,7 @@ const PRESETS = {
   'Gargalo flare': { color: BEIGE, finish: 'fosco', modules: [
     M('reto', { W: 58, D: 58, h: 120, rBot: 10, rTop: 26 }), NECK('24/410'), M('flare', { W: 30, D: 30 }), M('disco', { W: 46, D: 46, h: 7 })] },
   'Bisnaga 200 ml': { color: BEIGE, finish: 'fosco', modules: [
-    M('tampaBisnaga', { W: 47, D: 47 }), M('bisnaga', { W: 48.5, D: 48.5, h: 178, rBot: 4.3 })] },
+    M('tampaBisnaga', { W: 50, D: 50, h: 26, groove: 17.5 }), M('bisnaga', { W: 48.5, D: 48.5, h: 178, rBot: 4.3 })] },
   'Bisnaga + esfera': { color: BEIGE, finish: 'fosco', modules: [
     M('esferaBisnaga', { W: 47, D: 47, h: 30 }), M('bisnaga', { W: 48.5, D: 48.5, h: 178, rBot: 4.3 })] },
   'Placa assimétrica + esfera': { color: BEIGE, finish: 'fosco', modules: [
@@ -585,6 +585,27 @@ function normalize(s) {
   s.logos ??= [];
   // Peças em malha (versão antiga da Draft) não existem mais.
   s.modules = (s.modules || []).filter(m => m.kind !== 'malha').map(m => ({ ...m, color: unpink(m.color) })).map(m => ({ ...BASE, uid: newUid(), ...m, ...(m.sprayType === 'pump' ? { sprayType: 'locao' } : {}) }));
+  s.modules.forEach(m => {
+    if (m.type === 'bisnaga') {
+      if (m.sealW >= 5.5) m.sealW = 1.5;
+      if (m.sealT >= 1.35) m.sealT = 1.2;
+      if ((m.sealR || 0) < 0.1) m.sealR = 2;
+      if ((m.serrD || 0) >= 0.24) m.serrD = 0.16;
+      if ((m.flatStart || 0) < 9) m.flatStart = 10;
+    }
+    if (m.type === 'tampaBisnaga') {
+      if (m.W <= 47.5) m.W = 50;
+      if (m.D <= 47.5) m.D = 50;
+      if (m.h >= 32) m.h = 26;
+      if ((m.rBot || 0) <= 3) m.rBot = 8;
+      if ((m.rTop || 0) <= 1.2) m.rTop = 3;
+      if ((m.groove || 0) >= 23) m.groove = 17.5;
+      if ((m.notchW || 0) >= 17) m.notchW = 13;
+      if ((m.notchH || 0) >= 8) m.notchH = 5;
+      if ((m.notchD || 0) >= 1.3) m.notchD = 0.9;
+      if ((m.orifD || 0) > 3.2) m.orifD = 3;
+    }
+  });
   s.modules.forEach(m => { if (m.kind === 'bisnaga') { m.pesc = false; m.bpesc = false; } });
   s.modules.forEach(m => {
     if (!isSphereCap(m)) return;
