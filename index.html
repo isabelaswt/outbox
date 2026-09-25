@@ -389,7 +389,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-25.pipeta-sempre-vidro';
+const BUILD = '2026-09-25.pipeta-vidro-real';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -1730,8 +1730,14 @@ const holeMat = new THREE.MeshStandardMaterial({ color: '#7d7366', roughness: 0.
 // transparente, o pescante sumia atrás do frasco transparente.
 const pescMat = new THREE.MeshStandardMaterial({ color: '#e4e6e3', roughness: 0.35 });
 // Pipeta de vidro do conta-gotas (vista por dentro do frasco transparente).
-const pipetteMat = new THREE.MeshPhysicalMaterial({ color: '#f4f7f6', roughness: 0.06, metalness: 0, clearcoat: 1, clearcoatRoughness: 0.05,
-  transparent: true, opacity: 0.32, depthWrite: false });
+// Vidro fino: quase invisível de frente e marcado nas bordas (efeito fresnel), com as
+// duas paredes do tubo aparecendo.
+const pipetteMat = new THREE.MeshPhysicalMaterial({ color: '#f7faf9', roughness: 0.05, metalness: 0, clearcoat: 1, clearcoatRoughness: 0.04,
+  transparent: true, opacity: 1, depthWrite: false, side: THREE.DoubleSide });
+pipetteMat.onBeforeCompile = sh => {
+  sh.fragmentShader = sh.fragmentShader.replace('#include <opaque_fragment>',
+    'float fres = pow(1.0 - abs(dot(normalize(vViewPosition), normal)), 2.2);\n diffuseColor.a = mix(0.05, 0.7, fres);\n#include <opaque_fragment>');
+};
 function material(color, finish) {
   const key = color + finish;
   if (matCache.has(key)) return matCache.get(key);
