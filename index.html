@@ -376,7 +376,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-25.sem-lamina';
+const BUILD = '2026-09-25.capsula-exata';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -503,10 +503,13 @@ const PRESETS = {
     M('reto', { W: 38, D: 38, h: 105, rBot: 5, rTop: 14 }), NECK('20/410'), M('spray')] },
   'Pump escultural': { color: BEIGE, finish: 'fosco', modules: [
     M('reto', { W: 62, D: 62, h: 104, rBot: 16, rTop: 16 }), NECK('24/410'), M('lamina')] },
-  'Pump cápsula': { color: BEIGE, finish: 'fosco', modules: [
+  // Medidas definidas pela Isabela (Pump_cápsula_disco_plano.json).
+  'Pump cápsula (disco plano)': { color: BEIGE, finish: 'fosco', modules: [
     M('reto', { W: 62, D: 62, h: 104, rBot: 20, rTop: 1 }), NECK('24/410'),
-    M('lamina', { name: 'Pump domo', W: 62, D: 62, h: 46, collarR: 30, stemD: 11, stemH: 10,
-      actW: 24, headH: 12, armT: 4.6, armW: 10.5, nozzleL: 24, droop: 0 })] },
+    M('lamina', { name: 'Pump escultural', W: 61, D: 61, h: 23, rBot: 1.4, rTop: 1.4, collarR: 30.5, stemD: 28, stemH: 5.5,
+      actW: 32, actH: 11.1, headH: 16, armT: 3.2, armW: 7.4, nozzleL: 18.2, droop: 0.8, outletD: 1.9,
+      domeH: 3.2, spoutD: 2.3, bandInset: 1, notchY: 8.4, notchW: 14, notchH: 5.6, notchD: 1.4, rTL: 4.2, rTR: 4.2, rBL: 4.2, rBR: 4.2, rEdge: 2,
+      orifD: 2.8, discD: 25.2, discDip: 2.8, sealH: 4.9 })] },
   'Boston com pump': { color: BEIGE, finish: 'fosco', modules: [
     M('boston'), NECK('24/410', { embed: 12 }), M('locao')] },
   'Conta-gotas âmbar': { color: BEIGE, finish: 'fosco', modules: [
