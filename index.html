@@ -388,7 +388,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-25.lado-a-lado-excluir';
+const BUILD = '2026-09-25.logo-nas-repeticoes';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -1806,7 +1806,8 @@ async function applyLogosTo(group, st, alive) {
   const px = group.position.x; group.position.x = 0; group.updateMatrixWorld(true);
   st.logos.forEach((L, li) => {
     const M = masks[li]; if (!L.n || !M) return;
-    const target = group.children.find(o => o.userData.main && o.userData.uid === L.uid); if (!target) return;
+    const mains = group.children.filter(o => o.userData.main && o.userData.uid === L.uid);
+    const target = mains.find(o => o.userData.rep === (L.rep || 0)) || mains[0]; if (!target) return;
     if (!target.geometry.boundsTree) target.geometry.computeBoundsTree();
     const F = logoFrame(L, target, M);
     const emboss = L.depth >= 0;
@@ -2018,8 +2019,9 @@ function buildInto(product, S, explodeAmt = 0) {
     const mesh = new THREE.Mesh(g, material(m.own ? m.color : S.color, m.own ? m.finish : S.finish));
     mesh.castShadow = true; mesh.receiveShadow = true;
     mesh.userData.idx = idx;
-    if (!product.children.some(o => o.userData.main && o.userData.uid === m.uid))
-      Object.assign(mesh.userData, { main: true, uid: m.uid, y0, ox: m.ox || 0 });
+    // Cada repetição é alvo de logo, com o número da cópia (0 = a primeira).
+    const rep = product.children.filter(o => o.userData.main && o.userData.uid === m.uid).length;
+    Object.assign(mesh.userData, { main: true, uid: m.uid, y0, ox: m.ox || 0, rep });
     mesh.name = `${String(idx + 1).padStart(2, '0')}_${m.name}`;
     product.add(mesh);
     (g.userData.extras || []).forEach(xg => { const xm = new THREE.Mesh(xg, xg.userData.mat === 'insert' ? insertMat : xg.userData.mat === 'clear' ? clearMat : holeMat); xm.userData.idx = idx; product.add(xm); });
@@ -2206,7 +2208,7 @@ canvas.addEventListener('pointerup', e => {
     const hit = ray.intersectObjects(product.children.filter(o => o.userData.main))[0];
     if (!hit) return toast('Clique em cima do shape');
     const { uid, y0, ox } = hit.object.userData;
-    Object.assign(placing, { uid, p: [hit.point.x - ox, hit.point.y - y0, hit.point.z], n: hit.face.normal.toArray() });
+    Object.assign(placing, { uid, rep: hit.object.userData.rep || 0, p: [hit.point.x - ox, hit.point.y - y0, hit.point.z], n: hit.face.normal.toArray() });
     stopPlacing();
     renderLogos(); store.set('shape.autosave', S); build();
     return;
