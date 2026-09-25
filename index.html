@@ -388,7 +388,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-25.grupo-repeticao';
+const BUILD = '2026-09-25.gargalo-no-frasco';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -827,18 +827,27 @@ function loftPts(pts) {
 }
 
 // Gargalo: base que entra no corpo, anel de apoio e rosca helicoidal.
-function neckGeo(m, y0, { lo = false } = {}) {
+function neckGeo(m, y0, { lo = false, body = null } = {}) {
   const R0 = m.W / 2, E = Math.max(R0 - m.threadD, 1), ringR = E + m.threadD + m.ringW, rh = m.ringH, h = m.h;
   // Entrada no corpo: abaixo do anel a base abre numa curva côncava (como garrafa
-  // soprada), para o gargalo não cortar seco o ombro arredondado do frasco.
-  const F = Math.max(0, m.neckFillet ?? 3), Lf = Math.min(F * 1.6, m.embed), prof = [[-m.embed, E + F]];
-  if (F > 0) for (let i = 12; i >= 0; i--) { const t = i / 12; prof.push([-Lf * t, E + F * (1 - Math.sqrt(Math.max(0, 1 - t * t)))]); }
-  prof.push([0, E]);
+  // soprada) que é o frasco subindo até o gargalo: nunca passa do contorno do
+  // corpo naquela altura (em corpo oval/estreito ela para na silhueta do frasco).
+  const F = body ? Math.max(0, m.neckFillet ?? 3) : 0, Lf = Math.min(F * 1.6, m.embed), prof = [];
+  const inBody = (ly, r) => {
+    if (!body) return [r, r];
+    const yb = y0 + ly - body.y0; if (yb < 0 || yb > body.m.h) return [E, E];
+    const { rB, rT } = radii(body.m), [ba, bb] = sectionAt(body.m, yb, rB, rT);
+    return [Math.max(E, Math.min(r, ba - 0.2)), Math.max(E, Math.min(r, bb - 0.2))];
+  };
+  prof.push([-m.embed, ...inBody(-m.embed, E + F)]);
+  if (F > 0) for (let i = 12; i >= 1; i--) { const t = i / 12, ly = -Lf * t; prof.push([ly, ...inBody(ly, E + F * (1 - Math.sqrt(Math.max(0, 1 - t * t))))]); }
+  prof.push([0, E, E]);
   if (rh > 0) prof.push([0.01, ringR - 0.4], [Math.min(0.4, rh / 2), ringR], [Math.max(rh - 0.4, rh / 2), ringR], [rh, ringR - 0.4], [rh + 0.01, E]);
+  prof.forEach(q => { if (q.length === 2) q.push(q[1]); }); // [y, meia-largura, meia-profundidade]
   const step = lo ? 2 : 0.18;
   for (let y = rh + 0.2; y < h - 0.8; y += step) prof.push([y, E]);
   prof.push([h - 0.8, E], [h - 0.3, E - 0.25], [h, E - 0.8]);
-  const rings = prof.filter((q, i, a) => i === 0 || q[0] > a[i - 1][0]).map(([ly, a]) => ({ y: y0 + ly, ly, a, b: a, n: 2 }));
+  const rings = prof.filter((q, i, a) => i === 0 || q[0] > a[i - 1][0]).map(([ly, a, b]) => ({ y: y0 + ly, ly, a, b: b ?? a, n: 2 }));
   // A hélice termina perto da boca, como no gargalo real.
   const pitch = Math.max(m.pitch, 0.5), w = pitch * 0.45, yT1 = h - 1.2 - pitch * 0.25;
   const turns = Math.min(m.turns, Math.max(0, (yT1 - (rh + 1.2)) / pitch)), yT0 = yT1 - turns * pitch;
@@ -2021,7 +2030,8 @@ function buildInto(product, S, explodeAmt = 0) {
     if (dn?.kind === 'gargalo' && hasBand(m0) && m0.W < minValveW(m0, dn.W))
       m = { ...m, bandInset: Math.max(0.15, (m0.W - dn.W - 1.4) / 2 - 0.35) };
     const hasLogo = S.logos?.some(L => L.uid === m.uid);
-    const g = moduleGeo(m, y0, { logoQuality: hasLogo }); if (!g) return;
+    const under = m0.kind === 'gargalo' && L[i - 1]?.m.vol && L[i - 1].m.kind === 'giro' ? { m: L[i - 1].m, y0: L[i - 1].y0 } : null;
+    const g = moduleGeo(m, y0, { logoQuality: hasLogo, body: under }); if (!g) return;
     const mesh = new THREE.Mesh(g, material(m.own ? m.color : S.color, m.own ? m.finish : S.finish));
     mesh.castShadow = true; mesh.receiveShadow = true;
     mesh.userData.idx = idx;
