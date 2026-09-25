@@ -388,7 +388,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-25.saia-ate-o-ombro';
+const BUILD = '2026-09-25.corpo-abre-gargalo';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -1551,21 +1551,32 @@ function surfaceDrop(m, R) {
   const g = clamp((a0 - R) / rTw, 0, 1);
   return rT * (1 - Math.sqrt(Math.max(0, 1 - (1 - g) ** 2)));
 }
+// O corpo acompanha a abertura do gargalo: se o gargalo é mais largo que o topo
+// reto do corpo, o arredondamento de cima recua na largura (a altura do ombro
+// fica), abrindo o topo para receber o gargalo.
+function openForNeck(body, neck) {
+  if (!neck || neck.kind !== 'gargalo' || !body?.vol || body.kind !== 'giro') return body;
+  const a0 = Math.min(body.W, body.D) / 2 * (body.taper || 100) / 100, rT = clamp(body.rTop || 0, 0, Math.min(body.h / 2, a0));
+  if (!rT) return body;
+  const rTw = body.rTopW > 0 ? body.rTopW : rT, need = neck.W / 2 + Math.max(0, neck.neckFillet ?? 3) * 0.5 + 0.5;
+  if (a0 - rTw >= need) return body;
+  return { ...body, rTopW: Math.max(0.5, a0 - need) };
+}
 function layout(s, explode = 0) {
   const out = []; let cur = 0, neck = null;
   s.modules.forEach((m0, idx) => {
     const onNeck = neck && m0.kind !== 'gargalo';
-    const m = onNeck ? { ...m0, ox: neck.m.ox } : m0;
+    const m = onNeck ? { ...m0, ox: neck.m.ox } : m0, mOpen = onNeck ? m : openForNeck(m0, s.modules[idx + 1]), nRep = Math.max(1, Math.round(m.rep));
     let y0 = 0;
-    for (let r = 0; r < Math.max(1, Math.round(m.rep)); r++) {
+    for (let r = 0; r < nRep; r++) {
       y0 = r === 0 && onNeck ? neck.y0 + neck.m.ringH + m.gap : cur + (r === 0 ? m.gap : m.repGap);
       // Gargalo sobre ombro arredondado: desce com o fechamento até a borda dele
       // assentar no ombro (senão sobra um vão com o gargalo à mostra).
       const up = s.modules[idx + 1];
       if (r === 0 && m0.kind === 'gargalo' && s.modules[idx - 1]?.vol && up && up.kind !== 'gargalo')
-        y0 -= shoulderDrop(s.modules[idx - 1], Math.max(0, Math.min(up.W, up.D) / 2 - (up.kind === 'spray' ? 0.6 : Math.min(up.rBot || 0, Math.min(up.W, up.D) / 2))) + 0.3);
+        y0 -= shoulderDrop(openForNeck(s.modules[idx - 1], m0), Math.max(0, Math.min(up.W, up.D) / 2 - (up.kind === 'spray' ? 0.6 : Math.min(up.rBot || 0, Math.min(up.W, up.D) / 2))) + 0.3);
       const ex = m0.kind === 'gargalo' && s.modules[idx - 1]?.vol ? idx - 1 : idx; // gargalo explode junto do corpo
-      out.push({ m, idx, y0: y0 + ex * explode }); cur = y0 + m.h;
+      out.push({ m: r === nRep - 1 ? mOpen : m, idx, y0: y0 + ex * explode }); cur = y0 + m.h; // só a última cópia abre para o gargalo
     }
     neck = m0.kind === 'gargalo' ? { m: m0, y0 } : null;
   });
