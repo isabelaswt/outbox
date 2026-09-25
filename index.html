@@ -287,7 +287,7 @@ const BASE = {
   // pescante do corpo (quando não há válvula na pilha)
   bpesc: false, bpescD: 4, bpescGap: 3, bpescCurve: 0, bpescWave: 0, bpescMola: true,
   // líquido dentro do corpo
-  liq: false, liqLevel: 80, liqColor: '#c9a45c',
+  liq: false, liqLevel: 80, liqColor: '#c9a45c', liqType: 'cremoso', liqClear: 60,
   // sistema de abertura da tampa: flip-top (dobradiça na linha) ou disc-top.
   topType: 'nenhum', openPct: 0, lidSide: 'cima', orifD: 4, discD: 36, discDip: 4, discDimple: 1.2, discRise: 0,
   // bisnaga: tubo que achata até a solda mantendo o perímetro.
@@ -376,7 +376,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-25.entalhe-suave';
+const BUILD = '2026-09-25.liquido-transparente';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -1855,11 +1855,17 @@ function liquidMeshes(m, y0) {
   const inner = moduleGeo(m, y0, { inset: S.wall + 0.3, lift: S.wall, lo: false }); if (!inner) return [];
   inner.computeBoundingBox();
   const b = inner.boundingBox, level = b.min.y + (b.max.y - b.min.y) * clamp(m.liqLevel, 0, 100) / 100;
-  const mat = new THREE.MeshPhysicalMaterial({ color: m.liqColor, roughness: 0.12, clearcoat: 0.6, clippingPlanes: [new THREE.Plane(new THREE.Vector3(0, -1, 0), level)] });
+  const clip = [new THREE.Plane(new THREE.Vector3(0, -1, 0), level)];
+  // Cremoso (hidratante): sólido e brilhante, aparece pelo vidro por ser opaco.
+  // Transparente (gel, tônico, óleo): translúcido; como o vidro só mostra por dentro
+  // o que é opaco, é desenhado por cima do frasco, e só quando o frasco é transparente.
+  const clear = m.liqType === 'transparente', glass = (m.own ? m.finish : S.finish) === 'vidro';
+  const opts = clear ? { transparent: true, opacity: 1 - clamp(m.liqClear, 0, 95) / 100, depthWrite: false, depthTest: !glass, roughness: 0.05, clearcoat: 1 } : {};
+  const mat = new THREE.MeshPhysicalMaterial({ color: m.liqColor, roughness: 0.12, clearcoat: 0.6, clippingPlanes: clip, ...opts });
   const out = [new THREE.Mesh(inner, mat)];
   const cap = m.liqLevel < 99.5 ? levelCap(inner, level - 0.01) : null;
-  if (cap) out.push(new THREE.Mesh(cap, new THREE.MeshPhysicalMaterial({ color: m.liqColor, roughness: 0.08, clearcoat: 0.8 })));
-  out.forEach(o => { o.userData.liquid = true; o.name = 'liquido'; });
+  if (cap) out.push(new THREE.Mesh(cap, new THREE.MeshPhysicalMaterial({ color: m.liqColor, roughness: 0.08, clearcoat: 0.8, ...opts })));
+  out.forEach(o => { o.userData.liquid = true; o.name = 'liquido'; if (clear && glass) o.renderOrder = 15; });
   return out;
 }
 
@@ -2417,6 +2423,8 @@ function renderBodyLiquid(ed, m) {
   };
   field(grp, m, ['liq', 'Líquido dentro', 'check'], ch);
   if (m.liq) {
+    field(grp, m, ['liqType', 'Tipo', 'select', [['cremoso', 'Cremoso (hidratante, loção)'], ['transparente', 'Transparente (gel, tônico, óleo)']]], (k) => ch(k, true));
+    if (m.liqType === 'transparente') field(grp, m, ['liqClear', 'Transparência', 0, 95, 1, '%'], ch);
     field(grp, m, ['liqLevel', 'Nível', 0, 100, 1, '%'], ch);
     field(grp, m, ['liqColor', 'Cor do líquido', 'color'], ch);
   }
