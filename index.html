@@ -351,7 +351,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-25.bisnaga-polida';
+const BUILD = '2026-09-25.encaixe-luz';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -810,6 +810,9 @@ function refShape(cmds, P) {
   return sh;
 }
 
+// Fim da saída do bico: um pouco atrás da ponta arredondada, para ler como furo e não como pino.
+const outletEnd = (tipX, rt, ro) => tipX - (rt - Math.sqrt(Math.max(0, rt * rt - ro * ro))) - 0.15;
+
 // Válvula: virola que veste o gargalo + cabeça de spray fino ou pump.
 function sprayGeo(m, y0, { lo = false } = {}) {
   const ring = (W, h, y, o = {}) => moduleGeo({ ...BASE, kind: 'giro', W, D: W, h, ...o }, y, { lo });
@@ -821,6 +824,8 @@ function sprayGeo(m, y0, { lo = false } = {}) {
       ring(bw, m.h - sk + 0.05, y0 + sk - 0.05, { rBot: 0, rTop: 0.6, ridges: m.ridges, ridgeD: 0.35 })]);
   } else collar = ring(m.W, m.h, y0, { rBot: 0.6, rTop: m.collarR, ridges: m.ridges, ridgeD: m.ridgeD });
   const top = y0 + m.h, head = [], holes = [];
+  // A haste nasce dentro da virola: em virola de domo, a borda dela não fica solta acima da curva.
+  const sink = Math.max(1, Math.min(m.h - 0.5, m.collarR || 0));
   if (m.sprayType === 'mist') {
     // Anel guia entre a virola e o atuador, com friso perto da base.
     let yA = top;
@@ -839,16 +844,16 @@ function sprayGeo(m, y0, { lo = false } = {}) {
     const oh = cyl(0.42, 0, 1.5); oh.rotateX(Math.PI / 2); oh.translate(0, yo, zf - 1.1);
     holes.push(oh);
   } else if (m.sprayType === 'draftpump') {
-    head.push(cyl(m.stemD / 2, top - 1, m.stemH + 2, 0, 0, lo));
+    head.push(cyl(m.stemD / 2, top - sink, m.stemH + sink + 1, 0, 0, lo));
     head.push(draftPumpHeadGeo(m, top + m.stemH, lo));
-    const tipX = m.actW / 2 + m.nozzleL, ro = Math.min(m.armT * 0.42, (m.outletD || 2.2) / 2);
-    holes.push(xCyl(ro, 1.6, tipX - 0.8, top + m.stemH + m.headH * 0.34 - m.droop, lo));
+    const tipX = m.actW / 2 + m.nozzleL, ro = Math.min(m.armT * 0.42, (m.outletD || 2.2) / 2), rt = m.armT / 2;
+    holes.push(xCyl(ro, 1.6, outletEnd(tipX, rt, ro) - 1.6, top + m.stemH + m.headH * 0.34 - m.droop, lo));
   } else if (m.sprayType === 'lamina') {
-    head.push(cyl(m.stemD / 2, top - 1, m.stemH + 2, 0, 0, lo));
+    head.push(cyl(m.stemD / 2, top - sink, m.stemH + sink + 1, 0, 0, lo));
     head.push(bladeHeadGeo(m, top + m.stemH, lo));
     // Saída na ponta da lâmina.
-    const rt = Math.min(m.armT / 2, m.armW / 2), tipX = m.actW / 2 + m.nozzleL, ro = Math.min(rt * 0.82, (m.outletD || 2.2) / 2);
-    holes.push(xCyl(ro, 1.6, tipX - 0.75, top + m.stemH + m.headH * 0.38 + (m.headH - m.armT) * 0.4 - m.droop, lo));
+    const rt = Math.min(m.armT / 2, m.armW / 2), tipX = m.actW / 2 + m.nozzleL, ro = Math.min(rt * 0.6, (m.outletD || 2.2) / 2);
+    holes.push(xCyl(ro, 1.6, outletEnd(tipX, rt, ro) - 1.6, top + m.stemH + m.headH * 0.38 + (m.headH - m.armT) * 0.4 - m.droop, lo));
   } else if (m.sprayType === 'gotas') {
     // Conta-gotas: bulbo de borracha com topo em domo.
     head.push(ring(m.actW, m.actH, top - 0.5, { rBot: 1.5, rTop: m.actW / 2, bulge: -6, bulgePos: 30 }));
@@ -946,7 +951,7 @@ function sprayGeo(m, y0, { lo = false } = {}) {
   } else {
     // Pump de loção/espuma: haste grossa, cabeça com topo em domo e bico em
     // tubo que sai reto e curva para baixo.
-    head.push(cyl(m.stemD / 2, top - 1, m.stemH + 2, 0, 0, lo));
+    head.push(cyl(m.stemD / 2, top - sink, m.stemH + sink + 1, 0, 0, lo));
     const yH = top + m.stemH;
     head.push(ring(m.actW, m.headH, yH, { rBot: 0.8, rTop: m.domeH, rTopW: m.actW / 2 }));
     if (m.nozzleL > 0) {
@@ -1301,16 +1306,20 @@ const scene = new THREE.Scene();
 const pmrem = new THREE.PMREMGenerator(renderer);
 const roomEnv = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
 scene.environment = roomEnv;
-scene.environmentIntensity = 0.9;
-const hemi = new THREE.HemisphereLight(0xffffff, 0xe6e0da, 0.35);
+// Luz padrão pensada para ler volume: ambiente baixo, luz principal lateral
+// forte e um contraluz frio do outro lado para recortar a silhueta.
+scene.environmentIntensity = 0.45;
+const hemi = new THREE.HemisphereLight(0xffffff, 0xb3a898, 0.3);
 scene.add(hemi);
-const sun = new THREE.DirectionalLight(0xffffff, 1.5);
-sun.position.set(160, 420, 260); sun.castShadow = true;
+const sun = new THREE.DirectionalLight(0xfff6ea, 2.6);
+sun.position.set(-260, 380, 240); sun.castShadow = true;
+const rim = new THREE.DirectionalLight(0xe8eef5, 0.9);
+rim.position.set(300, 220, -260); scene.add(rim);
 sun.shadow.mapSize.set(2048, 2048);
 Object.assign(sun.shadow.camera, { left: -300, right: 300, top: 300, bottom: -300, near: 10, far: 1500 });
 sun.shadow.bias = -0.0004; sun.shadow.normalBias = 0.4;
 scene.add(sun, sun.target);
-const baseLight = { env: roomEnv, envI: 0.9, envRot: scene.environmentRotation?.clone(), hemi: 0.35, sun: 1.5, sunPos: sun.position.clone() };
+const baseLight = { env: roomEnv, envI: 0.45, envRot: scene.environmentRotation?.clone(), hemi: 0.3, sun: 2.6, sunPos: sun.position.clone() };
 
 const ground = new THREE.Mesh(new THREE.PlaneGeometry(6000, 6000), new THREE.ShadowMaterial({ opacity: 0.16 }));
 ground.rotation.x = -Math.PI / 2; ground.position.y = -0.05; ground.receiveShadow = true;
@@ -1352,14 +1361,15 @@ function applyHand() {
 const matCache = new Map();
 const sleeveMat = new THREE.MeshStandardMaterial({ color: '#dfe3e6', roughness: 0.3, transparent: true, opacity: 0.32, depthTest: false, depthWrite: false });
 const insertMat = new THREE.MeshStandardMaterial({ color: '#ececea', roughness: 0.35 });
-const holeMat = new THREE.MeshStandardMaterial({ color: '#151515', roughness: 0.8 });
+// Furos e saídas: sombra da própria cor do frasco (atualizada no build), não preto.
+const holeMat = new THREE.MeshStandardMaterial({ color: '#7d7366', roughness: 0.9 });
 // Plástico translúcido leitoso: presente, mas discreto dentro do frasco.
 const pescMat = new THREE.MeshStandardMaterial({ color: '#d9dddc', roughness: 0.28, transparent: true, opacity: 0.28, depthWrite: false });
 function material(color, finish) {
   const key = color + finish;
   if (matCache.has(key)) return matCache.get(key);
   const m = new THREE.MeshPhysicalMaterial({ color, roughness: 0.5, metalness: 0 });
-  if (finish === 'fosco') { m.roughness = 0.62; m.sheen = 0.25; m.sheenRoughness = 0.8; m.sheenColor = new THREE.Color('#ffffff'); }
+  if (finish === 'fosco') { m.roughness = 0.62; m.sheen = 0.1; m.sheenRoughness = 0.8; m.sheenColor = new THREE.Color('#ffffff'); }
   if (finish === 'acetinado') { m.roughness = 0.34; m.clearcoat = 0.25; m.clearcoatRoughness = 0.4; }
   if (finish === 'brilho') { m.roughness = 0.14; m.clearcoat = 1; m.clearcoatRoughness = 0.06; }
   if (finish === 'perolado') { m.roughness = 0.3; m.iridescence = 0.7; m.iridescenceIOR = 1.4; m.clearcoat = 0.4; }
@@ -1370,6 +1380,7 @@ function material(color, finish) {
 }
 
 function build() {
+  holeMat.color.set(S.color).multiplyScalar(0.55);
   buildInto(product, S, explode ? 18 : 0);
   record();
   scheduleLogos();
@@ -1736,7 +1747,8 @@ function buildInto(product, S, explodeAmt = 0) {
   const L = layout(S, explodeAmt);
   const tubeBody = base.some(e => e.m.kind === 'bisnaga' && e.m.vol);
   const valvePesc = !tubeBody && S.modules.some(v => v.kind === 'spray' && v.pesc && !['pushpull', 'bico', 'sport'].includes(v.sprayType));
-  L.forEach(({ m: m0, idx, y0 }, i) => {
+  L.forEach(({ m: m0, idx, y0: yl }, i) => {
+    let y0 = yl;
     // O gargalo cabe na peça que o veste: anel de apoio nunca mais largo que
     // ela, e a rosca nunca mais alta do que ela cobre (fica sempre escondida).
     let m = m0;
@@ -1746,6 +1758,11 @@ function buildInto(product, S, explodeAmt = 0) {
       const maxH = m0.ringH + up.h * Math.max(1, up.rep) - 0.3;
       if (m0.ringW > maxRing || m0.h > maxH) m = { ...m0, ringW: Math.min(m0.ringW, maxRing), h: Math.max(m0.ringH + 2, Math.min(m0.h, maxH)) };
     }
+    // Peça bem mais larga que o anel do gargalo (sobretampa): a saia desce até o
+    // ombro do corpo e esconde o anel, em vez de deixar uma fresta com ele à mostra.
+    const dn = L[i - 1]?.m;
+    if (m0.kind !== 'gargalo' && dn?.kind === 'gargalo' && L[i - 1].idx === idx - 1 && dn.ringH > 0
+      && Math.min(m0.W, m0.D) > dn.W + 2 * dn.ringW + 6) { m = { ...m, h: m.h + dn.ringH }; y0 -= dn.ringH; }
     const hasLogo = S.logos?.some(L => L.uid === m.uid);
     const g = moduleGeo(m, y0, { logoQuality: hasLogo }); if (!g) return;
     const mesh = new THREE.Mesh(g, material(m.own ? m.color : S.color, m.own ? m.finish : S.finish));
@@ -2368,9 +2385,10 @@ const thumbR = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveD
 thumbR.setSize(TW, TH); thumbR.toneMapping = THREE.NeutralToneMapping; thumbR.localClippingEnabled = true;
 const thumbScene = new THREE.Scene();
 thumbScene.environment = new THREE.PMREMGenerator(thumbR).fromScene(new RoomEnvironment(), 0.04).texture;
-thumbScene.environmentIntensity = 0.9;
-thumbScene.add(new THREE.HemisphereLight(0xffffff, 0xe6e0da, 0.4));
-const tSun = new THREE.DirectionalLight(0xffffff, 1.3); tSun.position.set(160, 420, 260); thumbScene.add(tSun);
+thumbScene.environmentIntensity = 0.5;
+thumbScene.add(new THREE.HemisphereLight(0xffffff, 0xb3a898, 0.3));
+const tSun = new THREE.DirectionalLight(0xfff6ea, 2.3); tSun.position.set(-260, 380, 240); thumbScene.add(tSun);
+const tRim = new THREE.DirectionalLight(0xe8eef5, 0.8); tRim.position.set(300, 220, -260); thumbScene.add(tRim);
 const thumbCam = new THREE.PerspectiveCamera(26, TW / TH, 1, 8000);
 const thumbCache = new Map();
 function thumbKey(st) {
