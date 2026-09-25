@@ -367,7 +367,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-25.escultural-pato';
+const BUILD = '2026-09-25.sem-tipo-valvula';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -2087,7 +2087,6 @@ const MF = [
     GP(['sphereR', 'Raio da esfera', 0, 150, 0.5, 'mm', isSphereCap]),
     N(['neckStd', 'Padrão do acabamento (aprox.)', 'select', [...Object.keys(NECKS).map(k => [k, k]), ['livre', 'Livre']]]),
     N(['W', 'Diâmetro da rosca (T)', 8, 120, 0.1, 'mm']),
-    K(['sprayType', 'Tipo de válvula', 'select', [['mist', 'Spray fino (névoa)'], ['locao', 'Pump loção (bico curvo)'], ['draftpump', 'Pump loção com frisos'], ['foam', 'Pump espuma / foam'], ['lamina', 'Pump com alavanca / bico lâmina'], ['gotas', 'Conta-gotas'], ['pushpull', 'Push-pull'], ['bico', 'Bico dosador'], ['sport', 'Push-pull esportiva'], ['gatilho', 'Gatilho'], ['onda', 'Pump bico onda'], ['tubo', 'Pump de bisnaga'], ['pato', 'Pump bico pato'], ['sextavada', 'Tampa sextavada']]]),
   ]],
   ['Formato', [
     G(['n', 'Seção: oval → retângulo', 2, 10, 0.1, '']),
