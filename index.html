@@ -389,7 +389,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-25.lados-sem-pular';
+const BUILD = '2026-09-25.pipeta-vidro';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -1729,6 +1729,9 @@ const holeMat = new THREE.MeshStandardMaterial({ color: '#7d7366', roughness: 0.
 // Opaco de propósito: o vidro (transmission) só mostra por dentro o que é opaco;
 // transparente, o pescante sumia atrás do frasco transparente.
 const pescMat = new THREE.MeshStandardMaterial({ color: '#e4e6e3', roughness: 0.35 });
+// Pipeta de vidro do conta-gotas (vista por dentro do frasco transparente).
+const pipetteMat = new THREE.MeshPhysicalMaterial({ color: '#f4f7f6', roughness: 0.06, metalness: 0, clearcoat: 1, clearcoatRoughness: 0.05,
+  transparent: true, opacity: 0.32, depthWrite: false });
 function material(color, finish) {
   const key = color + finish;
   if (matCache.has(key)) return matCache.get(key);
@@ -1737,7 +1740,9 @@ function material(color, finish) {
   if (finish === 'acetinado') { m.roughness = 0.34; m.clearcoat = 0.25; m.clearcoatRoughness = 0.4; }
   if (finish === 'brilho') { m.roughness = 0.14; m.clearcoat = 1; m.clearcoatRoughness = 0.06; }
   if (finish === 'perolado') { m.roughness = 0.3; m.iridescence = 0.7; m.iridescenceIOR = 1.4; m.clearcoat = 0.4; }
-  if (finish === 'vidro') { m.roughness = 0.05; m.transmission = 1; m.thickness = 4; m.ior = 1.5; }
+  // Vidro não grava profundidade: o que é translúcido dentro dele (pipeta) aparece,
+  // e as peças opacas da frente continuam cobrindo.
+  if (finish === 'vidro') { m.roughness = 0.05; m.transmission = 1; m.thickness = 4; m.ior = 1.5; m.depthWrite = false; }
   if (finish === 'metal') { m.metalness = 1; m.roughness = 0.24; }
   matCache.set(key, m);
   return m;
@@ -2179,7 +2184,12 @@ function buildInto(product, S, explodeAmt = 0) {
       }
       const len = yTop - (y0 - base[i].y0) - (floor + S.wall + m.pescGap);
       const pg = pescanteGeo(m, yTop - len, yTop);
-      if (pg) add(pg, 'pescante');
+      if (pg && m.sprayType === 'gotas') {
+        // Conta-gotas: pipeta de vidro. Por cima do frasco transparente (o vidro do
+        // frasco não mostra por dentro o que é transparente); no opaco fica escondida.
+        const pm = new THREE.Mesh(pg, glassBody ? pipetteMat : pescMat); pm.userData.idx = idx;
+        pm.name = `${String(idx + 1).padStart(2, '0')}_pipeta`; if (glassBody) pm.renderOrder = 18; product.add(pm);
+      } else if (pg) add(pg, 'pescante');
     }
     // Líquido dentro do corpo, até o nível escolhido.
     if (m0.vol && m0.liq) liquidMeshes(m0, y0).forEach(o => { o.userData.idx = idx; product.add(o); });
