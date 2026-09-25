@@ -18,14 +18,20 @@ http://localhost:8766/?v=bisnaga-polida-4797f53
 
 O app e estatico e usa Three.js via CDN. Precisa de internet para carregar as dependencias do CDN.
 
-## Login
+## Login e modelos salvos (PHP + MySQL na Hostinger)
 
-Ha um bloqueio simples de entrada no front-end:
+Cada pessoa da equipe entra com e-mail e senha e ve so os proprios modelos. O servidor fica em `api/` (PHP + MySQL). Sem PHP (ex.: `python3 -m http.server`) o app abre direto e salva so no navegador.
 
-- Login: `swt`
-- Senha: `swt12345`
+Configuracao na Hostinger (uma vez):
 
-Importante: isso e apenas uma protecao visual/local no navegador. Para producao, trocar por autenticacao real no servidor.
+1. hPanel → Bancos de dados → MySQL: crie um banco e um usuario (anote nome do banco, usuario e senha).
+2. Gerenciador de arquivos → `public_html/api/`: copie `config.sample.php` para `config.php` e preencha com esses dados. O `config.php` fica fora do git.
+3. Abra `https://SEU-SITE/api/setup.php`: ele cria as tabelas e a primeira conta de administrador. Depois disso a pagina se desliga sozinha.
+4. Entre no OUTBOX. Em **Equipe**, adicione cada pessoa (nome + e-mail) e mande para ela o link gerado; ela cria a propria senha. O link vale 7 dias e so funciona uma vez. Para quem esqueceu a senha, gere um novo link.
+
+Seguranca: senhas com `password_hash`; sessao em cookie httponly/SameSite=Strict; escritas so via JSON; 5 erros de senha no mesmo e-mail (ou 30 no mesmo IP) travam por 15 minutos; `api/.htaccess` bloqueia os arquivos internos.
+
+Teste local com PHP: `php -S 127.0.0.1:8767 -t .` e um `api/config.php` apontando para um MySQL local.
 
 ## O que a ferramenta ja faz
 

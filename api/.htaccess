@@ -1,0 +1,4 @@
+# Arquivos internos da API não podem ser abertos pelo navegador.
+<FilesMatch "^(_lib\.php|config\.php|config\.sample\.php|schema\.sql)$">
+  Require all denied
+</FilesMatch>

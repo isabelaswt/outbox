@@ -18,6 +18,14 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);font:13px/1
 .login-card input:focus{border-color:#b89463;box-shadow:0 0 0 2px rgba(184,148,99,.18)}
 .login-card .btn{padding:11px 12px;border-radius:9px;background:#f4f0e8;color:#050505;border-color:#f4f0e8;font-weight:650}
 .login-error{min-height:18px;color:#ff6b6b;text-align:center;font-size:12px}
+.login-card input[readonly]{color:#8f867a}
+.login-link{background:none;border:0;color:#8f867a;font:inherit;font-size:12px;cursor:pointer;text-decoration:underline}
+.login-note{color:#c9c1b4;text-align:center;font-size:12px;min-height:0}
+.team-row{display:flex;align-items:center;gap:6px;padding:6px 0;border-bottom:1px solid var(--line)}
+.team-row .who{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.team-row .who small{display:block;color:var(--muted)}
+.team-link{display:grid;gap:6px;margin:8px 0;padding:8px;border-radius:8px;background:var(--soft)}
+.team-link input{width:100%;font-size:11px}
 .app{display:grid;grid-template-columns:360px 1fr;height:100vh}
 aside{background:var(--panel);border-right:1px solid var(--line);overflow-y:auto;padding:16px 16px 48px}
 h1{font-size:15px;margin:0}
@@ -88,7 +96,8 @@ canvas{display:block;width:100%;height:100%;touch-action:none}
 {"imports":{
   "three":"https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js",
   "three/addons/":"https://cdn.jsdelivr.net/npm/three@0.169.0/examples/jsm/",
-  "three-mesh-bvh":"https://cdn.jsdelivr.net/npm/three-mesh-bvh@0.8.3/build/index.module.js"
+  "three-mesh-bvh":"https://cdn.jsdelivr.net/npm/three-mesh-bvh@0.8.3/build/index.module.js",
+  "three-bvh-csg":"https://cdn.jsdelivr.net/npm/three-bvh-csg@0.0.17/build/index.module.js"
 }}
 </script>
 </head>
@@ -96,10 +105,13 @@ canvas{display:block;width:100%;height:100%;touch-action:none}
 <div class="login" id="login">
   <form class="login-card" id="loginForm">
     <img class="login-logo" src="assets/logo_outbox.svg" alt="OUTBOX">
-    <h2>Acesso privado</h2>
-    <input id="loginUser" autocomplete="username" placeholder="Login" autofocus>
+    <h2 id="loginTitle">Acesso privado</h2>
+    <div class="login-note" id="loginNote"></div>
+    <input id="loginUser" type="email" autocomplete="username" placeholder="E-mail" autofocus>
     <input id="loginPass" type="password" autocomplete="current-password" placeholder="Senha">
-    <button class="btn" type="submit">Entrar</button>
+    <input id="loginPass2" type="password" autocomplete="new-password" placeholder="Repita a senha" class="hidden">
+    <button class="btn" type="submit" id="loginBtn">Entrar</button>
+    <button type="button" class="login-link" id="forgotBtn">Esqueci minha senha</button>
     <div class="login-error" id="loginError"></div>
   </form>
 </div>
@@ -119,6 +131,11 @@ canvas{display:block;width:100%;height:100%;touch-action:none}
       <button class="btn" id="importJsonBtn">JSON ↑</button>
       <input type="file" id="importJson" accept=".json,application/json" class="hidden">
     </div>
+  </details>
+
+  <details id="teamBox" class="hidden">
+    <summary>Equipe</summary>
+    <div id="team"></div>
   </details>
 
   <details open>
@@ -227,24 +244,16 @@ import { OBJExporter } from 'three/addons/exporters/OBJExporter.js';
 import { mergeGeometries, mergeVertices } from 'three/addons/utils/BufferGeometryUtils.js';
 import { DecalGeometry } from 'three/addons/geometries/DecalGeometry.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
+import { Brush, Evaluator, SUBTRACTION } from 'three-bvh-csg';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
 
 const $ = s => document.querySelector(s);
-const AUTH_KEY = 'outbox.auth.v1';
 function unlock() {
   document.body.classList.remove('auth-locked');
   $('#login')?.classList.add('hidden');
 }
-if (localStorage.getItem(AUTH_KEY) === 'ok') unlock();
-$('#loginForm').onsubmit = e => {
-  e.preventDefault();
-  const ok = $('#loginUser').value.trim() === 'swt' && $('#loginPass').value === 'swt12345';
-  if (!ok) { $('#loginError').textContent = 'Login ou senha inválidos'; return; }
-  localStorage.setItem(AUTH_KEY, 'ok');
-  unlock();
-};
 const TAU = Math.PI * 2;
 const clamp = (v, a, b) => Math.min(Math.max(v, a), b);
 const smooth = (a, b, x) => { const t = clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
@@ -354,7 +363,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-25.pump-bisnaga';
+const BUILD = '2026-09-25.contas';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -838,25 +847,23 @@ function tubePumpGeo(m, y0, lo) {
   const ring = (W, h, y, o = {}) => moduleGeo({ ...BASE, kind: 'giro', W, D: W, h, ...o }, y, { lo });
   const gap = m.overcap ? m.capGap : 0, yA = y0 + gap, yB = yA + m.actH, yR = yB + m.stemH;
   const ringH = Math.max(2, m.h - gap - m.actH - m.stemH), holes = [];
-  const act = ring(m.actW, m.actH + 0.5, yA, { rBot: Math.min(1.2, m.actW * 0.08), rTop: 0 });
-  // cava na frente, funda embaixo e sumindo para cima, em arco dos lados
-  const pa = act.attributes.position, R = m.actW / 2, cavH = m.actH * 0.42, cavD = m.actW * 0.16;
-  for (let i = 0; i < pa.count; i++) {
-    const x = pa.getX(i), y = pa.getY(i) - yA, z = pa.getZ(i);
-    if (z <= 0 || y > cavH) continue;
-    const side = Math.max(0, 1 - (x / (R * 0.8)) ** 2), up = 1 - y / cavH;
-    pa.setZ(i, z - cavD * side * Math.sqrt(up) * Math.min(1, z / (R * 0.5)));
-  }
-  act.computeVertexNormals();
+  // Atuador: cava redonda para o dedo cortada na ponta (esfera subtraída), que
+  // chega até a borda de baixo; a saída é um furinho quadrado na borda, dentro da cava.
+  const R = m.actW / 2, rs = m.actW * 0.42, cy = yA + rs * 0.3, cz = R + rs * 0.5;
+  const act = ring(m.actW, m.actH + 0.5, yA, { rBot: Math.min(0.8, m.actW * 0.05), rTop: 0 });
+  const ball = new THREE.SphereGeometry(rs, lo ? 16 : 48, lo ? 12 : 32); ball.deleteAttribute('uv'); ball.translate(0, cy, cz);
+  const csg = new Evaluator(); csg.attributes = ['position', 'normal']; csg.useGroups = false;
+  const cut = csg.evaluate(new Brush(act), new Brush(ball), SUBTRACTION).geometry;
   const body = ring(m.stemD, m.stemH + 0.6, yB - 0.3, { rBot: 0.6, rTop: 0 });
   const top = ring(m.W, ringH, yR, { rBot: 0.8, rTop: 0.4 });
-  const slot = new THREE.BoxGeometry(m.actW * 0.28, 0.9, 1.2); slot.deleteAttribute('uv');
-  slot.translate(0, yA + 0.9, R - cavD + 0.25); holes.push(slot);
+  const yo = yA + 0.55, zo = cz - Math.sqrt(Math.max(0, rs * rs - (yo - cy) ** 2));
+  const slot = new THREE.BoxGeometry(m.actW * 0.08, 1.1, 1.4); slot.deleteAttribute('uv');
+  slot.translate(0, yo, zo - 0.66); holes.push(slot); // rente à cava, sem ressalto
   if (m.overcap) {
     const cap = ring(m.capW, yR - y0 + 0.2, y0, { rBot: 1.2, rTop: 0 });
     cap.userData.mat = 'clear'; holes.push(cap);
   }
-  const g = mergeGeometries([act, body, top]);
+  const g = mergeGeometries([cut.index ? cut.toNonIndexed() : cut, body.index ? body.toNonIndexed() : body, top.index ? top.toNonIndexed() : top]);
   [g, ...holes].forEach(x => { x.rotateY(-m.dir * Math.PI / 180); if (m.ox) x.translate(m.ox, 0, 0); });
   g.userData.extras = holes;
   return g;
@@ -1909,7 +1916,7 @@ $('#orthoBtn').onclick = () => setOrtho(cam !== ortho);
 $('#explodeBtn').onclick = () => { explode = !explode; $('#explodeBtn').classList.toggle('on', explode); build(); fit(); };
 $('#handBtn').onclick = () => { handOn = !handOn; applyHand(); };
 $('#undoBtn').onclick = undo; $('#redoBtn').onclick = redo;
-$('#logoutBtn').onclick = () => { localStorage.removeItem(AUTH_KEY); location.reload(); };
+$('#logoutBtn').onclick = async () => { try { await api('auth.php?a=logout', {}); } catch {} location.href = location.pathname; };
 // Cmd/Ctrl+Z desfaz, +Shift refaz (Ctrl+Y também); em campo de texto fica o do campo.
 document.addEventListener('keydown', e => {
   const el = document.activeElement, textField = el?.tagName === 'TEXTAREA' || (el?.tagName === 'INPUT' && ['text', 'search'].includes(el.type));
@@ -2475,7 +2482,8 @@ CATS.forEach(([label, keys]) => {
 $('#colorAll').onclick = () => { S.modules.forEach(m => m.own = false); renderStack(); renderEditor(); build(); };
 
 // ───────────────────────── modelos (presets) ─────────────────────────
-const saved = () => store.get('shape.presets', {});
+let cloud = null; // modelos da conta; null = sem login, salva só no navegador
+const saved = () => cloud ?? store.get('shape.presets', {});
 // Galeria: cada modelo com miniatura 3D, gerada num renderizador pequeno à
 // parte, uma por vez para não travar a tela.
 const TW = 180, TH = 220;
@@ -2544,7 +2552,7 @@ function renderPresets() {
     }
   };
   section('Modelos base', Object.entries(PRESETS), 'b');
-  section('Salvos', Object.entries(sv), 's');
+  section(cloud ? 'Meus modelos' : 'Salvos', Object.entries(sv), 's');
   gal.scrollTop = keepTop;
 
 }
@@ -2554,14 +2562,21 @@ function loadState(s, name) {
   sel = 0; renderAll(); build(); fit();
 }
 $('#projName').oninput = e => { S.name = e.target.value; store.set('shape.autosave', S); };
-$('#savePreset').onclick = () => {
+$('#savePreset').onclick = async () => {
   const name = (S.name || '').trim() || 'Sem nome';
-  const sv = saved(); sv[name] = structuredClone(S); store.set('shape.presets', sv);
+  if (cloud) {
+    try { await api('models.php?a=save', { name, data: S }); } catch (e) { return toast(e.status === 401 ? 'Sua sessão expirou: entre de novo' : 'Não consegui salvar'); }
+    cloud[name] = structuredClone(S);
+  } else { const sv = saved(); sv[name] = structuredClone(S); store.set('shape.presets', sv); }
   galleryKey = ''; renderPresets(); toast(`Salvo: ${name}`); // miniatura do salvo é refeita
 };
-$('#delPreset').onclick = () => {
+$('#delPreset').onclick = async () => {
   const sv = saved(); if (!sv[S.name]) return toast('Esse nome não está entre os salvos');
-  delete sv[S.name]; store.set('shape.presets', sv); renderPresets(); toast(`Excluído: ${S.name}`);
+  if (cloud) {
+    try { await api('models.php?a=delete', { name: S.name }); } catch (e) { return toast(e.status === 401 ? 'Sua sessão expirou: entre de novo' : 'Não consegui excluir'); }
+    delete cloud[S.name];
+  } else { delete sv[S.name]; store.set('shape.presets', sv); }
+  galleryKey = ''; renderPresets(); toast(`Excluído: ${S.name}`);
 };
 $('#exportJson').onclick = () => download(new Blob([JSON.stringify(S, null, 2)], { type: 'application/json' }), fname('json'));
 $('#importJsonBtn').onclick = () => $('#importJson').click();
@@ -2735,6 +2750,113 @@ resize();
 renderAll();
 build();
 fit('three');
+
+// ───────────────────────── contas ─────────────────────────
+// Login e modelos ficam no PHP + MySQL da Hostinger (pasta api/). Servido sem PHP
+// (ex.: python -m http.server) o OUTBOX abre direto e salva só no navegador.
+async function api(path, body) {
+  const r = await fetch('api/' + path, body === undefined ? { cache: 'no-store', credentials: 'same-origin' }
+    : { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  let j = null; try { j = await r.json(); } catch {}
+  if (!j) { const e = new Error('sem api'); e.noApi = r.ok || r.status === 404; e.status = r.status; throw e; }
+  if (!r.ok) { const e = new Error(j.error || 'erro'); e.code = j.error; e.status = r.status; throw e; }
+  return j;
+}
+const loginUI = {
+  set(title, btn, { note = '', pass2 = false, email = null } = {}) {
+    $('#loginTitle').textContent = title; $('#loginBtn').textContent = btn; $('#loginNote').textContent = note;
+    $('#loginPass2').classList.toggle('hidden', !pass2); $('#forgotBtn').classList.toggle('hidden', pass2);
+    $('#loginPass').autocomplete = pass2 ? 'new-password' : 'current-password';
+    $('#loginPass').placeholder = pass2 ? 'Nova senha (mín. 8 caracteres)' : 'Senha';
+    $('#loginUser').readOnly = email !== null; if (email !== null) $('#loginUser').value = email;
+    $('#loginError').textContent = '';
+  },
+  err(t) { $('#loginError').textContent = t; },
+};
+function loginForm() {
+  loginUI.set('Acesso privado', 'Entrar');
+  $('#loginForm').onsubmit = async e => {
+    e.preventDefault(); loginUI.err('');
+    try { signedIn((await api('auth.php?a=login', { email: $('#loginUser').value.trim(), password: $('#loginPass').value })).user); }
+    catch (err) { loginUI.err(err.code === 'wait' ? 'Muitas tentativas. Tente de novo em 15 minutos.' : err.code === 'invalid' ? 'E-mail ou senha inválidos' : 'Não consegui entrar agora'); }
+  };
+}
+$('#forgotBtn').onclick = () => { $('#loginNote').textContent = 'Peça a quem administra a equipe um novo link de senha.'; };
+async function passwordForm(token) {
+  let info;
+  try { info = await api('auth.php?a=token&t=' + encodeURIComponent(token)); }
+  catch { history.replaceState(null, '', location.pathname); loginForm(); return loginUI.err('Este link expirou ou já foi usado. Peça um novo.'); }
+  loginUI.set('Criar senha', 'Salvar senha e entrar', { pass2: true, email: info.email });
+  $('#loginForm').onsubmit = async e => {
+    e.preventDefault();
+    const p1 = $('#loginPass').value, p2 = $('#loginPass2').value;
+    if (p1.length < 8) return loginUI.err('A senha precisa ter pelo menos 8 caracteres');
+    if (p1 !== p2) return loginUI.err('As senhas não são iguais');
+    try { const { user } = await api('auth.php?a=set_password', { token, password: p1 }); history.replaceState(null, '', location.pathname); signedIn(user); }
+    catch { loginUI.err('Este link expirou ou já foi usado. Peça um novo.'); }
+  };
+}
+async function signedIn(user) {
+  unlock(); resize(); fit(curView);
+  $('#build').textContent = `versão ${BUILD} · ${user.name || user.email}`;
+  cloud = {};
+  // Primeiro login neste navegador: leva os modelos salvos só aqui para a conta.
+  const local = store.get('shape.presets', {}), flag = 'shape.imported.' + user.id;
+  if (Object.keys(local).length && !store.get(flag, false)) {
+    try { const { imported } = await api('models.php?a=import', { items: local }); store.set(flag, true); if (imported) toast(`${imported} modelo(s) deste navegador foram para a sua conta`); } catch {}
+  }
+  try { cloud = Object.fromEntries((await api('models.php?a=list')).models.map(x => [x.name, x.data])); }
+  catch { toast('Não consegui carregar seus modelos'); }
+  galleryKey = ''; renderPresets();
+  if (user.is_admin) { $('#teamBox').classList.remove('hidden'); renderTeam(); }
+}
+// Equipe: quem administra adiciona pessoas e gera o link para cada uma criar a senha.
+async function renderTeam(link) {
+  const box = $('#team'); box.innerHTML = '';
+  const el = (tag, cls, text) => { const x = document.createElement(tag); if (cls) x.className = cls; if (text != null) x.textContent = text; return x; };
+  if (link) {
+    const url = location.origin + location.pathname + '?senha=' + link.token;
+    const card = el('div', 'team-link'); card.append(el('div', 'tip', `Link para ${link.who} criar a senha (vale 7 dias, uma vez só):`));
+    const inp = el('input'); inp.readOnly = true; inp.value = url; inp.onclick = () => inp.select();
+    const cp = el('button', 'btn sm', 'Copiar link'); cp.onclick = async () => { try { await navigator.clipboard.writeText(url); toast('Link copiado'); } catch { inp.select(); } };
+    card.append(inp, cp); box.append(card);
+  }
+  let users = [];
+  try { users = (await api('team.php?a=list')).users; } catch { box.append(el('div', 'tip', 'Não consegui carregar a equipe')); return; }
+  for (const u of users) {
+    const row = el('div', 'team-row'), who = el('div', 'who', u.name || u.email);
+    who.append(el('small', null, `${u.email}${u.is_admin ? ' · admin' : ''}${u.active ? '' : ' · aguardando senha'}`));
+    const lk = el('button', 'btn sm', 'Link de senha');
+    lk.onclick = async () => { try { renderTeam({ who: u.name || u.email, token: (await api('team.php?a=link', { id: u.id })).token }); } catch { toast('Não consegui gerar o link'); } };
+    row.append(who, lk);
+    if (!(u.is_admin && users.filter(x => x.is_admin).length === 1)) {
+      const rm = el('button', 'btn sm', '✕'); rm.title = 'Remover da equipe';
+      rm.onclick = async () => {
+        if (!confirm(`Remover ${u.name || u.email}? Os modelos dessa pessoa serão apagados.`)) return;
+        try { await api('team.php?a=remove', { id: u.id }); renderTeam(); } catch (e) { toast(e.code === 'self' ? 'Você não pode remover a própria conta' : 'Não consegui remover'); }
+      };
+      row.append(rm);
+    }
+    box.append(row);
+  }
+  const add = el('div', 'row'), nm = el('input'), em = el('input'), go = el('button', 'btn pri sm', '+ Pessoa');
+  nm.placeholder = 'Nome'; em.placeholder = 'E-mail'; em.type = 'email';
+  go.onclick = async () => {
+    try { const { token } = await api('team.php?a=add', { name: nm.value.trim(), email: em.value.trim() }); renderTeam({ who: nm.value.trim() || em.value.trim(), token }); }
+    catch (e) { toast(e.code === 'exists' ? 'Esse e-mail já está na equipe' : e.code === 'email' ? 'E-mail inválido' : 'Não consegui adicionar'); }
+  };
+  add.append(nm, em, go); box.append(el('div', 'tip', 'Adicionar pessoa:'), add);
+}
+try {
+  const { user } = await api('auth.php?a=me');
+  const token = new URLSearchParams(location.search).get('senha');
+  if (token) passwordForm(token);
+  else if (user) signedIn(user);
+  else loginForm();
+} catch (e) {
+  if (e.noApi) { unlock(); resize(); fit(curView); $('#logoutBtn').classList.add('hidden'); } // sem PHP: modo local
+  else { loginForm(); loginUI.err(e.code === 'config' ? 'O banco de dados ainda não foi configurado (api/config.php).' : 'O servidor não respondeu. Tente de novo.'); }
+}
 </script>
 </body>
 </html>
