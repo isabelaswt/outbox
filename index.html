@@ -43,6 +43,7 @@ summary::after{content:'+';float:right;color:var(--muted);font-weight:400}
 details[open]>summary::after{content:'–'}
 h3{font-size:11px;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);margin:14px 0 2px;font-weight:600}
 .f{margin:7px 0}
+.f.off{opacity:.38;pointer-events:none} /* controle que não se aplica agora (fica no lugar) */
 .f .top{display:flex;justify-content:space-between;align-items:center;gap:8px}
 .f label{color:#333}
 .num{display:flex;align-items:center;gap:4px;color:var(--muted);font-size:11px}
@@ -388,7 +389,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-25.saia-draft';
+const BUILD = '2026-09-25.lados-sem-pular';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -2440,9 +2441,9 @@ const MF = [
     padDef(['repGap', 'Espaço entre repetições', 0, 20, 0.1, 'mm', m => !['gargalo', 'spray'].includes(m.kind) && m.rep > 1]),
   ]],
   ['Formato', [
-    G(['n', 'Seção: oval → retângulo', 2, 10, 0.1, '', m => !(m.sides >= 3)]),
+    G(['n', 'Seção: oval → retângulo', 2, 10, 0.1, '']),
     G(['sides', 'Lados retos (0 = redondo)', 0, 12, 1, '']),
-    G(['sideR', 'Cantos dos lados: vivo → redondo', 0, 0.9, 0.01, '', m => m.sides >= 3]),
+    G(['sideR', 'Cantos dos lados: vivo → redondo', 0, 0.9, 0.01, '']),
     G(['taper', 'Topo em relação à base', 10, 250, 1, '%']),
     G(['bulge', 'Barriga (− cintura)', -35, 40, 0.5, '%']),
     G(['bulgePos', 'Altura da barriga', 5, 95, 1, '%']),
@@ -2636,6 +2637,10 @@ function renderEditor() {
     ed.appendChild(tip);
   }
   const openG = store.get('shape.openGroups', { Medidas: true, Formato: true });
+  // Seção redonda/oval (n) x polígono (lados + cantos): os dois controles ficam
+  // no lugar; o que não vale agora fica esmaecido (o painel não pula ao arrastar).
+  const els = {}; let sidesPrev = m.sides | 0;
+  const syncFacet = () => { const poly = (m.sides | 0) >= 3; els.n?.classList.toggle('off', poly); els.sideR?.classList.toggle('off', !poly); };
   for (const [title, defs] of MF) {
     const ribsHere = title === 'Frisos' && (m.kind === 'giro' || m.kind === 'perfil');
     if (!ribsHere && !defs.some(d => !d[6] || d[6](m))) continue;
@@ -2652,6 +2657,12 @@ function renderEditor() {
     for (const def of defs) {
       const show = def[6];
       const el = field(grp, m, def, (k, structural) => {
+        // Lados retos: 1 e 2 não existem (0 = redondo, 3+ = polígono); pula direto.
+        if (k === 'sides') {
+          let v = m.sides | 0; if (v === 1 || v === 2) v = sidesPrev >= 3 ? 0 : 3;
+          m.sides = sidesPrev = v; const se = els.sides; if (se) se.querySelectorAll('input').forEach(i => { i.value = v; });
+          syncFacet();
+        }
         // Ligar o entalhe sem linha de abertura cria a linha junto.
         if (k === 'notch' && m.notch && !(m.groove > 0)) m.groove = r1(Math.min(12, m.h * 0.35));
         if (k === 'topType' && m.topType === 'flip' && !(m.groove > 0)) m.groove = r1(Math.min(12, m.h * 0.35));
@@ -2661,14 +2672,16 @@ function renderEditor() {
           if (k === 'sphereR') m.roundLock = false;
           syncSphereRadius(m, k === 'roundLock' && m.roundLock || ['W', 'D', 'h'].includes(k) && m.roundLock);
         }
-        if (structural || ['rep', 'groove', 'ridges', 'own', 'sides'].includes(k) || (isSphereCap(m) && ['W', 'D', 'h', 'roundLock', 'sphereR'].includes(k))) renderEditorKeepScroll();
+        if (structural || ['rep', 'groove', 'ridges', 'own'].includes(k) || (isSphereCap(m) && ['W', 'D', 'h', 'roundLock', 'sphereR'].includes(k))) renderEditorKeepScroll();
         renderStack(); queueBuild();
       });
       if (show && !show(m)) el.classList.add('hidden');
+      els[def[0]] = el;
     }
     if (ribsHere) renderRibs(grp, m);
   }
   // Mola e pescante são da válvula (grupo "Mola e pescante" dela), não do corpo.
+  syncFacet();
   if (isBody(m) && m.kind !== 'gargalo') { renderBodyNeck(ed, m); renderBodyLiquid(ed, m); }
 }
 // Maior padrão de gargalo que cabe no topo do corpo (anel incluído).
