@@ -283,7 +283,7 @@ const LIB = {
              mola: false, pescD: 2.8, pescGap: 3,
              own: true, color: '#e8dcc6', finish: 'fosco' },
   espuma:  { name: 'Pump espuma / foam', kind: 'spray', sprayType: 'foam', W: 43, D: 43, h: 17, collarR: 1.2, ridges: 0,
-             actW: 22, actH: 36, armW: 11, armT: 5.5, nozzleL: 17, stemD: 16, stemH: 5, houseD: 16, springL: 26 },
+             actW: 24, actH: 25, armW: 14, armT: 6, nozzleL: 12, stemD: 15, stemH: 4, houseD: 16, springL: 26 },
   contaGotas: { name: 'Conta-gotas', kind: 'spray', sprayType: 'gotas', W: 22, D: 22, h: 13, ridges: 48, actW: 15, actH: 24,
              mola: false, pescD: 6.5, pescGap: 12 },
   pushPull: { name: 'Tampa push-pull', kind: 'spray', sprayType: 'pushpull', W: 30, D: 30, h: 13, collarR: 1.2, ridges: 40,
@@ -317,7 +317,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-25.perfume-pecas-sem-preset';
+const BUILD = '2026-09-25.foam-pump-refinado';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -810,18 +810,19 @@ function sprayGeo(m, y0, { lo = false } = {}) {
     head.push(ring(Wt * 0.55, 1.1, yN + 0.95 + m.nozzleL - 0.1, { rBot: 0, rTop: Wt * 0.27 }));
     holes.push(cyl(Wt * 0.14, yN + m.nozzleL + 1.85, 0.3));
   } else if (m.sprayType === 'foam') {
-    // Pump foam: virola larga, degrau superior, coluna reta e bico curto quadrado.
+    // Pump foam: virola larga, coluna baixa e atuador arredondado com bico curto.
     const yBase = top - 0.05, deckH = Math.max(2.2, m.h * 0.22), deckW = m.W * 0.82;
     head.push(ring(deckW, deckH, yBase, { rBot: 0.4, rTop: 0.8 }));
-    const yStem = yBase + deckH - 0.15, colW = m.actW, colH = m.actH;
-    head.push(ring(colW, colH, yStem, { rBot: 0.6, rTop: Math.min(2.2, colW * 0.18) }));
-    const yLip = yStem + colH - Math.max(1.2, m.armT * 0.25);
-    head.push(ring(colW * 0.94, Math.max(1.3, m.armT * 0.35), yLip, { rBot: 0, rTop: 0.7 }));
-    const spH = Math.max(3, m.armT), spD = Math.max(4, m.armW), spL = Math.max(6, m.nozzleL);
-    const x0 = colW / 2 + spL / 2 - 1.2, y0s = yStem + colH - spH * 0.75;
+    const yStem = yBase + deckH - 0.15, colW = m.actW * 0.78, colH = m.actH * 0.72;
+    head.push(ring(colW, colH, yStem, { taper: 94, rBot: 0.8, rTop: Math.min(2.4, colW * 0.18) }));
+    const capH = Math.max(5, m.armT * 0.95), capW = m.actW * 1.08, yCap = yStem + colH - capH * 0.18;
+    head.push(ring(capW, capH, yCap, { taper: 102, rBot: capH * 0.42, rTop: capH * 0.58, bulge: -4, bulgePos: 45 }));
+    const spH = Math.max(3.6, m.armT * 0.8), spD = Math.max(5, m.armW * 0.78), spL = Math.max(6, m.nozzleL);
+    const x0 = capW / 2 + spL / 2 - 1.4, y0s = yCap + capH * 0.42;
     head.push(boxGeo(spL, spH, spD, x0, y0s, 0));
-    head.push(boxGeo(Math.max(1.1, spL * 0.12), spH * 1.28, spD * 1.08, colW / 2 - 0.35, y0s - spH * 0.1, 0));
-    holes.push(boxGeo(0.7, spH * 0.38, spD * 0.52, colW / 2 + spL - 1.15, y0s, 0));
+    head.push(cyl(spD * 0.5, 0, spH, 0.45, 0.45, lo).rotateZ(Math.PI / 2).translate(capW / 2 + spL - 0.8, y0s, 0));
+    head.push(boxGeo(Math.max(1, spL * 0.1), spH * 0.7, spD * 0.9, capW / 2 - 0.15, y0s - spH * 0.05, 0));
+    holes.push(boxGeo(0.7, spH * 0.28, spD * 0.42, capW / 2 + spL - 0.85, y0s, 0));
   } else if (m.sprayType === 'gatilho') {
     // Gatilho: degraus, haste fina e cabeça curva com pivô, escora traseira e alavanca.
     const k = m.W / 24, P = (x, y) => [(x - 375) * 0.15 * k, (290 - y) * 0.15 * k + top];
