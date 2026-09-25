@@ -376,7 +376,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-25.capsula-exata';
+const BUILD = '2026-09-25.entalhe-suave';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -441,7 +441,7 @@ function profSamples(m, lo) {
   if (!lo && m.groove > 0) { const yg = h - m.groove; [-.6, -.5, -.3, -.12, 0, .12, .3, .5, .6].forEach(d => S.push(yg + d)); }
   if (!lo && m.notch) {
     const yt = h - notchTop(m), y0n = m.notchUp ? yt : yt - m.notchH - 1, y1n = m.notchUp ? yt + m.notchH + 1 : yt;
-    for (let y = y0n; y <= y1n; y += 0.25) S.push(y); S.push(yt + 0.03, yt - 0.03);
+    for (let y = y0n; y <= y1n; y += 0.12) S.push(y); S.push(yt + 0.03, yt - 0.03);
   }
   ribSamples(m, S);
   return [...new Set(S.filter(y => y >= 0 && y <= h).map(y => +y.toFixed(3)))].sort((a, b) => a - b);
@@ -716,7 +716,7 @@ function ySamples(m, rB, rT, lo) {
   if (!lo && m.groove > 0) { const yg = h - m.groove; [-.6, -.5, -.3, -.12, 0, .12, .3, .5, .6].forEach(d => S.push(yg + d)); }
   if (!lo && m.notch) {
     const yt = h - notchTop(m), y0n = m.notchUp ? yt : yt - m.notchH - 1, y1n = m.notchUp ? yt + m.notchH + 1 : yt;
-    for (let y = y0n; y <= y1n; y += 0.25) S.push(y); S.push(yt + 0.03, yt - 0.03);
+    for (let y = y0n; y <= y1n; y += 0.12) S.push(y); S.push(yt + 0.03, yt - 0.03);
   }
   if (!lo) ribSamples(m, S);
   return [...new Set(S.filter(y => y >= 0 && y <= h).map(y => +y.toFixed(3)))].sort((a, b) => a - b);
@@ -1320,7 +1320,7 @@ function moduleGeo(m0, y0, opts = {}) {
   if (rings.length < 2) return null;
   const saddle = !inset && m.topType === 'disc' && m.discDip > 0;
   const detailed = !lo && (m.notch || m.ridges > 0 || saddle || kmax > 0 || logoQuality);
-  const seg = lo ? 64 : kmax ? clamp(kmax * 12, 384, 2000) : logoQuality ? 960 : detailed ? 384 : 200;
+  const seg = lo ? 64 : kmax ? clamp(kmax * 12, 384, 2000) : logoQuality ? 960 : m.notch ? 720 : detailed ? 384 : 200;
   const disp = detailed ? (x, ly, z, th, r) => {
     // Faixas de frisos (medidas no original ou criadas no editor).
     if (kmax) { const d = ribAt(m, ly, th); if (d) { const rr = Math.hypot(x, z) || 1; x -= x / rr * d; z -= z / rr * d; } }
@@ -1333,7 +1333,8 @@ function moduleGeo(m0, y0, opts = {}) {
     if (m.notch && z > 0) {
       // Concha: mais funda junto à linha, suavizando até a borda (abaixo ou acima dela).
       const yl = m.h - notchTop(m), u = Math.abs(x) / (m.notchW / 2), v = (m.notchUp ? ly - yl : yl - ly) / m.notchH;
-      if (v >= 0 && u < 1.1) { const f = 1 - (Math.pow(u, m.notchP) + v * v); if (f > 0) z -= m.notchD * Math.sqrt(f); }
+      // Borda com transição suave (como no relevo do logo): sem o degrau vertical que serrilhava.
+      if (v >= -0.05 && u < 1.1) { const f = 1 - (Math.pow(u, m.notchP) + Math.max(0, v) ** 2); if (f > 0) z -= m.notchD * Math.sqrt(f) * smooth(0, 0.22, f); }
     }
     return [x, z, dy];
   } : null;
