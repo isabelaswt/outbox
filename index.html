@@ -178,6 +178,8 @@ canvas{display:block;width:100%;height:100%;touch-action:none}
     <button class="btn" id="orthoBtn">Ortográfica</button>
     <button class="btn" id="gridBtn">Grade 10 mm</button>
     <button class="btn" id="explodeBtn">Explodir</button>
+    <button class="btn" id="undoBtn" title="Desfazer (Cmd/Ctrl+Z)" aria-label="Desfazer">↶</button>
+    <button class="btn" id="redoBtn" title="Refazer (Cmd/Ctrl+Shift+Z)" aria-label="Refazer">↷</button>
     <button class="btn" id="handBtn" title="Mão: arrastar move a vista (ou segure a barra de espaço)" aria-label="Mão">✋</button>
   </div>
   <div class="stats" id="stats"></div>
@@ -286,7 +288,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-24.editor-em-grupos';
+const BUILD = '2026-09-24.desfazer';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -1110,6 +1112,7 @@ function material(color, finish) {
 
 function build() {
   buildInto(product, S, explode ? 18 : 0);
+  record();
   scheduleLogos();
   scene.background = new THREE.Color(S.bg);
   updateStats();
@@ -1381,6 +1384,33 @@ $('#logoFile').onchange = async e => {
   e.target.value = '';
 };
 
+// ───────────────────────── desfazer / refazer ─────────────────────────
+// Cada montagem guarda o estado; mudanças seguidas (arrastar um slider) viram
+// um passo só.
+let hist = [], hi = -1, lastRec = 0, restoring = false;
+function record() {
+  if (restoring) return;
+  const cur = JSON.stringify(S), now = performance.now();
+  if (hist[hi] === cur) return;
+  if (hi > 0 && now - lastRec < 600 && hist.length - 1 === hi && hi === coalesceFrom) hist[hi] = cur;
+  else { hist = hist.slice(0, hi + 1); hist.push(cur); hi = hist.length - 1; coalesceFrom = hi; if (hist.length > 100) { hist.shift(); hi--; coalesceFrom = hi; } }
+  lastRec = now; updateUndoBtns();
+}
+let coalesceFrom = -1;
+function restore(json) {
+  restoring = true;
+  S = normalize(JSON.parse(json)); sel = clamp(sel, 0, S.modules.length - 1);
+  renderAll(); build();
+  restoring = false; coalesceFrom = -1; updateUndoBtns();
+}
+function undo() { if (hi > 0) { hi--; restore(hist[hi]); toast('Desfeito'); } }
+function redo() { if (hi < hist.length - 1) { hi++; restore(hist[hi]); toast('Refeito'); } }
+function updateUndoBtns() {
+  const u = $('#undoBtn'), r = $('#redoBtn'); if (!u) return;
+  u.disabled = hi <= 0; r.disabled = hi >= hist.length - 1;
+  u.style.opacity = u.disabled ? 0.4 : 1; r.style.opacity = r.disabled ? 0.4 : 1;
+}
+
 // Monta as peças de um modelo num grupo (cena principal ou miniatura).
 function buildInto(product, S, explodeAmt = 0) {
   product.children.forEach(o => o.geometry.dispose());
@@ -1472,6 +1502,15 @@ document.querySelectorAll('[data-view]').forEach(b => b.onclick = () => fit(b.da
 $('#orthoBtn').onclick = () => setOrtho(cam !== ortho);
 $('#explodeBtn').onclick = () => { explode = !explode; $('#explodeBtn').classList.toggle('on', explode); build(); fit(); };
 $('#handBtn').onclick = () => { handOn = !handOn; applyHand(); };
+$('#undoBtn').onclick = undo; $('#redoBtn').onclick = redo;
+// Cmd/Ctrl+Z desfaz, +Shift refaz (Ctrl+Y também); em campo de texto fica o do campo.
+document.addEventListener('keydown', e => {
+  const el = document.activeElement, textField = el?.tagName === 'TEXTAREA' || (el?.tagName === 'INPUT' && ['text', 'search'].includes(el.type));
+  if (!(e.metaKey || e.ctrlKey) || textField) return;
+  const k = e.key.toLowerCase();
+  if (k === 'z') { e.preventDefault(); e.shiftKey ? redo() : undo(); }
+  else if (k === 'y') { e.preventDefault(); redo(); }
+});
 // Segurar espaço = mão temporária (fora de campos de texto).
 const typing = () => /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement?.tagName);
 document.addEventListener('keydown', e => { if (e.code === 'Space' && !typing() && !spaceHeld) { spaceHeld = true; applyHand(); e.preventDefault(); } });
