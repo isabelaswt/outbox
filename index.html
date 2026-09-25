@@ -388,7 +388,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-25.rosca-propria';
+const BUILD = '2026-09-25.gargalo-ajustavel-draft';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -456,7 +456,8 @@ function profSamples(m, lo) {
     for (let y = y0n; y <= y1n; y += 0.12) S.push(y); S.push(yt + 0.03, yt - 0.03);
   }
   ribSamples(m, S);
-  return [...new Set(S.filter(y => y >= 0 && y <= h).map(y => +y.toFixed(3)))].sort((a, b) => a - b);
+  const top = h - Math.max(0, m.cutTop || 0); S.push(top); // corte do topo (rosca trocada por gargalo ajustável)
+  return [...new Set(S.filter(y => y >= 0 && y <= top).map(y => +y.toFixed(3)))].sort((a, b) => a - b);
 }
 // Bico da válvula medido no original, na escala atual.
 function spoutGeo(m, y0) {
@@ -618,6 +619,16 @@ function draftByBodyType(type) {
 }
 // Corpo da Draft cuja rosca já vem no próprio perfil (gargalo medido < 4 mm).
 function builtInThread(m) { if (m?.kind !== 'perfil') return null; const d = draftByBodyType(m.type); return d?.neck && d.neck.h < 4 ? d : null; }
+// Onde a rosca própria começa: descendo do topo, o ponto em que o corpo volta a
+// alargar (ombro). Devolve a altura a cortar e a largura disponível ali.
+function threadCut(d, body) {
+  const P = d.body.prof, wAt = r => Math.min(r[1] * body.W, r[2] * body.D), topW = wAt(P[P.length - 1]);
+  for (let k = P.length - 1; k >= 0; k--) if (wAt(P[k]) > topW * 1.12) return { cut: r1(body.h - P[k][0] * body.h), w: wAt(P[k]) };
+  return { cut: 0, w: topW };
+}
+function neckForWidth(w) {
+  return Object.keys(NECKS).filter(k => NECKS[k].W + 2 * (NECKS[k].ringW ?? 1.8) <= w).sort((a, b) => NECKS[b].W - NECKS[a].W)[0] || '20/410';
+}
 function buildDraftPresets() {
   for (const [id, d] of Object.entries(PERFIS)) {
     if (DRAFT_HIDDEN.has(d.name)) continue;
@@ -707,7 +718,7 @@ function normalize(s) {
   s.modules.forEach(m => { if (m.kind === 'bisnaga') m.pesc = false; if (m.vol) m.bpesc = false; }); // pescante só vem da válvula
   // Modelos salvos antes: corpo da Draft com rosca própria + gargalo extra → tira o extra.
   for (let i = 0; i < s.modules.length - 1; i++) {
-    const b = s.modules[i], nk = s.modules[i + 1], d = nk?.kind === 'gargalo' ? builtInThread(b) : null;
+    const b = s.modules[i], nk = s.modules[i + 1], d = nk?.kind === 'gargalo' && !(b.cutTop > 0) ? builtInThread(b) : null;
     if (!d) continue;
     s.modules.splice(i + 1, 1);
     const c = s.modules[i + 1]; if (c && !c.vol && c.kind !== 'gargalo') c.gap = draftCoverGap(d, b, c);
@@ -1599,7 +1610,7 @@ function layout(s, explode = 0) {
       if (r === 0 && m0.kind === 'gargalo' && s.modules[idx - 1]?.vol && up && up.kind !== 'gargalo')
         y0 -= shoulderDrop(openForNeck(s.modules[idx - 1], m0), Math.max(0, Math.min(up.W, up.D) / 2 - (up.kind === 'spray' ? 0.6 : Math.min(up.rBot || 0, Math.min(up.W, up.D) / 2))) + 0.3);
       const ex = m0.kind === 'gargalo' && s.modules[idx - 1]?.vol ? idx - 1 : idx; // gargalo explode junto do corpo
-      out.push({ m: r === nRep - 1 ? mOpen : m, idx, y0: y0 + ex * explode }); cur = y0 + m.h; // só a última cópia abre para o gargalo
+      out.push({ m: r === nRep - 1 ? mOpen : m, idx, y0: y0 + ex * explode }); cur = y0 + m.h - Math.max(0, m.cutTop || 0); // só a última cópia abre para o gargalo
     }
     neck = m0.kind === 'gargalo' ? { m: m0, y0 } : null;
   });
@@ -2650,7 +2661,7 @@ function neckFor(m) {
 // ou válvula de cima se reajusta a ele (rosca coberta e por dentro).
 function refitAfterBodySwap(bi) {
   const body = S.modules[bi];
-  const d = builtInThread(body);
+  const d = body.cutTop > 0 ? null : builtInThread(body); // com a rosca trocada, segue como corpo comum
   if (d) { // rosca no próprio corpo: sai o gargalo e a tampa veste a rosca
     if (S.modules[bi + 1]?.kind === 'gargalo') S.modules.splice(bi + 1, 1);
     const c = S.modules[bi + 1]; if (c && !c.vol && c.kind !== 'gargalo') c.gap = draftCoverGap(d, body, c);
@@ -2662,7 +2673,7 @@ function refitAfterBodySwap(bi) {
   }
   const ni = neckIdx(bi); if (ni < 0) return;
   let neck = S.modules[ni];
-  if (neck.W + 2 * (neck.ringW || 0) > neckTopW(body)) {
+  if (!(body.cutTop > 0) && neck.W + 2 * (neck.ringW || 0) > neckTopW(body)) {
     const std = neckFor(body);
     S.modules[ni] = neck = { ...neck, neckStd: std, ...NECKS[std], D: NECKS[std].W, ringH: 1.6, ringW: 1.8, embed: Math.max(neck.embed || 0, 8) };
   }
@@ -2685,8 +2696,26 @@ function renderBodyNeck(ed, m) {
   grp.addEventListener('toggle', () => { const o = store.get('shape.openGroups', { Medidas: true, Formato: true }); o.Gargalo = grp.open; store.set('shape.openGroups', o); });
   const medidas = [...ed.querySelectorAll('.grp')].find(g => g.querySelector('summary').textContent === 'Medidas');
   medidas ? medidas.after(grp) : ed.appendChild(grp);
-  if (builtInThread(m)) { grp.insertAdjacentHTML('beforeend', '<div class="tip">Este frasco já tem a rosca no próprio corpo (sem gargalo separado).</div>'); return; }
+  const bt = builtInThread(m);
+  if (bt) {
+    // Rosca própria do frasco (Draft): pode trocar por um gargalo ajustável.
+    const sw = { on: m.cutTop > 0 };
+    field(grp, sw, ['on', 'Trocar a rosca do frasco por gargalo ajustável', 'check'], () => {
+      if (sw.on) {
+        const { cut, w } = threadCut(bt, m); m.cutTop = cut;
+        S.modules.splice(sel + 1, 0, NECK(neckForWidth(w)));
+        const c = S.modules[sel + 2]; if (c && !c.vol && c.kind !== 'gargalo') c.gap = 0;
+        refitAfterBodySwap(sel);
+      } else {
+        m.cutTop = 0; if (S.modules[sel + 1]?.kind === 'gargalo') S.modules.splice(sel + 1, 1);
+        const c = S.modules[sel + 1]; if (c && !c.vol && c.kind !== 'gargalo') c.gap = draftCoverGap(bt, m, c);
+      }
+      renderEditorKeepScroll(); renderStack(); queueBuild();
+    });
+    if (!(m.cutTop > 0)) { grp.insertAdjacentHTML('beforeend', '<div class="tip">Este frasco já tem a rosca no próprio corpo.</div>'); return; }
+  }
   const ni = neckIdx(sel), neck = S.modules[ni], st = { on: !!neck };
+  if (bt && !neck) return;
   field(grp, st, ['on', 'Com gargalo de rosca', 'check'], () => {
     if (st.on) {
       // Volta o gargalo que estava guardado; senão, o maior padrão que cabe no topo do corpo.
