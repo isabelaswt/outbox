@@ -367,7 +367,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-25.pump-frisos-ponta';
+const BUILD = '2026-09-25.troca-valvula-gargalo';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -2453,7 +2453,15 @@ function adaptSwap(old, nw, label) {
     nw.W = old.W; nw.D = old.D; nw.h = old.h;
     return nw;
   }
-  scaleModule(nw, collarOf(old) / collarOf(nw));
+  if (nw.kind === 'spray') {
+    // Válvula tem o tamanho do padrão do gargalo (24/410 etc.), não da tampa que
+    // saiu: uma tampa grande não pode inflar cabeça, haste e bico do pump.
+    let neck = null;
+    for (let i = sel - 1; i >= 0; i--) { const q = S.modules[i]; if (q.kind === 'gargalo') { neck = q; break; } if (q.vol) break; }
+    const tube = S.modules[sel + 1]?.kind === 'bisnaga' ? S.modules[sel + 1] : null;
+    const want = neck ? neck.W + 2.4 : tube ? tube.W * 0.94 : collarOf(nw);
+    scaleModule(nw, want / collarOf(nw));
+  } else scaleModule(nw, collarOf(old) / collarOf(nw));
   // Sobre um gargalo: a rosca tem que caber por dentro e ficar coberta.
   const below = S.modules[sel - 1];
   if (below?.kind === 'gargalo') {
