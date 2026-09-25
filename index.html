@@ -376,7 +376,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-25.liquido-transparente';
+const BUILD = '2026-09-25.pescante-na-valvula';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -652,7 +652,7 @@ function normalize(s) {
       if ((m.orifD || 0) > 3.2) m.orifD = 3;
     }
   });
-  s.modules.forEach(m => { if (m.kind === 'bisnaga') { m.pesc = false; m.bpesc = false; } });
+  s.modules.forEach(m => { if (m.kind === 'bisnaga') m.pesc = false; if (m.vol) m.bpesc = false; }); // pescante só vem da válvula
   // Tampa em que a bisnaga fica em pé: no máximo um pouco mais larga que a ponta
   // redonda do tubo, para não virar pedestal.
   s.modules.forEach((m, i) => {
@@ -881,6 +881,28 @@ function refShape(cmds, P) {
 
 
 // Válvula: virola que veste o gargalo + cabeça de spray fino ou pump.
+// Furo de verdade: subtrai o cortador da peça (CSG). A peça sai furada e as paredes
+// do furo saem numa geometria à parte, pintada escura (nada colado no lugar do furo).
+const HOLE_A = new THREE.MeshBasicMaterial(), HOLE_B = new THREE.MeshBasicMaterial();
+const flatPN = g => { g = g.index ? g.toNonIndexed() : g.clone(); for (const k of Object.keys(g.attributes)) if (k !== 'position' && k !== 'normal') g.deleteAttribute(k); if (!g.attributes.normal) g.computeVertexNormals(); return g; };
+function cutHole(part, cutter) {
+  try {
+    const a = flatPN(part), b = flatPN(cutter); a.clearGroups(); b.clearGroups();
+    const ev = new Evaluator(); ev.attributes = ['position', 'normal']; ev.useGroups = true;
+    const r = ev.evaluate(new Brush(a, HOLE_A), new Brush(b, HOLE_B), SUBTRACTION);
+    const g = r.geometry.index ? r.geometry.toNonIndexed() : r.geometry, mats = Array.isArray(r.material) ? r.material : [r.material];
+    const pa = g.attributes.position.array, na = g.attributes.normal.array;
+    const split = want => {
+      const gs = g.groups.length ? g.groups : [{ start: 0, count: pa.length / 3, materialIndex: 0 }];
+      const sel = gs.filter(gr => mats[gr.materialIndex ?? 0] === want), n = sel.reduce((t, gr) => t + gr.count, 0) * 3;
+      const P = new Float32Array(n), N = new Float32Array(n); let o = 0;
+      for (const gr of sel) { P.set(pa.subarray(gr.start * 3, (gr.start + gr.count) * 3), o); N.set(na.subarray(gr.start * 3, (gr.start + gr.count) * 3), o); o += gr.count * 3; }
+      const out = new THREE.BufferGeometry(); out.setAttribute('position', new THREE.BufferAttribute(P, 3)); out.setAttribute('normal', new THREE.BufferAttribute(N, 3)); return out;
+    };
+    return [split(HOLE_A), split(HOLE_B)];
+  } catch (e) { console.warn('furo: CSG falhou', e); return [part, cutter]; }
+}
+
 // Pump de bisnaga (Draft 1035): a bisnaga fica de ponta-cabeça sobre ele. De baixo
 // para cima: atuador com cava para o dedo e saída em fenda, corpo do pump e anel
 // que encosta no tubo; sobretampa transparente opcional cobrindo tudo abaixo do anel.
@@ -896,19 +918,20 @@ function tubePumpGeo(m, y0, lo) {
   const csg = new Evaluator(); csg.attributes = ['position', 'normal']; csg.useGroups = false;
   const cut = csg.evaluate(new Brush(act), new Brush(ball), SUBTRACTION).geometry;
   const body = ring(m.stemD, m.stemH + 0.6, yB - 0.3, { rBot: 0.6, rTop: 0 });
-  const top = ring(m.W, ringH, yR, { rBot: 0.8, rTop: 0.4 });
+  const top = ring(m.W, ringH, yR, { rBot: 0.8, rTop: 0.4, ridges: m.ridges, ridgeD: m.ridgeD });
   // Saída: aba arredondada na borda de baixo, dentro da cava (a "voltinha" do bico),
   // rente ao atuador por fora, com o furo na frente.
   const tabW = m.actW * 0.3, tabD = m.actW * 0.17, tabH = m.actW * 0.2;
   const tab = moduleGeo({ ...BASE, kind: 'giro', W: tabW, D: tabD, n: 2.6, h: tabH, rBot: 0, rTop: tabD * 0.45 }, yA, { lo });
   tab.translate(0, 0, R - tabD / 2 - 0.05);
-  const slot = new THREE.BoxGeometry(tabW * 0.36, tabH * 0.34, 0.6); slot.deleteAttribute('uv');
-  slot.translate(0, yA + tabH * 0.42, R - 0.12); holes.push(slot);
+  const slot = new THREE.BoxGeometry(tabW * 0.36, tabH * 0.34, 3); slot.deleteAttribute('uv');
+  slot.translate(0, yA + tabH * 0.42, R - 1.4);
+  const [tabCut, slotCav] = cutHole(tab, slot); holes.push(slotCav);
   if (m.overcap) {
     const cap = ring(m.capW, yR - y0 + 0.2, y0, { rBot: 1.2, rTop: 0 });
     cap.userData.mat = 'clear'; holes.push(cap);
   }
-  const g = mergeGeometries([cut, body, top, tab].map(x => (x.index ? x.toNonIndexed() : x)));
+  const g = mergeGeometries([cut, body, top, tabCut].map(flatPN));
   [g, ...holes].forEach(x => { x.rotateY(-m.dir * Math.PI / 180); if (m.ox) x.translate(m.ox, 0, 0); });
   g.userData.extras = holes;
   return g;
@@ -963,13 +986,13 @@ function sprayGeo(m, y0, { lo = false } = {}) {
     }
     if (m.stemH > 0) head.push(cyl(m.stemD / 2, yA - 1, m.stemH + 2, 0, 0, lo));
     const yAct = yA + m.stemH;
-    head.push(moduleGeo({ ...BASE, kind: 'giro', W: m.actW, D: m.actW, h: m.actH, rBot: 0.8, rTop: Math.min(1.8, m.actW / 6) }, yAct, { lo }));
+    const act = moduleGeo({ ...BASE, kind: 'giro', W: m.actW, D: m.actW, h: m.actH, rBot: 0.8, rTop: Math.min(1.8, m.actW / 6) }, yAct, { lo });
     // Orifício: pastilha levemente saltada (mesma cor do atuador) com o furinho no centro.
     const yo = yAct + m.actH * 0.66, zf = m.actW / 2, rb = Math.max(1.4, m.actW * 0.16);
     const btn = cyl(rb, 0, 0.9, 0.3, 0, lo); btn.rotateX(Math.PI / 2); btn.translate(0, yo, zf - 0.6);
-    head.push(btn);
-    const oh = cyl(0.42, 0, 1.5); oh.rotateX(Math.PI / 2); oh.translate(0, yo, zf - 1.1);
-    holes.push(oh);
+    const drill = cyl(0.42, 0, 3.2); drill.rotateX(Math.PI / 2); drill.translate(0, yo, zf - 2.2);
+    const [actC, c1] = cutHole(act, drill), [btnC, c2] = cutHole(btn, drill);
+    head.push(actC, btnC); holes.push(c1, c2);
   } else if (m.sprayType === 'pato') {
     // Pump bico pato: torre de trava, haste fina, cabeça redonda e bico achatado
     // saindo da lateral, com corte reto e saída em fenda na ponta.
@@ -983,25 +1006,27 @@ function sprayGeo(m, y0, { lo = false } = {}) {
       for (let j = 0; j < seg; j++) { const [zz, yy] = sp(a, b, 3.2, j / seg * TAU); rg.push([x, cy + yy, zz]); }
       bill.push(rg);
     }
-    head.push(loftPts(bill));
-    const slit = new THREE.BoxGeometry(0.5, m.armT * 0.22, m.armW * 0.55); slit.deleteAttribute('uv');
-    slit.translate(x1, yc - m.droop, 0); holes.push(slit);
+    const slit = new THREE.BoxGeometry(3.5, m.armT * 0.22, m.armW * 0.55); slit.deleteAttribute('uv');
+    slit.translate(x1 - 1.25, yc - m.droop, 0);
+    const [billC, cav] = cutHole(loftPts(bill), slit); head.push(billC); holes.push(cav);
   } else if (m.sprayType === 'draftpump') {
     turret();
     head.push(cyl(m.stemD / 2, top - sink, m.stemH + sink + 1, 0, 0, lo));
-    const hg = draftPumpHeadGeo(m, top + m.stemH, lo), tp = hg.userData.tip; head.push(hg);
-    // Saída: elipse escura na face reta da ponta, rente à superfície.
-    const ro = (m.outletD || 2.2) / 2, oh = cyl(1, 0, 0.45);
+    const hg = draftPumpHeadGeo(m, top + m.stemH, lo), tp = hg.userData.tip;
+    // Saída: furo elíptico na face reta da ponta.
+    const ro = (m.outletD || 2.2) / 2, oh = cyl(1, 0, 3);
     oh.scale(Math.min(ro, (tp.hTop + tp.hBot) * 0.3), 1, Math.min(ro * 1.3, tp.hz * 0.45));
-    oh.rotateZ(-Math.PI / 2); oh.translate(tp.x - 0.4, tp.y + (tp.hTop - tp.hBot) / 2, 0); holes.push(oh);
+    oh.rotateZ(-Math.PI / 2); oh.translate(tp.x - 2.5, tp.y + (tp.hTop - tp.hBot) / 2, 0);
+    const [hgC, cav] = cutHole(hg, oh); head.push(hgC); holes.push(cav);
   } else if (m.sprayType === 'lamina') {
     turret();
     head.push(cyl(m.stemD / 2, top - sink, m.stemH + sink + 1, 0, 0, lo));
-    const bg = bladeHeadGeo(m, top + m.stemH, lo), tp = bg.userData.tip; head.push(bg);
-    // Saída: elipse escura na face reta da ponta da lâmina, rente à superfície.
-    const ro = (m.outletD || 2.2) / 2, oh = cyl(1, 0, 0.45);
+    const bg = bladeHeadGeo(m, top + m.stemH, lo), tp = bg.userData.tip;
+    // Saída: furo elíptico na face reta da ponta da lâmina.
+    const ro = (m.outletD || 2.2) / 2, oh = cyl(1, 0, 3);
     oh.scale(Math.min(ro, (tp.hTop + tp.hBot) * 0.3), 1, Math.min(ro * 1.4, tp.hz * 0.5));
-    oh.rotateZ(-Math.PI / 2); oh.translate(tp.x - 0.4, tp.y + (tp.hTop - tp.hBot) / 2, 0); holes.push(oh);
+    oh.rotateZ(-Math.PI / 2); oh.translate(tp.x - 2.5, tp.y + (tp.hTop - tp.hBot) / 2, 0);
+    const [bgC, cav] = cutHole(bg, oh); head.push(bgC); holes.push(cav);
   } else if (m.sprayType === 'gotas') {
     // Conta-gotas: bulbo de borracha com topo em domo.
     head.push(ring(m.actW, m.actH, top - 0.5, { rBot: 1.5, rTop: m.actW / 2, bulge: -6, bulgePos: 30 }));
@@ -1016,9 +1041,11 @@ function sprayGeo(m, y0, { lo = false } = {}) {
       ridges: Math.round(colW * 3.35), ridgeD: m.ridgeD || 0.3 }));
     const yN = yC + m.actH - 0.08, tipBase = neckW * 0.92, tipW = Math.max(m.spoutD, 2.1);
     head.push(ring(tipBase * 1.08, 1.25, yN, { rBot: 0.15, rTop: 0.22 }));
-    head.push(ring(tipBase, m.nozzleL, yN + 1.05, { taper: tipW / tipBase * 100, rBot: 0.1, rTop: 0.5 }));
-    head.push(ring(tipW * 1.18, 1.35, yN + 1.05 + m.nozzleL - 0.15, { rBot: 0.15, rTop: tipW * 0.38 }));
-    holes.push(cyl(Math.max(0.32, tipW * 0.14), yN + m.nozzleL + 2.08, 0.3));
+    const cone = ring(tipBase, m.nozzleL, yN + 1.05, { taper: tipW / tipBase * 100, rBot: 0.1, rTop: 0.5 });
+    const nub = ring(tipW * 1.18, 1.35, yN + 1.05 + m.nozzleL - 0.15, { rBot: 0.15, rTop: tipW * 0.38 });
+    const drill = cyl(Math.max(0.32, tipW * 0.14), yN + m.nozzleL + 2.4 - 3.5, 4.5);
+    const [coneC, c1] = cutHole(cone, drill), [nubC, c2] = cutHole(nub, drill);
+    head.push(coneC, nubC); holes.push(c1, c2);
   } else if (m.sprayType === 'gatilho') {
     // Gatilho: degraus, haste fina e cabeça curva com pivô, escora traseira e alavanca.
     const k = m.W / 24, P = (x, y) => [(x - 375) * 0.15 * k, (290 - y) * 0.15 * k + top];
@@ -1030,8 +1057,9 @@ function sprayGeo(m, y0, { lo = false } = {}) {
       ['c', 450, 90, 360, 62, 300, 64], ['q', 283, 66, 285, 80], ['l', 285, 112]], P), m.actW, lo));
     head.push(sideExtrude(refShape([['m', 472, 148], ['l', 497, 150], ['l', 442, 252], ['l', 418, 252], ['l', 472, 148]], P), m.actW * 0.55, lo));
     const [nx, ny] = P(292, 97), nL = 8.2 * k, nz = cyl(1.95 * k, 0, nL, 0.4, 0, lo);
-    nz.rotateZ(Math.PI / 2); nz.translate(nx, ny, 0); head.push(nz);
-    const nh = cyl(0.7 * k, 0, 0.5); nh.rotateZ(Math.PI / 2); nh.translate(nx - nL + 0.25, ny, 0); holes.push(nh);
+    nz.rotateZ(Math.PI / 2); nz.translate(nx, ny, 0);
+    const nh = cyl(0.7 * k, 0, 3.5); nh.rotateZ(Math.PI / 2); nh.translate(nx - nL + 2.5, ny, 0);
+    const [nzC, cav] = cutHole(nz, nh); head.push(nzC); holes.push(cav);
   } else if (m.sprayType === 'onda') {
     // Pump com cabeça chata em onda: aba atrás, sobe na haste e desce até o bico cortado em ângulo.
     const k = m.W / 28, rimH = 2.5 * k, yH = top + rimH + m.stemH;
@@ -1039,14 +1067,14 @@ function sprayGeo(m, y0, { lo = false } = {}) {
     turret(top + rimH, 0.3);
     head.push(cyl(m.stemD / 2, top + rimH - 0.5, m.stemH + 1.5, 0, 0, lo));
     const P = (x, y) => [(x - 883) * 0.1 * k, (340 - y) * 0.1 * k + yH];
-    head.push(sideExtrude(refShape([['m', 588, 325], ['c', 640, 300, 720, 288, 800, 288], ['c', 860, 288, 900, 300, 940, 303],
+    const wave = sideExtrude(refShape([['m', 588, 325], ['c', 640, 300, 720, 288, 800, 288], ['c', 860, 288, 900, 300, 940, 303],
       ['l', 968, 305], ['q', 982, 306, 981, 318], ['l', 981, 326], ['q', 980, 337, 965, 337], ['l', 948, 339],
-      ['c', 900, 341, 860, 341, 800, 339], ['c', 720, 336, 650, 340, 606, 358], ['q', 596, 363, 593, 353], ['l', 588, 325]], P), m.actW, lo));
+      ['c', 900, 341, 860, 341, 800, 339], ['c', 720, 336, 650, 340, 606, 358], ['q', 596, 363, 593, 353], ['l', 588, 325]], P), m.actW, lo);
     const [tx, ty] = P(591, 340), dir = new THREE.Vector3(-0.96, -0.28, 0).normalize();
-    const oh = cyl(1.1 * k, -0.2, 0.5); oh.scale(1, 1, Math.max(1, m.actW * 0.35 / (1.1 * k)));
+    const oh = cyl(1.1 * k, -3, 4); oh.scale(1, 1, Math.max(1, m.actW * 0.35 / (1.1 * k)));
     oh.applyQuaternion(new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir));
-    const bv = extrudeBevel(m.actW); oh.translate(tx + dir.x * bv, ty + dir.y * bv, 0); // na face real, fora da borda
-    holes.push(oh);
+    const bv = extrudeBevel(m.actW); oh.translate(tx + dir.x * bv, ty + dir.y * bv, 0);
+    const [waveC, cav] = cutHole(wave, oh); head.push(waveC); holes.push(cav);
   } else if (m.sprayType === 'foam') {
     // Pump foam: degrau largo, coluna redonda com topo inclinado e bico chato saindo na frente.
     const k = m.W / 43, s = 0.048 * k, P = (x, y) => [(x - 656) * s, (870 - y) * s + top];
@@ -1061,11 +1089,12 @@ function sprayGeo(m, y0, { lo = false } = {}) {
     shp.moveTo(xL - sp, yT + r * slope + 1.6 * k); shp.lineTo(xL + 1.5, yT + (r - 1.5) * slope);
     shp.lineTo(xL + 1.5, yT - sh - 1.5); shp.lineTo(xL, yT - sh - 0.4); shp.lineTo(xL - sp, yT - sh + 0.8);
     shp.lineTo(xL - sp, yT + r * slope + 1.6 * k);
-    head.push(sideExtrude(shp, m.actW * 0.62, lo));
-    // Boca retangular acompanhando a borda da face do bico, com uma margem fina.
-    const y0f = yT - sh + 0.8, y1f = yT + r * slope + 1.6 * k, mg = 1.1 * k;
-    const oh = new THREE.BoxGeometry(0.5, Math.max(0.5, y1f - y0f - 2 * mg), Math.max(0.5, m.actW * 0.62 - 2 * mg));
-    oh.deleteAttribute('uv'); oh.translate(xL - sp - extrudeBevel(m.actW * 0.62), (y0f + y1f) / 2, 0); holes.push(oh);
+    const spout = sideExtrude(shp, m.actW * 0.62, lo);
+    // Boca retangular acompanhando a borda da face do bico, com uma margem fina: furo de verdade.
+    const y0f = yT - sh + 0.8, y1f = yT + r * slope + 1.6 * k, mg = 1.1 * k, dp = Math.max(2, 3.5 * k), F = xL - sp - extrudeBevel(m.actW * 0.62);
+    const oh = new THREE.BoxGeometry(1 + dp, Math.max(0.5, y1f - y0f - 2 * mg), Math.max(0.5, m.actW * 0.62 - 2 * mg));
+    oh.deleteAttribute('uv'); oh.translate(F - 1 + (1 + dp) / 2, (y0f + y1f) / 2, 0);
+    const [spoutC, cav] = cutHole(spout, oh); head.push(spoutC); holes.push(cav);
   } else if (m.sprayType === 'sport') {
     // Push-pull esportiva (referência): haste lisa curta, luva lisa que alarga
     // para cima com fundo arredondado, aba no topo e botão em domo com o furo.
@@ -1074,8 +1103,8 @@ function sprayGeo(m, y0, { lo = false } = {}) {
     head.push(ring(m.actW, m.actH, yL, { taper: 104, rBot: Math.min(1.4, m.actH * 0.2), rTop: 0 }));
     head.push(ring(lipW, lipH, yL + m.actH - 0.05, { rBot: lipH * 0.45, rTop: lipH * 0.45 }));
     const dW = m.actW * 0.58, dH = dW * 0.34;
-    head.push(ring(dW, dH, yL + m.actH + lipH - 0.1, { rBot: 0, rTop: dH * 0.95, rTopW: dW / 2 }));
-    holes.push(cyl(Math.max(0.4, dW * 0.11), yL + m.actH + lipH + dH - 0.25, 0.3));
+    const dome = ring(dW, dH, yL + m.actH + lipH - 0.1, { rBot: 0, rTop: dH * 0.95, rTopW: dW / 2 });
+    const [domeC, cav] = cutHole(dome, cyl(Math.max(0.4, dW * 0.11), yL + m.actH + lipH + dH - 2.2, 3)); head.push(domeC); holes.push(cav);
   } else if (m.sprayType === 'pushpull') {
     // Push-pull: tampa frisada com ombro suave e bico central curto.
     const yL = top - 0.2, sleeveW = m.actW, sleeveH = m.actH;
@@ -1084,8 +1113,8 @@ function sprayGeo(m, y0, { lo = false } = {}) {
     const lipH = Math.max(1.5, sleeveH * 0.24);
     head.push(ring(sleeveW * 1.16, lipH, yL + sleeveH - 0.05, { rBot: lipH * 0.45, rTop: lipH * 0.42 }));
     const tipW = sleeveW * 0.52, tipH = Math.max(3.1, sleeveH * 0.34);
-    head.push(ring(tipW, tipH, yL + sleeveH + lipH - 0.08, { taper: 62, rBot: 0, rTop: tipH * 0.5 }));
-    holes.push(cyl(Math.max(0.45, tipW * 0.12), yL + sleeveH + lipH + tipH - 0.25, 0.3));
+    const tipG = ring(tipW, tipH, yL + sleeveH + lipH - 0.08, { taper: 62, rBot: 0, rTop: tipH * 0.5 });
+    const [tipC, cav] = cutHole(tipG, cyl(Math.max(0.45, tipW * 0.12), yL + sleeveH + lipH + tipH - 2.3, 3)); head.push(tipC); holes.push(cav);
   } else {
     // Pump de loção/espuma: haste grossa, cabeça com topo em domo e bico em
     // tubo que sai reto e curva para baixo.
@@ -1108,10 +1137,10 @@ function sprayGeo(m, y0, { lo = false } = {}) {
       hole.translate(tip.x - tan.x * 0.95, tip.y - tan.y * 0.95, tip.z - tan.z * 0.95); holes.push(hole);
     }
   }
-  const hg = mergeGeometries(head.filter(Boolean));
+  const hg = mergeGeometries(head.filter(Boolean).map(flatPN));
   [hg, ...holes].forEach(x => { x.rotateY(-m.dir * Math.PI / 180); if (m.ox) x.translate(m.ox, 0, 0); });
   if (m.ox) collar.translate(m.ox, 0, 0);
-  const g = mergeGeometries([collar, hg]);
+  const g = mergeGeometries([flatPN(collar), hg]);
   g.userData.extras = holes;
   return g;
 }
@@ -1412,6 +1441,15 @@ function signedVolume(g, signed = false) {
 // Posição vertical de cada peça (módulo × repetição).
 // A peça logo acima de um gargalo o veste: desce até o anel de apoio e se
 // alinha a ele. explode separa as peças para mostrar a junção.
+// Quanto o ombro arredondado do corpo desce no raio R (0 = ainda no topo reto).
+function shoulderDrop(m, R) {
+  if (m.kind !== 'giro') return 0;
+  const a0 = Math.min(m.W, m.D) / 2 * (m.taper || 100) / 100, rT = clamp(m.rTop || 0, 0, Math.min(m.h / 2, a0));
+  const rTw = m.rTopW > 0 ? m.rTopW : rT;
+  if (!rT || R <= a0 - rTw) return 0;
+  const g = clamp((a0 - R) / rTw, 0, 1), c = Math.sqrt(Math.max(0, 1 - (1 - g) ** 2));
+  return rT * (1 - c);
+}
 function layout(s, explode = 0) {
   const out = []; let cur = 0, neck = null;
   s.modules.forEach((m0, idx) => {
@@ -1420,6 +1458,11 @@ function layout(s, explode = 0) {
     let y0 = 0;
     for (let r = 0; r < Math.max(1, Math.round(m.rep)); r++) {
       y0 = r === 0 && onNeck ? neck.y0 + neck.m.ringH + m.gap : cur + (r === 0 ? m.gap : m.repGap);
+      // Gargalo sobre ombro arredondado: desce com o fechamento até a borda dele
+      // assentar no ombro (senão sobra um vão com o gargalo à mostra).
+      const up = s.modules[idx + 1];
+      if (r === 0 && m0.kind === 'gargalo' && s.modules[idx - 1]?.vol && up && up.kind !== 'gargalo')
+        y0 -= shoulderDrop(s.modules[idx - 1], Math.max(0, Math.min(up.W, up.D) / 2 - (up.kind === 'spray' ? 0.6 : Math.min(up.rBot || 0, Math.min(up.W, up.D) / 2))) + 0.3);
       const ex = m0.kind === 'gargalo' && s.modules[idx - 1]?.vol ? idx - 1 : idx; // gargalo explode junto do corpo
       out.push({ m, idx, y0: y0 + ex * explode }); cur = y0 + m.h;
     }
@@ -2371,7 +2414,8 @@ function renderEditor() {
     }
     if (ribsHere) renderRibs(grp, m);
   }
-  if (isBody(m) && m.kind !== 'gargalo') { renderBodyNeck(ed, m); renderBodyPescante(ed); renderBodyLiquid(ed, m); }
+  // Mola e pescante são da válvula (grupo "Mola e pescante" dela), não do corpo.
+  if (isBody(m) && m.kind !== 'gargalo') { renderBodyNeck(ed, m); renderBodyLiquid(ed, m); }
 }
 // Gargalo do corpo: liga/desliga e edita padrão, rosca e anel sem sair do corpo.
 function renderBodyNeck(ed, m) {
@@ -2428,42 +2472,6 @@ function renderBodyLiquid(ed, m) {
     field(grp, m, ['liqLevel', 'Nível', 0, 100, 1, '%'], ch);
     field(grp, m, ['liqColor', 'Cor do líquido', 'color'], ch);
   }
-}
-// No corpo: editar o pescante da válvula que está na pilha (ele fica dentro
-// do frasco). Mesmos valores do grupo "Mola e pescante" da válvula.
-function renderBodyPescante(ed) {
-  const valves = S.modules.filter(v => v.kind === 'spray' && !['pushpull', 'bico', 'sport'].includes(v.sprayType));
-  const m = S.modules[sel];
-  if (m.kind === 'bisnaga') return;
-  const openG = store.get('shape.openGroups', { Medidas: true, Formato: true });
-  const grp = document.createElement('details'); grp.className = 'grp'; grp.open = !!openG.Pescante;
-  grp.innerHTML = '<summary>Pescante</summary>';
-  grp.addEventListener('toggle', () => { const o = store.get('shape.openGroups', { Medidas: true, Formato: true }); o.Pescante = grp.open; store.set('shape.openGroups', o); });
-  // entra antes de Encaixe/Cor, junto das medidas do frasco
-  const before = [...ed.querySelectorAll('.grp')].find(g => ['Encaixe', 'Cor'].includes(g.querySelector('summary').textContent));
-  before ? ed.insertBefore(grp, before) : ed.appendChild(grp);
-  const ch = (k, structural) => { if (structural) renderEditorKeepScroll(); queueBuild(); };
-  if (!valves.length) {
-    // sem válvula: pescante do próprio corpo
-    field(grp, m, ['bpesc', 'Pescante (tubo até o fundo)', 'check'], ch);
-    if (m.bpesc) {
-      field(grp, m, ['bpescMola', 'Mecanismo de spray (mola) em cima', 'check'], ch);
-      field(grp, m, ['bpescD', 'Diâmetro', 2, 10, 0.1, 'mm'], ch);
-      field(grp, m, ['bpescGap', 'Folga do fundo', 0, 20, 0.5, 'mm'], ch);
-      field(grp, m, ['bpescCurve', 'Curva no pé (− esquerda)', -40, 40, 0.5, 'mm'], ch);
-      field(grp, m, ['bpescWave', 'Ondulação em S', -15, 15, 0.5, 'mm'], ch);
-    }
-  }
-  valves.forEach(v => {
-    if (valves.length > 1) grp.insertAdjacentHTML('beforeend', `<div class="tip"><b>${v.name}</b></div>`);
-    field(grp, v, ['pesc', 'Pescante (tubo até o fundo)', 'check'], ch);
-    if (!v.pesc) return;
-    field(grp, v, ['pescD', 'Diâmetro', 2, 10, 0.1, 'mm'], ch);
-    field(grp, v, ['pescGap', 'Folga do fundo', 0, 20, 0.5, 'mm'], ch);
-    field(grp, v, ['pescCurve', 'Curva no pé (− esquerda)', -40, 40, 0.5, 'mm'], ch);
-    field(grp, v, ['pescWave', 'Ondulação em S', -15, 15, 0.5, 'mm'], ch);
-  });
-  grp.insertAdjacentHTML('beforeend', '<div class="tip">Aparece com o corpo em Transparente / vidro (Aparência) ou em Explodir.</div>');
 }
 // Trocar o módulo selecionado por outro da mesma categoria, vendo as opções.
 const typeOf = m => m.type || Object.keys(LIB).find(k => LIB[k].name === m.name);
