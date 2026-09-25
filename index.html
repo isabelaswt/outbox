@@ -352,7 +352,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-25.furos-pescante';
+const BUILD = '2026-09-25.sem-repetidos';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -483,9 +483,6 @@ const PRESETS = {
     M('reto', { W: 62, D: 62, h: 104, rBot: 20, rTop: 1 }), NECK('24/410'),
     M('lamina', { name: 'Pump domo + disco plano', W: 62, D: 62, h: 46, collarR: 30, stemD: 30, stemH: 8,
       actW: 36, headH: 4.2, armT: 4.2, armW: 12, nozzleL: 22, droop: 0 })] },
-  'Spray âmbar': { color: BEIGE, finish: 'fosco', modules: [
-    M('reto', { W: 50, D: 50, h: 96, rBot: 4, rTop: 17 }), NECK('24/410', { embed: 14 }),
-    M('spray', { W: 29.7, D: 29.7, h: 18, skirtPct: 100, ridges: 0, collarR: 0.8, guideW: 21.7, guideH: 7.5, actW: 16, actH: 16.5, pescWave: 3 })] },
   'Boston com pump': { color: BEIGE, finish: 'fosco', modules: [
     M('boston'), NECK('24/410', { embed: 12 }), M('locao')] },
   'Conta-gotas âmbar': { color: BEIGE, finish: 'fosco', modules: [
@@ -543,8 +540,14 @@ function draftClosure(d, id) {
   if (band && valve) nw.ridges = band.k;
   return nw;
 }
+// Modelos prontos da Draft que repetiam outro quase igual (mesma tampa/válvula,
+// corpo levemente diferente). O corpo de cada um continua na troca de corpo.
+const DRAFT_HIDDEN = new Set(['Soap pump', 'Pump bottle', 'Frasco com pump', 'Pump minimal', 'Spray vidro', 'Spray plástico',
+  'Base com pump', 'Base com pump #2', 'Conta-gotas vidro', 'Conta-gotas', 'Airless (tubo)', 'Tubo com pump', 'Bisnaga',
+  'Creme dental', 'Push-pull alto', 'Colírio', 'Shampoo viagem', 'Vidro com tampa']);
 function buildDraftPresets() {
   for (const [id, d] of Object.entries(PERFIS)) {
+    if (DRAFT_HIDDEN.has(d.name)) continue;
     const k = id.replace(/^DRAFT_/, '').replace(/^(\d+)_.*/, '$1'), kb = `d${k}c`, clos = draftClosure(d, id);
     let modules;
     if (d.below) modules = [clos, M(kb, { gap: d.gapBelow })];
