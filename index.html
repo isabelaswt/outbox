@@ -329,8 +329,8 @@ const LIB = {
              actW: 15, actH: 24, houseD: 16, springL: 26 },
   pushSport: { name: 'Push-pull esportiva', kind: 'spray', sprayType: 'sport', W: 30, D: 30, h: 18, collarR: 0.8, ridges: 64, ridgeD: 0.34,
              stemD: 9.4, stemH: 3.2, actW: 13.5, actH: 9.5, mola: false, pesc: false },
-  bicoDosador: { name: 'Bico dosador', kind: 'spray', sprayType: 'bico', W: 32, D: 32, h: 17, collarR: 0.8, ridges: 72, ridgeD: 0.32,
-             actW: 20, actH: 18, nozzleL: 13.5, spoutD: 3.2, mola: false, pesc: false },
+  bicoDosador: { name: 'Bico dosador', kind: 'spray', sprayType: 'bico', W: 32, D: 32, h: 18, collarR: 0.8, ridges: 76, ridgeD: 0.32,
+             actW: 22, actH: 24, nozzleL: 24, spoutD: 2.7, mola: false, pesc: false },
   gargalo: { name: 'Gargalo com rosca', kind: 'gargalo', W: 23.9, D: 23.9, h: 16, neckStd: '24/410', pitch: 3.18, turns: 1.5 },
   bisnaga: { name: 'Corpo bisnaga', kind: 'bisnaga', W: 45, D: 45, h: 165, rBot: 4, vol: true },
   tampaBisnaga: { name: 'Tampa de bisnaga', W: 44, D: 44, h: 34, rBot: 2.5, rTop: 1, groove: 24, notch: true, notchUp: true, notchW: 18, notchH: 9, notchD: 1.4, notchP: 6, topType: 'flip', lidSide: 'baixo' },
@@ -351,7 +351,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-25.login-plataforma-preta';
+const BUILD = '2026-09-25.bico-dosador-alto';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -832,19 +832,19 @@ function sprayGeo(m, y0, { lo = false } = {}) {
     // Conta-gotas: bulbo de borracha com topo em domo.
     head.push(ring(m.actW, m.actH, top - 0.5, { rBot: 1.5, rTop: m.actW / 2, bulge: -6, bulgePos: 30 }));
   } else if (m.sprayType === 'bico') {
-    // Bico dosador: virola frisada, ombro cônico, torre frisada e ponteira curta.
-    const yS = top - 0.05, shoulderH = Math.max(4.2, m.W * 0.18), baseW = m.W * 0.94;
-    const colW = Math.max(m.actW, m.spoutD * 4.8), neckW = colW * 0.66;
-    head.push(ring(baseW, shoulderH, yS, { taper: colW / baseW * 100, rBot: 0, rTop: 0.4 }));
-    head.push(ring(colW * 1.04, 1.4, yS + shoulderH - 0.05, { rBot: 0.2, rTop: 0.25 }));
-    const yC = yS + shoulderH + 0.95;
-    head.push(ring(colW, m.actH, yC, { taper: neckW / colW * 100, rBot: 0, rTop: 0.5,
-      ridges: Math.round(colW * 3.1), ridgeD: m.ridgeD || 0.3 }));
-    const yN = yC + m.actH - 0.1, tipBase = neckW * 0.72, tipW = Math.max(m.spoutD, 2.2);
-    head.push(ring(neckW * 0.96, 1.2, yN, { rBot: 0.15, rTop: 0.25 }));
-    head.push(ring(tipBase, m.nozzleL, yN + 1.05, { taper: tipW / tipBase * 100, rBot: 0, rTop: 0.55 }));
-    head.push(ring(tipW * 1.05, 1.2, yN + 1.05 + m.nozzleL - 0.15, { rBot: 0.15, rTop: tipW * 0.42 }));
-    holes.push(cyl(Math.max(0.35, tipW * 0.15), yN + m.nozzleL + 2.02, 0.3));
+    // Bico dosador alto: virola frisada, ombro cônico, corpo superior frisado e ponteira longa.
+    const yS = top - 0.05, shoulderH = Math.max(5.2, m.W * 0.2), baseW = m.W * 0.92;
+    const colW = Math.max(m.actW, m.spoutD * 6.4), neckW = colW * 0.52;
+    head.push(ring(baseW, shoulderH, yS, { taper: colW / baseW * 100, rBot: 0, rTop: 0.5 }));
+    head.push(ring(colW * 1.04, 1.25, yS + shoulderH - 0.05, { rBot: 0.18, rTop: 0.25 }));
+    const yC = yS + shoulderH + 0.85;
+    head.push(ring(colW, m.actH, yC, { taper: neckW / colW * 100, rBot: 0.25, rTop: 0.45,
+      ridges: Math.round(colW * 3.35), ridgeD: m.ridgeD || 0.3 }));
+    const yN = yC + m.actH - 0.08, tipBase = neckW * 0.92, tipW = Math.max(m.spoutD, 2.1);
+    head.push(ring(tipBase * 1.08, 1.25, yN, { rBot: 0.15, rTop: 0.22 }));
+    head.push(ring(tipBase, m.nozzleL, yN + 1.05, { taper: tipW / tipBase * 100, rBot: 0.1, rTop: 0.5 }));
+    head.push(ring(tipW * 1.18, 1.35, yN + 1.05 + m.nozzleL - 0.15, { rBot: 0.15, rTop: tipW * 0.38 }));
+    holes.push(cyl(Math.max(0.32, tipW * 0.14), yN + m.nozzleL + 2.08, 0.3));
   } else if (m.sprayType === 'foam') {
     // Pump foam: virola larga, coluna baixa e atuador arredondado com bico curto.
     const yBase = top - 0.05, deckH = Math.max(2.2, m.h * 0.22), deckW = m.W * 0.82;
