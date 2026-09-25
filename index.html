@@ -352,7 +352,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-25.tampa-bisnaga';
+const BUILD = '2026-09-25.furos-pescante';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -799,6 +799,7 @@ function draftPumpHeadGeo(m, yH, lo) {
 }
 
 // Peça desenhada de perfil (plano x-y) e extrudada na profundidade, com borda arredondada.
+const extrudeBevel = depth => Math.min(0.6, Math.min(0.9, depth * 0.12)); // quanto a borda avança para fora do perfil
 function sideExtrude(shape, depth, lo) {
   const b = Math.min(0.9, depth * 0.12);
   const g = new THREE.ExtrudeGeometry(shape, { depth: Math.max(0.2, depth - 2 * b), bevelEnabled: true, bevelThickness: b,
@@ -817,8 +818,12 @@ function refShape(cmds, P) {
   return sh;
 }
 
-// Fim da saída do bico: um pouco atrás da ponta arredondada, para ler como furo e não como pino.
-const outletEnd = (tipX, rt, ro) => tipX - (rt - Math.sqrt(Math.max(0, rt * rt - ro * ro))) - 0.15;
+// Saída na ponta arredondada: esfera escura quase toda dentro da ponta; só uma
+// calota rente à curva aparece, e lê como furo (nem pino saltado, nem escondido).
+function outletCap(tipX, y, ro, lo) {
+  const q = ro * 1.9, g = new THREE.SphereGeometry(q, lo ? 12 : 24, lo ? 8 : 16);
+  g.deleteAttribute('uv'); g.translate(tipX - ro * 1.75, y, 0); return g;
+}
 
 // Válvula: virola que veste o gargalo + cabeça de spray fino ou pump.
 function sprayGeo(m, y0, { lo = false } = {}) {
@@ -854,13 +859,13 @@ function sprayGeo(m, y0, { lo = false } = {}) {
     head.push(cyl(m.stemD / 2, top - sink, m.stemH + sink + 1, 0, 0, lo));
     head.push(draftPumpHeadGeo(m, top + m.stemH, lo));
     const tipX = m.actW / 2 + m.nozzleL, ro = Math.min(m.armT * 0.42, (m.outletD || 2.2) / 2), rt = m.armT / 2;
-    holes.push(xCyl(ro, 1.6, outletEnd(tipX, rt, ro) - 1.6, top + m.stemH + m.headH * 0.34 - m.droop, lo));
+    holes.push(outletCap(tipX, top + m.stemH + m.headH * 0.34 - m.droop, ro, lo));
   } else if (m.sprayType === 'lamina') {
     head.push(cyl(m.stemD / 2, top - sink, m.stemH + sink + 1, 0, 0, lo));
     head.push(bladeHeadGeo(m, top + m.stemH, lo));
     // Saída na ponta da lâmina.
     const rt = Math.min(m.armT / 2, m.armW / 2), tipX = m.actW / 2 + m.nozzleL, ro = Math.min(rt * 0.6, (m.outletD || 2.2) / 2);
-    holes.push(xCyl(ro, 1.6, outletEnd(tipX, rt, ro) - 1.6, top + m.stemH + m.headH * 0.38 + (m.headH - m.armT) * 0.4 - m.droop, lo));
+    holes.push(outletCap(tipX, top + m.stemH + m.headH * 0.38 + (m.headH - m.armT) * 0.4 - m.droop, ro, lo));
   } else if (m.sprayType === 'gotas') {
     // Conta-gotas: bulbo de borracha com topo em domo.
     head.push(ring(m.actW, m.actH, top - 0.5, { rBot: 1.5, rTop: m.actW / 2, bulge: -6, bulgePos: 30 }));
@@ -902,7 +907,8 @@ function sprayGeo(m, y0, { lo = false } = {}) {
       ['c', 900, 341, 860, 341, 800, 339], ['c', 720, 336, 650, 340, 606, 358], ['q', 596, 363, 593, 353], ['l', 588, 325]], P), m.actW, lo));
     const [tx, ty] = P(591, 340), dir = new THREE.Vector3(-0.96, -0.28, 0).normalize();
     const oh = cyl(1.1 * k, -0.2, 0.5); oh.scale(1, 1, Math.max(1, m.actW * 0.35 / (1.1 * k)));
-    oh.applyQuaternion(new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir)); oh.translate(tx, ty, 0);
+    oh.applyQuaternion(new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir));
+    const bv = extrudeBevel(m.actW); oh.translate(tx + dir.x * bv, ty + dir.y * bv, 0); // na face real, fora da borda
     holes.push(oh);
   } else if (m.sprayType === 'foam') {
     // Pump foam: degrau largo, coluna redonda com topo inclinado e bico chato saindo na frente.
@@ -920,7 +926,7 @@ function sprayGeo(m, y0, { lo = false } = {}) {
     shp.lineTo(xL - sp, yT + r * slope + 1.6 * k);
     head.push(sideExtrude(shp, m.actW * 0.62, lo));
     const oh = cyl(1, 0, 0.5); oh.scale(sh * 0.32, 1, m.actW * 0.2); oh.rotateZ(Math.PI / 2);
-    oh.translate(xL - sp + 0.25, yT - sh / 2 + 0.6 * k, 0); holes.push(oh);
+    oh.translate(xL - sp - extrudeBevel(m.actW * 0.62) + 0.25, yT - sh / 2 + 0.6 * k, 0); holes.push(oh);
   } else if (m.sprayType === 'sport') {
     // Push-pull esportiva (referência): haste lisa curta, luva lisa que alarga
     // para cima com fundo arredondado, aba no topo e botão em domo com o furo.
@@ -1358,7 +1364,9 @@ const insertMat = new THREE.MeshStandardMaterial({ color: '#ececea', roughness: 
 // Furos e saídas: sombra da própria cor do frasco (atualizada no build), não preto.
 const holeMat = new THREE.MeshStandardMaterial({ color: '#7d7366', roughness: 0.9 });
 // Plástico translúcido leitoso: presente, mas discreto dentro do frasco.
-const pescMat = new THREE.MeshStandardMaterial({ color: '#d9dddc', roughness: 0.28, transparent: true, opacity: 0.28, depthWrite: false });
+// Opaco de propósito: o vidro (transmission) só mostra por dentro o que é opaco;
+// transparente, o pescante sumia atrás do frasco transparente.
+const pescMat = new THREE.MeshStandardMaterial({ color: '#e4e6e3', roughness: 0.35 });
 function material(color, finish) {
   const key = color + finish;
   if (matCache.has(key)) return matCache.get(key);
