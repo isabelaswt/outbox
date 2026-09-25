@@ -388,7 +388,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-25.refs-novas';
+const BUILD = '2026-09-25.repetir-visivel';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -2283,6 +2283,9 @@ const GB = d => { const a = padDef(d); const prev = a[6]; a[6] = m => ['giro', '
 const MF = [
   ['Medidas', [
     notK(['spray'], ['h', 'Altura', 1, 300, 0.5, 'mm']),
+    // Repetir empilha cópias da peça (ondas, anéis): fica à vista, junto da altura.
+    notK(['gargalo', 'spray'], ['rep', 'Repetir (empilhar cópias)', 1, 8, 1, '×']),
+    padDef(['repGap', 'Espaço entre repetições', 0, 20, 0.1, 'mm', m => !['gargalo', 'spray'].includes(m.kind) && m.rep > 1]),
     notK(['gargalo', 'spray'], ['W', 'Largura (frente)', 4, 200, 0.5, 'mm']),
     notK(['gargalo', 'spray'], ['D', 'Profundidade (lado)', 4, 200, 0.5, 'mm']),
     GP(['roundLock', 'Esfera: manter redonda', 'check', 0, 0, 0, isSphereCap]),
@@ -2404,8 +2407,6 @@ const MF = [
   ['Encaixe', [
     ['gap', 'Distância do módulo de baixo', -40, 40, 0.1, 'mm'],
     ['ox', 'Deslocar para o lado (− esquerda)', -100, 100, 0.5, 'mm'],
-    ['rep', 'Repetir', 1, 8, 1, '×'],
-    ['repGap', 'Espaço entre repetições', 0, 20, 0.1, 'mm', m => m.rep > 1],
   ]],
   ['Cor', [
     ['own', 'Cor própria neste módulo', 'check'],
