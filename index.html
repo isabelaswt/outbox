@@ -299,7 +299,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-24.bico-dosador.tube-sphere-cap';
+const BUILD = '2026-09-24.bico-dosador.no-tube-pescante';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -338,7 +338,7 @@ function tubeFromProfile(d) {
   const P = d.body.prof, W = r1(Math.max(...P.map(r => Math.min(r[1] * d.body.W, r[2] * d.body.D))));
   const flat = P.find(r => r[0] > 0.5 && Math.min(r[1] * d.body.W, r[2] * d.body.D) / 2 < 1.6);
   const sealH = r1(clamp(flat ? (1 - flat[0]) * d.body.h : 7, 4, 14));
-  return { name: `${d.name}`, kind: 'bisnaga', vol: true, W, D: W, h: d.body.h, rBot: 3, sealH, sealT: 1.4, sealW: 6, serr: true };
+  return { name: `${d.name}`, kind: 'bisnaga', vol: true, pesc: false, bpesc: false, W, D: W, h: d.body.h, rBot: 3, sealH, sealT: 1.4, sealW: 6, serr: true };
 }
 for (const [id, d] of Object.entries(PERFIS)) {
   const k = id.replace(/^DRAFT_/, '').replace(/^(\d+)_.*/, '$1');
@@ -533,6 +533,7 @@ function normalize(s) {
   s.logos ??= [];
   // Peças em malha (versão antiga da Draft) não existem mais.
   s.modules = (s.modules || []).filter(m => m.kind !== 'malha').map(m => ({ ...m, color: unpink(m.color) })).map(m => ({ ...BASE, uid: newUid(), ...m, ...(m.sprayType === 'gatilho' ? { sprayType: 'mist' } : m.sprayType === 'pump' ? { sprayType: 'locao' } : {}) }));
+  s.modules.forEach(m => { if (m.kind === 'bisnaga') { m.pesc = false; m.bpesc = false; } });
   s.modules.forEach(m => {
     if (!isSphereCap(m)) return;
     if (typeof m.roundLock !== 'boolean') m.roundLock = true;
@@ -1577,7 +1578,8 @@ function buildInto(product, S, explodeAmt = 0) {
   const base = layout(S), floor = Math.min(...base.filter(e => e.m.vol).map(e => e.y0));
   const glassBody = base.some(e => e.m.vol && (e.m.own ? e.m.finish : S.finish) === 'vidro');
   const L = layout(S, explodeAmt);
-  const valvePesc = S.modules.some(v => v.kind === 'spray' && v.pesc && !['pushpull', 'bico'].includes(v.sprayType));
+  const tubeBody = base.some(e => e.m.kind === 'bisnaga' && e.m.vol);
+  const valvePesc = !tubeBody && S.modules.some(v => v.kind === 'spray' && v.pesc && !['pushpull', 'bico'].includes(v.sprayType));
   L.forEach(({ m: m0, idx, y0 }, i) => {
     // O gargalo cabe na peça que o veste: anel de apoio nunca mais largo que
     // ela, e a rosca nunca mais alta do que ela cobre (fica sempre escondida).
@@ -1598,7 +1600,7 @@ function buildInto(product, S, explodeAmt = 0) {
     mesh.name = `${String(idx + 1).padStart(2, '0')}_${m.name}`;
     product.add(mesh);
     (g.userData.extras || []).forEach(xg => { const xm = new THREE.Mesh(xg, xg.userData.mat === 'insert' ? insertMat : holeMat); xm.userData.idx = idx; product.add(xm); });
-    if ((m.kind === 'spray' || (m.kind === 'perfil' && !m.vol)) && m.pesc && isFinite(floor)) {
+    if (!tubeBody && (m.kind === 'spray' || (m.kind === 'perfil' && !m.vol)) && m.pesc && isFinite(floor)) {
       // Comprimento medido montado; na vista explodida desce junto com a válvula.
       const add = (geo, name) => { const pm = new THREE.Mesh(geo, pescMat); pm.userData.idx = idx; pm.name = `${String(idx + 1).padStart(2, '0')}_${name}`; product.add(pm); };
       let yTop = y0 + m.h * 0.6;
@@ -1619,7 +1621,7 @@ function buildInto(product, S, explodeAmt = 0) {
     // Líquido dentro do corpo, até o nível escolhido.
     if (m0.vol && m0.liq) liquidMeshes(m0, y0).forEach(o => { o.userData.idx = idx; product.add(o); });
     // Pescante do próprio corpo: do topo do gargalo (ou do corpo) até o fundo.
-    if (m0.vol && m0.bpesc && !valvePesc && isFinite(floor)) {
+    if (m0.vol && m0.kind !== 'bisnaga' && m0.bpesc && !valvePesc && isFinite(floor)) {
       const nx = L[i + 1]?.m.kind === 'gargalo' ? L[i + 1] : null, capE = nx ? L[i + 2] : L[i + 1];
       let yTop = nx ? nx.y0 + nx.m.h - 1 : y0 + m0.h - 1;
       const shift = y0 - base[i].y0, yBot = floor + S.wall + m0.bpescGap + shift;
@@ -2038,6 +2040,7 @@ function renderBodyLiquid(ed, m) {
 function renderBodyPescante(ed) {
   const valves = S.modules.filter(v => v.kind === 'spray' && !['pushpull', 'bico'].includes(v.sprayType));
   const m = S.modules[sel];
+  if (m.kind === 'bisnaga') return;
   const openG = store.get('shape.openGroups', { Medidas: true, Formato: true });
   const grp = document.createElement('details'); grp.className = 'grp'; grp.open = !!openG.Pescante;
   grp.innerHTML = '<summary>Pescante</summary>';
