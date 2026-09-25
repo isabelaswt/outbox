@@ -288,6 +288,11 @@ const LIB = {
              mola: false, pescD: 6.5, pescGap: 12 },
   pushPull: { name: 'Tampa push-pull', kind: 'spray', sprayType: 'pushpull', W: 30, D: 30, h: 13, collarR: 1.2, ridges: 40,
              actW: 13, actH: 10, mola: false, pesc: false },
+  gatilho: { name: 'Spray gatilho', kind: 'spray', sprayType: 'gatilho', W: 24, D: 24, h: 16.5, collarR: 0.8, ridges: 0, actW: 11 },
+  pumpOnda: { name: 'Pump bico onda', kind: 'spray', sprayType: 'onda', W: 28, D: 28, h: 14.5, collarR: 0.6, ridges: 64, ridgeD: 0.3,
+             stemD: 13, stemH: 14.5, actW: 12 },
+  pushSport: { name: 'Push-pull esportiva', kind: 'spray', sprayType: 'sport', W: 30, D: 30, h: 18, collarR: 0.8, ridges: 40, ridgeD: 0.35,
+             stemD: 9.4, stemH: 3.2, actW: 11.5, actH: 7.5, mola: false, pesc: false },
   bicoDosador: { name: 'Bico dosador', kind: 'spray', sprayType: 'bico', W: 30, D: 30, h: 22, collarR: 0.8, ridges: 56,
              actW: 15.5, actH: 15, nozzleL: 13, spoutD: 4, mola: false, pesc: false },
   gargalo: { name: 'Gargalo com rosca', kind: 'gargalo', W: 23.9, D: 23.9, h: 16, neckStd: '24/410', pitch: 3.18, turns: 1.5 },
@@ -310,7 +315,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-24.bico-dosador.perfume-taca-bege';
+const BUILD = '2026-09-25.gatilho-onda';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -548,7 +553,7 @@ function normalize(s) {
   s.wall ??= 1.2; s.bg ??= '#f1f0ed'; s.color ??= BEIGE; s.finish ??= 'fosco'; s.name ??= 'Sem nome';
   s.logos ??= [];
   // Peças em malha (versão antiga da Draft) não existem mais.
-  s.modules = (s.modules || []).filter(m => m.kind !== 'malha').map(m => ({ ...m, color: unpink(m.color) })).map(m => ({ ...BASE, uid: newUid(), ...m, ...(m.sprayType === 'gatilho' ? { sprayType: 'mist' } : m.sprayType === 'pump' ? { sprayType: 'locao' } : {}) }));
+  s.modules = (s.modules || []).filter(m => m.kind !== 'malha').map(m => ({ ...m, color: unpink(m.color) })).map(m => ({ ...BASE, uid: newUid(), ...m, ...(m.sprayType === 'pump' ? { sprayType: 'locao' } : {}) }));
   s.modules.forEach(m => { if (m.kind === 'bisnaga') { m.pesc = false; m.bpesc = false; } });
   s.modules.forEach(m => {
     if (!isSphereCap(m)) return;
@@ -734,6 +739,25 @@ function draftPumpHeadGeo(m, yH, lo) {
   return loftPts(rings);
 }
 
+// Peça desenhada de perfil (plano x-y) e extrudada na profundidade, com borda arredondada.
+function sideExtrude(shape, depth, lo) {
+  const b = Math.min(0.9, depth * 0.12);
+  const g = new THREE.ExtrudeGeometry(shape, { depth: Math.max(0.2, depth - 2 * b), bevelEnabled: true, bevelThickness: b,
+    bevelSize: Math.min(0.6, b), bevelSegments: lo ? 1 : 4, curveSegments: lo ? 8 : 28 });
+  g.deleteAttribute('uv'); g.translate(0, 0, -(depth - 2 * b) / 2);
+  return mergeVertices(g);
+}
+// Desenha um perfil a partir de pontos de referência (px) → mm; cmds: ['m'|'l', x, y] | ['q', cx, cy, x, y] | ['c', ...6].
+function refShape(cmds, P) {
+  const sh = new THREE.Shape();
+  for (const [op, ...a] of cmds) {
+    const q = []; for (let i = 0; i < a.length; i += 2) q.push(...P(a[i], a[i + 1]));
+    if (op === 'm') sh.moveTo(...q); else if (op === 'l') sh.lineTo(...q);
+    else if (op === 'q') sh.quadraticCurveTo(...q); else sh.bezierCurveTo(...q);
+  }
+  return sh;
+}
+
 // Válvula: virola que veste o gargalo + cabeça de spray fino ou pump.
 function sprayGeo(m, y0, { lo = false } = {}) {
   const ring = (W, h, y, o = {}) => moduleGeo({ ...BASE, kind: 'giro', W, D: W, h, ...o }, y, { lo });
@@ -801,6 +825,41 @@ function sprayGeo(m, y0, { lo = false } = {}) {
     head.push(boxGeo(spL, spH, spD, x0, y0s, 0));
     head.push(boxGeo(Math.max(1.1, spL * 0.12), spH * 1.28, spD * 1.08, colW / 2 - 0.35, y0s - spH * 0.1, 0));
     holes.push(boxGeo(0.7, spH * 0.38, spD * 0.52, colW / 2 + spL - 1.15, y0s, 0));
+  } else if (m.sprayType === 'gatilho') {
+    // Gatilho: degraus, haste fina e cabeça curva com pivô, escora traseira e alavanca.
+    const k = m.W / 24, P = (x, y) => [(x - 375) * 0.15 * k, (290 - y) * 0.15 * k + top];
+    head.push(ring(16.5 * k, 6 * k, top - 0.05, { rBot: 0, rTop: 0.8 }));
+    head.push(ring(9 * k, 4.5 * k, top + 6 * k - 0.1, { rBot: 0, rTop: 0.5 }));
+    head.push(cyl(1.9 * k, top + 10.4 * k, 11.5 * k, 0, 0, lo));
+    head.push(sideExtrude(refShape([['m', 285, 112], ['c', 262, 160, 225, 240, 172, 298], ['q', 168, 308, 182, 304],
+      ['c', 250, 235, 300, 160, 370, 148], ['c', 410, 145, 450, 158, 478, 159], ['c', 500, 158, 506, 125, 485, 116],
+      ['c', 450, 90, 360, 62, 300, 64], ['q', 283, 66, 285, 80], ['l', 285, 112]], P), m.actW, lo));
+    head.push(sideExtrude(refShape([['m', 472, 148], ['l', 497, 150], ['l', 442, 252], ['l', 418, 252], ['l', 472, 148]], P), m.actW * 0.55, lo));
+    const [nx, ny] = P(292, 97), nL = 8.2 * k, nz = cyl(1.95 * k, 0, nL, 0.4, 0, lo);
+    nz.rotateZ(Math.PI / 2); nz.translate(nx, ny, 0); head.push(nz);
+    const nh = cyl(0.7 * k, 0, 0.5); nh.rotateZ(Math.PI / 2); nh.translate(nx - nL + 0.25, ny, 0); holes.push(nh);
+  } else if (m.sprayType === 'onda') {
+    // Pump com cabeça chata em onda: aba atrás, sobe na haste e desce até o bico cortado em ângulo.
+    const k = m.W / 28, rimH = 2.5 * k, yH = top + rimH + m.stemH;
+    head.push(ring(m.W * 0.946, rimH, top - 0.05, { rBot: 0, rTop: rimH * 0.6 }));
+    head.push(cyl(m.stemD / 2, top + rimH - 0.5, m.stemH + 1.5, 0, 0, lo));
+    const P = (x, y) => [(x - 883) * 0.1 * k, (340 - y) * 0.1 * k + yH];
+    head.push(sideExtrude(refShape([['m', 588, 325], ['c', 640, 300, 720, 288, 800, 288], ['c', 860, 288, 900, 300, 940, 303],
+      ['l', 968, 305], ['q', 982, 306, 981, 318], ['l', 981, 326], ['q', 980, 337, 965, 337], ['l', 948, 339],
+      ['c', 900, 341, 860, 341, 800, 339], ['c', 720, 336, 650, 340, 606, 358], ['q', 596, 363, 593, 353], ['l', 588, 325]], P), m.actW, lo));
+    const [tx, ty] = P(591, 340), dir = new THREE.Vector3(-0.96, -0.28, 0).normalize();
+    const oh = cyl(1.1 * k, -0.2, 0.5); oh.scale(1, 1, Math.max(1, m.actW * 0.35 / (1.1 * k)));
+    oh.applyQuaternion(new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir)); oh.translate(tx, ty, 0);
+    holes.push(oh);
+  } else if (m.sprayType === 'sport') {
+    // Push-pull esportiva: haste curta, luva que puxa para abrir, aba no topo e botão em domo.
+    head.push(cyl(m.stemD / 2, top - 0.5, m.stemH + 1, 0, 0, lo));
+    const yL = top + m.stemH, lipW = m.actW * 1.14, lipH = Math.max(1.2, m.actH * 0.24);
+    head.push(ring(m.actW, m.actH, yL, { taper: 104, rBot: 1.2, rTop: 0 }));
+    head.push(ring(lipW, lipH, yL + m.actH - 0.05, { rBot: lipH * 0.45, rTop: lipH * 0.45 }));
+    const dW = m.actW * 0.58, dH = dW * 0.34;
+    head.push(ring(dW, dH, yL + m.actH + lipH - 0.1, { rBot: 0, rTop: dH * 0.95, rTopW: dW / 2 }));
+    holes.push(cyl(dW * 0.12, yL + m.actH + lipH + dH - 0.25, 0.3));
   } else if (m.sprayType === 'pushpull') {
     // Push-pull: bico cônico com a ponta que sobe para abrir.
     head.push(ring(m.actW, m.actH, top - 0.5, { taper: 62, rBot: 0, rTop: 0.8 }));
@@ -1598,7 +1657,7 @@ function buildInto(product, S, explodeAmt = 0) {
   const glassBody = base.some(e => e.m.vol && (e.m.own ? e.m.finish : S.finish) === 'vidro');
   const L = layout(S, explodeAmt);
   const tubeBody = base.some(e => e.m.kind === 'bisnaga' && e.m.vol);
-  const valvePesc = !tubeBody && S.modules.some(v => v.kind === 'spray' && v.pesc && !['pushpull', 'bico'].includes(v.sprayType));
+  const valvePesc = !tubeBody && S.modules.some(v => v.kind === 'spray' && v.pesc && !['pushpull', 'bico', 'sport'].includes(v.sprayType));
   L.forEach(({ m: m0, idx, y0 }, i) => {
     // O gargalo cabe na peça que o veste: anel de apoio nunca mais largo que
     // ela, e a rosca nunca mais alta do que ela cobre (fica sempre escondida).
@@ -1824,7 +1883,7 @@ const MF = [
     GP(['sphereR', 'Raio da esfera', 0, 150, 0.5, 'mm', isSphereCap]),
     N(['neckStd', 'Padrão do acabamento (aprox.)', 'select', [...Object.keys(NECKS).map(k => [k, k]), ['livre', 'Livre']]]),
     N(['W', 'Diâmetro da rosca (T)', 8, 120, 0.1, 'mm']),
-    K(['sprayType', 'Tipo de válvula', 'select', [['mist', 'Spray fino (névoa)'], ['locao', 'Pump loção (bico curvo)'], ['draftpump', 'Pump loção com frisos'], ['foam', 'Pump espuma / foam'], ['lamina', 'Pump com alavanca / bico lâmina'], ['gotas', 'Conta-gotas'], ['pushpull', 'Push-pull'], ['bico', 'Bico dosador']]]),
+    K(['sprayType', 'Tipo de válvula', 'select', [['mist', 'Spray fino (névoa)'], ['locao', 'Pump loção (bico curvo)'], ['draftpump', 'Pump loção com frisos'], ['foam', 'Pump espuma / foam'], ['lamina', 'Pump com alavanca / bico lâmina'], ['gotas', 'Conta-gotas'], ['pushpull', 'Push-pull'], ['bico', 'Bico dosador'], ['sport', 'Push-pull esportiva'], ['gatilho', 'Gatilho'], ['onda', 'Pump bico onda']]]),
   ]],
   ['Formato', [
     G(['n', 'Seção: oval → retângulo', 2, 10, 0.1, '']),
@@ -1876,7 +1935,7 @@ const MF = [
   ]],
   ['Cabeça e haste', [
     K(['actW', 'Cabeça: largura', 8, 60, 0.5, 'mm']),
-    K(['actH', 'Cabeça: altura', 6, 60, 0.5, 'mm', m => ['mist', 'gotas', 'pushpull', 'bico', 'foam'].includes(m.sprayType)]),
+    K(['actH', 'Cabeça: altura', 6, 60, 0.5, 'mm', m => ['mist', 'gotas', 'pushpull', 'bico', 'foam', 'sport'].includes(m.sprayType)]),
     K(['headH', 'Cabeça: altura', 2, 60, 0.5, 'mm', m => ['locao', 'lamina', 'draftpump'].includes(m.sprayType)]),
     K(['domeH', 'Cabeça: altura do domo', 0, 20, 0.5, 'mm', isType('locao')]),
     K(['stemD', 'Haste: diâmetro', 3, 40, 0.5, 'mm']),
@@ -2057,7 +2116,7 @@ function renderBodyLiquid(ed, m) {
 // No corpo: editar o pescante da válvula que está na pilha (ele fica dentro
 // do frasco). Mesmos valores do grupo "Mola e pescante" da válvula.
 function renderBodyPescante(ed) {
-  const valves = S.modules.filter(v => v.kind === 'spray' && !['pushpull', 'bico'].includes(v.sprayType));
+  const valves = S.modules.filter(v => v.kind === 'spray' && !['pushpull', 'bico', 'sport'].includes(v.sprayType));
   const m = S.modules[sel];
   if (m.kind === 'bisnaga') return;
   const openG = store.get('shape.openGroups', { Medidas: true, Formato: true });
@@ -2206,7 +2265,7 @@ function renderAll() { renderStack(); renderEditor(); renderGlobal(); renderPres
 const CATS = [
   ['Corpo', ['reto', 'boston', 'quadrado', 'capsula', 'perfumeOval', 'plano', 'arco', 'cone', 'placa', 'bisnaga', ...DRAFT_KEYS.corpo]],
   ['Tampa', ['esfera', 'esferaBisnaga', 'taca', 'domo', 'seixo', 'flip', 'flipRedondo', 'disctop', 'sobretampa', 'tampaBisnaga', 'disco']],
-  ['Válvula', ['pump', 'pumpFrisos', 'locao', 'espuma', 'spray', 'contaGotas', 'pushPull', 'bicoDosador', 'lamina']],
+  ['Válvula', ['pump', 'pumpFrisos', 'locao', 'espuma', 'spray', 'contaGotas', 'pushPull', 'pushSport', 'bicoDosador', 'lamina', 'pumpOnda', 'gatilho']],
   ['Peça de encaixe', ['gargalo', 'colar', 'barril', 'flare', 'anel', 'tigela']],
 ];
 CATS.forEach(([label, keys]) => {
