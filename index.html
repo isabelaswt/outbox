@@ -225,7 +225,7 @@ const BASE = {
   neckStd: '24/410', pitch: 3.18, turns: 1.5, threadD: 1, ringH: 1.6, ringW: 1.8, embed: 8,
   // válvula: W/h = virola que veste o gargalo; cabeça conforme o tipo; pescante até o fundo.
   sprayType: 'mist', actW: 20, actH: 16, stemH: 4, headH: 28, nozzleL: 14, dir: 0,
-  collarR: 1.2, stemD: 7, armW: 9, armT: 4.5, droop: 2, guideW: 0, guideH: 0, guideLine: 28,
+  collarR: 1.2, stemD: 7, armW: 9, armT: 4.5, droop: 2, outletD: 2.2, guideW: 0, guideH: 0, guideLine: 28,
   skirtPct: 100, bandInset: 1.5, domeH: 4.5, spoutD: 3.2,
   pesc: true, pescD: 4, pescCurve: 0, pescWave: 0, pescGap: 3,
   mola: true, houseD: 8, springL: 18, coils: 11, sleeve: 'transparente',
@@ -259,7 +259,7 @@ const LIB = {
   spray:   { name: 'Válvula spray fina', kind: 'spray', sprayType: 'mist', W: 26, D: 26, h: 21, skirtPct: 35, bandInset: 1.4, ridges: 64,
              guideW: 19, guideH: 5.5, actW: 14.5, actH: 14.5, stemH: 0, stemD: 4.8, houseD: 6.5, springL: 16 },
   lamina:  { name: 'Pump escultural (bico lâmina)', kind: 'spray', sprayType: 'lamina', W: 38.5, D: 38.5, h: 33, collarR: 14, stemD: 18, stemH: 13,
-             actW: 26, headH: 9, nozzleL: 26, armW: 9, armT: 4.5, droop: 2.5 },
+             actW: 26, headH: 9, nozzleL: 26, armW: 9, armT: 4.5, droop: 2.5, outletD: 2.8 },
   pump:    { name: 'Válvula pump', kind: 'spray', sprayType: 'lamina', W: 26.3, D: 26.3, h: 14.5, collarR: 1, stemD: 15, stemH: 14,
              actW: 19, headH: 4.2, armT: 4.2, armW: 12, nozzleL: 25.5, droop: 1.2 },
   locao:   { name: 'Pump loção (bico curvo)', kind: 'spray', sprayType: 'locao', W: 24.5, D: 24.5, h: 10.8, collarR: 0.8, stemD: 15.5, stemH: 7.3,
@@ -297,7 +297,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-24.bico-dosador.draft-pump-proportions';
+const BUILD = '2026-09-24.bico-dosador.sculptural-pump-outlet';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -707,8 +707,8 @@ function sprayGeo(m, y0, { lo = false } = {}) {
     head.push(cyl(m.stemD / 2, top - 1, m.stemH + 2, 0, 0, lo));
     head.push(bladeHeadGeo(m, top + m.stemH, lo));
     // Saída na ponta da lâmina.
-    const rt = Math.min(m.armT / 2, m.armW / 2), tipX = m.actW / 2 + m.nozzleL;
-    holes.push(xCyl(rt * 0.42, 1.2, tipX - 1, top + m.stemH + m.headH * 0.38 + (m.headH - m.armT) * 0.4 - m.droop, lo));
+    const rt = Math.min(m.armT / 2, m.armW / 2), tipX = m.actW / 2 + m.nozzleL, ro = Math.min(rt * 0.82, (m.outletD || 2.2) / 2);
+    holes.push(xCyl(ro, 1.6, tipX - 0.75, top + m.stemH + m.headH * 0.38 + (m.headH - m.armT) * 0.4 - m.droop, lo));
   } else if (m.sprayType === 'gotas') {
     // Conta-gotas: bulbo de borracha com topo em domo.
     head.push(ring(m.actW, m.actH, top - 0.5, { rBot: 1.5, rTop: m.actW / 2, bulge: -6, bulgePos: 30 }));
@@ -1816,6 +1816,7 @@ const MF = [
     K(['spoutD', 'Diâmetro do tubo', 1.5, 10, 0.1, 'mm', m => ['locao', 'bico'].includes(m.sprayType)]),
     K(['armW', 'Largura', 3, 30, 0.5, 'mm', m => ['lamina', 'foam'].includes(m.sprayType)]),
     K(['armT', 'Espessura', 1.5, 15, 0.1, 'mm', m => ['lamina', 'foam'].includes(m.sprayType)]),
+    K(['outletD', 'Furo de saída', 0.5, 8, 0.1, 'mm', isType('lamina')]),
     K(['droop', 'Queda na ponta (− sobe)', -10, 15, 0.5, 'mm', m => ['locao', 'lamina'].includes(m.sprayType)]),
     K(['dir', 'Direção (giro)', -180, 180, 1, '°']),
   ]],
@@ -2016,7 +2017,7 @@ function categoryOf(m) {
 }
 // Medidas que acompanham a escala da peça (em mm).
 const LEN_KEYS = ['W', 'D', 'h', 'rBot', 'rTop', 'rBotW', 'rTopW', 'rTL', 'rTR', 'rBL', 'rBR', 'rEdge', 'groove', 'notchY', 'notchW', 'notchH',
-  'notchD', 'actW', 'actH', 'headH', 'stemD', 'stemH', 'guideW', 'guideH', 'nozzleL', 'armW', 'armT', 'droop', 'domeH', 'spoutD', 'collarR',
+  'notchD', 'actW', 'actH', 'headH', 'stemD', 'stemH', 'guideW', 'guideH', 'nozzleL', 'armW', 'armT', 'droop', 'outletD', 'domeH', 'spoutD', 'collarR',
   'discD', 'discDip', 'discRise', 'orifD', 'sealH', 'bandInset'];
 // Largura da virola (onde a peça encosta): a menor medida da base.
 const collarOf = m => Math.min(m.W, m.D);
