@@ -367,7 +367,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-25.troca-sem-pular';
+const BUILD = '2026-09-25.spray-cobre-rosca';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -1887,6 +1887,9 @@ function buildInto(product, S, explodeAmt = 0) {
     const dn = L[i - 1]?.m;
     if (m0.kind !== 'gargalo' && dn?.kind === 'gargalo' && L[i - 1].idx === idx - 1 && dn.ringH > 0
       && Math.min(m0.W, m0.D) > dn.W + 2 * dn.ringW + 6) { m = { ...m, h: m.h + dn.ringH }; y0 -= dn.ringH; }
+    // Spray sobre gargalo: a faixa serrilhada recua menos se for preciso cobrir a rosca.
+    if (dn?.kind === 'gargalo' && hasBand(m0) && m0.W < minValveW(m0, dn.W))
+      m = { ...m, bandInset: Math.max(0.15, (m0.W - dn.W - 1.4) / 2 - 0.35) };
     const hasLogo = S.logos?.some(L => L.uid === m.uid);
     const g = moduleGeo(m, y0, { logoQuality: hasLogo }); if (!g) return;
     const mesh = new THREE.Mesh(g, material(m.own ? m.color : S.color, m.own ? m.finish : S.finish));
@@ -2438,6 +2441,10 @@ const LEN_KEYS = ['W', 'D', 'h', 'capW', 'capGap', 'sphereR', 'rBot', 'rTop', 'r
   'discD', 'discDip', 'discRise', 'orifD', 'sealH', 'bandInset'];
 // Largura da virola (onde a peça encosta): a menor medida da base.
 const collarOf = m => Math.min(m.W, m.D);
+// Faixa serrilhada do spray é mais estreita que a virola: precisa cobrir a rosca
+// do gargalo com folga (senão a rosca aparece através dela).
+const hasBand = m => m.kind === 'spray' && m.sprayType === 'mist' && m.skirtPct < 99;
+const minValveW = (m, neckW) => neckW + (hasBand(m) ? 1.4 + 2 * (m.bandInset + 0.35) : 2.4);
 function scaleModule(m, f) {
   LEN_KEYS.forEach(k => { if (typeof m[k] === 'number') m[k] = r1(m[k] * f); });
   (m.ribs || []).forEach(b => { b.y0 = r1(b.y0 * f); b.y1 = r1(b.y1 * f); b.d = r1(b.d * f); });
@@ -2461,6 +2468,7 @@ function adaptSwap(old, nw, label) {
     const tube = S.modules[sel + 1]?.kind === 'bisnaga' ? S.modules[sel + 1] : null;
     const want = neck ? neck.W + 2.4 : tube ? tube.W * 0.94 : collarOf(nw);
     scaleModule(nw, want / collarOf(nw));
+    if (neck && collarOf(nw) < minValveW(nw, neck.W)) scaleModule(nw, minValveW(nw, neck.W) / collarOf(nw));
   } else scaleModule(nw, collarOf(old) / collarOf(nw));
   // Sobre um gargalo: a rosca tem que caber por dentro e ficar coberta.
   const below = S.modules[sel - 1];
