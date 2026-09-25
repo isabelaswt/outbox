@@ -272,6 +272,8 @@ const LIB = {
              mola: false, pescD: 6.5, pescGap: 12 },
   pushPull: { name: 'Tampa push-pull', kind: 'spray', sprayType: 'pushpull', W: 30, D: 30, h: 13, collarR: 1.2, ridges: 40,
              actW: 13, actH: 10, mola: false, pesc: false },
+  bicoDosador: { name: 'Bico dosador', kind: 'spray', sprayType: 'bico', W: 30, D: 30, h: 22, collarR: 0.8, ridges: 56,
+             actW: 15.5, actH: 15, nozzleL: 13, spoutD: 4, mola: false, pesc: false },
   gargalo: { name: 'Gargalo com rosca', kind: 'gargalo', W: 23.9, D: 23.9, h: 16, neckStd: '24/410', pitch: 3.18, turns: 1.5 },
   bisnaga: { name: 'Corpo bisnaga', kind: 'bisnaga', W: 45, D: 45, h: 165, rBot: 4, vol: true },
   tampaBisnaga: { name: 'Tampa de bisnaga', W: 44, D: 44, h: 34, rBot: 2.5, rTop: 1, groove: 24, notch: true, notchUp: true, notchW: 18, notchH: 9, notchD: 1.4, notchP: 6, topType: 'flip', lidSide: 'baixo' },
@@ -292,7 +294,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-24.troca-tampa-valvula';
+const BUILD = '2026-09-24.bico-dosador';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -688,11 +690,12 @@ function sprayGeo(m, y0, { lo = false } = {}) {
     if (m.stemH > 0) head.push(cyl(m.stemD / 2, yA - 1, m.stemH + 2, 0, 0, lo));
     const yAct = yA + m.stemH;
     head.push(moduleGeo({ ...BASE, kind: 'giro', W: m.actW, D: m.actW, h: m.actH, rBot: 0.8, rTop: Math.min(1.8, m.actW / 6) }, yAct, { lo }));
-    // Orifício em botão: círculo marcado com o furinho no centro.
+    // Orifício: pastilha levemente saltada (mesma cor do atuador) com o furinho no centro.
     const yo = yAct + m.actH * 0.66, zf = m.actW / 2, rb = Math.max(1.4, m.actW * 0.16);
-    const btn = new THREE.TorusGeometry(rb, 0.13, 8, 48); btn.translate(0, yo, zf + 0.02);
-    const oh = cyl(0.42, 0, 1.2); oh.rotateX(Math.PI / 2); oh.translate(0, yo, zf - 0.95);
-    holes.push(btn, oh);
+    const btn = cyl(rb, 0, 0.9, 0.3, 0, lo); btn.rotateX(Math.PI / 2); btn.translate(0, yo, zf - 0.6);
+    head.push(btn);
+    const oh = cyl(0.42, 0, 1.5); oh.rotateX(Math.PI / 2); oh.translate(0, yo, zf - 1.1);
+    holes.push(oh);
   } else if (m.sprayType === 'lamina') {
     head.push(cyl(m.stemD / 2, top - 1, m.stemH + 2, 0, 0, lo));
     head.push(bladeHeadGeo(m, top + m.stemH, lo));
@@ -702,6 +705,18 @@ function sprayGeo(m, y0, { lo = false } = {}) {
   } else if (m.sprayType === 'gotas') {
     // Conta-gotas: bulbo de borracha com topo em domo.
     head.push(ring(m.actW, m.actH, top - 0.5, { rBot: 1.5, rTop: m.actW / 2, bulge: -6, bulgePos: 30 }));
+  } else if (m.sprayType === 'bico') {
+    // Bico dosador: ombro cônico, anel, coluna serrilhada e ponta lisa afinando.
+    const Wc = m.actW, sh = Math.max(2, m.W * 0.15), Wr = Wc + 2, yS = top - 0.05;
+    head.push(ring(m.W - 0.4, sh, yS, { taper: Wr / (m.W - 0.4) * 100, rBot: 0, rTop: 0.3 }));
+    head.push(ring(Wr, 1.6, yS + sh - 0.05, { rBot: 0.2, rTop: 0.3 }));
+    const yC = yS + sh + 1.5;
+    head.push(ring(Wc, m.actH, yC, { taper: 88, rBot: 0, rTop: 0.4, ridges: Math.round(Wc * 2.3), ridgeD: 0.3 }));
+    const yN = yC + m.actH - 0.05, Wn = Wc * 0.88 * 0.72, Wt = Math.max(m.spoutD, 1.5);
+    head.push(ring(Wc * 0.88 - 0.6, 1, yN, { rBot: 0, rTop: 0.3 }));
+    head.push(ring(Wn, m.nozzleL, yN + 0.95, { taper: Wt / Wn * 100, rBot: 0, rTop: 0.5 }));
+    head.push(ring(Wt * 0.55, 1.1, yN + 0.95 + m.nozzleL - 0.1, { rBot: 0, rTop: Wt * 0.27 }));
+    holes.push(cyl(Wt * 0.14, yN + m.nozzleL + 1.85, 0.3));
   } else if (m.sprayType === 'pushpull') {
     // Push-pull: bico cônico com a ponta que sobe para abrir.
     head.push(ring(m.actW, m.actH, top - 0.5, { taper: 62, rBot: 0, rTop: 0.8 }));
@@ -1462,7 +1477,7 @@ function buildInto(product, S, explodeAmt = 0) {
   const base = layout(S), floor = Math.min(...base.filter(e => e.m.vol).map(e => e.y0));
   const glassBody = base.some(e => e.m.vol && (e.m.own ? e.m.finish : S.finish) === 'vidro');
   const L = layout(S, explodeAmt);
-  const valvePesc = S.modules.some(v => v.kind === 'spray' && v.pesc && v.sprayType !== 'pushpull');
+  const valvePesc = S.modules.some(v => v.kind === 'spray' && v.pesc && !['pushpull', 'bico'].includes(v.sprayType));
   L.forEach(({ m: m0, idx, y0 }, i) => {
     // O gargalo cabe na peça que o veste: anel de apoio nunca mais largo que
     // ela, e a rosca nunca mais alta do que ela cobre (fica sempre escondida).
@@ -1685,7 +1700,7 @@ const MF = [
     notK(['gargalo', 'spray'], ['D', 'Profundidade (lado)', 4, 200, 0.5, 'mm']),
     N(['neckStd', 'Padrão do acabamento (aprox.)', 'select', [...Object.keys(NECKS).map(k => [k, k]), ['livre', 'Livre']]]),
     N(['W', 'Diâmetro da rosca (T)', 8, 120, 0.1, 'mm']),
-    K(['sprayType', 'Tipo de válvula', 'select', [['mist', 'Spray fino (névoa)'], ['locao', 'Pump loção / espuma (bico curvo)'], ['lamina', 'Pump com alavanca / bico lâmina'], ['gotas', 'Conta-gotas'], ['pushpull', 'Push-pull']]]),
+    K(['sprayType', 'Tipo de válvula', 'select', [['mist', 'Spray fino (névoa)'], ['locao', 'Pump loção / espuma (bico curvo)'], ['lamina', 'Pump com alavanca / bico lâmina'], ['gotas', 'Conta-gotas'], ['pushpull', 'Push-pull'], ['bico', 'Bico dosador']]]),
   ]],
   ['Formato', [
     G(['n', 'Seção: oval → retângulo', 2, 10, 0.1, '']),
@@ -1736,7 +1751,7 @@ const MF = [
   ]],
   ['Cabeça e haste', [
     K(['actW', 'Cabeça: largura', 8, 60, 0.5, 'mm']),
-    K(['actH', 'Cabeça: altura', 6, 50, 0.5, 'mm', m => ['mist', 'gotas', 'pushpull'].includes(m.sprayType)]),
+    K(['actH', 'Cabeça: altura', 6, 50, 0.5, 'mm', m => ['mist', 'gotas', 'pushpull', 'bico'].includes(m.sprayType)]),
     K(['headH', 'Cabeça: altura', 6, 60, 0.5, 'mm', m => ['locao', 'lamina'].includes(m.sprayType)]),
     K(['domeH', 'Cabeça: altura do domo', 0, 20, 0.5, 'mm', isType('locao')]),
     K(['stemD', 'Haste: diâmetro', 3, 40, 0.5, 'mm']),
@@ -1746,8 +1761,8 @@ const MF = [
     K(['guideLine', 'Anel guia: altura do friso', 5, 95, 1, '%', isType('mist')]),
   ]],
   ['Bico', [
-    K(['nozzleL', 'Comprimento', 0, 60, 0.5, 'mm', m => ['locao', 'lamina'].includes(m.sprayType)]),
-    K(['spoutD', 'Diâmetro do tubo', 1.5, 10, 0.1, 'mm', isType('locao')]),
+    K(['nozzleL', 'Comprimento', 0, 60, 0.5, 'mm', m => ['locao', 'lamina', 'bico'].includes(m.sprayType)]),
+    K(['spoutD', 'Diâmetro do tubo', 1.5, 10, 0.1, 'mm', m => ['locao', 'bico'].includes(m.sprayType)]),
     K(['armW', 'Largura', 3, 30, 0.5, 'mm', isType('lamina')]),
     K(['armT', 'Espessura', 1.5, 15, 0.1, 'mm', isType('lamina')]),
     K(['droop', 'Queda na ponta (− sobe)', -10, 15, 0.5, 'mm', m => ['locao', 'lamina'].includes(m.sprayType)]),
@@ -1908,7 +1923,7 @@ function renderBodyLiquid(ed, m) {
 // No corpo: editar o pescante da válvula que está na pilha (ele fica dentro
 // do frasco). Mesmos valores do grupo "Mola e pescante" da válvula.
 function renderBodyPescante(ed) {
-  const valves = S.modules.filter(v => v.kind === 'spray' && v.sprayType !== 'pushpull');
+  const valves = S.modules.filter(v => v.kind === 'spray' && !['pushpull', 'bico'].includes(v.sprayType));
   const m = S.modules[sel];
   const openG = store.get('shape.openGroups', { Medidas: true, Formato: true });
   const grp = document.createElement('details'); grp.className = 'grp'; grp.open = !!openG.Pescante;
@@ -2056,7 +2071,7 @@ function renderAll() { renderStack(); renderEditor(); renderGlobal(); renderPres
 const CATS = [
   ['Corpo', ['reto', 'boston', 'quadrado', 'capsula', 'plano', 'arco', 'cone', 'placa', 'bisnaga', ...DRAFT_KEYS.corpo]],
   ['Tampa', ['esfera', 'domo', 'seixo', 'flip', 'flipRedondo', 'disctop', 'sobretampa', 'tampaBisnaga', 'disco']],
-  ['Válvula', ['pump', 'locao', 'espuma', 'spray', 'contaGotas', 'pushPull', 'lamina']],
+  ['Válvula', ['pump', 'locao', 'espuma', 'spray', 'contaGotas', 'pushPull', 'bicoDosador', 'lamina']],
   ['Peça de encaixe', ['gargalo', 'colar', 'barril', 'flare', 'anel', 'tigela']],
 ];
 CATS.forEach(([label, keys]) => {
