@@ -267,7 +267,7 @@ const LIB = {
   pumpFrisos: { name: 'Pump loção com frisos', kind: 'spray', sprayType: 'lamina', W: 33, D: 33, h: 15, collarR: 0.8,
              ridges: 78, ridgeD: 0.75, stemD: 10, stemH: 9.5, actW: 15, headH: 6.5,
              nozzleL: 25, armW: 8.5, armT: 3.2, droop: 2.4, mola: false, pescD: 2.8, pescGap: 3,
-             own: true, color: '#050505', finish: 'fosco' },
+             own: true, color: '#e8dcc6', finish: 'fosco' },
   espuma:  { name: 'Pump espuma / foam', kind: 'spray', sprayType: 'foam', W: 43, D: 43, h: 17, collarR: 1.2, ridges: 0,
              actW: 22, actH: 36, armW: 11, armT: 5.5, nozzleL: 17, stemD: 16, stemH: 5, houseD: 16, springL: 26 },
   contaGotas: { name: 'Conta-gotas', kind: 'spray', sprayType: 'gotas', W: 22, D: 22, h: 13, ridges: 48, actW: 15, actH: 24,
@@ -296,7 +296,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-24.bico-dosador.draft1015-blade-pump';
+const BUILD = '2026-09-24.bico-dosador.beige-ribbed-pump';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
