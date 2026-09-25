@@ -38,6 +38,7 @@ select,input[type=text]{font:inherit;font-size:12px;border:1px solid var(--line)
 .mod{display:flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:9px;padding:6px 7px;cursor:pointer;background:#fff}
 .mod.sel{border-color:var(--ink);box-shadow:0 0 0 1px var(--ink) inset}
 .mod .sw{width:14px;height:14px;border-radius:50%;flex:none;border:1px solid rgba(0,0,0,.12)}
+.mod .tag{flex:none;font-size:9.5px;font-weight:650;letter-spacing:.5px;text-transform:uppercase;color:#6d5a3f;background:#efe6d6;border-radius:4px;padding:2px 5px}
 .mod .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .mod .dm{color:var(--muted);font-size:11px;white-space:nowrap}
 .mod .b{border:0;background:none;cursor:pointer;color:#888;padding:2px 4px;font-size:12px;border-radius:4px}
@@ -282,15 +283,13 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-24.flip-redondo';
+const BUILD = '2026-09-24.reaproveita-tampas';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
-const DRAFT_KEYS = { corpo: [], tampa: [], valvula: [] };
-// Tubos viram a bisnaga do OUTBOX (solda, serrilhado, formatos de solda);
-// flip-tops ganham a abertura do OUTBOX.
+const DRAFT_KEYS = { corpo: [] };
+// Tubos viram a bisnaga do OUTBOX (solda, serrilhado, formatos de solda).
 const TUBES = new Set(['DRAFT_1002_Tube', 'DRAFT_1033_HandCream_Tube', 'DRAFT_1040_toothpaste', 'DRAFT_1035_Tube_Pump', 'DRAFT_1007_Moist_Pump']);
-const FLIPS = new Set(['DRAFT_1025_Flip_top_Bottle', 'DRAFT_1002_Tube', 'DRAFT_1033_HandCream_Tube', 'DRAFT_1037_Travelsize_Shampoo']);
 // Frisos medidos fatia a fatia viram faixas limpas: trechos contínuos com
 // frisos, uma quantidade (a mais comum) e a profundidade típica da faixa.
 function ribBands(prof, h) {
@@ -327,14 +326,10 @@ function tubeFromProfile(d) {
 }
 for (const [id, d] of Object.entries(PERFIS)) {
   const k = id.replace(/^DRAFT_/, '').replace(/^(\d+)_.*/, '$1');
-  const kb = `d${k}c`, kt = `d${k}t`, valve = d.cat === 'V';
+  const kb = `d${k}c`;
   LIB[kb] = TUBES.has(id) ? tubeFromProfile(d) : { name: `${d.name}`, kind: 'perfil', vol: true, pesc: false, rBot: 0, rTop: 0, W: d.body.W, D: d.body.D, h: d.body.h, W0: d.body.W,
     prof: cleanProf(d.body.prof), ribs: ribBands(d.body.prof, d.body.h) };
-  LIB[kt] = { name: `${d.name}${valve ? ' (válvula)' : ' (tampa)'}`, kind: 'perfil', rBot: 0, rTop: 0, W: d.cap.W, D: d.cap.D, h: d.cap.h, W0: d.cap.W,
-    prof: cleanProf(d.cap.prof), ribs: ribBands(d.cap.prof, d.cap.h), spout: d.cap.spout, pesc: valve && !d.below, mola: false,
-    // tampas flip-top da Draft já vêm com a linha e a abertura do OUTBOX
-    ...(FLIPS.has(id) ? { topType: 'flip', groove: r1(d.cap.h * (d.below ? 0.72 : 0.3)), lidSide: d.below ? 'baixo' : 'cima' } : {}) };
-  DRAFT_KEYS.corpo.push(kb); (valve ? DRAFT_KEYS.valvula : DRAFT_KEYS.tampa).push(kt);
+  DRAFT_KEYS.corpo.push(kb);
 }
 // Perfil medido (Draft): linhas [t, meia-largura, meia-profundidade, quadratura,
 // centro x, centro z, frisos, prof. do friso] em frações de W/D/h. Passa pelo
@@ -438,29 +433,59 @@ const PRESETS = {
     M('flip')] },
 };
 
-// Modelos da Draft montados com os módulos reconstruídos, em cor única.
-for (const [id, d] of Object.entries(PERFIS)) {
-  const k = id.replace(/^DRAFT_/, '').replace(/^(\d+)_.*/, '$1'), kb = `d${k}c`, kt = `d${k}t`;
-  let modules;
-  if (d.below) modules = [M(kt), M(kb, { gap: d.gapBelow })];
-  else {
-    modules = [M(kb)];
-    if (d.neck) {
-      // O gargalo cabe dentro da virola (com parede) e fica coberto pela tampa.
-      const wAt = r => Math.min(r[1] * d.cap.W, r[2] * d.cap.D);
-      const base = d.cap.prof.filter(r => r[0] <= 0.2), collar = Math.min(...base.map(wAt));
-      const nW = r1(Math.min(d.neck.W, collar - 3));
-      // altura da virola: até onde a tampa ainda é mais larga que o gargalo
-      // (acima disso, em pumps, ela afina para a haste)
-      const narrow = d.cap.prof.find(r => r[0] > 0.02 && wAt(r) < nW + 2.4);
-      const collarH = (narrow ? narrow[0] : 1) * d.cap.h;
-      const nH = r1(Math.min(d.neck.h, collarH - 0.8));
-      if (nW > 4 && nH > 1) modules.push(M('gargalo', { neckStd: 'livre', W: nW, D: nW, h: nH, ringH: 0.3, ringW: 0, embed: 3 }));
+// Modelos da Draft: corpo medido + a tampa/válvula que o OUTBOX já tem,
+// ajustada às medidas do original (em vez de uma tampa nova por produto).
+const DRAFT_CLOSURE = {
+  '1027_vintage_pump_bottle': 'locao', DRAFT_1005_SoapPump: 'locao', DRAFT_1006_FoamSoap: 'espuma', DRAFT_1015_Pump_Bottle: 'locao',
+  DRAFT_1020_Bottle_Pump: 'locao', DRAFT_1024_Pump_Minimal: 'locao', DRAFT_1009_Spray_Glass: 'spray', DRAFT_1017_Spray_Bottle: 'spray',
+  DRAFT_1029_Foundation: 'spray', DRAFT_1030_Foundation: 'spray', DRAFT_1031_Glass_Dropper: 'contaGotas', DRAFT_3007_Dropper_RC: 'contaGotas',
+  DRAFT_1007_Moist_Pump: 'tampaBisnaga', DRAFT_1035_Tube_Pump: 'tampaBisnaga', DRAFT_1002_Tube: 'tampaBisnaga', DRAFT_1033_HandCream_Tube: 'tampaBisnaga',
+  DRAFT_1040_toothpaste: 'tampaBisnaga', DRAFT_1025_Flip_top_Bottle: 'flipRedondo', DRAFT_1037_Travelsize_Shampoo: 'flipRedondo',
+  DRAFT_1039_Round_Bottle: 'flip', DRAFT_1019_Bottle_Push_Pull: 'pushPull', DRAFT_1022_Push_Pull_Short_Jar: 'pushPull',
+  DRAFT_1023_Push_Pull_Tall: 'pushPull', DRAFT_3009_Ophthalmic_Nozzle: 'pushPull',
+};
+function draftClosure(d, id) {
+  const nw = M(DRAFT_CLOSURE[id] || (d.cat === 'V' ? 'locao' : 'sobretampa')), valve = nw.kind === 'spray';
+  // virola medida: a fatia mais estreita do lado que encosta no corpo
+  const wAt = r => Math.min(r[1] * d.cap.W, r[2] * d.cap.D);
+  const side = d.cap.prof.filter(r => (d.below ? r[0] >= 0.8 : r[0] <= 0.2));
+  const collar = Math.min(...side.map(wAt));
+  scaleModule(nw, collar / collarOf(nw));
+  if (!valve) {
+    // tampa: altura, proporção e quadratura do original
+    const ns = d.cap.prof.map(r => r[3]).sort((a, b) => a - b);
+    nw.h = r1(d.cap.h);
+    // flip-tops e push-pull mantêm o formato do próprio tipo; tampas de rosca
+    // e de pote copiam a proporção e a quadratura medidas
+    if (nw.type === 'sobretampa') {
+      nw.D = r1(nw.W * d.cap.D / d.cap.W);
+      if (d.cap.D < d.cap.W * 0.9 || ns[Math.floor(ns.length / 2)] > 2.6) nw.n = clamp(ns[Math.floor(ns.length / 2)], 2, 8);
     }
-    modules.push(M(kt));
+    if (nw.groove > 0) nw.groove = r1(d.cap.h * (nw.lidSide === 'baixo' ? 0.72 : 0.3));
   }
-  const nm = PRESETS[d.name] ? `${d.name} 2` : d.name; // evita nome repetido
-  PRESETS[nm] = { color: BEIGE, finish: 'fosco', modules };
+  // serrilhado medido vira os frisos da própria tampa
+  const band = ribBands(d.cap.prof, d.cap.h)[0];
+  if (band && nw.kind === 'giro') Object.assign(nw, { ridges: band.k, ridgeD: band.d });
+  if (band && valve) nw.ridges = band.k;
+  return nw;
+}
+function buildDraftPresets() {
+  for (const [id, d] of Object.entries(PERFIS)) {
+    const k = id.replace(/^DRAFT_/, '').replace(/^(\d+)_.*/, '$1'), kb = `d${k}c`, clos = draftClosure(d, id);
+    let modules;
+    if (d.below) modules = [clos, M(kb, { gap: d.gapBelow })];
+    else {
+      modules = [M(kb)];
+      if (d.neck) {
+        // gargalo cabe na virola (com parede) e fica coberto por ela
+        const nW = r1(Math.min(d.neck.W, collarOf(clos) - 3)), nH = r1(Math.min(d.neck.h, clos.h - 0.8));
+        if (nW > 4 && nH > 1) modules.push(M('gargalo', { neckStd: 'livre', W: nW, D: nW, h: nH, ringH: 0.3, ringW: 0, embed: 3 }));
+      }
+      modules.push(clos);
+    }
+    const nm = PRESETS[d.name] ? `${d.name} 2` : d.name; // evita nome repetido
+    PRESETS[nm] = { color: BEIGE, finish: 'fosco', modules };
+  }
 }
 
 const FINISHES = [['fosco', 'Fosco'], ['acetinado', 'Acetinado'], ['brilho', 'Brilho'], ['perolado', 'Perolado'], ['vidro', 'Transparente / vidro'], ['metal', 'Metalizado']];
@@ -1632,7 +1657,8 @@ function renderStack() {
     const el = document.createElement('div');
     el.className = 'mod' + (i === sel ? ' sel' : '');
     el.innerHTML = `<span class="sw" style="background:${m.own ? m.color : S.color}"></span>
-      <span class="nm">${m.name}${m.rep > 1 ? ` ×${m.rep}` : ''}${m.vol ? ' · frasco' : ''}</span>
+      <span class="tag">${m.kind === 'gargalo' ? 'Gargalo' : categoryOf(m)?.[0] === 'Peça de encaixe' ? 'Peça' : categoryOf(m)?.[0] || 'Peça'}</span>
+      <span class="nm" title="${m.name}">${m.name}${m.rep > 1 ? ` ×${m.rep}` : ''}</span>
       <span class="dm">${r1(m.W)}×${r1(m.D)}×${r1(m.h)}</span>
       <button class="b" data-a="up" title="Subir">↑</button><button class="b" data-a="down" title="Descer">↓</button>
       <button class="b" data-a="dup" title="Duplicar">⧉</button><button class="b" data-a="del" title="Excluir">✕</button>`;
@@ -1802,8 +1828,8 @@ function renderAll() { renderStack(); renderEditor(); renderGlobal(); renderPres
 // Corpo, tampa e peça de encaixe ficam em listas separadas.
 const CATS = [
   ['Corpo', ['reto', 'boston', 'quadrado', 'capsula', 'plano', 'arco', 'cone', 'placa', 'bisnaga', ...DRAFT_KEYS.corpo]],
-  ['Tampa', ['esfera', 'domo', 'seixo', 'flip', 'flipRedondo', 'disctop', 'sobretampa', 'tampaBisnaga', 'disco', ...DRAFT_KEYS.tampa]],
-  ['Válvula', ['pump', 'locao', 'espuma', 'spray', 'contaGotas', 'pushPull', 'lamina', ...DRAFT_KEYS.valvula]],
+  ['Tampa', ['esfera', 'domo', 'seixo', 'flip', 'flipRedondo', 'disctop', 'sobretampa', 'tampaBisnaga', 'disco']],
+  ['Válvula', ['pump', 'locao', 'espuma', 'spray', 'contaGotas', 'pushPull', 'lamina']],
   ['Peça de encaixe', ['gargalo', 'colar', 'barril', 'flare', 'anel', 'tigela']],
 ];
 CATS.forEach(([label, keys]) => {
@@ -2001,6 +2027,7 @@ $('#dlObj').onclick = () => download(new Blob([new OBJExporter().parse(exportRoo
 // Acesso para inspeção no console do navegador.
 window.OUTBOX = { get S() { return S; }, get swapScroll() { return swapScroll; }, product, layout };
 
+buildDraftPresets();
 resize();
 renderAll();
 build();
