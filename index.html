@@ -253,7 +253,7 @@ const LIB = {
   anel:    { name: 'Anel', W: 36, D: 36, h: 9, rBot: 4.5, rTop: 4.5 },
   disco:   { name: 'Disco', W: 40, D: 40, h: 6, rBot: 1.5, rTop: 2 },
   tigela:  { name: 'Tigela', W: 40, D: 40, h: 20, rBot: 18, rTop: 1 },
-  esfera:  { name: 'Esfera', W: 44, D: 44, h: 44, rBot: 22, rTop: 22, groove: 15, topType: 'flip' },
+  esfera:  { name: 'Esfera', W: 44, D: 44, h: 44, rBot: 22, rTop: 22, sphereR: 22, roundLock: true, groove: 15, topType: 'flip' },
   domo:    { name: 'Domo meia-lua', W: 46, D: 38, h: 38, rBot: 2, rTop: 24, groove: 15, notch: true, notchY: 15, notchW: 18, notchH: 9, notchD: 2.2, notchP: 2, topType: 'flip' },
   seixo:   { name: 'Seixo com fenda', W: 70, D: 40, n: 2.4, h: 34, rBot: 6, rTop: 18, groove: 13, notch: true, notchY: 13, notchW: 30, notchH: 6, notchD: 1.8, notchP: 8, topType: 'flip' },
   spray:   { name: 'Válvula spray fina', kind: 'spray', sprayType: 'mist', W: 26, D: 26, h: 21, skirtPct: 35, bandInset: 1.4, ridges: 64,
@@ -297,7 +297,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-24.bico-dosador.draft-pump-head';
+const BUILD = '2026-09-24.bico-dosador.sphere-radius-control';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -1767,6 +1767,16 @@ const G = d => only('giro', d), P = d => only('placa', d), B = d => only('bisnag
 const notK = (kinds, d) => { const a = padDef(d); a[6] = m => !kinds.includes(m.kind); return a; };
 const K = d => only('spray', d), isType = t => m => m.sprayType === t;
 const GB = d => { const a = padDef(d); const prev = a[6]; a[6] = m => ['giro', 'bisnaga', 'perfil'].includes(m.kind) && (!prev || prev(m)); return a; };
+const isSphereCap = m => typeOf(m) === 'esfera';
+const sphereMaxR = m => r1(Math.min(m.W || 0, m.D || 0, m.h || 0) / 2);
+function syncSphereRadius(m, auto = false) {
+  if (!isSphereCap(m)) return;
+  const maxR = sphereMaxR(m);
+  if (auto || m.roundLock || typeof m.sphereR !== 'number') m.sphereR = maxR;
+  m.sphereR = r1(clamp(m.sphereR, 0, maxR));
+  m.rBot = m.rTop = m.sphereR;
+  m.rBotW = m.rTopW = 0;
+}
 // Grupos do editor. Cada peça mostra só os grupos que valem para ela; o nome
 // do grupo dá o contexto, então os rótulos ficam curtos.
 const MF = [
@@ -1787,10 +1797,12 @@ const MF = [
     B(['flatCurve', 'Achatamento: reto → curvo', 0.5, 3, 0.05, '']),
   ]],
   ['Arredondamento', [
-    GB(['rBot', 'Raio embaixo', 0, 150, 0.5, 'mm']),
-    GP(['rBotW', 'Embaixo: recuo lateral (0 = igual)', 0, 100, 0.5, 'mm', m => m.rBot > 0]),
-    GP(['rTop', 'Raio em cima', 0, 150, 0.5, 'mm']),
-    GP(['rTopW', 'Em cima: recuo lateral (0 = igual)', 0, 100, 0.5, 'mm', m => m.rTop > 0]),
+    GP(['roundLock', 'Esfera: manter redonda', 'check', 0, 0, 0, isSphereCap]),
+    GP(['sphereR', 'Raio da esfera', 0, 150, 0.5, 'mm', isSphereCap]),
+    GB(['rBot', 'Raio embaixo', 0, 150, 0.5, 'mm', m => !isSphereCap(m)]),
+    GP(['rBotW', 'Embaixo: recuo lateral (0 = igual)', 0, 100, 0.5, 'mm', m => m.rBot > 0 && !isSphereCap(m)]),
+    GP(['rTop', 'Raio em cima', 0, 150, 0.5, 'mm', m => !isSphereCap(m)]),
+    GP(['rTopW', 'Em cima: recuo lateral (0 = igual)', 0, 100, 0.5, 'mm', m => m.rTop > 0 && !isSphereCap(m)]),
     P(['rTL', 'Canto superior esquerdo', 0, 150, 0.5, 'mm']),
     P(['rTR', 'Canto superior direito', 0, 150, 0.5, 'mm']),
     P(['rBL', 'Canto inferior esquerdo', 0, 150, 0.5, 'mm']),
@@ -1938,6 +1950,10 @@ function renderEditor() {
   nm.oninput = () => { m.name = nm.value; renderStack(); store.set('shape.autosave', S); };
   ed.appendChild(top);
   renderSwap(ed, m);
+  if (isSphereCap(m)) {
+    if (typeof m.roundLock !== 'boolean') m.roundLock = true;
+    syncSphereRadius(m, m.roundLock);
+  }
   field(ed, m, ['vol', 'Faz parte do frasco (entra na capacidade)', 'check'], () => { renderStack(); queueBuild(); });
   const below = S.modules[sel - 1];
   if (below?.kind === 'gargalo' && m.kind !== 'gargalo') {
@@ -1971,6 +1987,10 @@ function renderEditor() {
         if (k === 'topType' && m.topType === 'flip' && !(m.groove > 0)) m.groove = r1(Math.min(12, m.h * 0.35));
         if (k === 'neckStd' && NECKS[m.neckStd]) Object.assign(m, NECKS[m.neckStd], { D: NECKS[m.neckStd].W });
         if ((m.kind === 'gargalo' || m.kind === 'spray') && k === 'W') m.D = m.W;
+        if (isSphereCap(m)) {
+          if (k === 'sphereR') m.roundLock = false;
+          syncSphereRadius(m, k === 'roundLock' && m.roundLock || ['W', 'D', 'h'].includes(k) && m.roundLock);
+        }
         if (structural || ['rep', 'groove', 'ridges', 'own'].includes(k)) renderEditorKeepScroll();
         renderStack(); queueBuild();
       });
@@ -2042,7 +2062,7 @@ function categoryOf(m) {
   return CATS.find(([l]) => l === label);
 }
 // Medidas que acompanham a escala da peça (em mm).
-const LEN_KEYS = ['W', 'D', 'h', 'rBot', 'rTop', 'rBotW', 'rTopW', 'rTL', 'rTR', 'rBL', 'rBR', 'rEdge', 'groove', 'notchY', 'notchW', 'notchH',
+const LEN_KEYS = ['W', 'D', 'h', 'sphereR', 'rBot', 'rTop', 'rBotW', 'rTopW', 'rTL', 'rTR', 'rBL', 'rBR', 'rEdge', 'groove', 'notchY', 'notchW', 'notchH',
   'notchD', 'actW', 'actH', 'headH', 'stemD', 'stemH', 'guideW', 'guideH', 'nozzleL', 'armW', 'armT', 'droop', 'outletD', 'domeH', 'spoutD', 'collarR',
   'discD', 'discDip', 'discRise', 'orifD', 'sealH', 'bandInset'];
 // Largura da virola (onde a peça encosta): a menor medida da base.
