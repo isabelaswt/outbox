@@ -365,7 +365,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-25.pump-pato';
+const BUILD = '2026-09-25.pump-pato-salvos';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -609,6 +609,13 @@ function normalize(s) {
       if ((m.sealR || 0) < 0.1) m.sealR = 2;
       if ((m.serrD || 0) >= 0.24) m.serrD = 0.16;
       if ((m.flatStart || 0) < 9) m.flatStart = 10;
+    }
+    // Válvula pump antiga (cabeça chata de lâmina) passa para o bico pato novo,
+    // no mesmo tamanho de virola que estava.
+    if ((m.type === 'pump' || m.name === 'Válvula pump') && m.sprayType === 'lamina') {
+      const f = m.W / LIB.pump.W;
+      for (const k of ['stemD', 'stemH', 'actW', 'headH', 'armT', 'armW', 'nozzleL', 'droop']) m[k] = r1(LIB.pump[k] * f);
+      Object.assign(m, { sprayType: 'pato', ridges: LIB.pump.ridges, ridgeD: LIB.pump.ridgeD });
     }
     if (m.type === 'tampaBisnaga') {
       if (m.h >= 32) m.h = 26;
