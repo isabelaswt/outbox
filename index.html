@@ -1784,6 +1784,8 @@ const MF = [
     notK(['spray'], ['h', 'Altura', 1, 300, 0.5, 'mm']),
     notK(['gargalo', 'spray'], ['W', 'Largura (frente)', 4, 200, 0.5, 'mm']),
     notK(['gargalo', 'spray'], ['D', 'Profundidade (lado)', 4, 200, 0.5, 'mm']),
+    GP(['roundLock', 'Esfera: manter redonda', 'check', 0, 0, 0, isSphereCap]),
+    GP(['sphereR', 'Raio da esfera', 0, 150, 0.5, 'mm', isSphereCap]),
     N(['neckStd', 'Padrão do acabamento (aprox.)', 'select', [...Object.keys(NECKS).map(k => [k, k]), ['livre', 'Livre']]]),
     N(['W', 'Diâmetro da rosca (T)', 8, 120, 0.1, 'mm']),
     K(['sprayType', 'Tipo de válvula', 'select', [['mist', 'Spray fino (névoa)'], ['locao', 'Pump loção (bico curvo)'], ['draftpump', 'Pump loção com frisos'], ['foam', 'Pump espuma / foam'], ['lamina', 'Pump com alavanca / bico lâmina'], ['gotas', 'Conta-gotas'], ['pushpull', 'Push-pull'], ['bico', 'Bico dosador']]]),
@@ -1797,8 +1799,6 @@ const MF = [
     B(['flatCurve', 'Achatamento: reto → curvo', 0.5, 3, 0.05, '']),
   ]],
   ['Arredondamento', [
-    GP(['roundLock', 'Esfera: manter redonda', 'check', 0, 0, 0, isSphereCap]),
-    GP(['sphereR', 'Raio da esfera', 0, 150, 0.5, 'mm', isSphereCap]),
     GB(['rBot', 'Raio embaixo', 0, 150, 0.5, 'mm', m => !isSphereCap(m)]),
     GP(['rBotW', 'Embaixo: recuo lateral (0 = igual)', 0, 100, 0.5, 'mm', m => m.rBot > 0 && !isSphereCap(m)]),
     GP(['rTop', 'Raio em cima', 0, 150, 0.5, 'mm', m => !isSphereCap(m)]),
