@@ -328,6 +328,8 @@ const LIB = {
              stemD: 13, stemH: 14.5, actW: 12 },
   pumpFoam: { name: 'Pump espuma / foam', kind: 'spray', sprayType: 'foam', nozzleL: 2.6, W: 43, D: 43, h: 16, collarR: 1.2, ridges: 0,
              actW: 15, actH: 24, houseD: 16, springL: 26 },
+  pumpBisnaga: { name: 'Pump de bisnaga', kind: 'spray', sprayType: 'tubo', W: 26.7, D: 26.7, h: 44.5, actW: 15, actH: 18.9,
+             stemD: 22.5, stemH: 16.4, overcap: true, capW: 25.3, capGap: 2.6, mola: false, pesc: false },
   pushSport: { name: 'Push-pull esportiva', kind: 'spray', sprayType: 'sport', W: 30, D: 30, h: 18, collarR: 0.8, ridges: 60, ridgeD: 0.22,
              stemD: 9.4, stemH: 3.2, actW: 11.5, actH: 7.5, mola: false, pesc: false },
   bicoDosador: { name: 'Bico dosador', kind: 'spray', sprayType: 'bico', W: 32, D: 32, h: 18, collarR: 0.8, ridges: 76, ridgeD: 0.32,
@@ -352,7 +354,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-25.sem-repetidos';
+const BUILD = '2026-09-25.pump-bisnaga';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -507,9 +509,9 @@ const DRAFT_CLOSURE = {
   '1027_vintage_pump_bottle': 'locao', DRAFT_1005_SoapPump: 'locao', DRAFT_1006_FoamSoap: 'espuma', DRAFT_1015_Pump_Bottle: 'locao',
   DRAFT_1020_Bottle_Pump: 'locao', DRAFT_1024_Pump_Minimal: 'locao', DRAFT_1009_Spray_Glass: 'spray', DRAFT_1017_Spray_Bottle: 'spray',
   DRAFT_1029_Foundation: 'spray', DRAFT_1030_Foundation: 'spray', DRAFT_1031_Glass_Dropper: 'contaGotas', DRAFT_3007_Dropper_RC: 'contaGotas',
-  DRAFT_1007_Moist_Pump: 'tampaBisnaga', DRAFT_1035_Tube_Pump: 'tampaBisnaga', DRAFT_1002_Tube: 'tampaBisnaga', DRAFT_1033_HandCream_Tube: 'tampaBisnaga',
+  DRAFT_1007_Moist_Pump: 'tampaBisnaga', DRAFT_1035_Tube_Pump: 'pumpBisnaga', DRAFT_1002_Tube: 'tampaBisnaga', DRAFT_1033_HandCream_Tube: 'tampaBisnaga',
   DRAFT_1040_toothpaste: 'tampaBisnaga', DRAFT_1025_Flip_top_Bottle: 'flipRedondo', DRAFT_1037_Travelsize_Shampoo: 'flipRedondo',
-  DRAFT_1039_Round_Bottle: 'flip', DRAFT_1019_Bottle_Push_Pull: 'pushPull', DRAFT_1022_Push_Pull_Short_Jar: 'pushPull',
+  DRAFT_1039_Round_Bottle: 'flip', DRAFT_1019_Bottle_Push_Pull: 'pushPull', DRAFT_1022_Push_Pull_Short_Jar: 'bicoDosador',
   DRAFT_1023_Push_Pull_Tall: 'pushPull', DRAFT_3009_Ophthalmic_Nozzle: 'pushPull',
 };
 function draftClosure(d, id) {
@@ -543,14 +545,14 @@ function draftClosure(d, id) {
 // Modelos prontos da Draft que repetiam outro quase igual (mesma tampa/válvula,
 // corpo levemente diferente). O corpo de cada um continua na troca de corpo.
 const DRAFT_HIDDEN = new Set(['Soap pump', 'Pump bottle', 'Frasco com pump', 'Pump minimal', 'Spray vidro', 'Spray plástico',
-  'Base com pump', 'Base com pump #2', 'Conta-gotas vidro', 'Conta-gotas', 'Airless (tubo)', 'Tubo com pump', 'Bisnaga',
+  'Base com pump', 'Base com pump #2', 'Conta-gotas vidro', 'Conta-gotas', 'Airless (tubo)', 'Bisnaga',
   'Creme dental', 'Push-pull alto', 'Colírio', 'Shampoo viagem', 'Vidro com tampa']);
 function buildDraftPresets() {
   for (const [id, d] of Object.entries(PERFIS)) {
     if (DRAFT_HIDDEN.has(d.name)) continue;
     const k = id.replace(/^DRAFT_/, '').replace(/^(\d+)_.*/, '$1'), kb = `d${k}c`, clos = draftClosure(d, id);
     let modules;
-    if (d.below) modules = [clos, M(kb, { gap: d.gapBelow })];
+    if (d.below) modules = [clos, M(kb, { gap: clos.sprayType === 'tubo' ? 0 : d.gapBelow })];
     else {
       modules = [M(kb)];
       if (d.neck) {
@@ -829,7 +831,39 @@ function outletCap(tipX, y, ro, lo) {
 }
 
 // Válvula: virola que veste o gargalo + cabeça de spray fino ou pump.
+// Pump de bisnaga (Draft 1035): a bisnaga fica de ponta-cabeça sobre ele. De baixo
+// para cima: atuador com cava para o dedo e saída em fenda, corpo do pump e anel
+// que encosta no tubo; sobretampa transparente opcional cobrindo tudo abaixo do anel.
+function tubePumpGeo(m, y0, lo) {
+  const ring = (W, h, y, o = {}) => moduleGeo({ ...BASE, kind: 'giro', W, D: W, h, ...o }, y, { lo });
+  const gap = m.overcap ? m.capGap : 0, yA = y0 + gap, yB = yA + m.actH, yR = yB + m.stemH;
+  const ringH = Math.max(2, m.h - gap - m.actH - m.stemH), holes = [];
+  const act = ring(m.actW, m.actH + 0.5, yA, { rBot: Math.min(1.2, m.actW * 0.08), rTop: 0 });
+  // cava na frente, funda embaixo e sumindo para cima, em arco dos lados
+  const pa = act.attributes.position, R = m.actW / 2, cavH = m.actH * 0.42, cavD = m.actW * 0.16;
+  for (let i = 0; i < pa.count; i++) {
+    const x = pa.getX(i), y = pa.getY(i) - yA, z = pa.getZ(i);
+    if (z <= 0 || y > cavH) continue;
+    const side = Math.max(0, 1 - (x / (R * 0.8)) ** 2), up = 1 - y / cavH;
+    pa.setZ(i, z - cavD * side * Math.sqrt(up) * Math.min(1, z / (R * 0.5)));
+  }
+  act.computeVertexNormals();
+  const body = ring(m.stemD, m.stemH + 0.6, yB - 0.3, { rBot: 0.6, rTop: 0 });
+  const top = ring(m.W, ringH, yR, { rBot: 0.8, rTop: 0.4 });
+  const slot = new THREE.BoxGeometry(m.actW * 0.28, 0.9, 1.2); slot.deleteAttribute('uv');
+  slot.translate(0, yA + 0.9, R - cavD + 0.25); holes.push(slot);
+  if (m.overcap) {
+    const cap = ring(m.capW, yR - y0 + 0.2, y0, { rBot: 1.2, rTop: 0 });
+    cap.userData.mat = 'clear'; holes.push(cap);
+  }
+  const g = mergeGeometries([act, body, top]);
+  [g, ...holes].forEach(x => { x.rotateY(-m.dir * Math.PI / 180); if (m.ox) x.translate(m.ox, 0, 0); });
+  g.userData.extras = holes;
+  return g;
+}
+
 function sprayGeo(m, y0, { lo = false } = {}) {
+  if (m.sprayType === 'tubo') return tubePumpGeo(m, y0, lo);
   const ring = (W, h, y, o = {}) => moduleGeo({ ...BASE, kind: 'giro', W, D: W, h, ...o }, y, { lo });
   let collar;
   if (m.sprayType === 'mist' && m.skirtPct < 99) {
@@ -1364,6 +1398,8 @@ function applyHand() {
 const matCache = new Map();
 const sleeveMat = new THREE.MeshStandardMaterial({ color: '#dfe3e6', roughness: 0.3, transparent: true, opacity: 0.32, depthTest: false, depthWrite: false });
 const insertMat = new THREE.MeshStandardMaterial({ color: '#ececea', roughness: 0.35 });
+// Sobretampa transparente (pump de bisnaga): por fora de tudo, então pode ser transparente comum.
+const clearMat = new THREE.MeshPhysicalMaterial({ color: '#f6f7f5', roughness: 0.12, transparent: true, opacity: 0.22, depthWrite: false, clearcoat: 1 });
 // Furos e saídas: sombra da própria cor do frasco (atualizada no build), não preto.
 const holeMat = new THREE.MeshStandardMaterial({ color: '#7d7366', roughness: 0.9 });
 // Plástico translúcido leitoso: presente, mas discreto dentro do frasco.
@@ -1751,7 +1787,7 @@ function buildInto(product, S, explodeAmt = 0) {
   const glassBody = base.some(e => e.m.vol && (e.m.own ? e.m.finish : S.finish) === 'vidro');
   const L = layout(S, explodeAmt);
   const tubeBody = base.some(e => e.m.kind === 'bisnaga' && e.m.vol);
-  const valvePesc = !tubeBody && S.modules.some(v => v.kind === 'spray' && v.pesc && !['pushpull', 'bico', 'sport'].includes(v.sprayType));
+  const valvePesc = !tubeBody && S.modules.some(v => v.kind === 'spray' && v.pesc && !['pushpull', 'bico', 'sport', 'tubo'].includes(v.sprayType));
   L.forEach(({ m: m0, idx, y0: yl }, i) => {
     let y0 = yl;
     // O gargalo cabe na peça que o veste: anel de apoio nunca mais largo que
@@ -1777,7 +1813,7 @@ function buildInto(product, S, explodeAmt = 0) {
       Object.assign(mesh.userData, { main: true, uid: m.uid, y0, ox: m.ox || 0 });
     mesh.name = `${String(idx + 1).padStart(2, '0')}_${m.name}`;
     product.add(mesh);
-    (g.userData.extras || []).forEach(xg => { const xm = new THREE.Mesh(xg, xg.userData.mat === 'insert' ? insertMat : holeMat); xm.userData.idx = idx; product.add(xm); });
+    (g.userData.extras || []).forEach(xg => { const xm = new THREE.Mesh(xg, xg.userData.mat === 'insert' ? insertMat : xg.userData.mat === 'clear' ? clearMat : holeMat); xm.userData.idx = idx; product.add(xm); });
     if (!tubeBody && (m.kind === 'spray' || (m.kind === 'perfil' && !m.vol)) && m.pesc && isFinite(floor)) {
       // Comprimento medido montado; na vista explodida desce junto com a válvula.
       const add = (geo, name) => { const pm = new THREE.Mesh(geo, pescMat); pm.userData.idx = idx; pm.name = `${String(idx + 1).padStart(2, '0')}_${name}`; product.add(pm); };
@@ -1984,7 +2020,7 @@ const MF = [
     GP(['sphereR', 'Raio da esfera', 0, 150, 0.5, 'mm', isSphereCap]),
     N(['neckStd', 'Padrão do acabamento (aprox.)', 'select', [...Object.keys(NECKS).map(k => [k, k]), ['livre', 'Livre']]]),
     N(['W', 'Diâmetro da rosca (T)', 8, 120, 0.1, 'mm']),
-    K(['sprayType', 'Tipo de válvula', 'select', [['mist', 'Spray fino (névoa)'], ['locao', 'Pump loção (bico curvo)'], ['draftpump', 'Pump loção com frisos'], ['foam', 'Pump espuma / foam'], ['lamina', 'Pump com alavanca / bico lâmina'], ['gotas', 'Conta-gotas'], ['pushpull', 'Push-pull'], ['bico', 'Bico dosador'], ['sport', 'Push-pull esportiva'], ['gatilho', 'Gatilho'], ['onda', 'Pump bico onda']]]),
+    K(['sprayType', 'Tipo de válvula', 'select', [['mist', 'Spray fino (névoa)'], ['locao', 'Pump loção (bico curvo)'], ['draftpump', 'Pump loção com frisos'], ['foam', 'Pump espuma / foam'], ['lamina', 'Pump com alavanca / bico lâmina'], ['gotas', 'Conta-gotas'], ['pushpull', 'Push-pull'], ['bico', 'Bico dosador'], ['sport', 'Push-pull esportiva'], ['gatilho', 'Gatilho'], ['onda', 'Pump bico onda'], ['tubo', 'Pump de bisnaga']]]),
   ]],
   ['Formato', [
     G(['n', 'Seção: oval → retângulo', 2, 10, 0.1, '']),
@@ -2036,7 +2072,9 @@ const MF = [
   ]],
   ['Cabeça e haste', [
     K(['actW', 'Cabeça: largura', 8, 60, 0.5, 'mm']),
-    K(['actH', 'Cabeça: altura', 6, 60, 0.5, 'mm', m => ['mist', 'gotas', 'pushpull', 'bico', 'foam', 'sport'].includes(m.sprayType)]),
+    K(['actH', 'Cabeça: altura', 6, 60, 0.5, 'mm', m => ['mist', 'gotas', 'pushpull', 'bico', 'foam', 'sport', 'tubo'].includes(m.sprayType)]),
+    K(['overcap', 'Sobretampa transparente', 'check', 0, 0, 0, isType('tubo')]),
+    K(['capW', 'Sobretampa: diâmetro', 10, 80, 0.5, 'mm', m => m.sprayType === 'tubo' && m.overcap]),
     K(['headH', 'Cabeça: altura', 2, 60, 0.5, 'mm', m => ['locao', 'lamina', 'draftpump'].includes(m.sprayType)]),
     K(['domeH', 'Cabeça: altura do domo', 0, 20, 0.5, 'mm', isType('locao')]),
     K(['stemD', 'Haste: diâmetro', 3, 40, 0.5, 'mm']),
@@ -2313,7 +2351,7 @@ function categoryOf(m) {
   return CATS.find(([l]) => l === label);
 }
 // Medidas que acompanham a escala da peça (em mm).
-const LEN_KEYS = ['W', 'D', 'h', 'sphereR', 'rBot', 'rTop', 'rBotW', 'rTopW', 'rTL', 'rTR', 'rBL', 'rBR', 'rEdge', 'groove', 'notchY', 'notchW', 'notchH',
+const LEN_KEYS = ['W', 'D', 'h', 'capW', 'capGap', 'sphereR', 'rBot', 'rTop', 'rBotW', 'rTopW', 'rTL', 'rTR', 'rBL', 'rBR', 'rEdge', 'groove', 'notchY', 'notchW', 'notchH',
   'notchD', 'actW', 'actH', 'headH', 'stemD', 'stemH', 'guideW', 'guideH', 'nozzleL', 'armW', 'armT', 'droop', 'outletD', 'domeH', 'spoutD', 'collarR',
   'discD', 'discDip', 'discRise', 'orifD', 'sealH', 'bandInset'];
 // Largura da virola (onde a peça encosta): a menor medida da base.
@@ -2420,7 +2458,7 @@ function renderAll() { renderStack(); renderEditor(); renderGlobal(); renderPres
 const CATS = [
   ['Corpo', ['reto', 'boston', 'quadrado', 'capsula', 'perfumeOval', 'plano', 'arco', 'cone', 'placa', 'bisnaga', ...DRAFT_KEYS.corpo]],
   ['Tampa', ['esfera', 'esferaBisnaga', 'taca', 'domo', 'seixo', 'flip', 'flipRedondo', 'disctop', 'sobretampa', 'tampaBisnaga', 'disco']],
-  ['Válvula', ['pump', 'pumpFrisos', 'locao', 'espuma', 'spray', 'contaGotas', 'pushPull', 'pushSport', 'bicoDosador', 'lamina', 'pumpOnda', 'gatilho']],
+  ['Válvula', ['pump', 'pumpFrisos', 'locao', 'espuma', 'spray', 'contaGotas', 'pushPull', 'pushSport', 'bicoDosador', 'lamina', 'pumpOnda', 'gatilho', 'pumpBisnaga']],
   ['Peça de encaixe', ['gargalo', 'colar', 'barril', 'flare', 'anel', 'tigela']],
 ];
 CATS.forEach(([label, keys]) => {
