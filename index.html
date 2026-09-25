@@ -292,7 +292,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-24.pescante-com-mecanismo';
+const BUILD = '2026-09-24.troca-tampa-valvula';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -1984,10 +1984,15 @@ function adaptSwap(old, nw, label) {
 let swapScroll = { key: '', top: 0 };
 function renderSwap(ed, m) {
   const [label, keys] = categoryOf(m), cur = typeOf(m);
+  // Tampa e válvula ocupam o mesmo lugar: a troca mostra as duas famílias.
+  const closure = label === 'Tampa' || label === 'Válvula';
+  const groups = closure ? CATS.filter(([l]) => l === 'Tampa' || l === 'Válvula').map(([l, ks]) => [l === 'Tampa' ? 'Tampas' : 'Válvulas', ks]) : [[null, keys]];
   const box = document.createElement('details'); box.open = true;
-  box.innerHTML = `<summary style="text-transform:none;letter-spacing:0;font-size:12px">Trocar por outro(a) ${label.toLowerCase()}</summary><div class="gallery swap"></div>`;
+  box.innerHTML = `<summary style="text-transform:none;letter-spacing:0;font-size:12px">${closure ? 'Trocar por outra tampa ou válvula' : `Trocar por outro(a) ${label.toLowerCase()}`}</summary><div class="gallery swap"></div>`;
   const grid = box.querySelector('.gallery');
-  for (const k of keys) {
+  for (const [gTitle, gKeys] of groups) {
+  if (gTitle) { const h = document.createElement('h4'); h.textContent = gTitle; grid.appendChild(h); }
+  for (const k of gKeys) {
     const card = document.createElement('div');
     card.className = 'card' + (k === cur ? ' on' : ''); card.title = LIB[k].name;
     card.innerHTML = `<img class="ph" alt=""><div>${LIB[k].name}</div>`;
@@ -2000,6 +2005,7 @@ function renderSwap(ed, m) {
     };
     grid.appendChild(card);
     queueThumb(card.querySelector('img'), { color: S.color, finish: S.finish, modules: [M(k)] });
+  }
   }
   ed.appendChild(box);
   const key = sel + ':' + label;
