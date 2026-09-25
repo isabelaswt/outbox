@@ -388,7 +388,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-25.lacre-um-gargalo';
+const BUILD = '2026-09-25.lacre-salvos';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -605,6 +605,17 @@ function draftClosure(d, id) {
 const DRAFT_HIDDEN = new Set(['Soap pump', 'Pump bottle', 'Frasco com pump', 'Pump minimal', 'Spray vidro', 'Spray plástico',
   'Base com pump', 'Base com pump #2', 'Conta-gotas vidro', 'Conta-gotas', 'Airless (tubo)', 'Bisnaga',
   'Creme dental', 'Push-pull alto', 'Colírio', 'Shampoo viagem', 'Vidro com tampa']);
+// Corpo da Draft que já traz a rosca no perfil: a tampa desce vestindo a rosca até
+// onde o corpo fica mais largo que ela (medidas relativas ao tamanho atual do corpo).
+function draftCoverGap(d, body, clos) {
+  const cw = Math.min(clos.W, clos.D) - 1; let yc = body.h; // (sem collarOf: roda também na abertura)
+  for (let k = d.body.prof.length - 1; k >= 0; k--) { const r = d.body.prof[k]; if (Math.min(r[1] * body.W, r[2] * body.D) > cw) { yc = r[0] * body.h; break; } }
+  return -r1(clamp(body.h - yc, 0, clos.h - 1.5));
+}
+function draftByBodyType(type) {
+  for (const [id, d] of Object.entries(PERFIS)) if (`d${id.replace(/^DRAFT_/, '').replace(/^(\d+)_.*/, '$1')}c` === type) return d;
+  return null;
+}
 function buildDraftPresets() {
   for (const [id, d] of Object.entries(PERFIS)) {
     if (DRAFT_HIDDEN.has(d.name)) continue;
@@ -623,12 +634,7 @@ function buildDraftPresets() {
         // Gargalo medido muito curto: o perfil do corpo já traz a rosca (não duplica)
         // e a tampa desce vestindo essa rosca até onde o corpo fica mais largo que ela.
         if (nW > 4 && d.neck.h >= 4 && nH > 1) modules.push(M('gargalo', { neckStd: 'livre', W: nW, D: nW, h: nH, ringH: 0.3, ringW: 0, embed: 3 }));
-        else {
-          const b = d.body, cw = collarOf(clos) - 1;
-          let yc = b.h;
-          for (let k = b.prof.length - 1; k >= 0; k--) { const r = b.prof[k]; if (Math.min(r[1] * b.W, r[2] * b.D) > cw) { yc = r[0] * b.h; break; } }
-          clos.gap = -r1(clamp(b.h - yc, 0, clos.h - 1.5));
-        }
+        else clos.gap = draftCoverGap(d, d.body, clos);
       }
       modules.push(clos);
     }
@@ -697,6 +703,13 @@ function normalize(s) {
     }
   });
   s.modules.forEach(m => { if (m.kind === 'bisnaga') m.pesc = false; if (m.vol) m.bpesc = false; }); // pescante só vem da válvula
+  // Modelos salvos antes: corpo da Draft com rosca própria + gargalo extra → tira o extra.
+  for (let i = 0; i < s.modules.length - 1; i++) {
+    const b = s.modules[i], nk = s.modules[i + 1], d = b.kind === 'perfil' && nk?.kind === 'gargalo' && nk.neckStd === 'livre' ? draftByBodyType(b.type) : null;
+    if (!d || !d.neck || d.neck.h >= 4) continue;
+    s.modules.splice(i + 1, 1);
+    const c = s.modules[i + 1]; if (c && !c.vol && c.kind !== 'gargalo') c.gap = draftCoverGap(d, b, c);
+  }
   // Tampa em que a bisnaga fica em pé: no máximo um pouco mais larga que a ponta
   // redonda do tubo, para não virar pedestal.
   s.modules.forEach((m, i) => {
