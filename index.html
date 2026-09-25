@@ -288,7 +288,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-24.desfazer';
+const BUILD = '2026-09-24.abertura-so-tampa';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -1592,12 +1592,16 @@ function field(parent, obj, def, onChange) {
 }
 
 // Campos que só valem para um tipo de forma.
-const only = (kind, d) => { const a = [...d]; while (a.length < 7) a.push(0); const prev = a[6]; a[6] = m => m.kind === kind && (!prev || prev(m)); return a; };
-const GP = d => { const a = [...d]; while (a.length < 7) a.push(0); const prev = a[6]; a[6] = m => (m.kind === 'giro' || m.kind === 'perfil') && (!prev || prev(m)); return a; };
+// Campo de lista ['k','rótulo','select',opções,mostrar?]: leva o 'mostrar' para o índice 6 como os demais.
+const padDef = d => { const a = [...d]; if (a[2] === 'select' && typeof a[4] === 'function') { a[6] = a[4]; a[4] = 0; } while (a.length < 7) a.push(0); return a; };
+const only = (kind, d) => { const a = padDef(d); const prev = a[6]; a[6] = m => m.kind === kind && (!prev || prev(m)); return a; };
+const GP = d => { const a = padDef(d); const prev = a[6]; a[6] = m => (m.kind === 'giro' || m.kind === 'perfil') && (!prev || prev(m)); return a; };
+const isBody = m => m.vol || categoryOf(m)?.[0] === 'Corpo';
+const GT = d => { const a = padDef(d), prev = a[6]; a[6] = m => (m.kind === 'giro' || m.kind === 'perfil') && !isBody(m) && (!prev || prev(m)); return a; };
 const G = d => only('giro', d), P = d => only('placa', d), B = d => only('bisnaga', d), N = d => only('gargalo', d);
-const notK = (kinds, d) => { const a = [...d]; while (a.length < 7) a.push(0); a[6] = m => !kinds.includes(m.kind); return a; };
+const notK = (kinds, d) => { const a = padDef(d); a[6] = m => !kinds.includes(m.kind); return a; };
 const K = d => only('spray', d), isType = t => m => m.sprayType === t;
-const GB = d => { const a = [...d]; while (a.length < 7) a.push(0); const prev = a[6]; a[6] = m => ['giro', 'bisnaga', 'perfil'].includes(m.kind) && (!prev || prev(m)); return a; };
+const GB = d => { const a = padDef(d); const prev = a[6]; a[6] = m => ['giro', 'bisnaga', 'perfil'].includes(m.kind) && (!prev || prev(m)); return a; };
 // Grupos do editor. Cada peça mostra só os grupos que valem para ela; o nome
 // do grupo dá o contexto, então os rótulos ficam curtos.
 const MF = [
@@ -1688,26 +1692,26 @@ const MF = [
     K(['pescWave', 'Pescante: ondulação em S', -15, 15, 0.5, 'mm', m => m.pesc]),
   ]],
   ['Abertura', [
-    GP(['topType', 'Sistema de abertura', 'select', [['nenhum', 'Nenhum'], ['flip', 'Flip-top (tampinha com dobradiça)'], ['disc', 'Disc-top (disco basculante)']]]),
-    GP(['openPct', 'Abrir', 0, 100, 1, '%', m => m.topType !== 'nenhum']),
-    GP(['lidSide', 'Tampinha fica', 'select', [['cima', 'Em cima'], ['baixo', 'Embaixo (bisnaga em pé na tampa)']], m => m.topType === 'flip']),
-    GP(['orifD', 'Furo do bico: diâmetro', 1, 12, 0.1, 'mm', m => m.topType === 'flip']),
-    GP(['discD', 'Disco: diâmetro', 6, 120, 0.5, 'mm', m => m.topType === 'disc']),
-    GP(['discDip', 'Rebaixo da borda (sela)', 0, 20, 0.5, 'mm', m => m.topType === 'disc']),
-    GP(['discRise', 'Disco sobressai da borda', 0, 10, 0.1, 'mm', m => m.topType === 'disc']),
-    GP(['discDimple', 'Concavidade de apertar', 0, 4, 0.1, 'mm', m => m.topType === 'disc']),
-    GP(['groove', 'Linha de abertura (mm do topo, 0 = sem)', 0, 100, 0.5, 'mm']),
-    GP(['grooveD', 'Profundidade da linha', 0.1, 3, 0.1, 'mm', m => m.groove > 0]),
+    GT(['topType', 'Sistema de abertura', 'select', [['nenhum', 'Nenhum'], ['flip', 'Flip-top (tampinha com dobradiça)'], ['disc', 'Disc-top (disco basculante)']]]),
+    GT(['openPct', 'Abrir', 0, 100, 1, '%', m => m.topType !== 'nenhum']),
+    GT(['lidSide', 'Tampinha fica', 'select', [['cima', 'Em cima'], ['baixo', 'Embaixo (bisnaga em pé na tampa)']], m => m.topType === 'flip']),
+    GT(['orifD', 'Furo do bico: diâmetro', 1, 12, 0.1, 'mm', m => m.topType === 'flip']),
+    GT(['discD', 'Disco: diâmetro', 6, 120, 0.5, 'mm', m => m.topType === 'disc']),
+    GT(['discDip', 'Rebaixo da borda (sela)', 0, 20, 0.5, 'mm', m => m.topType === 'disc']),
+    GT(['discRise', 'Disco sobressai da borda', 0, 10, 0.1, 'mm', m => m.topType === 'disc']),
+    GT(['discDimple', 'Concavidade de apertar', 0, 4, 0.1, 'mm', m => m.topType === 'disc']),
+    GT(['groove', 'Linha de abertura (mm do topo, 0 = sem)', 0, 100, 0.5, 'mm']),
+    GT(['grooveD', 'Profundidade da linha', 0.1, 3, 0.1, 'mm', m => m.groove > 0]),
   ]],
   ['Entalhe', [
-    GP(['notch', 'Entalhe de abertura (pega do dedo)', 'check']),
-    GP(['notchLock', 'Começa na linha de abertura', 'check', 0, 0, 0, m => m.notch]),
-    GP(['notchY', 'Começa a (mm do topo)', 0, 100, 0.5, 'mm', m => m.notch && !(m.notchLock && m.groove > 0)]),
-    GP(['notchW', 'Largura', 2, 120, 0.5, 'mm', m => m.notch]),
-    GP(['notchH', 'Altura', 1, 60, 0.5, 'mm', m => m.notch]),
-    GP(['notchD', 'Profundidade', 0.2, 8, 0.1, 'mm', m => m.notch]),
-    GP(['notchP', 'Meia-lua → fenda', 2, 12, 0.1, '', m => m.notch]),
-    GP(['notchUp', 'Acima da linha', 'check', 0, 0, 0, m => m.notch]),
+    GT(['notch', 'Entalhe de abertura (pega do dedo)', 'check']),
+    GT(['notchLock', 'Começa na linha de abertura', 'check', 0, 0, 0, m => m.notch]),
+    GT(['notchY', 'Começa a (mm do topo)', 0, 100, 0.5, 'mm', m => m.notch && !(m.notchLock && m.groove > 0)]),
+    GT(['notchW', 'Largura', 2, 120, 0.5, 'mm', m => m.notch]),
+    GT(['notchH', 'Altura', 1, 60, 0.5, 'mm', m => m.notch]),
+    GT(['notchD', 'Profundidade', 0.2, 8, 0.1, 'mm', m => m.notch]),
+    GT(['notchP', 'Meia-lua → fenda', 2, 12, 0.1, '', m => m.notch]),
+    GT(['notchUp', 'Acima da linha', 'check', 0, 0, 0, m => m.notch]),
   ]],
   ['Frisos', [
     G(['ridges', 'Frisos na faixa reta do meio', 0, 120, 1, '']),
