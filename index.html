@@ -367,7 +367,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-25.sem-tipo-valvula';
+const BUILD = '2026-09-25.sextavada-frisos';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -894,12 +894,20 @@ function tubePumpGeo(m, y0, lo) {
 // seis faces com chanfro nas bordas e, em cima, o colarinho redondo onde o tubo encaixa.
 function hexCapGeo(m, y0, lo) {
   const R = m.W / 2, hexH = Math.max(1.5, m.h - m.actH), ch = Math.min(0.8, hexH * 0.2, R * 0.08);
-  const prism = (rt, rb, h, y) => { const g = new THREE.CylinderGeometry(rt, rb, h, 6).toNonIndexed(); g.deleteAttribute('uv'); g.translate(0, y + h / 2, 0); return g; };
-  const hex = mergeGeometries([prism(R, R - ch, ch, y0), prism(R, R, hexH - 2 * ch, y0 + ch), prism(R - ch, R, ch, y0 + hexH - ch)]);
-  hex.rotateY(Math.PI / 6); // uma face reta virada para a frente
-  hex.computeVertexNormals();
+  // Contorno sextavado (cantos a 30°+60°k: uma face reta fica de frente) com frisos
+  // verticais opcionais nas faces; extrudado para cima com chanfro nas bordas.
+  const NP = lo ? 120 : Math.max(360, (m.ridges | 0) * 12), C = [], sh = new THREE.Shape();
+  for (let k = 0; k < 6; k++) { const a = (30 + 60 * k) * Math.PI / 180; C.push([R * Math.cos(a), R * Math.sin(a)]); }
+  for (let i = 0; i < NP; i++) {
+    const t = i / NP * 6, k = Math.floor(t), f = t - k, A = C[k], B = C[(k + 1) % 6];
+    let x = A[0] + (B[0] - A[0]) * f, y = A[1] + (B[1] - A[1]) * f;
+    if (m.ridges > 0) { const d = m.ridgeD * (0.5 - 0.5 * Math.cos(TAU * m.ridges * i / NP)), r = Math.hypot(x, y); x -= x / r * d; y -= y / r * d; }
+    i ? sh.lineTo(x, y) : sh.moveTo(x, y);
+  }
+  const hex = new THREE.ExtrudeGeometry(sh, { depth: Math.max(0.2, hexH - 2 * ch), bevelEnabled: ch > 0, bevelThickness: ch, bevelSize: ch * 0.9, bevelOffset: -ch * 0.9, bevelSegments: lo ? 1 : 2, curveSegments: 1 });
+  hex.deleteAttribute('uv'); hex.rotateX(-Math.PI / 2); hex.translate(0, y0 + ch, 0);
   const col = moduleGeo({ ...BASE, kind: 'giro', W: m.actW, D: m.actW, h: m.actH + 0.4, rBot: 0, rTop: Math.min(0.8, m.actH * 0.15) }, y0 + hexH - 0.4, { lo });
-  const g = mergeGeometries([hex, col.index ? col.toNonIndexed() : col]);
+  const g = mergeGeometries([hex.index ? hex.toNonIndexed() : hex, col.index ? col.toNonIndexed() : col]);
   g.rotateY(-m.dir * Math.PI / 180); if (m.ox) g.translate(m.ox, 0, 0);
   g.userData.extras = [];
   return g;
