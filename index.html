@@ -154,6 +154,13 @@ canvas{display:block;width:100%;height:100%;touch-action:none}
     <div class="row">
       <select id="pngRes"><option value="2048">2048 px</option><option value="3072">3072 px</option><option value="4096" selected>4096 px</option></select>
     </div>
+    <div class="row">
+      <select id="pngLight"><option value="studio" selected>Luz estúdio / HDR</option><option value="atual">Luz atual da cena</option><option value="soft">Luz suave</option><option value="contrast">Luz com mais contraste</option><option value="hdr">HDR carregado</option></select>
+    </div>
+    <div class="row">
+      <button class="btn" id="hdrBtn">Carregar HDR</button>
+      <input type="file" id="hdrFile" accept=".hdr,image/vnd.radiance" class="hidden">
+    </div>
     <label class="chk"><input type="checkbox" id="pngTransp" checked> Fundo transparente</label>
     <label class="chk"><input type="checkbox" id="pngShadow" checked> Incluir sombra</label>
     <div class="row"><button class="btn pri" id="dlPng">Baixar PNG</button></div>
@@ -190,6 +197,7 @@ canvas{display:block;width:100%;height:100%;touch-action:none}
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { RGBELoader } from 'three/addons/loaders/RGBELoader.js';
 import { GLTFExporter } from 'three/addons/exporters/GLTFExporter.js';
 import { STLExporter } from 'three/addons/exporters/STLExporter.js';
 import { OBJExporter } from 'three/addons/exporters/OBJExporter.js';
@@ -299,7 +307,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-24.bico-dosador.subtle-pescante';
+const BUILD = '2026-09-24.bico-dosador.hdr-png-light';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -1146,9 +1154,11 @@ renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
 const scene = new THREE.Scene();
 const pmrem = new THREE.PMREMGenerator(renderer);
-scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+const roomEnv = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+scene.environment = roomEnv;
 scene.environmentIntensity = 0.9;
-scene.add(new THREE.HemisphereLight(0xffffff, 0xe6e0da, 0.35));
+const hemi = new THREE.HemisphereLight(0xffffff, 0xe6e0da, 0.35);
+scene.add(hemi);
 const sun = new THREE.DirectionalLight(0xffffff, 1.5);
 sun.position.set(160, 420, 260); sun.castShadow = true;
 sun.shadow.mapSize.set(2048, 2048);
@@ -2369,18 +2379,51 @@ function download(blob, name) {
 }
 function toast(msg) { const t = $('#toast'); t.textContent = msg; t.classList.add('on'); clearTimeout(toast.t); toast.t = setTimeout(() => t.classList.remove('on'), 2200); }
 
+const HDR = { env: null, url: null, name: '' };
+function applyPngLighting(mode) {
+  const keep = { env: scene.environment, envI: scene.environmentIntensity, hemi: hemi.intensity, sun: sun.intensity, sunPos: sun.position.clone() };
+  if (mode === 'atual') return keep;
+  const env = mode === 'hdr' && HDR.env ? HDR.env : roomEnv;
+  scene.environment = env;
+  if (mode === 'soft') {
+    scene.environmentIntensity = 1.05; hemi.intensity = 0.55; sun.intensity = 0.85; sun.position.set(140, 360, 280);
+  } else if (mode === 'contrast') {
+    scene.environmentIntensity = 1.15; hemi.intensity = 0.18; sun.intensity = 2.1; sun.position.set(-180, 460, 220);
+  } else {
+    scene.environmentIntensity = HDR.env && mode === 'hdr' ? 1.25 : 1.35; hemi.intensity = 0.42; sun.intensity = 1.15; sun.position.set(180, 420, 300);
+  }
+  return keep;
+}
+function restorePngLighting(keep) {
+  scene.environment = keep.env; scene.environmentIntensity = keep.envI; hemi.intensity = keep.hemi; sun.intensity = keep.sun; sun.position.copy(keep.sunPos);
+}
+$('#hdrBtn').onclick = () => $('#hdrFile').click();
+$('#hdrFile').onchange = e => {
+  const f = e.target.files[0]; if (!f) return;
+  const url = URL.createObjectURL(f);
+  new RGBELoader().load(url, tex => {
+    const env = pmrem.fromEquirectangular(tex).texture;
+    tex.dispose(); HDR.env?.dispose(); if (HDR.url) URL.revokeObjectURL(HDR.url);
+    HDR.env = env; HDR.url = url; HDR.name = f.name;
+    $('#pngLight').value = 'hdr';
+    toast(`HDR carregado: ${f.name}`);
+    req();
+  }, undefined, () => { URL.revokeObjectURL(url); toast('Não consegui carregar esse HDR'); });
+  e.target.value = '';
+};
+
 $('#dlPng').onclick = () => {
   const res = +$('#pngRes').value, size = renderer.getSize(new THREE.Vector2()), pr = renderer.getPixelRatio();
   const aspect = size.x / size.y;
   const w = aspect >= 1 ? res : Math.round(res * aspect), h = aspect >= 1 ? Math.round(res / aspect) : res;
-  const keep = { grid: grid.visible, ref: refMesh.visible, bg: scene.background, ground: ground.visible };
+  const keep = { grid: grid.visible, ref: refMesh.visible, bg: scene.background, ground: ground.visible, light: applyPngLighting($('#pngLight').value) };
   grid.visible = false; refMesh.visible = false;
   if ($('#pngTransp').checked) scene.background = null;
   ground.visible = $('#pngShadow').checked;
   renderer.setPixelRatio(1); renderer.setSize(w, h, false);
   renderer.render(scene, cam);
   const data = renderer.domElement.toDataURL('image/png');
-  grid.visible = keep.grid; refMesh.visible = keep.ref; scene.background = keep.bg; ground.visible = keep.ground;
+  grid.visible = keep.grid; refMesh.visible = keep.ref; scene.background = keep.bg; ground.visible = keep.ground; restorePngLighting(keep.light);
   renderer.setPixelRatio(pr); renderer.setSize(size.x, size.y, false); req();
   fetch(data).then(r => r.blob()).then(b => download(b, fname('png')));
 };
