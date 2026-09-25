@@ -250,8 +250,7 @@ const BASE = {
 };
 const LIB = {
   capsula: { name: 'Corpo cápsula', W: 58, D: 58, h: 160, rBot: 29, rTop: 29, vol: true },
-  perfumeOval: { name: 'Corpo perfume oval', W: 72, D: 46, n: 2.6, h: 86, taper: 74, bulge: 18, bulgePos: 38, rBot: 8, rTop: 31, vol: true,
-             liq: true, liqLevel: 78, liqColor: '#b34a12', finish: 'vidro' },
+  perfumeOval: { name: 'Corpo perfume redondo', W: 72, D: 72, n: 2, h: 86, taper: 74, bulge: 18, bulgePos: 38, rBot: 8, rTop: 31, vol: true },
   reto:    { name: 'Corpo reto', W: 58, D: 58, h: 140, rBot: 8, rTop: 12, vol: true },
   boston:  { name: 'Corpo Boston (farmacêutico)', W: 60, D: 60, h: 130, rBot: 4, rTop: 24, vol: true },
   quadrado: { name: 'Corpo quadrado', W: 56, D: 56, n: 7, h: 118, rBot: 5, rTop: 9, vol: true },
@@ -311,7 +310,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-24.bico-dosador.perfume-taca';
+const BUILD = '2026-09-24.bico-dosador.perfume-taca-bege';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -411,11 +410,11 @@ const NECK = (std, o = {}) => M('gargalo', { neckStd: std, ...NECKS[std], D: NEC
 const PRESETS = {
   'Cápsula + esfera': { color: BEIGE, finish: 'fosco', modules: [
     M('capsula', { rBot: 12 }), NECK('24/410'), M('esfera')] },
-  'Perfume taça': { color: '#9b2d4e', finish: 'vidro', modules: [
-    M('perfumeOval', { color: '#9a3a15', liqColor: '#e85a12' }),
-    NECK('24/410', { h: 13, ringH: 2.4, ringW: 2.6, embed: 6, own: true, color: '#3a130e', finish: 'vidro' }),
-    M('anel', { W: 33, D: 33, h: 5, rBot: 1, rTop: 1.2, own: true, color: '#3a130e', finish: 'vidro' }),
-    M('taca', { W: 35, D: 35, h: 38, own: true, color: '#d92d1b', finish: 'acetinado' })] },
+  'Perfume taça': { color: BEIGE, finish: 'fosco', modules: [
+    M('perfumeOval'),
+    NECK('24/410', { h: 13, ringH: 2.4, ringW: 2.6, embed: 6 }),
+    M('anel', { W: 33, D: 33, h: 5, rBot: 1, rTop: 1.2 }),
+    M('taca', { W: 35, D: 35, h: 38 })] },
   'Seixo com fenda': { color: BEIGE, finish: 'fosco', modules: [
     M('plano', { W: 78, D: 44, n: 3.2, h: 132, rBot: 16, rTop: 16 }), NECK('24/410'), M('seixo')] },
   'Domo meia-lua': { color: BEIGE, finish: 'fosco', modules: [
