@@ -388,7 +388,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-25.ombro-acompanha-gargalo';
+const BUILD = '2026-09-25.saia-draft';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -1592,6 +1592,11 @@ function shoulderDrop(m, R) {
 // Quanto a superfície do corpo desce do topo no raio R (ombro arredondado).
 // Em seção não redonda usa o lado mais largo (o ponto mais alto de contato).
 function surfaceDrop(m, R) {
+  if (m.kind === 'perfil') { // corpo medido da Draft: desce pelo perfil até a largura R
+    const top = m.h - Math.max(0, m.cutTop || 0);
+    for (let y = top; y >= Math.max(0, top - 40); y -= 0.25) { const q = profAt(m, y); if (Math.max(q.a, q.b) >= R) return m.h - y; }
+    return m.h - top;
+  }
   if (m.kind !== 'giro') return 0;
   const a0 = Math.max(m.W, m.D) / 2 * (m.taper || 100) / 100, rT = clamp(m.rTop || 0, 0, Math.min(m.h / 2, a0));
   const rTw = m.rTopW > 0 ? m.rTopW : rT;
@@ -2136,7 +2141,7 @@ function buildInto(product, S, explodeAmt = 0) {
     // logo acima do corpo na borda dela (acompanha o ombro), escondendo anel e
     // gargalo. Tampas de base redonda (esfera etc.) ficam como são.
     const dn = L[i - 1]?.m, bd = L[i - 2]?.m;
-    if (m0.kind !== 'gargalo' && dn?.kind === 'gargalo' && L[i - 1].idx === idx - 1 && bd?.vol && bd.kind === 'giro'
+    if (m0.kind !== 'gargalo' && dn?.kind === 'gargalo' && L[i - 1].idx === idx - 1 && bd?.vol && (bd.kind === 'giro' || bd.kind === 'perfil')
       && Math.min(m0.W, m0.D) > dn.W + 1 && (m0.kind === 'spray' || (m0.rBot || 0) <= 3)) { // o anel já fica reduzido por baixo da peça
       const Rc = Math.min(m0.W, m0.D) / 2 - (m0.kind === 'spray' ? 0.6 : (m0.rBot || 0));
       const surf = L[i - 2].y0 + bd.h - surfaceDrop(bd, Rc), ext = y0 - (surf + 0.4);
