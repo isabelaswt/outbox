@@ -299,7 +299,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-24.bico-dosador.no-tube-pescante';
+const BUILD = '2026-09-24.bico-dosador.subtle-pescante';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -1197,8 +1197,8 @@ const matCache = new Map();
 const sleeveMat = new THREE.MeshStandardMaterial({ color: '#dfe3e6', roughness: 0.3, transparent: true, opacity: 0.32, depthTest: false, depthWrite: false });
 const insertMat = new THREE.MeshStandardMaterial({ color: '#ececea', roughness: 0.35 });
 const holeMat = new THREE.MeshStandardMaterial({ color: '#151515', roughness: 0.8 });
-// Opaco: peças transmissivas não aparecem através do frasco transparente.
-const pescMat = new THREE.MeshPhysicalMaterial({ color: '#b9bec2', roughness: 0.35, clearcoat: 0.4 });
+// Plástico translúcido leitoso: presente, mas discreto dentro do frasco.
+const pescMat = new THREE.MeshStandardMaterial({ color: '#d9dddc', roughness: 0.28, transparent: true, opacity: 0.28, depthWrite: false });
 function material(color, finish) {
   const key = color + finish;
   if (matCache.has(key)) return matCache.get(key);
