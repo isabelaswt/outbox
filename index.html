@@ -77,8 +77,7 @@ canvas{display:block;width:100%;height:100%;touch-action:none}
 {"imports":{
   "three":"https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js",
   "three/addons/":"https://cdn.jsdelivr.net/npm/three@0.169.0/examples/jsm/",
-  "three-mesh-bvh":"https://cdn.jsdelivr.net/npm/three-mesh-bvh@0.8.3/build/index.module.js",
-  "three-bvh-csg":"https://cdn.jsdelivr.net/npm/three-bvh-csg@0.0.17/build/index.module.js"
+  "three-mesh-bvh":"https://cdn.jsdelivr.net/npm/three-mesh-bvh@0.8.3/build/index.module.js"
 }}
 </script>
 </head>
@@ -197,7 +196,6 @@ import { OBJExporter } from 'three/addons/exporters/OBJExporter.js';
 import { mergeGeometries, mergeVertices } from 'three/addons/utils/BufferGeometryUtils.js';
 import { DecalGeometry } from 'three/addons/geometries/DecalGeometry.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
-import { Brush, Evaluator, SUBTRACTION } from 'three-bvh-csg';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -294,7 +292,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-24.bico-dosador.logo-smooth';
+const BUILD = '2026-09-24.bico-dosador.logo-wrap-smooth';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -1148,10 +1146,8 @@ function build() {
 // sai dessa máscara: nada de triangular contornos, que quebra com fontes.
 const maskCache = new Map();
 const LOGO_MASK_MAX = 2400;
-const LOGO_SKIN_STEP = 0.04;
-const LOGO_SKIN_MAX = 900;
-const LOGO_SLAB_STEP = 0.10;
-const LOGO_SLAB_MAX = 620;
+const LOGO_SKIN_STEP = 0.055;
+const LOGO_SKIN_MAX = 620;
 const LOGO_BEVEL_MM = 0.7;
 function logoMask(svg) {
   if (maskCache.has(svg)) return maskCache.get(svg);
@@ -1244,7 +1240,11 @@ function logoFrame(L, target, M) {
   // Na lateral (normal mais horizontal que vertical) o logo envolve a peça:
   // a largura vira comprimento ao longo da circunferência, como um rótulo.
   const wrap = Math.abs(n.y) < 0.7, th0 = Math.atan2(c.z, c.x - ox);
-  const surfAt = (th, yy) => { const d = new V(Math.cos(th), 0, Math.sin(th)); return cast(new V(ox + d.x * 1000, yy, d.z * 1000), d.clone().negate()); };
+  const surfAt = (th, yy) => {
+    const d = new V(Math.cos(th), 0, Math.sin(th));
+    const h = cast(new V(ox + d.x * 1000, yy, d.z * 1000), d.clone().negate());
+    return h ? { point: h.point, normal: d } : null;
+  };
   // Comprimento real ao longo do contorno em cada altura (tabela arco → ponto),
   // andando pela superfície em passos pequenos: não distorce em seção oval/achatada.
   const arcs = new Map(), maxS = Math.hypot(W, H) / 2 + 2, dth = 0.35 * Math.PI / 180;
@@ -1253,11 +1253,11 @@ function logoFrame(L, target, M) {
     const start = surfAt(th0, yy), t = { fwd: [], back: [] };
     if (start) for (const [dir, sign] of [['fwd', -1], ['back', 1]]) {
       let th = th0, prev = start.point, acc = 0;
-      t[dir].push({ s: 0, p: start.point, n: start.face.normal });
+      t[dir].push({ s: 0, p: start.point, n: start.normal });
       for (let i = 0; i < 1000 && acc < maxS; i++) {
         th += sign * dth; const h = surfAt(th, yy); if (!h) break;
         acc += h.point.distanceTo(prev); prev = h.point;
-        t[dir].push({ s: acc, p: h.point, n: h.face.normal });
+        t[dir].push({ s: acc, p: h.point, n: h.normal });
       }
     }
     arcs.set(key, t); return t;
@@ -1308,19 +1308,6 @@ function logoSkin(L, F, M, base, top) {
   g.computeVertexNormals();
   return g;
 }
-// Caixa rasa assentada na superfície, do tamanho do logo: é o que se recorta
-// da peça no baixo-relevo (depois a pele cavada preenche o recorte).
-function logoSlab(F, depth) {
-  const { gw, gh } = logoGrid(F, LOGO_SLAB_STEP, 90, LOGO_SLAB_MAX);
-  const box = new THREE.BoxGeometry(1, 1, 1, gw, gh, 1);
-  box.deleteAttribute('uv'); box.deleteAttribute('normal');
-  const p = box.attributes.position;
-  for (let i = 0; i < p.count; i++) {
-    const u = p.getX(i) + 0.5, v = 0.5 - p.getY(i), s = F.onSurface(u, v), z = p.getZ(i) > 0 ? 0.6 : -(Math.abs(depth) + 0.4);
-    p.setXYZ(i, s.p.x + s.n.x * z, s.p.y + s.n.y * z, s.p.z + s.n.z * z);
-  }
-  return box;
-}
 let logoTimer;
 let logoRun = 0;
 function scheduleLogos() { clearTimeout(logoTimer); if (S.logos?.length) logoTimer = setTimeout(applyLogos, 120); }
@@ -1328,26 +1315,17 @@ async function applyLogos() {
   const run = ++logoRun;
   const masks = await Promise.all(S.logos.map(L => logoMask(L.svg)));
   if (run !== logoRun) return; // já veio outra montagem
-  const ev = new Evaluator(); ev.attributes = ['position', 'normal']; ev.useGroups = false;
-  const solid = geo => { const c = geo.clone(); c.deleteAttribute('normal'); const w = mergeVertices(c, 1e-3); w.computeVertexNormals(); return w; };
   S.logos.forEach((L, li) => {
     const M = masks[li]; if (!L.n || !M) return;
     const target = product.children.find(o => o.userData.main && o.userData.uid === L.uid); if (!target) return;
     if (!target.geometry.boundsTree) target.geometry.computeBoundsTree();
     const F = logoFrame(L, target, M);
     const emboss = L.depth >= 0;
-    // Alto-relevo: pele levemente por dentro da peça, saindo onde tem logo.
-    // Baixo-relevo: recorta uma caixa rasa e preenche com a pele cavada.
-    const skin = emboss ? logoSkin(L, F, M, -0.05, L.depth) : logoSkin(L, F, M, 0, L.depth);
-    if (!emboss) {
-      try {
-        const slab = logoSlab(F, L.depth);
-        const r = ev.evaluate(new Brush(solid(target.geometry)), new Brush(solid(slab)), SUBTRACTION);
-        target.geometry.disposeBoundsTree?.(); target.geometry.dispose();
-        target.geometry = r.geometry; target.geometry.computeBoundsTree();
-      } catch (e) { toast('Não consegui cavar o logo nesta peça'); return; }
-    }
+    // Alto-relevo fica levemente embutido na base; baixo-relevo usa uma pele
+    // cavada sem boolean pesado, para não travar com logos complexos.
+    const skin = emboss ? logoSkin(L, F, M, -0.05, L.depth) : logoSkin(L, F, M, 0.025, L.depth);
     const lm = new THREE.Mesh(skin, emboss && L.own ? material(L.color, L.finish) : target.material);
+    if (!emboss) { lm.material = lm.material.clone(); lm.material.depthTest = false; lm.renderOrder = 20; }
     lm.castShadow = true; lm.receiveShadow = true; lm.userData = { logo: true, idx: target.userData.idx }; lm.name = `logo_${L.name}`;
     product.add(lm);
   });
