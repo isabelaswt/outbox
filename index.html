@@ -389,7 +389,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-25.pipeta-vidro-real';
+const BUILD = '2026-09-25.vidro-fosco';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -664,7 +664,8 @@ function buildDraftPresets() {
   }
 }
 
-const FINISHES = [['fosco', 'Fosco'], ['acetinado', 'Acetinado'], ['brilho', 'Brilho'], ['perolado', 'Perolado'], ['vidro', 'Transparente / vidro'], ['metal', 'Metalizado']];
+const FINISHES = [['fosco', 'Fosco'], ['acetinado', 'Acetinado'], ['brilho', 'Brilho'], ['perolado', 'Perolado'], ['vidro', 'Transparente / vidro'], ['vidroFosco', 'Vidro fosco (jateado)'], ['metal', 'Metalizado']];
+const isGlass = f => f === 'vidro' || f === 'vidroFosco';
 
 const typeKey = m => m?.type || Object.keys(LIB).find(k => LIB[k].name === m?.name);
 const isSphereCap = m => ['esfera', 'esferaBisnaga'].includes(typeKey(m));
@@ -1732,12 +1733,19 @@ const pescMat = new THREE.MeshStandardMaterial({ color: '#e4e6e3', roughness: 0.
 // Pipeta de vidro do conta-gotas (vista por dentro do frasco transparente).
 // Vidro fino: quase invisível de frente e marcado nas bordas (efeito fresnel), com as
 // duas paredes do tubo aparecendo.
-const pipetteMat = new THREE.MeshPhysicalMaterial({ color: '#f7faf9', roughness: 0.05, metalness: 0, clearcoat: 1, clearcoatRoughness: 0.04,
-  transparent: true, opacity: 1, depthWrite: false, side: THREE.DoubleSide });
-pipetteMat.onBeforeCompile = sh => {
-  sh.fragmentShader = sh.fragmentShader.replace('#include <opaque_fragment>',
-    'float fres = pow(1.0 - abs(dot(normalize(vViewPosition), normal)), 2.2);\n diffuseColor.a = mix(0.05, 0.7, fres);\n#include <opaque_fragment>');
-};
+function glassTubeMat(a0, a1) {
+  const g = new THREE.MeshPhysicalMaterial({ color: '#f7faf9', roughness: 0.05, metalness: 0, clearcoat: 1, clearcoatRoughness: 0.04,
+    transparent: true, opacity: 1, depthWrite: false, side: THREE.DoubleSide });
+  g.onBeforeCompile = sh => {
+    sh.fragmentShader = sh.fragmentShader.replace('#include <opaque_fragment>',
+      `float fres = pow(1.0 - abs(dot(normalize(vViewPosition), normal)), 2.2);\n diffuseColor.a = mix(${a0}, ${a1}, fres);\n#include <opaque_fragment>`);
+  };
+  g.customProgramCacheKey = () => `tubo${a0}_${a1}`;
+  return g;
+}
+const pipetteMat = glassTubeMat(0.05, 0.7);
+// Atrás de vidro fosco (jateado): a pipeta aparece embaçada, bem mais apagada.
+const pipetteFrostMat = glassTubeMat(0.02, 0.22);
 function material(color, finish) {
   const key = color + finish;
   if (matCache.has(key)) return matCache.get(key);
@@ -1749,6 +1757,8 @@ function material(color, finish) {
   // Vidro não grava profundidade: o que é translúcido dentro dele (pipeta) aparece,
   // e as peças opacas da frente continuam cobrindo.
   if (finish === 'vidro') { m.roughness = 0.05; m.transmission = 1; m.thickness = 4; m.ior = 1.5; m.depthWrite = false; }
+  // Vidro fosco (jateado): transmite a luz mas embaça o que está dentro e atrás.
+  if (finish === 'vidroFosco') { m.roughness = 0.42; m.transmission = 1; m.thickness = 5; m.ior = 1.5; m.depthWrite = false; m.sheen = 0.2; m.sheenRoughness = 0.9; m.sheenColor = new THREE.Color('#ffffff'); }
   if (finish === 'metal') { m.metalness = 1; m.roughness = 0.24; }
   matCache.set(key, m);
   return m;
@@ -2092,8 +2102,9 @@ function liquidMeshes(m, y0) {
   // Cremoso (hidratante): sólido e brilhante, aparece pelo vidro por ser opaco.
   // Transparente (gel, tônico, óleo): translúcido; como o vidro só mostra por dentro
   // o que é opaco, é desenhado por cima do frasco, e só quando o frasco é transparente.
-  const clear = m.liqType === 'transparente', glass = (m.own ? m.finish : S.finish) === 'vidro';
-  const opts = clear ? { transparent: true, opacity: 1 - clamp(m.liqClear, 0, 95) / 100, depthWrite: false, depthTest: !glass, roughness: 0.05, clearcoat: 1 } : {};
+  const clear = m.liqType === 'transparente', glass = isGlass(m.own ? m.finish : S.finish);
+  const frost = (m.own ? m.finish : S.finish) === 'vidroFosco';
+  const opts = clear ? { transparent: true, opacity: (1 - clamp(m.liqClear, 0, 95) / 100) * (frost ? 0.55 : 1), depthWrite: false, depthTest: !glass, roughness: frost ? 0.5 : 0.05, clearcoat: frost ? 0 : 1 } : {};
   const mat = new THREE.MeshPhysicalMaterial({ color: m.liqColor, roughness: 0.12, clearcoat: 0.6, clippingPlanes: clip, ...opts });
   const out = [new THREE.Mesh(inner, mat)];
   const cap = m.liqLevel < 99.5 ? levelCap(inner, level - 0.01) : null;
@@ -2134,7 +2145,7 @@ function buildInto(product, S, explodeAmt = 0) {
   product.children.forEach(o => { o.geometry.dispose(); if (o.userData.liquid) o.material.dispose(); });
   product.clear();
   const base = layout(S), floor = Math.min(...base.filter(e => e.m.vol).map(e => e.y0));
-  const glassBody = base.some(e => e.m.vol && (e.m.own ? e.m.finish : S.finish) === 'vidro');
+  const glassBody = base.some(e => e.m.vol && isGlass(e.m.own ? e.m.finish : S.finish));
   const L = layout(S, explodeAmt);
   const tubeBody = base.some(e => e.m.kind === 'bisnaga' && e.m.vol);
   const valvePesc = !tubeBody && S.modules.some(v => v.kind === 'spray' && v.pesc && !['pushpull', 'bico', 'sport', 'tubo', 'sextavada'].includes(v.sprayType));
@@ -2193,7 +2204,8 @@ function buildInto(product, S, explodeAmt = 0) {
       if (pg && m.sprayType === 'gotas') {
         // Conta-gotas: a pipeta é sempre de vidro (o resto do acabamento é livre).
         // Num frasco opaco ela fica escondida; no Explodir ou no frasco transparente aparece.
-        const pm = new THREE.Mesh(pg, pipetteMat); pm.userData.idx = idx;
+        const frost = base.some(e => e.m.vol && (e.m.own ? e.m.finish : S.finish) === 'vidroFosco');
+        const pm = new THREE.Mesh(pg, frost ? pipetteFrostMat : pipetteMat); pm.userData.idx = idx;
         pm.name = `${String(idx + 1).padStart(2, '0')}_pipeta`; pm.renderOrder = 18; product.add(pm);
       } else if (pg) add(pg, 'pescante');
     }
@@ -2800,7 +2812,7 @@ function renderBodyLiquid(ed, m) {
   const before = [...ed.querySelectorAll('.grp')].find(g => ['Encaixe', 'Cor'].includes(g.querySelector('summary').textContent));
   before ? ed.insertBefore(grp, before) : ed.appendChild(grp);
   const ch = (k, structural) => {
-    if (k === 'liq' && m.liq && (m.own ? m.finish : S.finish) !== 'vidro') toast('Para ver o líquido, deixe o corpo em Transparente / vidro (Aparência)');
+    if (k === 'liq' && m.liq && !isGlass(m.own ? m.finish : S.finish)) toast('Para ver o líquido, deixe o corpo em Transparente / vidro (Aparência)');
     if (structural) renderEditorKeepScroll(); queueBuild();
   };
   field(grp, m, ['liq', 'Líquido dentro', 'check'], ch);
