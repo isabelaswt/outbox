@@ -389,7 +389,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-25.logo-nao-some';
+const BUILD = '2026-09-25.hotstamping-limpo';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -1921,16 +1921,20 @@ function logoFrame(L, target, M) {
   return { n, W, H, onSurface };
 }
 // Pele do logo: malha fina assentada na superfície, empurrada pela máscara.
-function logoSkin(L, F, M, base, top) {
+function logoSkin(L, F, M, base, top, trim = false) {
   const { gw: GW, gh: GH } = logoGrid(F, LOGO_SKIN_STEP, 140, LOGO_SKIN_MAX);
-  const pos = new Float32Array((GW + 1) * (GH + 1) * 3), nrm = new Float32Array(pos.length), idx = [];
+  const pos = new Float32Array((GW + 1) * (GH + 1) * 3), nrm = new Float32Array(pos.length), idx = [], rel = new Float32Array((GW + 1) * (GH + 1));
   for (let j = 0; j <= GH; j++) for (let i = 0; i <= GW; i++) {
-    const u = i / GW, v = j / GH, s = F.onSurface(u, v), z = base + (top - base) * sampleRelief(M, F, u, v, 1 / GW, 1 / GH), k = (j * (GW + 1) + i) * 3;
+    const u = i / GW, v = j / GH, s = F.onSurface(u, v), rv = sampleRelief(M, F, u, v, 1 / GW, 1 / GH), z = base + (top - base) * rv, k = (j * (GW + 1) + i) * 3;
+    rel[j * (GW + 1) + i] = rv;
     pos[k] = s.p.x + s.n.x * z; pos[k + 1] = s.p.y + s.n.y * z; pos[k + 2] = s.p.z + s.n.z * z;
     nrm[k] = s.n.x; nrm[k + 1] = s.n.y; nrm[k + 2] = s.n.z;
   }
   for (let j = 0; j < GH; j++) for (let i = 0; i < GW; i++) {
     const a = j * (GW + 1) + i, b = a + 1, c = a + GW + 1, d = c + 1;
+    // Alto-relevo: o fundo fora das letras fica embutido no frasco e não precisa
+    // existir (com cor/metal próprio ele aparecia como mancha em volta do logo).
+    if (trim && rel[a] < 0.01 && rel[b] < 0.01 && rel[c] < 0.01 && rel[d] < 0.01) continue;
     idx.push(a, c, b, b, c, d);
   }
   // Orientação por votação: várias faces da pele contra a normal da superfície
@@ -1970,7 +1974,7 @@ async function applyLogosTo(group, st, alive) {
     const emboss = L.depth >= 0;
     // Alto-relevo fica levemente embutido na base; baixo-relevo usa uma pele
     // cavada sem boolean pesado, para não travar com logos complexos.
-    const skin = emboss ? logoSkin(L, F, M, -0.05, L.depth) : logoSkin(L, F, M, 0.025, L.depth);
+    const skin = emboss ? logoSkin(L, F, M, -0.05, L.depth, true) : logoSkin(L, F, M, 0.025, L.depth);
     const lm = new THREE.Mesh(skin, emboss && L.own ? material(L.color, L.finish) : target.material);
     if (!emboss) { lm.material = lm.material.clone(); lm.material.depthTest = false; lm.renderOrder = 20; }
     lm.castShadow = true; lm.receiveShadow = true; lm.frustumCulled = false; // o logo nunca é tido como fora da tela
