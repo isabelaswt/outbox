@@ -376,7 +376,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-25.um-facetado';
+const BUILD = '2026-09-25.bico-curvo-furado';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -1097,9 +1097,13 @@ function sprayGeo(m, y0, { lo = false } = {}) {
       const tube = new THREE.TubeGeometry(curve, lo ? 12 : 64, m.spoutD / 2, lo ? 8 : 20);
       tube.deleteAttribute('uv'); head.push(tube);
       const tip = curve.getPoint(1), tan = curve.getTangent(1);
-      const hole = cyl(Math.max(m.spoutD / 2 - 0.4, 0.4), -0.2, 0.5);
-      hole.applyQuaternion(new THREE.Quaternion().setFromUnitVectors(new V(0, 1, 0), tan)); hole.translate(tip.x, tip.y, tip.z);
-      holes.push(hole);
+      // Ponta furada: aro com a espessura da parede do tubo e, por dentro, o furo
+      // escuro recuado (um tampão escuro, para não enxergar através do tubo).
+      const q = new THREE.Quaternion().setFromUnitVectors(new V(0, 0, 1), tan), ro = m.spoutD / 2, ri = Math.max(0.35, ro * 0.58);
+      const rim = new THREE.RingGeometry(ri, ro, lo ? 16 : 40); rim.deleteAttribute('uv');
+      rim.applyQuaternion(q); rim.translate(tip.x, tip.y, tip.z); head.push(rim);
+      const hole = cyl(ri, 0, 0.9); hole.rotateX(Math.PI / 2); hole.applyQuaternion(q);
+      hole.translate(tip.x - tan.x * 0.95, tip.y - tan.y * 0.95, tip.z - tan.z * 0.95); holes.push(hole);
     }
   }
   const hg = mergeGeometries(head.filter(Boolean));
