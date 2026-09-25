@@ -126,6 +126,14 @@ for pid, row in table.items():
         while j > 0 and max(full[j][1], full[j][2]) < 0.62 * amax: j -= 1
         yneck = bmin + (bmax - bmin) * full[min(j + 1, len(full) - 1)][0]
         cut = yneck if bmax - yneck > 1 else (cy if cy < bmax - 0.5 else bmax)
+        if cut < bmax - 1:
+            # refina: o corpo sobe pelo ombro até encostar na largura do gargalo
+            Qn = section(TB, cut + (bmax - cut) * 0.5)
+            nw0 = 2 * float(np.abs(Qn).max()) if len(Qn) else 0
+            if nw0:
+                k2 = len(full) - 1
+                while k2 > 0 and 2 * max(full[k2][1], full[k2][2]) <= nw0 + 2.5: k2 -= 1
+                cut = max(cut, bmin + (bmax - bmin) * full[min(k2 + 1, len(full) - 1)][0])
     bp = slices(TB, bmin, cut, 90)
     W = 2 * max(s[1] for s in bp); D = 2 * max(s[2] for s in bp); Hb = cut - bmin
     out['body'] = {'W': round(W, 2), 'D': round(D, 2), 'h': round(Hb, 2),

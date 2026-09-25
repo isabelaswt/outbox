@@ -231,6 +231,8 @@ const BASE = {
   skirtPct: 100, bandInset: 1.5, domeH: 4.5, spoutD: 3.2,
   pesc: true, pescD: 4, pescCurve: 0, pescWave: 0, pescGap: 3,
   mola: true, houseD: 8, springL: 18, coils: 11, sleeve: 'transparente',
+  // pescante do corpo (quando não há válvula na pilha)
+  bpesc: false, bpescD: 4, bpescGap: 3, bpescCurve: 0, bpescWave: 0,
   // sistema de abertura da tampa: flip-top (dobradiça na linha) ou disc-top.
   topType: 'nenhum', openPct: 0, lidSide: 'cima', orifD: 4, discD: 36, discDip: 4, discDimple: 1.2, discRise: 0,
   // bisnaga: tubo que achata até a solda mantendo o perímetro.
@@ -288,7 +290,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-24.pescante-no-corpo';
+const BUILD = '2026-09-24.pescante-em-todo-corpo';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -451,10 +453,13 @@ const DRAFT_CLOSURE = {
 };
 function draftClosure(d, id) {
   const nw = M(DRAFT_CLOSURE[id] || (d.cat === 'V' ? 'locao' : 'sobretampa')), valve = nw.kind === 'spray';
-  // virola medida: a fatia mais estreita do lado que encosta no corpo
+  // virola medida: a borda externa (a parte mais larga) do lado que encosta no
+  // corpo; e nunca mais estreita que o topo do corpo onde ela assenta
   const wAt = r => Math.min(r[1] * d.cap.W, r[2] * d.cap.D);
   const side = d.cap.prof.filter(r => (d.below ? r[0] >= 0.8 : r[0] <= 0.2));
-  const collar = Math.min(...side.map(wAt));
+  const bodyEnd = d.below ? d.body.prof[0] : d.body.prof[d.body.prof.length - 1];
+  const bodyTop = Math.min(bodyEnd[1] * d.body.W, bodyEnd[2] * d.body.D);
+  const collar = Math.max(...side.map(wAt), bodyTop + 0.8);
   scaleModule(nw, collar / collarOf(nw));
   if (!valve) {
     // tampa: altura, proporção e quadratura do original
@@ -1417,7 +1422,18 @@ function buildInto(product, S, explodeAmt = 0) {
   product.clear();
   const base = layout(S), floor = Math.min(...base.filter(e => e.m.vol).map(e => e.y0));
   const glassBody = base.some(e => e.m.vol && (e.m.own ? e.m.finish : S.finish) === 'vidro');
-  layout(S, explodeAmt).forEach(({ m, idx, y0 }, i) => {
+  const L = layout(S, explodeAmt);
+  const valvePesc = S.modules.some(v => v.kind === 'spray' && v.pesc && v.sprayType !== 'pushpull');
+  L.forEach(({ m: m0, idx, y0 }, i) => {
+    // O gargalo cabe na peça que o veste: anel de apoio nunca mais largo que
+    // ela, e a rosca nunca mais alta do que ela cobre (fica sempre escondida).
+    let m = m0;
+    const up = L[i + 1]?.m;
+    if (m0.kind === 'gargalo' && up && up.kind !== 'gargalo') {
+      const maxRing = Math.max(0, (Math.min(up.W, up.D) - m0.W) / 2 - 0.4);
+      const maxH = m0.ringH + up.h * Math.max(1, up.rep) - 0.3;
+      if (m0.ringW > maxRing || m0.h > maxH) m = { ...m0, ringW: Math.min(m0.ringW, maxRing), h: Math.max(m0.ringH + 2, Math.min(m0.h, maxH)) };
+    }
     const g = moduleGeo(m, y0); if (!g) return;
     const mesh = new THREE.Mesh(g, material(m.own ? m.color : S.color, m.own ? m.finish : S.finish));
     mesh.castShadow = true; mesh.receiveShadow = true;
@@ -1444,6 +1460,14 @@ function buildInto(product, S, explodeAmt = 0) {
       const len = yTop - (y0 - base[i].y0) - (floor + S.wall + m.pescGap);
       const pg = pescanteGeo(m, yTop - len, yTop);
       if (pg) add(pg, 'pescante');
+    }
+    // Pescante do próprio corpo: do topo do gargalo (ou do corpo) até o fundo.
+    if (m0.vol && m0.bpesc && !valvePesc && isFinite(floor)) {
+      const nx = L[i + 1]?.m.kind === 'gargalo' ? L[i + 1] : null;
+      const yTop = nx ? nx.y0 + nx.m.h - 1 : y0 + m0.h - 1, shift = y0 - base[i].y0;
+      const yBot = floor + S.wall + m0.bpescGap + shift;
+      const pg = yTop - yBot > 5 ? pescanteGeo({ pescD: m0.bpescD, pescCurve: m0.bpescCurve, pescWave: m0.bpescWave, ox: m0.ox || 0 }, yBot, yTop) : null;
+      if (pg) { const pm = new THREE.Mesh(pg, pescMat); pm.userData.idx = idx; pm.name = `${String(idx + 1).padStart(2, '0')}_pescante`; product.add(pm); }
     }
   });
 }
@@ -1817,7 +1841,7 @@ function renderEditor() {
 // do frasco). Mesmos valores do grupo "Mola e pescante" da válvula.
 function renderBodyPescante(ed) {
   const valves = S.modules.filter(v => v.kind === 'spray' && v.sprayType !== 'pushpull');
-  if (!valves.length) return;
+  const m = S.modules[sel];
   const openG = store.get('shape.openGroups', { Medidas: true, Formato: true });
   const grp = document.createElement('details'); grp.className = 'grp'; grp.open = !!openG.Pescante;
   grp.innerHTML = '<summary>Pescante</summary>';
@@ -1825,9 +1849,19 @@ function renderBodyPescante(ed) {
   // entra antes de Encaixe/Cor, junto das medidas do frasco
   const before = [...ed.querySelectorAll('.grp')].find(g => ['Encaixe', 'Cor'].includes(g.querySelector('summary').textContent));
   before ? ed.insertBefore(grp, before) : ed.appendChild(grp);
+  const ch = (k, structural) => { if (structural) renderEditorKeepScroll(); queueBuild(); };
+  if (!valves.length) {
+    // sem válvula: pescante do próprio corpo
+    field(grp, m, ['bpesc', 'Pescante (tubo até o fundo)', 'check'], ch);
+    if (m.bpesc) {
+      field(grp, m, ['bpescD', 'Diâmetro', 2, 10, 0.1, 'mm'], ch);
+      field(grp, m, ['bpescGap', 'Folga do fundo', 0, 20, 0.5, 'mm'], ch);
+      field(grp, m, ['bpescCurve', 'Curva no pé (− esquerda)', -40, 40, 0.5, 'mm'], ch);
+      field(grp, m, ['bpescWave', 'Ondulação em S', -15, 15, 0.5, 'mm'], ch);
+    }
+  }
   valves.forEach(v => {
     if (valves.length > 1) grp.insertAdjacentHTML('beforeend', `<div class="tip"><b>${v.name}</b></div>`);
-    const ch = (k, structural) => { if (structural) renderEditorKeepScroll(); queueBuild(); };
     field(grp, v, ['pesc', 'Pescante (tubo até o fundo)', 'check'], ch);
     if (!v.pesc) return;
     field(grp, v, ['pescD', 'Diâmetro', 2, 10, 0.1, 'mm'], ch);
