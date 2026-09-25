@@ -388,7 +388,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-25.gargalo-ajustavel-draft';
+const BUILD = '2026-09-25.ombro-acompanha-gargalo';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -447,6 +447,12 @@ function profAt(m, ly) {
   const L = k => (A[k] ?? 0) + ((B[k] ?? 0) - (A[k] ?? 0)) * f, sc = m.W / (m.W0 || m.W);
   return { a: L(1) * m.W / 2, b: L(2) * m.D / 2, n: clamp(L(3), 2, 12), cx: L(4) * sc, cz: L(5) * sc };
 }
+// Zona do ombro que fecha até o gargalo (frasco da Draft com rosca trocada).
+function shoulderZone(m) {
+  if (!(m.neckR > 0) || !(m.cutTop > 0)) return null;
+  const top = m.h - m.cutTop, L = clamp(Math.min(m.W, m.D) * 0.3, 4, top * 0.4);
+  return { y0: top - L, L };
+}
 function profSamples(m, lo) {
   const h = m.h, S = m.prof.map(r => r[0] * h), { rB, rT } = radii(m);
   for (let i = 0; i <= 20; i++) { const c = 1 - Math.cos(i / 20 * Math.PI / 2); S.push(rB * c, h - rT * c); }
@@ -457,6 +463,7 @@ function profSamples(m, lo) {
   }
   ribSamples(m, S);
   const top = h - Math.max(0, m.cutTop || 0); S.push(top); // corte do topo (rosca trocada por gargalo ajustável)
+  const sz = shoulderZone(m); if (sz) for (let i = 0; i <= (lo ? 6 : 24); i++) S.push(sz.y0 + sz.L * i / (lo ? 6 : 24));
   return [...new Set(S.filter(y => y >= 0 && y <= top).map(y => +y.toFixed(3)))].sort((a, b) => a - b);
 }
 // Bico da válvula medido no original, na escala atual.
@@ -1457,8 +1464,15 @@ function moduleGeo(m0, y0, opts = {}) {
     let r = 0, f = 0;
     if (pB > 0 && ly < pB) { const c = 1 - ly / pB; f = 1 - Math.sqrt(Math.max(0, 1 - c * c)); r = m.rBotW > 0 ? m.rBotW : pB; }
     else if (pT > 0 && ly > m.h - pT) { const c = 1 - (m.h - ly) / pT; f = 1 - Math.sqrt(Math.max(0, 1 - c * c)); r = m.rTopW > 0 ? m.rTopW : pT; }
-    const a = q.a - Math.min(r, q.a) * f, b = q.b - Math.min(r, q.b) * f;
-    return { y: y0 + lift + ly, ly, a: Math.max(a - g, 0.05), b: Math.max(b - g, 0.05), n: q.n, cx: q.cx, cz: q.cz };
+    let a = q.a - Math.min(r, q.a) * f, b = q.b - Math.min(r, q.b) * f, n = q.n;
+    // Topo cortado + gargalo menor: o ombro fecha em arco até a largura do gargalo.
+    const sh = shoulderZone(m);
+    if (sh && ly > sh.y0) {
+      const t = clamp((ly - sh.y0) / sh.L, 0, 1), k = 1 - Math.sqrt(Math.max(0, 1 - t * t));
+      const nr = Math.max(0, m.neckR - (inset ? S.wall : 0));
+      if (a > nr) a -= (a - nr) * k; if (b > nr) b -= (b - nr) * k; n = n + (2 - n) * k;
+    }
+    return { y: y0 + lift + ly, ly, a: Math.max(a - g, 0.05), b: Math.max(b - g, 0.05), n, cx: q.cx * (1 - (sh && ly > sh.y0 ? clamp((ly - sh.y0) / sh.L, 0, 1) : 0)), cz: q.cz * (1 - (sh && ly > sh.y0 ? clamp((ly - sh.y0) / sh.L, 0, 1) : 0)) };
   });
   if (!lo && !inset) for (const b of m.ribs || []) kmax = Math.max(kmax, b.k || 0);
   if (rings.length < 2) return null;
@@ -1589,6 +1603,8 @@ function surfaceDrop(m, R) {
 // reto do corpo, o arredondamento de cima recua na largura (a altura do ombro
 // fica), abrindo o topo para receber o gargalo.
 function openForNeck(body, neck) {
+  // Frasco da Draft com a rosca trocada: o topo fecha num ombro até o gargalo.
+  if (neck?.kind === 'gargalo' && body?.kind === 'perfil' && body.cutTop > 0) return { ...body, neckR: neck.W / 2 + 0.8 };
   if (!neck || neck.kind !== 'gargalo' || !body?.vol || body.kind !== 'giro') return body;
   const a0 = Math.min(body.W, body.D) / 2 * (body.taper || 100) / 100, rT = clamp(body.rTop || 0, 0, Math.min(body.h / 2, a0));
   if (!rT) return body;
