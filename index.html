@@ -352,7 +352,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-25.push-esportiva';
+const BUILD = '2026-09-25.tampa-bisnaga';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -595,8 +595,6 @@ function normalize(s) {
       if ((m.flatStart || 0) < 9) m.flatStart = 10;
     }
     if (m.type === 'tampaBisnaga') {
-      if (m.W <= 47.5) m.W = 50;
-      if (m.D <= 47.5) m.D = 50;
       if (m.h >= 32) m.h = 26;
       if ((m.rBot || 0) <= 3) m.rBot = 8;
       if ((m.rTop || 0) <= 1.2) m.rTop = 3;
@@ -608,6 +606,14 @@ function normalize(s) {
     }
   });
   s.modules.forEach(m => { if (m.kind === 'bisnaga') { m.pesc = false; m.bpesc = false; } });
+  // Tampa em que a bisnaga fica em pé: no máximo um pouco mais larga que a ponta
+  // redonda do tubo, para não virar pedestal.
+  s.modules.forEach((m, i) => {
+    const tube = s.modules[i + 1];
+    if (tube?.kind !== 'bisnaga' || m.kind === 'bisnaga' || m.kind === 'gargalo') return;
+    const want = tube.W + 1.5;
+    if (Math.max(m.W, m.D) > want + 1.5) scaleModule(m, want / Math.max(m.W, m.D));
+  });
   s.modules.forEach(m => {
     if (!isSphereCap(m)) return;
     if (typeof m.roundLock !== 'boolean') m.roundLock = true;
