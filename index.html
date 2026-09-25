@@ -289,7 +289,7 @@ const BASE = {
   kind: 'giro', ox: 0, rTL: 6, rTR: 6, rBL: 6, rBR: 6, rEdge: 3, chamfer: false,
   notchUp: false,
   // gargalo: rosca helicoidal + anel de apoio; W = diâmetro da rosca (T).
-  neckStd: '24/410', pitch: 3.18, turns: 1.5, threadD: 1, ringH: 1.6, ringW: 1.8, embed: 8,
+  neckStd: '24/410', pitch: 3.18, turns: 1.5, threadD: 1, ringH: 1.6, ringW: 1.8, embed: 8, neckFillet: 3,
   // válvula: W/h = virola que veste o gargalo; cabeça conforme o tipo; pescante até o fundo.
   sprayType: 'mist', actW: 20, actH: 16, stemH: 4, headH: 28, nozzleL: 14, dir: 0,
   collarR: 1.2, stemD: 7, armW: 9, armT: 4.5, droop: 2, outletD: 2.2, guideW: 0, guideH: 0, guideLine: 28,
@@ -388,7 +388,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-25.ombro-so-redondo';
+const BUILD = '2026-09-25.grupo-repeticao';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -829,7 +829,11 @@ function loftPts(pts) {
 // Gargalo: base que entra no corpo, anel de apoio e rosca helicoidal.
 function neckGeo(m, y0, { lo = false } = {}) {
   const R0 = m.W / 2, E = Math.max(R0 - m.threadD, 1), ringR = E + m.threadD + m.ringW, rh = m.ringH, h = m.h;
-  const prof = [[-m.embed, E], [0, E]];
+  // Entrada no corpo: abaixo do anel a base abre numa curva côncava (como garrafa
+  // soprada), para o gargalo não cortar seco o ombro arredondado do frasco.
+  const F = Math.max(0, m.neckFillet ?? 3), Lf = Math.min(F * 1.6, m.embed), prof = [[-m.embed, E + F]];
+  if (F > 0) for (let i = 12; i >= 0; i--) { const t = i / 12; prof.push([-Lf * t, E + F * (1 - Math.sqrt(Math.max(0, 1 - t * t)))]); }
+  prof.push([0, E]);
   if (rh > 0) prof.push([0.01, ringR - 0.4], [Math.min(0.4, rh / 2), ringR], [Math.max(rh - 0.4, rh / 2), ringR], [rh, ringR - 0.4], [rh + 0.01, E]);
   const step = lo ? 2 : 0.18;
   for (let y = rh + 0.2; y < h - 0.8; y += step) prof.push([y, E]);
@@ -2292,15 +2296,17 @@ const GB = d => { const a = padDef(d); const prev = a[6]; a[6] = m => ['giro', '
 const MF = [
   ['Medidas', [
     notK(['spray'], ['h', 'Altura', 1, 300, 0.5, 'mm']),
-    // Repetir empilha cópias da peça (ondas, anéis): fica à vista, junto da altura.
-    notK(['gargalo', 'spray'], ['rep', 'Repetir (empilhar cópias)', 1, 8, 1, '×']),
-    padDef(['repGap', 'Espaço entre repetições', 0, 20, 0.1, 'mm', m => !['gargalo', 'spray'].includes(m.kind) && m.rep > 1]),
     notK(['gargalo', 'spray'], ['W', 'Largura (frente)', 4, 200, 0.5, 'mm']),
     notK(['gargalo', 'spray'], ['D', 'Profundidade (lado)', 4, 200, 0.5, 'mm']),
     GP(['roundLock', 'Esfera: manter redonda', 'check', 0, 0, 0, isSphereCap]),
     GP(['sphereR', 'Raio da esfera', 0, 150, 0.5, 'mm', isSphereCap]),
     N(['neckStd', 'Padrão do acabamento (aprox.)', 'select', [...Object.keys(NECKS).map(k => [k, k]), ['livre', 'Livre']]]),
     N(['W', 'Diâmetro da rosca (T)', 8, 120, 0.1, 'mm']),
+  ]],
+  // Repetição tem grupo próprio: empilha cópias da peça (ondas, anéis).
+  ['Repetição', [
+    notK(['gargalo', 'spray'], ['rep', 'Repetir (empilhar cópias)', 1, 8, 1, '×']),
+    padDef(['repGap', 'Espaço entre repetições', 0, 20, 0.1, 'mm', m => !['gargalo', 'spray'].includes(m.kind) && m.rep > 1]),
   ]],
   ['Formato', [
     G(['n', 'Seção: oval → retângulo', 2, 10, 0.1, '', m => !(m.sides >= 3)]),
@@ -2331,6 +2337,7 @@ const MF = [
     N(['ringH', 'Anel de apoio: altura', 0, 5, 0.1, 'mm']),
     N(['ringW', 'Anel de apoio: aba', 0, 6, 0.1, 'mm']),
     N(['embed', 'Base que entra no corpo', 0, 30, 0.5, 'mm']),
+    N(['neckFillet', 'Entrada no corpo: curva (0 = reta)', 0, 10, 0.5, 'mm']),
   ]],
   ['Solda', [
     B(['sealH', 'Altura', 0, 30, 0.5, 'mm']),
@@ -2583,7 +2590,7 @@ function renderBodyNeck(ed, m) {
   if (!neck) return;
   const defs = MF.flatMap(([, d]) => d);
   const pick = k => defs.find(d => d[0] === k && (!d[6] || d[6](neck)));
-  for (const k of ['neckStd', 'W', 'h', 'ringH', 'ringW', 'pitch', 'turns', 'threadD', 'embed']) {
+  for (const k of ['neckStd', 'W', 'h', 'ringH', 'ringW', 'pitch', 'turns', 'threadD', 'embed', 'neckFillet']) {
     let d = pick(k); if (!d) continue;
     if (k === 'h') d = [...d]; if (k === 'h') d[1] = 'Altura do gargalo';
     field(grp, neck, d, (key, structural) => {
