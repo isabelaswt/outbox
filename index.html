@@ -389,7 +389,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-25.hotstamping-limpo';
+const BUILD = '2026-09-25.explodir-volta';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -2176,7 +2176,8 @@ function buildInto(product, S, explodeAmt = 0) {
     if (m0.kind !== 'gargalo' && dn?.kind === 'gargalo' && L[i - 1].idx === idx - 1 && bd?.vol && (bd.kind === 'giro' || bd.kind === 'perfil')
       && Math.min(m0.W, m0.D) > dn.W + 1 && (m0.kind === 'spray' || (m0.rBot || 0) <= 3)) { // o anel já fica reduzido por baixo da peça
       const Rc = Math.min(m0.W, m0.D) / 2 - (m0.kind === 'spray' ? 0.6 : (m0.rBot || 0));
-      const surf = L[i - 2].y0 + bd.h - surfaceDrop(bd, Rc), ext = y0 - (surf + 0.4);
+      // Conta feita nas posições normais (sem Explodir), senão a saia esticava até o corpo.
+      const surf = base[i - 2].y0 + bd.h - surfaceDrop(bd, Rc), ext = base[i].y0 - (surf + 0.4);
       if (ext > 0.05 && ext < m0.h * 3) { m = { ...m, h: m.h + ext }; y0 -= ext; }
     }
     // Spray sobre gargalo: a faixa serrilhada recua menos se for preciso cobrir a rosca.
