@@ -388,7 +388,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-25.lacre-salvos';
+const BUILD = '2026-09-25.rosca-propria';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -616,6 +616,8 @@ function draftByBodyType(type) {
   for (const [id, d] of Object.entries(PERFIS)) if (`d${id.replace(/^DRAFT_/, '').replace(/^(\d+)_.*/, '$1')}c` === type) return d;
   return null;
 }
+// Corpo da Draft cuja rosca já vem no próprio perfil (gargalo medido < 4 mm).
+function builtInThread(m) { if (m?.kind !== 'perfil') return null; const d = draftByBodyType(m.type); return d?.neck && d.neck.h < 4 ? d : null; }
 function buildDraftPresets() {
   for (const [id, d] of Object.entries(PERFIS)) {
     if (DRAFT_HIDDEN.has(d.name)) continue;
@@ -705,8 +707,8 @@ function normalize(s) {
   s.modules.forEach(m => { if (m.kind === 'bisnaga') m.pesc = false; if (m.vol) m.bpesc = false; }); // pescante só vem da válvula
   // Modelos salvos antes: corpo da Draft com rosca própria + gargalo extra → tira o extra.
   for (let i = 0; i < s.modules.length - 1; i++) {
-    const b = s.modules[i], nk = s.modules[i + 1], d = b.kind === 'perfil' && nk?.kind === 'gargalo' && nk.neckStd === 'livre' ? draftByBodyType(b.type) : null;
-    if (!d || !d.neck || d.neck.h >= 4) continue;
+    const b = s.modules[i], nk = s.modules[i + 1], d = nk?.kind === 'gargalo' ? builtInThread(b) : null;
+    if (!d) continue;
     s.modules.splice(i + 1, 1);
     const c = s.modules[i + 1]; if (c && !c.vol && c.kind !== 'gargalo') c.gap = draftCoverGap(d, b, c);
   }
@@ -2647,7 +2649,18 @@ function neckFor(m) {
 // corpo, como os gargalos largos de pote) vira o maior padrão que cabe, e a tampa
 // ou válvula de cima se reajusta a ele (rosca coberta e por dentro).
 function refitAfterBodySwap(bi) {
-  const body = S.modules[bi], ni = neckIdx(bi); if (ni < 0) return;
+  const body = S.modules[bi];
+  const d = builtInThread(body);
+  if (d) { // rosca no próprio corpo: sai o gargalo e a tampa veste a rosca
+    if (S.modules[bi + 1]?.kind === 'gargalo') S.modules.splice(bi + 1, 1);
+    const c = S.modules[bi + 1]; if (c && !c.vol && c.kind !== 'gargalo') c.gap = draftCoverGap(d, body, c);
+    return;
+  }
+  const c0 = S.modules[bi + 1];
+  if (c0 && !c0.vol && c0.kind !== 'gargalo' && !S.modules.some(x => x.kind === 'gargalo')) { // vinha de um corpo com rosca própria
+    S.modules.splice(bi + 1, 0, NECK(neckFor(body))); c0.gap = 0;
+  }
+  const ni = neckIdx(bi); if (ni < 0) return;
   let neck = S.modules[ni];
   if (neck.W + 2 * (neck.ringW || 0) > neckTopW(body)) {
     const std = neckFor(body);
@@ -2672,6 +2685,7 @@ function renderBodyNeck(ed, m) {
   grp.addEventListener('toggle', () => { const o = store.get('shape.openGroups', { Medidas: true, Formato: true }); o.Gargalo = grp.open; store.set('shape.openGroups', o); });
   const medidas = [...ed.querySelectorAll('.grp')].find(g => g.querySelector('summary').textContent === 'Medidas');
   medidas ? medidas.after(grp) : ed.appendChild(grp);
+  if (builtInThread(m)) { grp.insertAdjacentHTML('beforeend', '<div class="tip">Este frasco já tem a rosca no próprio corpo (sem gargalo separado).</div>'); return; }
   const ni = neckIdx(sel), neck = S.modules[ni], st = { on: !!neck };
   field(grp, st, ['on', 'Com gargalo de rosca', 'check'], () => {
     if (st.on) {
