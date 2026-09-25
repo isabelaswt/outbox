@@ -232,7 +232,7 @@ const BASE = {
   pesc: true, pescD: 4, pescCurve: 0, pescWave: 0, pescGap: 3,
   mola: true, houseD: 8, springL: 18, coils: 11, sleeve: 'transparente',
   // pescante do corpo (quando não há válvula na pilha)
-  bpesc: false, bpescD: 4, bpescGap: 3, bpescCurve: 0, bpescWave: 0,
+  bpesc: false, bpescD: 4, bpescGap: 3, bpescCurve: 0, bpescWave: 0, bpescMola: true,
   // líquido dentro do corpo
   liq: false, liqLevel: 80, liqColor: '#c9a45c',
   // sistema de abertura da tampa: flip-top (dobradiça na linha) ou disc-top.
@@ -292,7 +292,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-24.liquido';
+const BUILD = '2026-09-24.pescante-com-mecanismo';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -1504,11 +1504,20 @@ function buildInto(product, S, explodeAmt = 0) {
     if (m0.vol && m0.liq) liquidMeshes(m0, y0).forEach(o => { o.userData.idx = idx; product.add(o); });
     // Pescante do próprio corpo: do topo do gargalo (ou do corpo) até o fundo.
     if (m0.vol && m0.bpesc && !valvePesc && isFinite(floor)) {
-      const nx = L[i + 1]?.m.kind === 'gargalo' ? L[i + 1] : null;
-      const yTop = nx ? nx.y0 + nx.m.h - 1 : y0 + m0.h - 1, shift = y0 - base[i].y0;
-      const yBot = floor + S.wall + m0.bpescGap + shift;
+      const nx = L[i + 1]?.m.kind === 'gargalo' ? L[i + 1] : null, capE = nx ? L[i + 2] : L[i + 1];
+      let yTop = nx ? nx.y0 + nx.m.h - 1 : y0 + m0.h - 1;
+      const shift = y0 - base[i].y0, yBot = floor + S.wall + m0.bpescGap + shift;
+      const addP = (geo, mat, name, order) => { const pm = new THREE.Mesh(geo, mat); pm.userData.idx = idx; pm.name = `${String(idx + 1).padStart(2, '0')}_${name}`; if (order) pm.renderOrder = order; product.add(pm); };
+      if (m0.bpescMola !== false) {
+        // mecanismo de spray sob a tampa (carcaça, mola, assento), como nas válvulas
+        const mech = pumpMechGeo({ ...BASE, houseD: Math.max(5, m0.bpescD + 2.5), springL: 16, coils: 11, pescD: m0.bpescD, sleeve: 'transparente', ox: m0.ox || 0 },
+          yTop, capE ? capE.y0 : yTop + 50);
+        mech.parts.forEach(g => addP(g, pescMat, 'bomba'));
+        if (mech.sleeve) { const see = glassBody; addP(mech.sleeve, see ? sleeveMat : pescMat, 'carcaca', see ? 20 : 0); }
+        yTop = mech.yEnd;
+      }
       const pg = yTop - yBot > 5 ? pescanteGeo({ pescD: m0.bpescD, pescCurve: m0.bpescCurve, pescWave: m0.bpescWave, ox: m0.ox || 0 }, yBot, yTop) : null;
-      if (pg) { const pm = new THREE.Mesh(pg, pescMat); pm.userData.idx = idx; pm.name = `${String(idx + 1).padStart(2, '0')}_pescante`; product.add(pm); }
+      if (pg) addP(pg, pescMat, 'pescante');
     }
   });
 }
@@ -1913,6 +1922,7 @@ function renderBodyPescante(ed) {
     // sem válvula: pescante do próprio corpo
     field(grp, m, ['bpesc', 'Pescante (tubo até o fundo)', 'check'], ch);
     if (m.bpesc) {
+      field(grp, m, ['bpescMola', 'Mecanismo de spray (mola) em cima', 'check'], ch);
       field(grp, m, ['bpescD', 'Diâmetro', 2, 10, 0.1, 'mm'], ch);
       field(grp, m, ['bpescGap', 'Folga do fundo', 0, 20, 0.5, 'mm'], ch);
       field(grp, m, ['bpescCurve', 'Curva no pé (− esquerda)', -40, 40, 0.5, 'mm'], ch);
