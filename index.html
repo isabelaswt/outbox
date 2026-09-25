@@ -388,7 +388,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-25.corpo-abre-gargalo';
+const BUILD = '2026-09-25.lacre-um-gargalo';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -620,7 +620,15 @@ function buildDraftPresets() {
       if (d.neck) {
         // gargalo cabe na virola (com parede) e fica coberto por ela
         const nW = r1(Math.min(d.neck.W, collarOf(clos) - 3)), nH = r1(Math.min(d.neck.h, clos.h - 0.8));
-        if (nW > 4 && nH > 1) modules.push(M('gargalo', { neckStd: 'livre', W: nW, D: nW, h: nH, ringH: 0.3, ringW: 0, embed: 3 }));
+        // Gargalo medido muito curto: o perfil do corpo já traz a rosca (não duplica)
+        // e a tampa desce vestindo essa rosca até onde o corpo fica mais largo que ela.
+        if (nW > 4 && d.neck.h >= 4 && nH > 1) modules.push(M('gargalo', { neckStd: 'livre', W: nW, D: nW, h: nH, ringH: 0.3, ringW: 0, embed: 3 }));
+        else {
+          const b = d.body, cw = collarOf(clos) - 1;
+          let yc = b.h;
+          for (let k = b.prof.length - 1; k >= 0; k--) { const r = b.prof[k]; if (Math.min(r[1] * b.W, r[2] * b.D) > cw) { yc = r[0] * b.h; break; } }
+          clos.gap = -r1(clamp(b.h - yc, 0, clos.h - 1.5));
+        }
       }
       modules.push(clos);
     }
