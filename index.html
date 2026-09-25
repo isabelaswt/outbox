@@ -388,7 +388,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-25.lado-a-lado';
+const BUILD = '2026-09-25.refs-novas';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -511,6 +511,27 @@ const PRESETS = {
   'Placa assimétrica + esfera': { color: BEIGE, finish: 'fosco', modules: [
     M('placa'), NECK('24/410', { ox: -8 }), M('esfera', { W: 35, D: 35, h: 35, rBot: 17.5, rTop: 17.5, groove: 12,
       notch: true, notchW: 11, notchH: 2.5, notchD: 1.4, notchP: 8 })] },
+  // Referências novas (_ref, 25/09): formatos que ainda não estavam na biblioteca.
+  'Plano + taça': { color: BEIGE, finish: 'fosco', modules: [
+    M('plano', { W: 62, D: 40, n: 3.2, h: 118, rBot: 16, rTop: 12 }), NECK('24/410'),
+    M('taca', { W: 38, D: 24, n: 2.6, h: 18, taper: 155, bulge: 0, rBot: 8, rTop: 1.5 })] },
+  'Plano + tampa retangular': { color: BEIGE, finish: 'fosco', modules: [
+    M('plano', { W: 60, D: 38, n: 3.4, h: 112, rBot: 12, rTop: 10 }), NECK('24/410'),
+    M('flip', { name: 'Tampa retangular com entalhe', W: 58, D: 36, n: 6, h: 22, rBot: 1, rTop: 2.5, groove: 5,
+      notch: true, notchW: 12, notchH: 3.5, notchD: 1, notchP: 4 })] },
+  'Cápsula dividida': { color: BEIGE, finish: 'fosco', modules: [
+    M('capsula', { W: 44, D: 44, h: 96, rBot: 22, rTop: 2 }), NECK('24/410'),
+    M('domo', { name: 'Tampa cápsula', W: 44, D: 44, h: 38, rBot: 1.5, rTop: 22, groove: 12, notch: true, notchW: 14, notchH: 5, notchD: 1.4, notchP: 2 })] },
+  'Pote almofada': { color: BEIGE, finish: 'fosco', modules: [
+    M('reto', { name: 'Pote almofada', W: 76, D: 76, h: 40, rBot: 16, rTop: 3, bulge: 6, bulgePos: 45 }), NECK('70/400'),
+    M('disco', { name: 'Tampa almofada', W: 78, D: 78, h: 26, rBot: 3, rTop: 14 })] },
+  'Pump ondulado': { color: BEIGE, finish: 'fosco', modules: [
+    M('plano', { name: 'Corpo ondulado', W: 66, D: 36, n: 5, h: 40, rep: 3, rBot: 9, rTop: 9 }), NECK('24/410'), M('pump')] },
+  'Oval com pump': { color: BEIGE, finish: 'fosco', modules: [
+    M('capsula', { name: 'Corpo oval', W: 58, D: 46, h: 140, rBot: 26, rTop: 26, groove: 34, grooveD: 0.5 }), NECK('24/410'), M('pump')] },
+  'Frasco tampa tronco': { color: BEIGE, finish: 'fosco', modules: [
+    M('reto', { W: 52, D: 52, h: 96, rBot: 8, rTop: 14 }), NECK('24/410'),
+    M('disco', { name: 'Tampa tronco', W: 34, D: 34, h: 26, taper: 140, rBot: 1, rTop: 2 })] },
   'Spray fino': { color: BEIGE, finish: 'fosco', modules: [
     M('reto', { W: 38, D: 38, h: 105, rBot: 5, rTop: 14 }), NECK('20/410'), M('spray')] },
   'Pump escultural': { color: BEIGE, finish: 'fosco', modules: [
@@ -2502,6 +2523,33 @@ function renderEditor() {
   // Mola e pescante são da válvula (grupo "Mola e pescante" dela), não do corpo.
   if (isBody(m) && m.kind !== 'gargalo') { renderBodyNeck(ed, m); renderBodyLiquid(ed, m); }
 }
+// Maior padrão de gargalo que cabe no topo do corpo (anel incluído).
+function neckTopW(m) { return Math.max(22, Math.min(m.W, m.D) * (m.taper || 100) / 100 - 2 * (m.rTopW || m.rTop || 0) + 8); }
+function neckFor(m) {
+  const topW = neckTopW(m);
+  return Object.keys(NECKS).filter(k => NECKS[k].W + 2 * (NECKS[k].ringW ?? 1.8) <= topW).sort((a, b) => NECKS[b].W - NECKS[a].W)[0] || '24/410';
+}
+// Depois de trocar o corpo: o gargalo que não cabe no topo novo (ou veio de outro
+// corpo, como os gargalos largos de pote) vira o maior padrão que cabe, e a tampa
+// ou válvula de cima se reajusta a ele (rosca coberta e por dentro).
+function refitAfterBodySwap(bi) {
+  const body = S.modules[bi], ni = neckIdx(bi); if (ni < 0) return;
+  let neck = S.modules[ni];
+  if (neck.W + 2 * (neck.ringW || 0) > neckTopW(body)) {
+    const std = neckFor(body);
+    S.modules[ni] = neck = { ...neck, neckStd: std, ...NECKS[std], D: NECKS[std].W, ringH: 1.6, ringW: 1.8, embed: Math.max(neck.embed || 0, 8) };
+  }
+  const c = S.modules[ni + 1]; if (!c || c.kind === 'gargalo' || c.vol) return;
+  if (c.kind === 'spray') {
+    scaleModule(c, (neck.W + 2.4) / collarOf(c));
+    if (collarOf(c) < minValveW(c, neck.W)) scaleModule(c, minValveW(c, neck.W) / collarOf(c));
+  } else {
+    const need = neck.W + 0.6 + 2 * S.wall;
+    if (collarOf(c) < need) scaleModule(c, need / collarOf(c));
+  }
+  const minH = r1(neck.h - neck.ringH + 0.3);
+  if (c.h * Math.max(1, c.rep || 1) < minH) c.h = minH;
+}
 // Gargalo do corpo: liga/desliga e edita padrão, rosca e anel sem sair do corpo.
 function renderBodyNeck(ed, m) {
   const openG = store.get('shape.openGroups', { Medidas: true, Formato: true });
@@ -2516,9 +2564,7 @@ function renderBodyNeck(ed, m) {
       // Volta o gargalo que estava guardado; senão, o maior padrão que cabe no topo do corpo.
       let nk = m._neck && { ...m._neck, uid: newUid() };
       if (!nk) {
-        const topW = Math.min(m.W, m.D) * (m.taper || 100) / 100 - 2 * (m.rTopW || m.rTop || 0) + 8;
-        const fit = Object.keys(NECKS).filter(k => NECKS[k].W + 2 * (NECKS[k].ringW ?? 1.8) <= Math.max(topW, 22)).sort((a, b) => NECKS[b].W - NECKS[a].W)[0] || '24/410';
-        nk = NECK(fit);
+        nk = NECK(neckFor(m));
       }
       S.modules.splice(sel + 1, 0, nk);
     } else if (neck) { m._neck = { ...neck }; S.modules.splice(ni, 1); }
@@ -2632,6 +2678,7 @@ function renderSwap(ed, m) {
       swapScroll = { key: skey, top: grid.scrollTop }; // volta para o mesmo ponto, mesmo trocando tampa ↔ válvula
       // Mantém cor, acabamento, encaixe e deslocamento, e readapta o tamanho.
       S.modules[sel] = adaptSwap(m, M(k, { own: m.own, color: m.color, finish: m.finish, gap: m.gap, ox: m.ox, uid: m.uid }), label);
+      if (label === 'Corpo') refitAfterBodySwap(sel);
       renderStack(); renderEditorKeepScroll(); build();
     };
     grid.appendChild(card);
