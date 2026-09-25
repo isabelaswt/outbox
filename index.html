@@ -264,9 +264,9 @@ const LIB = {
              actW: 19, headH: 4.2, armT: 4.2, armW: 12, nozzleL: 25.5, droop: 1.2 },
   locao:   { name: 'Pump loção (bico curvo)', kind: 'spray', sprayType: 'locao', W: 24.5, D: 24.5, h: 10.8, collarR: 0.8, stemD: 15.5, stemH: 7.3,
              actW: 18.8, headH: 19.7, domeH: 4.5, nozzleL: 30, droop: 6, spoutD: 3 },
-  pumpFrisos: { name: 'Pump loção com frisos', kind: 'spray', sprayType: 'lamina', W: 33, D: 33, h: 15, collarR: 0.8,
-             ridges: 78, ridgeD: 0.75, stemD: 10, stemH: 9.5, actW: 15, headH: 5.4,
-             nozzleL: 27, armW: 8.2, armT: 2.8, droop: 4.1, bladeLift: 2.2, bladeStyle: 'draft1015',
+  pumpFrisos: { name: 'Pump loção com frisos', kind: 'spray', sprayType: 'lamina', W: 38, D: 38, h: 17.5, collarR: 1,
+             ridges: 82, ridgeD: 0.78, stemD: 11.5, stemH: 12, actW: 17, headH: 5.8,
+             nozzleL: 30, armW: 9.2, armT: 3, droop: 4.5, bladeLift: 2.4, bladeStyle: 'draft1015',
              mola: false, pescD: 2.8, pescGap: 3,
              own: true, color: '#e8dcc6', finish: 'fosco' },
   espuma:  { name: 'Pump espuma / foam', kind: 'spray', sprayType: 'foam', W: 43, D: 43, h: 17, collarR: 1.2, ridges: 0,
@@ -297,7 +297,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-24.bico-dosador.curved-draft-pump';
+const BUILD = '2026-09-24.bico-dosador.draft-pump-proportions';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
