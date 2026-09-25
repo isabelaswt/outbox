@@ -254,6 +254,8 @@ const LIB = {
   disco:   { name: 'Disco', W: 40, D: 40, h: 6, rBot: 1.5, rTop: 2 },
   tigela:  { name: 'Tigela', W: 40, D: 40, h: 20, rBot: 18, rTop: 1 },
   esfera:  { name: 'Esfera', W: 44, D: 44, h: 44, rBot: 22, rTop: 22, sphereR: 22, roundLock: true, groove: 15, topType: 'flip' },
+  esferaBisnaga: { name: 'Esfera para bisnaga', W: 47, D: 47, h: 30, rBot: 15, rTop: 15, sphereR: 15, roundLock: true,
+             groove: 23, topType: 'flip', lidSide: 'baixo', notch: true, notchUp: true, notchW: 16, notchH: 7, notchD: 1.2, notchP: 6 },
   domo:    { name: 'Domo meia-lua', W: 46, D: 38, h: 38, rBot: 2, rTop: 24, groove: 15, notch: true, notchY: 15, notchW: 18, notchH: 9, notchD: 2.2, notchP: 2, topType: 'flip' },
   seixo:   { name: 'Seixo com fenda', W: 70, D: 40, n: 2.4, h: 34, rBot: 6, rTop: 18, groove: 13, notch: true, notchY: 13, notchW: 30, notchH: 6, notchD: 1.8, notchP: 8, topType: 'flip' },
   spray:   { name: 'Válvula spray fina', kind: 'spray', sprayType: 'mist', W: 26, D: 26, h: 21, skirtPct: 35, bandInset: 1.4, ridges: 64,
@@ -297,7 +299,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-24.bico-dosador.sphere-radius-geometry';
+const BUILD = '2026-09-24.bico-dosador.tube-sphere-cap';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -415,6 +417,8 @@ const PRESETS = {
     M('reto', { W: 58, D: 58, h: 120, rBot: 10, rTop: 26 }), NECK('24/410'), M('flare', { W: 30, D: 30 }), M('disco', { W: 46, D: 46, h: 7 })] },
   'Bisnaga 200 ml': { color: BEIGE, finish: 'fosco', modules: [
     M('tampaBisnaga', { W: 47, D: 47 }), M('bisnaga', { W: 48.5, D: 48.5, h: 178, rBot: 4.3 })] },
+  'Bisnaga + esfera': { color: BEIGE, finish: 'fosco', modules: [
+    M('esferaBisnaga', { W: 47, D: 47, h: 30 }), M('bisnaga', { W: 48.5, D: 48.5, h: 178, rBot: 4.3 })] },
   'Placa assimétrica + esfera': { color: BEIGE, finish: 'fosco', modules: [
     M('placa'), NECK('24/410', { ox: -8 }), M('esfera', { W: 35, D: 35, h: 35, rBot: 17.5, rTop: 17.5, groove: 12,
       notch: true, notchW: 11, notchH: 2.5, notchD: 1.4, notchP: 8 })] },
@@ -508,7 +512,7 @@ function buildDraftPresets() {
 const FINISHES = [['fosco', 'Fosco'], ['acetinado', 'Acetinado'], ['brilho', 'Brilho'], ['perolado', 'Perolado'], ['vidro', 'Transparente / vidro'], ['metal', 'Metalizado']];
 
 const typeKey = m => m?.type || Object.keys(LIB).find(k => LIB[k].name === m?.name);
-const isSphereCap = m => typeKey(m) === 'esfera';
+const isSphereCap = m => ['esfera', 'esferaBisnaga'].includes(typeKey(m));
 const sphereMaxR = m => r1(Math.min(m.W || 0, m.D || 0, m.h || 0) / 2);
 function syncSphereRadius(m, auto = false) {
   if (!isSphereCap(m)) return;
@@ -2179,7 +2183,7 @@ function renderAll() { renderStack(); renderEditor(); renderGlobal(); renderPres
 // Corpo, tampa e peça de encaixe ficam em listas separadas.
 const CATS = [
   ['Corpo', ['reto', 'boston', 'quadrado', 'capsula', 'plano', 'arco', 'cone', 'placa', 'bisnaga', ...DRAFT_KEYS.corpo]],
-  ['Tampa', ['esfera', 'domo', 'seixo', 'flip', 'flipRedondo', 'disctop', 'sobretampa', 'tampaBisnaga', 'disco']],
+  ['Tampa', ['esfera', 'esferaBisnaga', 'domo', 'seixo', 'flip', 'flipRedondo', 'disctop', 'sobretampa', 'tampaBisnaga', 'disco']],
   ['Válvula', ['pump', 'pumpFrisos', 'locao', 'espuma', 'spray', 'contaGotas', 'pushPull', 'bicoDosador', 'lamina']],
   ['Peça de encaixe', ['gargalo', 'colar', 'barril', 'flare', 'anel', 'tigela']],
 ];
