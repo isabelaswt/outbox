@@ -267,7 +267,7 @@ const store = {
 
 // ───────────────────────── módulos ─────────────────────────
 const BASE = {
-  name: 'Módulo', W: 50, D: 50, n: 2, h: 40, taper: 100, bulge: 0, bulgePos: 50,
+  name: 'Módulo', W: 50, D: 50, n: 2, sides: 0, sideR: 0.1, h: 40, taper: 100, bulge: 0, bulgePos: 50,
   rBot: 2, rTop: 2, rBotW: 0, rTopW: 0, gap: 0, rep: 1, repGap: 0,
   groove: 0, grooveD: 0.6,
   notch: false, notchLock: true, notchY: 12, notchW: 20, notchH: 8, notchD: 2, notchP: 2,
@@ -309,6 +309,13 @@ const LIB = {
   anel:    { name: 'Anel', W: 36, D: 36, h: 9, rBot: 4.5, rTop: 4.5 },
   disco:   { name: 'Disco', W: 40, D: 40, h: 6, rBot: 1.5, rTop: 2 },
   tigela:  { name: 'Tigela', W: 40, D: 40, h: 20, rBot: 18, rTop: 1 },
+  bola:    { name: 'Bola', W: 34, D: 34, h: 34, rBot: 17, rTop: 17 },
+  sextavado: { name: 'Sextavado', W: 36, D: 36, h: 16, sides: 6, sideR: 0.08, rBot: 0.8, rTop: 0.8 },
+  octogono: { name: 'Octógono facetado', W: 38, D: 38, h: 12, sides: 8, sideR: 0.05, rBot: 1.5, rTop: 1.5 },
+  cubo:    { name: 'Cubo', W: 30, D: 30, h: 30, sides: 4, sideR: 0.22, rBot: 3, rTop: 3 },
+  piramide: { name: 'Pirâmide cortada', W: 40, D: 40, h: 22, sides: 4, sideR: 0.12, taper: 55, rBot: 1, rTop: 1.5 },
+  prisma:  { name: 'Prisma triangular', W: 40, D: 40, h: 18, sides: 3, sideR: 0.2, rBot: 1.2, rTop: 1.2 },
+  canelado: { name: 'Cilindro canelado', W: 32, D: 32, h: 24, rBot: 1.5, rTop: 1.5, ridges: 20, ridgeD: 1.2 },
   taca:    { name: 'Tampa taça', W: 50, D: 50, h: 34, taper: 170, bulge: 6, bulgePos: 58, rBot: 24, rTop: 2 },
   esfera:  { name: 'Esfera', W: 44, D: 44, h: 44, rBot: 22, rTop: 22, sphereR: 22, roundLock: true, groove: 15, topType: 'flip' },
   esferaBisnaga: { name: 'Esfera para bisnaga', W: 47, D: 47, h: 30, rBot: 15, rTop: 15, sphereR: 15, roundLock: true,
@@ -367,7 +374,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-25.spray-cobre-rosca';
+const BUILD = '2026-09-25.pecas-criativas';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -726,12 +733,20 @@ function ribAt(m, ly, th) {
   return best || 0;
 }
 
+// Seção poligonal (3+ lados) com cantos arredondados: a amostra percorre o ângulo
+// da normal, então as faces saem retas e os cantos em arco; uma face fica de frente.
+function polyPt(a, b, sides, round, th) {
+  const rr = clamp(round || 0, 0, 0.95), Ri = 1 - rr, st = TAU / sides, p0 = Math.PI / 2 - st / 2;
+  const k = Math.round((th - p0) / st), ps = p0 + k * st;
+  return [a * (Ri * Math.cos(ps) + rr * Math.cos(th)), b * (Ri * Math.sin(ps) + rr * Math.sin(th))];
+}
+
 function loft(rings, seg, disp) {
   const pts = rings.map(r => {
     const out = new Array(seg);
     for (let j = 0; j < seg; j++) {
       const th = j / seg * TAU;
-      let [x, z] = sp(r.a, r.b, r.n, th);
+      let [x, z] = r.sides >= 3 ? polyPt(r.a, r.b, r.sides, r.round, th) : sp(r.a, r.b, r.n, th);
       let dy = 0;
       if (disp && !r.noDisp) [x, z, dy = 0] = disp(x, r.ly, z, th, r);
       out[j] = [x + (r.cx || 0), r.y + dy, z + (r.cz || 0)];
@@ -1280,7 +1295,7 @@ function moduleGeo(m0, y0, opts = {}) {
   const ms = flipOpen ? { ...m, grooveD: 0 } : m; // aberta, a linha vira o corte
   let kmax = 0;
   const rings = (isProf ? profSamples(m, lo) : ySamples(m, rB, rT, lo)).map(ly => {
-    if (!isProf) { const [a, b] = sectionAt(ms, ly, rB, rT); return { y: y0 + lift + ly, ly, a, b, n: m.n }; }
+    if (!isProf) { const [a, b] = sectionAt(ms, ly, rB, rT); return { y: y0 + lift + ly, ly, a, b, n: m.n, sides: m.sides | 0, round: m.sideR }; }
     const q = profAt(m, ly), g = ms.groove > 0 ? ms.grooveD * Math.max(0, 1 - Math.abs(ly - (m.h - ms.groove)) / 0.5) : 0;
     // Raios de baixo/de cima aplicados por cima do perfil medido.
     let r = 0, f = 0;
@@ -2108,7 +2123,9 @@ const MF = [
     N(['W', 'Diâmetro da rosca (T)', 8, 120, 0.1, 'mm']),
   ]],
   ['Formato', [
-    G(['n', 'Seção: oval → retângulo', 2, 10, 0.1, '']),
+    G(['n', 'Seção: oval → retângulo', 2, 10, 0.1, '', m => !(m.sides >= 3)]),
+    G(['sides', 'Lados retos (0 = redondo)', 0, 12, 1, '']),
+    G(['sideR', 'Cantos dos lados: vivo → redondo', 0, 0.9, 0.01, '', m => m.sides >= 3]),
     G(['taper', 'Topo em relação à base', 10, 250, 1, '%']),
     G(['bulge', 'Barriga (− cintura)', -35, 40, 0.5, '%']),
     G(['bulgePos', 'Altura da barriga', 5, 95, 1, '%']),
@@ -2328,7 +2345,7 @@ function renderEditor() {
           if (k === 'sphereR') m.roundLock = false;
           syncSphereRadius(m, k === 'roundLock' && m.roundLock || ['W', 'D', 'h'].includes(k) && m.roundLock);
         }
-        if (structural || ['rep', 'groove', 'ridges', 'own'].includes(k) || (isSphereCap(m) && ['W', 'D', 'h', 'roundLock', 'sphereR'].includes(k))) renderEditorKeepScroll();
+        if (structural || ['rep', 'groove', 'ridges', 'own', 'sides'].includes(k) || (isSphereCap(m) && ['W', 'D', 'h', 'roundLock', 'sphereR'].includes(k))) renderEditorKeepScroll();
         renderStack(); queueBuild();
       });
       if (show && !show(m)) el.classList.add('hidden');
@@ -2556,7 +2573,7 @@ const CATS = [
   ['Corpo', ['reto', 'boston', 'quadrado', 'capsula', 'perfumeOval', 'plano', 'arco', 'cone', 'placa', 'bisnaga', ...DRAFT_KEYS.corpo]],
   ['Tampa', ['esfera', 'esferaBisnaga', 'taca', 'domo', 'seixo', 'flip', 'flipRedondo', 'disctop', 'sobretampa', 'tampaBisnaga', 'tampaSextavada', 'disco']],
   ['Válvula', ['pump', 'pumpFrisos', 'locao', 'espuma', 'spray', 'contaGotas', 'pushPull', 'pushSport', 'bicoDosador', 'lamina', 'pumpOnda', 'gatilho', 'pumpBisnaga']],
-  ['Peça de encaixe', ['gargalo', 'colar', 'barril', 'flare', 'anel', 'tigela']],
+  ['Peça de encaixe', ['gargalo', 'colar', 'barril', 'flare', 'anel', 'tigela', 'bola', 'sextavado', 'octogono', 'cubo', 'piramide', 'prisma', 'canelado']],
 ];
 CATS.forEach(([label, keys]) => {
   const row = document.createElement('div'); row.className = 'row';
