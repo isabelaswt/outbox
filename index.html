@@ -367,7 +367,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-25.sextavada-frisos';
+const BUILD = '2026-09-25.pump-frisos-ponta';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -810,15 +810,20 @@ function boxGeo(w, h, d, x, y, z) {
 function draftPumpHeadGeo(m, yH, lo) {
   const L = m.nozzleL, H = m.headH, T = m.armT, W = m.armW / 2, R = m.actW / 2;
   const x0 = -R * 0.75, x1 = R + L, N = lo ? 32 : 120, seg = lo ? 20 : 48, rings = [];
+  let tip = null;
   for (let i = 0; i <= N; i++) {
     const q = i / N, e = (1 - Math.cos(Math.PI * q)) / 2, x = x0 + (x1 - x0) * e;
     const t = clamp((x - R * 0.2) / Math.max(L, 1e-6), 0, 1);
     const root = Math.exp(-(((x + R * 0.15) / (R * 0.9)) ** 2));
-    const end = Math.sin(Math.PI * q);
+    // Atrás a cabeça fecha arredondada; na ponta o bico termina numa face reta
+    // com canto arredondado (onde fica a saída), sem afinar até virar ponto.
+    const end = Math.sin(Math.PI * q), u = clamp((1 - q) / 0.05, 0, 1), tipF = 0.62 + 0.38 * Math.sqrt(1 - (1 - u) ** 2);
+    const fz = q < 0.5 ? Math.max(0.16, end ** 0.25) : tipF, fy = q < 0.5 ? Math.max(0.18, end ** 0.35) : tipF;
     const cy = yH + H * 0.34 - 0.45 * root + (m.bladeLift || 0) * Math.sin(Math.PI * t) * 0.62 - m.droop * Math.pow(t, 1.45);
-    const hz = W * (1.18 - 0.3 * t + 0.24 * root) * Math.max(0.16, end ** 0.25);
-    const hTop = (T * 0.55 + H * 0.35 * root) * Math.max(0.18, end ** 0.35);
-    const hBot = (T * 0.45 + H * 0.18 * root) * Math.max(0.18, end ** 0.35);
+    const hz = W * (1.18 - 0.3 * t + 0.24 * root) * fz;
+    const hTop = (T * 0.55 + H * 0.35 * root) * fy;
+    const hBot = (T * 0.45 + H * 0.18 * root) * fy;
+    if (i === N) tip = { x, y: cy, hz, hTop, hBot };
     const ring = [];
     for (let j = 0; j < seg; j++) {
       const th = j / seg * TAU, [zz, yy] = sp(hz, 1, 2.2, th);
@@ -826,7 +831,8 @@ function draftPumpHeadGeo(m, yH, lo) {
     }
     rings.push(ring);
   }
-  return loftPts(rings);
+  const g = loftPts(rings); g.userData.tip = tip;
+  return g;
 }
 
 // Peça desenhada de perfil (plano x-y) e extrudada na profundidade, com borda arredondada.
@@ -965,9 +971,11 @@ function sprayGeo(m, y0, { lo = false } = {}) {
   } else if (m.sprayType === 'draftpump') {
     turret();
     head.push(cyl(m.stemD / 2, top - sink, m.stemH + sink + 1, 0, 0, lo));
-    head.push(draftPumpHeadGeo(m, top + m.stemH, lo));
-    const tipX = m.actW / 2 + m.nozzleL, ro = Math.min(m.armT * 0.42, (m.outletD || 2.2) / 2), rt = m.armT / 2;
-    holes.push(outletCap(tipX, top + m.stemH + m.headH * 0.34 - m.droop, ro, lo));
+    const hg = draftPumpHeadGeo(m, top + m.stemH, lo), tp = hg.userData.tip; head.push(hg);
+    // Saída: elipse escura na face reta da ponta, rente à superfície.
+    const ro = (m.outletD || 2.2) / 2, oh = cyl(1, 0, 0.45);
+    oh.scale(Math.min(ro, (tp.hTop + tp.hBot) * 0.3), 1, Math.min(ro * 1.3, tp.hz * 0.45));
+    oh.rotateZ(-Math.PI / 2); oh.translate(tp.x - 0.4, tp.y + (tp.hTop - tp.hBot) / 2, 0); holes.push(oh);
   } else if (m.sprayType === 'lamina') {
     turret();
     head.push(cyl(m.stemD / 2, top - sink, m.stemH + sink + 1, 0, 0, lo));
