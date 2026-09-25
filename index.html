@@ -133,11 +133,6 @@ canvas{display:block;width:100%;height:100%;touch-action:none}
     </div>
   </details>
 
-  <details id="teamBox" class="hidden">
-    <summary>Equipe</summary>
-    <div id="team"></div>
-  </details>
-
   <details open>
     <summary>Pilha de módulos</summary>
     <div class="tip">De cima para baixo, como a embalagem fica em pé. Clique num módulo (aqui ou no 3D) para editar.</div>
@@ -210,6 +205,11 @@ canvas{display:block;width:100%;height:100%;touch-action:none}
       <button class="btn" id="dlStl">STL</button>
     </div>
     <div class="tip">GLB sai em metros (padrão glTF: Blender, Keyshot, Dimension, AR). OBJ e STL saem em milímetros. Cada módulo vira uma peça separada.</div>
+  </details>
+
+  <details id="teamBox" class="hidden">
+    <summary>Equipe</summary>
+    <div id="team"></div>
   </details>
 </aside>
 
@@ -363,7 +363,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-25.contas';
+const BUILD = '2026-09-25.equipe-embaixo';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
