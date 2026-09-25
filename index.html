@@ -292,7 +292,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-24.bico-dosador.logo-hires-surface';
+const BUILD = '2026-09-24.bico-dosador.logo-wrap-fine';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -1249,7 +1249,7 @@ function logoFrame(L, target, M) {
   // andando pela superfície em passos pequenos: não distorce em seção oval/achatada.
   const arcs = new Map(), maxS = Math.hypot(W, H) / 2 + 2, dth = 0.35 * Math.PI / 180;
   const arcTable = yy => {
-    const key = Math.round(yy * 2); if (arcs.has(key)) return arcs.get(key);
+    const key = Math.round(yy * 50); if (arcs.has(key)) return arcs.get(key);
     const start = surfAt(th0, yy), t = { fwd: [], back: [] };
     if (start) for (const [dir, sign] of [['fwd', -1], ['back', 1]]) {
       let th = th0, prev = start.point, acc = 0;
