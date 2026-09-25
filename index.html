@@ -292,7 +292,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-24.bico-dosador.logo-wrap-smooth';
+const BUILD = '2026-09-24.bico-dosador.logo-hires-surface';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -910,7 +910,7 @@ function moduleGeo(m0, y0, opts = {}) {
   if (m0.kind === 'bisnaga') return tubeGeo(m0, y0, opts);
   if (m0.kind === 'gargalo') return opts.inset ? null : neckGeo(m0, y0, opts);
   if (m0.kind === 'spray') return opts.inset ? null : sprayGeo(m0, y0, opts);
-  const { inset = 0, lift = 0, lo = false } = opts;
+  const { inset = 0, lift = 0, lo = false, logoQuality = false } = opts;
   const m = inset ? { ...m0, W: m0.W - 2 * inset, D: m0.D - 2 * inset, h: m0.h - lift,
     rBot: Math.max(0, m0.rBot - inset), rTop: Math.max(0, m0.rTop - inset), groove: 0, notch: false, ridges: 0 } : m0;
   if (m.W <= 0.2 || m.D <= 0.2 || m.h <= 0.1) return null;
@@ -933,8 +933,8 @@ function moduleGeo(m0, y0, opts = {}) {
   if (!lo && !inset) for (const b of m.ribs || []) kmax = Math.max(kmax, b.k || 0);
   if (rings.length < 2) return null;
   const saddle = !inset && m.topType === 'disc' && m.discDip > 0;
-  const detailed = !lo && (m.notch || m.ridges > 0 || saddle || kmax > 0);
-  const seg = lo ? 64 : kmax ? clamp(kmax * 12, 384, 2000) : detailed ? 384 : 200;
+  const detailed = !lo && (m.notch || m.ridges > 0 || saddle || kmax > 0 || logoQuality);
+  const seg = lo ? 64 : kmax ? clamp(kmax * 12, 384, 2000) : logoQuality ? 960 : detailed ? 384 : 200;
   const disp = detailed ? (x, ly, z, th, r) => {
     // Faixas de frisos (medidas no original ou criadas no editor).
     if (kmax) { const d = ribAt(m, ly, th); if (d) { const rr = Math.hypot(x, z) || 1; x -= x / rr * d; z -= z / rr * d; } }
@@ -1507,7 +1507,8 @@ function buildInto(product, S, explodeAmt = 0) {
       const maxH = m0.ringH + up.h * Math.max(1, up.rep) - 0.3;
       if (m0.ringW > maxRing || m0.h > maxH) m = { ...m0, ringW: Math.min(m0.ringW, maxRing), h: Math.max(m0.ringH + 2, Math.min(m0.h, maxH)) };
     }
-    const g = moduleGeo(m, y0); if (!g) return;
+    const hasLogo = S.logos?.some(L => L.uid === m.uid);
+    const g = moduleGeo(m, y0, { logoQuality: hasLogo }); if (!g) return;
     const mesh = new THREE.Mesh(g, material(m.own ? m.color : S.color, m.own ? m.finish : S.finish));
     mesh.castShadow = true; mesh.receiveShadow = true;
     mesh.userData.idx = idx;
