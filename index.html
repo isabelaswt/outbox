@@ -52,6 +52,9 @@ select,input[type=text]{font:inherit;font-size:12px;border:1px solid var(--line)
 .card .ph{width:100%;aspect-ratio:9/11;display:block;object-fit:contain;border-radius:6px;background:linear-gradient(180deg,#fff,#f1efeb)}
 .edit{background:var(--soft);border-radius:10px;padding:4px 10px 8px;margin-top:6px}
 .edit h3:first-child{margin-top:8px}
+.grp{border-top:1px solid var(--line);padding:0}
+.grp>summary{font-size:11px;text-transform:uppercase;letter-spacing:.6px;color:#5c4f3d;font-weight:650;padding:9px 0}
+.grp[open]{padding-bottom:8px}
 main{position:relative;overflow:hidden}
 canvas{display:block;width:100%;height:100%;touch-action:none}
 .bar{position:absolute;top:12px;left:12px;right:12px;display:flex;gap:6px;flex-wrap:wrap;pointer-events:none}
@@ -283,7 +286,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-24.logo-sem-distorcer';
+const BUILD = '2026-09-24.editor-em-grupos';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -1555,53 +1558,85 @@ const GP = d => { const a = [...d]; while (a.length < 7) a.push(0); const prev =
 const G = d => only('giro', d), P = d => only('placa', d), B = d => only('bisnaga', d), N = d => only('gargalo', d);
 const notK = (kinds, d) => { const a = [...d]; while (a.length < 7) a.push(0); a[6] = m => !kinds.includes(m.kind); return a; };
 const K = d => only('spray', d), isType = t => m => m.sprayType === t;
-const GB = d => { const a = [...d]; while (a.length < 7) a.push(0); const prev = a[6]; a[6] = m => m.kind !== 'placa' && (!prev || prev(m)); return a; };
+const GB = d => { const a = [...d]; while (a.length < 7) a.push(0); const prev = a[6]; a[6] = m => ['giro', 'bisnaga', 'perfil'].includes(m.kind) && (!prev || prev(m)); return a; };
+// Grupos do editor. Cada peça mostra só os grupos que valem para ela; o nome
+// do grupo dá o contexto, então os rótulos ficam curtos.
 const MF = [
-  ['Forma', [
+  ['Medidas', [
+    notK(['spray'], ['h', 'Altura', 1, 300, 0.5, 'mm']),
+    notK(['gargalo', 'spray'], ['W', 'Largura (frente)', 4, 200, 0.5, 'mm']),
+    notK(['gargalo', 'spray'], ['D', 'Profundidade (lado)', 4, 200, 0.5, 'mm']),
     N(['neckStd', 'Padrão do acabamento (aprox.)', 'select', [...Object.keys(NECKS).map(k => [k, k]), ['livre', 'Livre']]]),
     N(['W', 'Diâmetro da rosca (T)', 8, 120, 0.1, 'mm']),
+    K(['sprayType', 'Tipo de válvula', 'select', [['mist', 'Spray fino (névoa)'], ['locao', 'Pump loção / espuma (bico curvo)'], ['lamina', 'Pump com alavanca / bico lâmina'], ['gotas', 'Conta-gotas'], ['pushpull', 'Push-pull']]]),
+  ]],
+  ['Formato', [
+    G(['n', 'Seção: oval → retângulo', 2, 10, 0.1, '']),
+    G(['taper', 'Topo em relação à base', 10, 250, 1, '%']),
+    G(['bulge', 'Barriga (− cintura)', -35, 40, 0.5, '%']),
+    G(['bulgePos', 'Altura da barriga', 5, 95, 1, '%']),
+    B(['flatStart', 'Começa a achatar em', 0, 90, 1, '%']),
+    B(['flatCurve', 'Achatamento: reto → curvo', 0.5, 3, 0.05, '']),
+  ]],
+  ['Arredondamento', [
+    GB(['rBot', 'Raio embaixo', 0, 150, 0.5, 'mm']),
+    GP(['rBotW', 'Embaixo: recuo lateral (0 = igual)', 0, 100, 0.5, 'mm', m => m.rBot > 0]),
+    GP(['rTop', 'Raio em cima', 0, 150, 0.5, 'mm']),
+    GP(['rTopW', 'Em cima: recuo lateral (0 = igual)', 0, 100, 0.5, 'mm', m => m.rTop > 0]),
+    P(['rTL', 'Canto superior esquerdo', 0, 150, 0.5, 'mm']),
+    P(['rTR', 'Canto superior direito', 0, 150, 0.5, 'mm']),
+    P(['rBL', 'Canto inferior esquerdo', 0, 150, 0.5, 'mm']),
+    P(['rBR', 'Canto inferior direito', 0, 150, 0.5, 'mm']),
+    P(['rEdge', 'Borda da frente e do verso', 0, 30, 0.1, 'mm']),
+    P(['chamfer', 'Borda chanfrada (em vez de redonda)', 'check']),
+  ]],
+  ['Rosca e anel', [
     N(['pitch', 'Passo da rosca', 1, 6, 0.01, 'mm']),
     N(['turns', 'Voltas da rosca', 0.5, 4, 0.25, '']),
     N(['threadD', 'Profundidade da rosca', 0.3, 2.5, 0.05, 'mm']),
     N(['ringH', 'Anel de apoio: altura', 0, 5, 0.1, 'mm']),
     N(['ringW', 'Anel de apoio: aba', 0, 6, 0.1, 'mm']),
     N(['embed', 'Base que entra no corpo', 0, 30, 0.5, 'mm']),
-    B(['flatStart', 'Começa a achatar em', 0, 90, 1, '%']),
-    B(['flatCurve', 'Achatamento: reto → curvo', 0.5, 3, 0.05, '']),
-    B(['sealH', 'Altura da solda', 0, 30, 0.5, 'mm']),
-    B(['sealT', 'Espessura da solda', 0.4, 6, 0.1, 'mm']),
-    B(['sealW', 'Solda mais larga que o tubo', 0, 20, 0.5, '%']),
-    B(['sealShape', 'Formato da solda', 'select', [['reta', 'Reta'], ['arco', 'Arco (topo arredondado)'], ['concavo', 'Côncava'], ['inclinada', 'Inclinada']]]),
-    B(['sealArc', 'Curvatura / inclinação da solda', 0, 30, 0.5, 'mm', m => m.sealShape !== 'reta']),
-    B(['sealR', 'Cantos da solda arredondados', 0, 40, 0.5, 'mm']),
-    B(['serr', 'Serrilhado na solda', 'check']),
+  ]],
+  ['Solda', [
+    B(['sealH', 'Altura', 0, 30, 0.5, 'mm']),
+    B(['sealT', 'Espessura', 0.4, 6, 0.1, 'mm']),
+    B(['sealW', 'Mais larga que o tubo', 0, 20, 0.5, '%']),
+    B(['sealShape', 'Formato', 'select', [['reta', 'Reta'], ['arco', 'Arco (topo arredondado)'], ['concavo', 'Côncava'], ['inclinada', 'Inclinada']]]),
+    B(['sealArc', 'Curvatura / inclinação', 0, 30, 0.5, 'mm', m => m.sealShape !== 'reta']),
+    B(['sealR', 'Cantos arredondados', 0, 40, 0.5, 'mm']),
+    B(['serr', 'Serrilhado', 'check']),
     B(['serrP', 'Serrilhado: passo', 0.4, 4, 0.1, 'mm', m => m.serr]),
     B(['serrD', 'Serrilhado: profundidade', 0.05, 1, 0.05, 'mm', m => m.serr]),
-    notK(['spray'], ['h', 'Altura', 1, 300, 0.5, 'mm']),
-    notK(['gargalo', 'spray'], ['W', 'Largura (frente)', 4, 200, 0.5, 'mm']),
-    notK(['gargalo', 'spray'], ['D', 'Profundidade (lado)', 4, 200, 0.5, 'mm']),
-    K(['sprayType', 'Tipo de válvula', 'select', [['mist', 'Spray fino (névoa)'], ['locao', 'Pump loção / espuma (bico curvo)'], ['lamina', 'Pump com alavanca / bico lâmina'], ['gotas', 'Conta-gotas'], ['pushpull', 'Push-pull']]]),
-    K(['W', 'Virola: diâmetro', 10, 80, 0.5, 'mm']),
-    K(['h', 'Virola: altura', 4, 40, 0.5, 'mm']),
-    K(['ridges', 'Virola: frisos', 0, 120, 1, '']),
-    K(['skirtPct', 'Virola: altura da saia lisa (100 = sem serrilhado)', 10, 100, 1, '%', isType('mist')]),
-    K(['bandInset', 'Virola: recuo da faixa serrilhada', 0, 5, 0.1, 'mm', m => m.sprayType === 'mist' && m.skirtPct < 99]),
-    K(['collarR', 'Virola: arredondamento do topo', 0, 40, 0.5, 'mm']),
-    K(['stemD', 'Haste: diâmetro', 3, 40, 0.5, 'mm']),
-    K(['stemH', 'Haste: altura', 0, 40, 0.5, 'mm']),
+  ]],
+  ['Virola', [
+    K(['W', 'Diâmetro', 10, 80, 0.5, 'mm']),
+    K(['h', 'Altura', 4, 40, 0.5, 'mm']),
+    K(['collarR', 'Arredondamento do topo', 0, 40, 0.5, 'mm']),
+    K(['ridges', 'Frisos', 0, 120, 1, '']),
+    K(['skirtPct', 'Altura da saia lisa (100 = sem serrilhado)', 10, 100, 1, '%', isType('mist')]),
+    K(['bandInset', 'Recuo da faixa serrilhada', 0, 5, 0.1, 'mm', m => m.sprayType === 'mist' && m.skirtPct < 99]),
+  ]],
+  ['Cabeça e haste', [
     K(['actW', 'Cabeça: largura', 8, 60, 0.5, 'mm']),
     K(['actH', 'Cabeça: altura', 6, 50, 0.5, 'mm', m => ['mist', 'gotas', 'pushpull'].includes(m.sprayType)]),
+    K(['headH', 'Cabeça: altura', 6, 60, 0.5, 'mm', m => ['locao', 'lamina'].includes(m.sprayType)]),
+    K(['domeH', 'Cabeça: altura do domo', 0, 20, 0.5, 'mm', isType('locao')]),
+    K(['stemD', 'Haste: diâmetro', 3, 40, 0.5, 'mm']),
+    K(['stemH', 'Haste: altura', 0, 40, 0.5, 'mm']),
     K(['guideW', 'Anel guia: diâmetro (0 = sem)', 0, 60, 0.5, 'mm', isType('mist')]),
     K(['guideH', 'Anel guia: altura', 0, 20, 0.5, 'mm', isType('mist')]),
     K(['guideLine', 'Anel guia: altura do friso', 5, 95, 1, '%', isType('mist')]),
-    K(['headH', 'Cabeça: altura', 6, 60, 0.5, 'mm', m => ['locao', 'lamina'].includes(m.sprayType)]),
-    K(['nozzleL', 'Bico: comprimento', 0, 60, 0.5, 'mm', m => ['locao', 'lamina'].includes(m.sprayType)]),
-    K(['domeH', 'Cabeça: altura do domo', 0, 20, 0.5, 'mm', isType('locao')]),
-    K(['spoutD', 'Bico: diâmetro do tubo', 1.5, 10, 0.1, 'mm', isType('locao')]),
-    K(['armW', 'Bico: largura', 3, 30, 0.5, 'mm', isType('lamina')]),
-    K(['armT', 'Bico: espessura', 1.5, 15, 0.1, 'mm', isType('lamina')]),
-    K(['droop', 'Bico: queda na ponta (− sobe)', -10, 15, 0.5, 'mm', m => ['locao', 'lamina'].includes(m.sprayType)]),
-    K(['dir', 'Direção do bico (giro)', -180, 180, 1, '°']),
+  ]],
+  ['Bico', [
+    K(['nozzleL', 'Comprimento', 0, 60, 0.5, 'mm', m => ['locao', 'lamina'].includes(m.sprayType)]),
+    K(['spoutD', 'Diâmetro do tubo', 1.5, 10, 0.1, 'mm', isType('locao')]),
+    K(['armW', 'Largura', 3, 30, 0.5, 'mm', isType('lamina')]),
+    K(['armT', 'Espessura', 1.5, 15, 0.1, 'mm', isType('lamina')]),
+    K(['droop', 'Queda na ponta (− sobe)', -10, 15, 0.5, 'mm', m => ['locao', 'lamina'].includes(m.sprayType)]),
+    K(['dir', 'Direção (giro)', -180, 180, 1, '°']),
+  ]],
+  ['Mola e pescante', [
     K(['mola', 'Bomba com mola (visível no frasco transparente)', 'check']),
     K(['houseD', 'Mola: diâmetro', 4, 20, 0.5, 'mm', m => m.mola]),
     K(['springL', 'Mola: comprimento', 5, 60, 0.5, 'mm', m => m.mola]),
@@ -1612,30 +1647,8 @@ const MF = [
     K(['pescGap', 'Pescante: folga do fundo', 0, 20, 0.5, 'mm', m => m.pesc]),
     K(['pescCurve', 'Pescante: curva no pé (− esquerda)', -40, 40, 0.5, 'mm', m => m.pesc]),
     K(['pescWave', 'Pescante: ondulação em S', -15, 15, 0.5, 'mm', m => m.pesc]),
-    G(['n', 'Seção: oval → retângulo', 2, 10, 0.1, '']),
-    G(['taper', 'Topo em relação à base', 10, 250, 1, '%']),
-    G(['bulge', 'Barriga (− cintura)', -35, 40, 0.5, '%']),
-    G(['bulgePos', 'Altura da barriga', 5, 95, 1, '%']),
   ]],
-  ['Arredondamento', [
-    GB(['rBot', 'Raio embaixo', 0, 150, 0.5, 'mm']),
-    GP(['rBotW', 'Raio embaixo: recuo lateral (0 = igual)', 0, 100, 0.5, 'mm', m => m.rBot > 0]),
-    GP(['rTop', 'Raio em cima', 0, 150, 0.5, 'mm']),
-    GP(['rTopW', 'Raio em cima: recuo lateral (0 = igual)', 0, 100, 0.5, 'mm', m => m.rTop > 0]),
-    P(['rTL', 'Canto superior esquerdo', 0, 150, 0.5, 'mm']),
-    P(['rTR', 'Canto superior direito', 0, 150, 0.5, 'mm']),
-    P(['rBL', 'Canto inferior esquerdo', 0, 150, 0.5, 'mm']),
-    P(['rBR', 'Canto inferior direito', 0, 150, 0.5, 'mm']),
-    P(['rEdge', 'Borda da frente e do verso', 0, 30, 0.1, 'mm']),
-    P(['chamfer', 'Borda chanfrada (em vez de redonda)', 'check']),
-  ]],
-  ['Encaixe', [
-    ['gap', 'Distância do módulo de baixo', -40, 40, 0.1, 'mm'],
-    ['ox', 'Deslocar para o lado (− esquerda)', -100, 100, 0.5, 'mm'],
-    ['rep', 'Repetir', 1, 8, 1, '×'],
-    ['repGap', 'Espaço entre repetições', 0, 20, 0.1, 'mm', m => m.rep > 1],
-  ]],
-  ['Abertura e detalhes', [
+  ['Abertura', [
     GP(['topType', 'Sistema de abertura', 'select', [['nenhum', 'Nenhum'], ['flip', 'Flip-top (tampinha com dobradiça)'], ['disc', 'Disc-top (disco basculante)']]]),
     GP(['openPct', 'Abrir', 0, 100, 1, '%', m => m.topType !== 'nenhum']),
     GP(['lidSide', 'Tampinha fica', 'select', [['cima', 'Em cima'], ['baixo', 'Embaixo (bisnaga em pé na tampa)']], m => m.topType === 'flip']),
@@ -1646,16 +1659,27 @@ const MF = [
     GP(['discDimple', 'Concavidade de apertar', 0, 4, 0.1, 'mm', m => m.topType === 'disc']),
     GP(['groove', 'Linha de abertura (mm do topo, 0 = sem)', 0, 100, 0.5, 'mm']),
     GP(['grooveD', 'Profundidade da linha', 0.1, 3, 0.1, 'mm', m => m.groove > 0]),
+  ]],
+  ['Entalhe', [
     GP(['notch', 'Entalhe de abertura (pega do dedo)', 'check']),
-    GP(['notchLock', 'Entalhe começa na linha de abertura', 'check', 0, 0, 0, m => m.notch]),
-    GP(['notchY', 'Entalhe: começa a (mm do topo)', 0, 100, 0.5, 'mm', m => m.notch && !(m.notchLock && m.groove > 0)]),
-    GP(['notchW', 'Entalhe: largura', 2, 120, 0.5, 'mm', m => m.notch]),
-    GP(['notchH', 'Entalhe: altura', 1, 60, 0.5, 'mm', m => m.notch]),
-    GP(['notchD', 'Entalhe: profundidade', 0.2, 8, 0.1, 'mm', m => m.notch]),
-    GP(['notchP', 'Entalhe: meia-lua → fenda', 2, 12, 0.1, '', m => m.notch]),
-    GP(['notchUp', 'Entalhe acima da linha', 'check', 0, 0, 0, m => m.notch]),
-    G(['ridges', 'Frisos verticais (faixa reta do meio)', 0, 120, 1, '']),
-    G(['ridgeD', 'Profundidade dos frisos', 0.1, 3, 0.1, 'mm', m => m.ridges > 0]),
+    GP(['notchLock', 'Começa na linha de abertura', 'check', 0, 0, 0, m => m.notch]),
+    GP(['notchY', 'Começa a (mm do topo)', 0, 100, 0.5, 'mm', m => m.notch && !(m.notchLock && m.groove > 0)]),
+    GP(['notchW', 'Largura', 2, 120, 0.5, 'mm', m => m.notch]),
+    GP(['notchH', 'Altura', 1, 60, 0.5, 'mm', m => m.notch]),
+    GP(['notchD', 'Profundidade', 0.2, 8, 0.1, 'mm', m => m.notch]),
+    GP(['notchP', 'Meia-lua → fenda', 2, 12, 0.1, '', m => m.notch]),
+    GP(['notchUp', 'Acima da linha', 'check', 0, 0, 0, m => m.notch]),
+  ]],
+  ['Frisos', [
+    G(['ridges', 'Frisos na faixa reta do meio', 0, 120, 1, '']),
+    G(['ridgeD', 'Profundidade', 0.1, 3, 0.1, 'mm', m => m.ridges > 0]),
+    // + lista de faixas (renderRibs), para peças redondas/ovais e da Draft
+  ]],
+  ['Encaixe', [
+    ['gap', 'Distância do módulo de baixo', -40, 40, 0.1, 'mm'],
+    ['ox', 'Deslocar para o lado (− esquerda)', -100, 100, 0.5, 'mm'],
+    ['rep', 'Repetir', 1, 8, 1, '×'],
+    ['repGap', 'Espaço entre repetições', 0, 20, 0.1, 'mm', m => m.rep > 1],
   ]],
   ['Cor', [
     ['own', 'Cor própria neste módulo', 'check'],
@@ -1715,18 +1739,23 @@ function renderEditor() {
       (deep ? '' : `<br>⚠ Baixa demais: a rosca aparece acima da tampa.`);
     ed.appendChild(tip);
   }
+  const openG = store.get('shape.openGroups', { Medidas: true, Formato: true });
   for (const [title, defs] of MF) {
-    if (title === 'Cor' && (m.kind === 'giro' || m.kind === 'perfil')) renderRibs(ed, m);
-    if (!defs.some(d => !d[6] || d[6](m))) continue;
-    const h = document.createElement('h3'); h.textContent = title; ed.appendChild(h);
+    const ribsHere = title === 'Frisos' && (m.kind === 'giro' || m.kind === 'perfil');
+    if (!ribsHere && !defs.some(d => !d[6] || d[6](m))) continue;
+    // Grupo recolhível; lembra quais ficaram abertos.
+    const grp = document.createElement('details'); grp.className = 'grp'; grp.open = !!openG[title];
+    grp.innerHTML = `<summary>${title}</summary>`;
+    grp.addEventListener('toggle', () => { const o = store.get('shape.openGroups', { Medidas: true, Formato: true }); o[title] = grp.open; store.set('shape.openGroups', o); });
+    ed.appendChild(grp);
     if (title === 'Arredondamento' && m.kind === 'placa') {
       const b = document.createElement('button'); b.className = 'btn'; b.textContent = 'Espelhar ←→';
       b.onclick = () => { [m.rTL, m.rTR, m.rBL, m.rBR, m.ox] = [m.rTR, m.rTL, m.rBR, m.rBL, -m.ox]; renderEditorKeepScroll(); queueBuild(); };
-      ed.appendChild(b);
+      grp.appendChild(b);
     }
     for (const def of defs) {
       const show = def[6];
-      const el = field(ed, m, def, (k, structural) => {
+      const el = field(grp, m, def, (k, structural) => {
         // Ligar o entalhe sem linha de abertura cria a linha junto.
         if (k === 'notch' && m.notch && !(m.groove > 0)) m.groove = r1(Math.min(12, m.h * 0.35));
         if (k === 'topType' && m.topType === 'flip' && !(m.groove > 0)) m.groove = r1(Math.min(12, m.h * 0.35));
@@ -1737,6 +1766,7 @@ function renderEditor() {
       });
       if (show && !show(m)) el.classList.add('hidden');
     }
+    if (ribsHere) renderRibs(grp, m);
   }
 }
 // Trocar o módulo selecionado por outro da mesma categoria, vendo as opções.
@@ -1809,7 +1839,7 @@ function renderSwap(ed, m) {
 
 function renderRibs(ed, m) {
   const box = document.createElement('div');
-  box.innerHTML = '<h3>Faixas de frisos</h3><div class="tip">Serrilhado de grip em trechos da peça. Altura medida a partir da base da peça.</div>';
+  box.innerHTML = '<div class="tip" style="margin-top:10px"><b>Faixas de frisos</b>: serrilhado de grip em trechos da peça (altura a partir da base).</div>';
   (m.ribs ||= []).forEach((b, i) => {
     const el = document.createElement('div'); el.className = 'edit'; el.style.cssText = 'background:#fff;margin:6px 0';
     el.innerHTML = `<div class="row" style="margin-top:6px"><b style="flex:1">Faixa ${i + 1}</b><button class="btn sm">Remover</button></div>`;
