@@ -376,7 +376,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-25.bico-curvo-furado';
+const BUILD = '2026-09-25.lamina-ponta';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -872,12 +872,6 @@ function refShape(cmds, P) {
   return sh;
 }
 
-// Saída na ponta arredondada: esfera escura quase toda dentro da ponta; só uma
-// calota rente à curva aparece, e lê como furo (nem pino saltado, nem escondido).
-function outletCap(tipX, y, ro, lo) {
-  const q = ro * 1.9, g = new THREE.SphereGeometry(q, lo ? 12 : 24, lo ? 8 : 16);
-  g.deleteAttribute('uv'); g.translate(tipX - ro * 1.75, y, 0); return g;
-}
 
 // Válvula: virola que veste o gargalo + cabeça de spray fino ou pump.
 // Pump de bisnaga (Draft 1035): a bisnaga fica de ponta-cabeça sobre ele. De baixo
@@ -996,10 +990,11 @@ function sprayGeo(m, y0, { lo = false } = {}) {
   } else if (m.sprayType === 'lamina') {
     turret();
     head.push(cyl(m.stemD / 2, top - sink, m.stemH + sink + 1, 0, 0, lo));
-    head.push(bladeHeadGeo(m, top + m.stemH, lo));
-    // Saída na ponta da lâmina.
-    const rt = Math.min(m.armT / 2, m.armW / 2), tipX = m.actW / 2 + m.nozzleL, ro = Math.min(rt * 0.6, (m.outletD || 2.2) / 2);
-    holes.push(outletCap(tipX, top + m.stemH + m.headH * 0.38 + (m.headH - m.armT) * 0.4 - m.droop, ro, lo));
+    const bg = bladeHeadGeo(m, top + m.stemH, lo), tp = bg.userData.tip; head.push(bg);
+    // Saída: elipse escura na face reta da ponta da lâmina, rente à superfície.
+    const ro = (m.outletD || 2.2) / 2, oh = cyl(1, 0, 0.45);
+    oh.scale(Math.min(ro, (tp.hTop + tp.hBot) * 0.3), 1, Math.min(ro * 1.4, tp.hz * 0.5));
+    oh.rotateZ(-Math.PI / 2); oh.translate(tp.x - 0.4, tp.y + (tp.hTop - tp.hBot) / 2, 0); holes.push(oh);
   } else if (m.sprayType === 'gotas') {
     // Conta-gotas: bulbo de borracha com topo em domo.
     head.push(ring(m.actW, m.actH, top - 0.5, { rBot: 1.5, rTop: m.actW / 2, bulge: -6, bulgePos: 30 }));
@@ -1124,10 +1119,12 @@ function bladeHeadGeo(m, yH, lo) {
   const endF = x => { // arredonda as duas pontas
     let f = 1;
     if (x < x0 + rb) f = Math.sqrt(Math.max(0, 1 - ((x0 + rb - x) / rb) ** 2));
-    if (x > x1 - rt) f = Math.min(f, Math.sqrt(Math.max(0, 1 - ((x - (x1 - rt)) / rt) ** 2)));
+    // ponta do bico: face reta com canto arredondado (onde fica a saída)
+    if (x > x1 - rt) f = Math.min(f, 0.6 + 0.4 * Math.sqrt(Math.max(0, 1 - ((x - (x1 - rt)) / rt) ** 2)));
     return Math.max(f, 0.02);
   };
   const N = lo ? 36 : 140, seg = lo ? 24 : 64, rings = [];
+  let tip = null;
   for (let i = 0; i <= N; i++) {
     const x = x0 + (x1 - x0) * (1 - Math.cos(Math.PI * i / N)) / 2;
     const t = Math.max(0, (x - Rh) / L);
@@ -1150,8 +1147,10 @@ function bladeHeadGeo(m, yH, lo) {
       ring.push([x, cy + yy * (yy > 0 ? hTop : hBot), zz]);
     }
     rings.push(ring);
+    if (i === N) tip = { x, y: cy, hz, hTop, hBot };
   }
-  return loftPts(rings);
+  const g = loftPts(rings); g.userData.tip = tip;
+  return g;
 }
 
 // Pescante: tubo do fundo do frasco até a válvula, com curva opcional no pé.
