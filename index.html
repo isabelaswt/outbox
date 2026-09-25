@@ -265,8 +265,9 @@ const LIB = {
   locao:   { name: 'Pump loção (bico curvo)', kind: 'spray', sprayType: 'locao', W: 24.5, D: 24.5, h: 10.8, collarR: 0.8, stemD: 15.5, stemH: 7.3,
              actW: 18.8, headH: 19.7, domeH: 4.5, nozzleL: 30, droop: 6, spoutD: 3 },
   pumpFrisos: { name: 'Pump loção com frisos', kind: 'spray', sprayType: 'lamina', W: 33, D: 33, h: 15, collarR: 0.8,
-             ridges: 78, ridgeD: 0.75, stemD: 10, stemH: 9.5, actW: 15, headH: 6.5,
-             nozzleL: 25, armW: 8.5, armT: 3.2, droop: 2.4, mola: false, pescD: 2.8, pescGap: 3,
+             ridges: 78, ridgeD: 0.75, stemD: 10, stemH: 9.5, actW: 15, headH: 5.4,
+             nozzleL: 27, armW: 8.2, armT: 2.8, droop: 4.1, bladeLift: 2.2, bladeStyle: 'draft1015',
+             mola: false, pescD: 2.8, pescGap: 3,
              own: true, color: '#e8dcc6', finish: 'fosco' },
   espuma:  { name: 'Pump espuma / foam', kind: 'spray', sprayType: 'foam', W: 43, D: 43, h: 17, collarR: 1.2, ridges: 0,
              actW: 22, actH: 36, armW: 11, armT: 5.5, nozzleL: 17, stemD: 16, stemH: 5, houseD: 16, springL: 26 },
@@ -296,7 +297,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-24.bico-dosador.beige-ribbed-pump';
+const BUILD = '2026-09-24.bico-dosador.curved-draft-pump';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -771,7 +772,8 @@ function sprayGeo(m, y0, { lo = false } = {}) {
 // caindo na ponta. Com cabeça e bico da mesma espessura vira placa plana.
 function bladeHeadGeo(m, yH, lo) {
   const Rh = m.actW / 2, L = m.nozzleL, T0 = m.headH, Ta = m.armT, Wa = m.armW / 2;
-  const x0 = -Rh, x1 = Rh + L, rb = Math.min(T0 / 2, Rh * 0.4), rt = Math.min(Ta / 2, Wa);
+  const draft = m.bladeStyle === 'draft1015';
+  const x0 = draft ? -Rh * 1.08 : -Rh, x1 = Rh + L, rb = Math.min(T0 / 2, Rh * (draft ? 0.55 : 0.4)), rt = Math.min(Ta * (draft ? 0.8 : 0.5), Wa);
   const smax = (a, b, k) => (a + b + Math.sqrt((a - b) * (a - b) + k)) / 2;
   const endF = x => { // arredonda as duas pontas
     let f = 1;
@@ -782,13 +784,20 @@ function bladeHeadGeo(m, yH, lo) {
   const N = lo ? 36 : 140, seg = lo ? 24 : 64, rings = [];
   for (let i = 0; i <= N; i++) {
     const x = x0 + (x1 - x0) * (1 - Math.cos(Math.PI * i / N)) / 2;
-    const w = x <= 0 ? 1 : Math.exp(-((x / (Rh * 0.85)) ** 4)); // peso do disco central
+    const t = Math.max(0, (x - Rh) / L);
+    const w = x <= 0 ? 1 : Math.exp(-((x / (Rh * (draft ? 0.72 : 0.85))) ** (draft ? 6 : 4))); // peso do disco central
     const hub = Math.abs(x) < Rh ? Rh * Math.sqrt(1 - (x / Rh) ** 2) : 0;
     const f = endF(x);
-    const hz = smax(hub, Wa * (1 + 0.25 * w), 4) * f;
-    const hTop = (Ta / 2 + (T0 * 0.62 - Ta / 2) * w) * f, hBot = (Ta / 2 + (T0 * 0.38 - Ta / 2) * w) * f;
-    const t = Math.max(0, (x - Rh) / L);
-    const cy = yH + T0 * 0.38 + (1 - w) * (T0 - Ta) * 0.4 - m.droop * t * t;
+    const hz = draft
+      ? smax(hub * 0.9, Wa * (1 + 0.32 * w - 0.16 * t), 3.2) * f
+      : smax(hub, Wa * (1 + 0.25 * w), 4) * f;
+    const hTop = (Ta / 2 + (T0 * (draft ? 0.52 : 0.62) - Ta / 2) * w) * f;
+    const hBot = (Ta / 2 + (T0 * (draft ? 0.32 : 0.38) - Ta / 2) * w) * f;
+    const lift = draft ? (m.bladeLift ?? 1.6) : 0;
+    const rootDip = draft ? -0.55 * Math.exp(-(((x + Rh * 0.05) / (Rh * 0.55)) ** 2)) : 0;
+    const cy = draft
+      ? yH + T0 * 0.34 + rootDip + lift * Math.sin(Math.PI * clamp(t, 0, 1)) * 0.78 - m.droop * Math.pow(t, 1.55)
+      : yH + T0 * 0.38 + (1 - w) * (T0 - Ta) * 0.4 - m.droop * t * t;
     const ring = [];
     for (let j = 0; j < seg; j++) {
       const th = j / seg * TAU, [zz, yy] = sp(hz, 1, 2.4, th);
