@@ -250,7 +250,7 @@ const BASE = {
 };
 const LIB = {
   capsula: { name: 'Corpo cápsula', W: 58, D: 58, h: 160, rBot: 29, rTop: 29, vol: true },
-  perfumeOval: { name: 'Corpo perfume redondo', W: 72, D: 72, n: 2, h: 86, taper: 74, bulge: 18, bulgePos: 38, rBot: 8, rTop: 31, vol: true },
+  perfumeOval: { name: 'Corpo perfume redondo', W: 96, D: 96, n: 2, h: 68, taper: 64, bulge: 22, bulgePos: 36, rBot: 10, rTop: 34, vol: true },
   reto:    { name: 'Corpo reto', W: 58, D: 58, h: 140, rBot: 8, rTop: 12, vol: true },
   boston:  { name: 'Corpo Boston (farmacêutico)', W: 60, D: 60, h: 130, rBot: 4, rTop: 24, vol: true },
   quadrado: { name: 'Corpo quadrado', W: 56, D: 56, n: 7, h: 118, rBot: 5, rTop: 9, vol: true },
@@ -263,7 +263,7 @@ const LIB = {
   anel:    { name: 'Anel', W: 36, D: 36, h: 9, rBot: 4.5, rTop: 4.5 },
   disco:   { name: 'Disco', W: 40, D: 40, h: 6, rBot: 1.5, rTop: 2 },
   tigela:  { name: 'Tigela', W: 40, D: 40, h: 20, rBot: 18, rTop: 1 },
-  taca:    { name: 'Tampa taça', W: 34, D: 34, h: 38, taper: 168, bulge: 8, bulgePos: 56, rBot: 15, rTop: 2 },
+  taca:    { name: 'Tampa taça', W: 50, D: 50, h: 34, taper: 170, bulge: 6, bulgePos: 58, rBot: 24, rTop: 2 },
   esfera:  { name: 'Esfera', W: 44, D: 44, h: 44, rBot: 22, rTop: 22, sphereR: 22, roundLock: true, groove: 15, topType: 'flip' },
   esferaBisnaga: { name: 'Esfera para bisnaga', W: 47, D: 47, h: 30, rBot: 15, rTop: 15, sphereR: 15, roundLock: true,
              groove: 23, topType: 'flip', lidSide: 'baixo', notch: true, notchUp: true, notchW: 16, notchH: 7, notchD: 1.2, notchP: 6 },
@@ -317,7 +317,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-25.pump-foam-inclinado';
+const BUILD = '2026-09-25.perfume-proporcao-baixa';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -419,9 +419,9 @@ const PRESETS = {
     M('capsula', { rBot: 12 }), NECK('24/410'), M('esfera')] },
   'Perfume taça': { color: BEIGE, finish: 'fosco', modules: [
     M('perfumeOval'),
-    NECK('24/410', { h: 13, ringH: 2.4, ringW: 2.6, embed: 6 }),
-    M('anel', { W: 33, D: 33, h: 5, rBot: 1, rTop: 1.2 }),
-    M('taca', { W: 35, D: 35, h: 38 })] },
+    NECK('24/410', { h: 8, ringH: 1.8, ringW: 3.2, embed: 5 }),
+    M('anel', { W: 38, D: 38, h: 4, rBot: 1, rTop: 1.2 }),
+    M('taca', { W: 50, D: 50, h: 34 })] },
   'Seixo com fenda': { color: BEIGE, finish: 'fosco', modules: [
     M('plano', { W: 78, D: 44, n: 3.2, h: 132, rBot: 16, rTop: 16 }), NECK('24/410'), M('seixo')] },
   'Domo meia-lua': { color: BEIGE, finish: 'fosco', modules: [
