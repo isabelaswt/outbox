@@ -291,6 +291,8 @@ const LIB = {
   gatilho: { name: 'Spray gatilho', kind: 'spray', sprayType: 'gatilho', W: 24, D: 24, h: 16.5, collarR: 0.8, ridges: 0, actW: 11 },
   pumpOnda: { name: 'Pump bico onda', kind: 'spray', sprayType: 'onda', W: 28, D: 28, h: 14.5, collarR: 0.6, ridges: 64, ridgeD: 0.3,
              stemD: 13, stemH: 14.5, actW: 12 },
+  pumpFoam: { name: 'Pump foam bico inclinado', kind: 'spray', sprayType: 'foamInc', W: 43, D: 43, h: 16, collarR: 1.2, ridges: 0,
+             actW: 15, actH: 24, houseD: 16, springL: 26 },
   pushSport: { name: 'Push-pull esportiva', kind: 'spray', sprayType: 'sport', W: 30, D: 30, h: 18, collarR: 0.8, ridges: 40, ridgeD: 0.35,
              stemD: 9.4, stemH: 3.2, actW: 11.5, actH: 7.5, mola: false, pesc: false },
   bicoDosador: { name: 'Bico dosador', kind: 'spray', sprayType: 'bico', W: 30, D: 30, h: 22, collarR: 0.8, ridges: 56,
@@ -315,7 +317,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-25.gatilho-onda';
+const BUILD = '2026-09-25.pump-foam-inclinado';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -851,6 +853,23 @@ function sprayGeo(m, y0, { lo = false } = {}) {
     const oh = cyl(1.1 * k, -0.2, 0.5); oh.scale(1, 1, Math.max(1, m.actW * 0.35 / (1.1 * k)));
     oh.applyQuaternion(new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir)); oh.translate(tx, ty, 0);
     holes.push(oh);
+  } else if (m.sprayType === 'foamInc') {
+    // Pump foam: degrau largo, coluna redonda com topo inclinado e bico chato saindo na frente.
+    const k = m.W / 43, s = 0.048 * k, P = (x, y) => [(x - 656) * s, (870 - y) * s + top];
+    const stH = 100 * s, r = m.actW / 2, yc = top + stH + 1.2 * k, slope = 0.26;
+    head.push(ring(m.W * 0.88, stH, top - 0.05, { rBot: 0, rTop: Math.min(1.5, stH * 0.4) }));
+    head.push(ring(m.actW * 1.2, 1.3 * k, top + stH - 0.1, { taper: 84, rBot: 0, rTop: 0.5 }));
+    const col = cyl(r, yc - 0.3, m.actH + 0.3, 0.8, 0, lo), pa = col.attributes.position;
+    for (let i = 0; i < pa.count; i++) pa.setY(i, pa.getY(i) + (pa.getY(i) - yc) / m.actH * -pa.getX(i) * slope);
+    col.computeVertexNormals(); head.push(col);
+    const yT = yc + m.actH, xL = -r, sp = 2.6 * k, sh = 8 * k;
+    const shp = new THREE.Shape();
+    shp.moveTo(xL - sp, yT + r * slope + 1.6 * k); shp.lineTo(xL + 1.5, yT + (r - 1.5) * slope);
+    shp.lineTo(xL + 1.5, yT - sh - 1.5); shp.lineTo(xL, yT - sh - 0.4); shp.lineTo(xL - sp, yT - sh + 0.8);
+    shp.lineTo(xL - sp, yT + r * slope + 1.6 * k);
+    head.push(sideExtrude(shp, m.actW * 0.62, lo));
+    const oh = cyl(1, 0, 0.5); oh.scale(sh * 0.32, 1, m.actW * 0.2); oh.rotateZ(Math.PI / 2);
+    oh.translate(xL - sp + 0.25, yT - sh / 2 + 0.6 * k, 0); holes.push(oh);
   } else if (m.sprayType === 'sport') {
     // Push-pull esportiva: haste curta, luva que puxa para abrir, aba no topo e botão em domo.
     head.push(cyl(m.stemD / 2, top - 0.5, m.stemH + 1, 0, 0, lo));
@@ -1883,7 +1902,7 @@ const MF = [
     GP(['sphereR', 'Raio da esfera', 0, 150, 0.5, 'mm', isSphereCap]),
     N(['neckStd', 'Padrão do acabamento (aprox.)', 'select', [...Object.keys(NECKS).map(k => [k, k]), ['livre', 'Livre']]]),
     N(['W', 'Diâmetro da rosca (T)', 8, 120, 0.1, 'mm']),
-    K(['sprayType', 'Tipo de válvula', 'select', [['mist', 'Spray fino (névoa)'], ['locao', 'Pump loção (bico curvo)'], ['draftpump', 'Pump loção com frisos'], ['foam', 'Pump espuma / foam'], ['lamina', 'Pump com alavanca / bico lâmina'], ['gotas', 'Conta-gotas'], ['pushpull', 'Push-pull'], ['bico', 'Bico dosador'], ['sport', 'Push-pull esportiva'], ['gatilho', 'Gatilho'], ['onda', 'Pump bico onda']]]),
+    K(['sprayType', 'Tipo de válvula', 'select', [['mist', 'Spray fino (névoa)'], ['locao', 'Pump loção (bico curvo)'], ['draftpump', 'Pump loção com frisos'], ['foam', 'Pump espuma / foam'], ['lamina', 'Pump com alavanca / bico lâmina'], ['gotas', 'Conta-gotas'], ['pushpull', 'Push-pull'], ['bico', 'Bico dosador'], ['sport', 'Push-pull esportiva'], ['gatilho', 'Gatilho'], ['onda', 'Pump bico onda'], ['foamInc', 'Pump foam bico inclinado']]]),
   ]],
   ['Formato', [
     G(['n', 'Seção: oval → retângulo', 2, 10, 0.1, '']),
@@ -1935,7 +1954,7 @@ const MF = [
   ]],
   ['Cabeça e haste', [
     K(['actW', 'Cabeça: largura', 8, 60, 0.5, 'mm']),
-    K(['actH', 'Cabeça: altura', 6, 60, 0.5, 'mm', m => ['mist', 'gotas', 'pushpull', 'bico', 'foam', 'sport'].includes(m.sprayType)]),
+    K(['actH', 'Cabeça: altura', 6, 60, 0.5, 'mm', m => ['mist', 'gotas', 'pushpull', 'bico', 'foam', 'sport', 'foamInc'].includes(m.sprayType)]),
     K(['headH', 'Cabeça: altura', 2, 60, 0.5, 'mm', m => ['locao', 'lamina', 'draftpump'].includes(m.sprayType)]),
     K(['domeH', 'Cabeça: altura do domo', 0, 20, 0.5, 'mm', isType('locao')]),
     K(['stemD', 'Haste: diâmetro', 3, 40, 0.5, 'mm']),
@@ -2265,7 +2284,7 @@ function renderAll() { renderStack(); renderEditor(); renderGlobal(); renderPres
 const CATS = [
   ['Corpo', ['reto', 'boston', 'quadrado', 'capsula', 'perfumeOval', 'plano', 'arco', 'cone', 'placa', 'bisnaga', ...DRAFT_KEYS.corpo]],
   ['Tampa', ['esfera', 'esferaBisnaga', 'taca', 'domo', 'seixo', 'flip', 'flipRedondo', 'disctop', 'sobretampa', 'tampaBisnaga', 'disco']],
-  ['Válvula', ['pump', 'pumpFrisos', 'locao', 'espuma', 'spray', 'contaGotas', 'pushPull', 'pushSport', 'bicoDosador', 'lamina', 'pumpOnda', 'gatilho']],
+  ['Válvula', ['pump', 'pumpFrisos', 'locao', 'espuma', 'spray', 'contaGotas', 'pushPull', 'pushSport', 'bicoDosador', 'lamina', 'pumpOnda', 'gatilho', 'pumpFoam']],
   ['Peça de encaixe', ['gargalo', 'colar', 'barril', 'flare', 'anel', 'tigela']],
 ];
 CATS.forEach(([label, keys]) => {
