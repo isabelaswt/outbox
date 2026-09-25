@@ -376,7 +376,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-25.lamina-ponta';
+const BUILD = '2026-09-25.sem-lamina';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -503,10 +503,10 @@ const PRESETS = {
     M('reto', { W: 38, D: 38, h: 105, rBot: 5, rTop: 14 }), NECK('20/410'), M('spray')] },
   'Pump escultural': { color: BEIGE, finish: 'fosco', modules: [
     M('reto', { W: 62, D: 62, h: 104, rBot: 16, rTop: 16 }), NECK('24/410'), M('lamina')] },
-  'Pump cápsula (disco plano)': { color: BEIGE, finish: 'fosco', modules: [
+  'Pump cápsula': { color: BEIGE, finish: 'fosco', modules: [
     M('reto', { W: 62, D: 62, h: 104, rBot: 20, rTop: 1 }), NECK('24/410'),
-    M('lamina', { name: 'Pump domo + disco plano', sprayType: 'lamina', W: 62, D: 62, h: 46, collarR: 30, stemD: 30, stemH: 8,
-      actW: 36, headH: 4.2, armT: 4.2, armW: 12, nozzleL: 22, droop: 0 })] },
+    M('lamina', { name: 'Pump domo', W: 62, D: 62, h: 46, collarR: 30, stemD: 11, stemH: 10,
+      actW: 24, headH: 12, armT: 4.6, armW: 10.5, nozzleL: 24, droop: 0 })] },
   'Boston com pump': { color: BEIGE, finish: 'fosco', modules: [
     M('boston'), NECK('24/410', { embed: 12 }), M('locao')] },
   'Conta-gotas âmbar': { color: BEIGE, finish: 'fosco', modules: [
@@ -627,12 +627,16 @@ function normalize(s) {
     }
     // Válvula pump antiga (cabeça chata de lâmina) passa para o bico pato novo,
     // no mesmo tamanho de virola que estava.
-    const oldPump = m.sprayType === 'lamina' && (m.type === 'pump' || m.name === 'Válvula pump') ? 'pump'
-      : m.sprayType === 'lamina' && (m.name || '').startsWith('Pump escultural') ? 'lamina' : null;
-    if (oldPump) {
-      const L = LIB[oldPump], f = m.W / L.W;
-      for (const k of ['stemD', 'stemH', 'actW', 'headH', 'armT', 'armW', 'nozzleL', 'droop']) m[k] = r1(L[k] * f);
-      Object.assign(m, { sprayType: 'pato', name: L.name }, oldPump === 'pump' ? { ridges: L.ridges, ridgeD: L.ridgeD } : {});
+    // Cabeça em lâmina (malha esticada que deformava ao editar) passa para a
+    // estrutura de pump: torre, haste, cabeça redonda e bico pato. A cabeça segue
+    // o tamanho de pump padrão, não o da virola (virolas em domo são enormes).
+    if (m.sprayType === 'lamina') {
+      const isPump = m.type === 'pump' || m.name === 'Válvula pump', L = LIB[isPump ? 'pump' : 'lamina'];
+      const f = clamp(m.W / L.W, 0.7, 1.15);
+      for (const k of ['stemD', 'stemH', 'actW', 'headH', 'armT', 'armW', 'nozzleL']) m[k] = r1(L[k] * f);
+      Object.assign(m, { sprayType: 'pato', droop: L.droop }, isPump ? { ridges: L.ridges, ridgeD: L.ridgeD } : {});
+      if (m.name === 'Pump domo + disco plano') m.name = 'Pump domo';
+      if ((m.name || '').startsWith('Pump escultural')) m.name = L.name;
     }
     if (m.type === 'tampaBisnaga') {
       if (m.h >= 32) m.h = 26;
