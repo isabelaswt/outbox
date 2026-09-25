@@ -286,15 +286,15 @@ const LIB = {
              actW: 24, actH: 25, armW: 14, armT: 6, nozzleL: 12, stemD: 15, stemH: 4, houseD: 16, springL: 26 },
   contaGotas: { name: 'Conta-gotas', kind: 'spray', sprayType: 'gotas', W: 22, D: 22, h: 13, ridges: 48, actW: 15, actH: 24,
              mola: false, pescD: 6.5, pescGap: 12 },
-  pushPull: { name: 'Tampa push-pull', kind: 'spray', sprayType: 'pushpull', W: 30, D: 30, h: 13, collarR: 1.2, ridges: 40,
-             actW: 13, actH: 10, mola: false, pesc: false },
+  pushPull: { name: 'Tampa push-pull', kind: 'spray', sprayType: 'pushpull', W: 31, D: 31, h: 15, collarR: 0.8, ridges: 64, ridgeD: 0.32,
+             actW: 15, actH: 12, stemD: 8, stemH: 2.8, mola: false, pesc: false },
   gatilho: { name: 'Spray gatilho', kind: 'spray', sprayType: 'gatilho', W: 24, D: 24, h: 16.5, collarR: 0.8, ridges: 0, actW: 11 },
   pumpOnda: { name: 'Pump bico onda', kind: 'spray', sprayType: 'onda', W: 28, D: 28, h: 14.5, collarR: 0.6, ridges: 64, ridgeD: 0.3,
              stemD: 13, stemH: 14.5, actW: 12 },
   pumpFoam: { name: 'Pump foam bico inclinado', kind: 'spray', sprayType: 'foamInc', W: 43, D: 43, h: 16, collarR: 1.2, ridges: 0,
              actW: 15, actH: 24, houseD: 16, springL: 26 },
-  pushSport: { name: 'Push-pull esportiva', kind: 'spray', sprayType: 'sport', W: 30, D: 30, h: 18, collarR: 0.8, ridges: 40, ridgeD: 0.35,
-             stemD: 9.4, stemH: 3.2, actW: 11.5, actH: 7.5, mola: false, pesc: false },
+  pushSport: { name: 'Push-pull esportiva', kind: 'spray', sprayType: 'sport', W: 30, D: 30, h: 18, collarR: 0.8, ridges: 64, ridgeD: 0.34,
+             stemD: 9.4, stemH: 3.2, actW: 13.5, actH: 9.5, mola: false, pesc: false },
   bicoDosador: { name: 'Bico dosador', kind: 'spray', sprayType: 'bico', W: 32, D: 32, h: 17, collarR: 0.8, ridges: 72, ridgeD: 0.32,
              actW: 20, actH: 18, nozzleL: 13.5, spoutD: 3.2, mola: false, pesc: false },
   gargalo: { name: 'Gargalo com rosca', kind: 'gargalo', W: 23.9, D: 23.9, h: 16, neckStd: '24/410', pitch: 3.18, turns: 1.5 },
@@ -317,7 +317,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-25.bico-dosador-frisado';
+const BUILD = '2026-09-25.pushpull-frisado';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -869,19 +869,25 @@ function sprayGeo(m, y0, { lo = false } = {}) {
     const oh = cyl(1, 0, 0.5); oh.scale(sh * 0.32, 1, m.actW * 0.2); oh.rotateZ(Math.PI / 2);
     oh.translate(xL - sp + 0.25, yT - sh / 2 + 0.6 * k, 0); holes.push(oh);
   } else if (m.sprayType === 'sport') {
-    // Push-pull esportiva: haste curta, luva que puxa para abrir, aba no topo e botão em domo.
-    head.push(cyl(m.stemD / 2, top - 0.5, m.stemH + 1, 0, 0, lo));
-    const yL = top + m.stemH, lipW = m.actW * 1.14, lipH = Math.max(1.2, m.actH * 0.24);
-    head.push(ring(m.actW, m.actH, yL, { taper: 104, rBot: 1.2, rTop: 0 }));
-    head.push(ring(lipW, lipH, yL + m.actH - 0.05, { rBot: lipH * 0.45, rTop: lipH * 0.45 }));
-    const dW = m.actW * 0.58, dH = dW * 0.34;
-    head.push(ring(dW, dH, yL + m.actH + lipH - 0.1, { rBot: 0, rTop: dH * 0.95, rTopW: dW / 2 }));
-    holes.push(cyl(dW * 0.12, yL + m.actH + lipH + dH - 0.25, 0.3));
+    // Push-pull esportiva: luva frisada curta, aba arredondada e pino central.
+    const yL = top - 0.15, sleeveW = m.actW * 1.08, sleeveH = m.actH;
+    head.push(ring(sleeveW, sleeveH, yL, { taper: 96, rBot: 1.1, rTop: 0.35,
+      ridges: Math.round(sleeveW * 3.5), ridgeD: m.ridgeD || 0.32 }));
+    const lipH = Math.max(1.6, sleeveH * 0.24), lipW = sleeveW * 1.18;
+    head.push(ring(lipW, lipH, yL + sleeveH - 0.05, { rBot: lipH * 0.42, rTop: lipH * 0.42 }));
+    const dW = sleeveW * 0.48, dH = Math.max(2.2, dW * 0.34);
+    head.push(ring(dW, dH, yL + sleeveH + lipH - 0.08, { rBot: 0, rTop: dH * 0.9, rTopW: dW / 2 }));
+    holes.push(cyl(Math.max(0.4, dW * 0.11), yL + sleeveH + lipH + dH - 0.25, 0.3));
   } else if (m.sprayType === 'pushpull') {
-    // Push-pull: bico cônico com a ponta que sobe para abrir.
-    head.push(ring(m.actW, m.actH, top - 0.5, { taper: 62, rBot: 0, rTop: 0.8 }));
-    head.push(ring(m.actW * 0.72, 3, top + m.actH - 1, { rBot: 0.6, rTop: 1 }));
-    const oh = cyl(1.1, top + m.actH + 1.85, 0.3); holes.push(oh);
+    // Push-pull: tampa frisada com ombro suave e bico central curto.
+    const yL = top - 0.2, sleeveW = m.actW, sleeveH = m.actH;
+    head.push(ring(sleeveW, sleeveH, yL, { taper: 92, rBot: 1, rTop: 0.35,
+      ridges: Math.round(sleeveW * 3.4), ridgeD: m.ridgeD || 0.3 }));
+    const lipH = Math.max(1.5, sleeveH * 0.24);
+    head.push(ring(sleeveW * 1.16, lipH, yL + sleeveH - 0.05, { rBot: lipH * 0.45, rTop: lipH * 0.42 }));
+    const tipW = sleeveW * 0.52, tipH = Math.max(3.1, sleeveH * 0.34);
+    head.push(ring(tipW, tipH, yL + sleeveH + lipH - 0.08, { taper: 62, rBot: 0, rTop: tipH * 0.5 }));
+    holes.push(cyl(Math.max(0.45, tipW * 0.12), yL + sleeveH + lipH + tipH - 0.25, 0.3));
   } else {
     // Pump de loção/espuma: haste grossa, cabeça com topo em domo e bico em
     // tubo que sai reto e curva para baixo.
