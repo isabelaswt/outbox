@@ -389,7 +389,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-25.pipeta-vidro';
+const BUILD = '2026-09-25.pipeta-sempre-vidro';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -2185,10 +2185,10 @@ function buildInto(product, S, explodeAmt = 0) {
       const len = yTop - (y0 - base[i].y0) - (floor + S.wall + m.pescGap);
       const pg = pescanteGeo(m, yTop - len, yTop);
       if (pg && m.sprayType === 'gotas') {
-        // Conta-gotas: pipeta de vidro. Por cima do frasco transparente (o vidro do
-        // frasco não mostra por dentro o que é transparente); no opaco fica escondida.
-        const pm = new THREE.Mesh(pg, glassBody ? pipetteMat : pescMat); pm.userData.idx = idx;
-        pm.name = `${String(idx + 1).padStart(2, '0')}_pipeta`; if (glassBody) pm.renderOrder = 18; product.add(pm);
+        // Conta-gotas: a pipeta é sempre de vidro (o resto do acabamento é livre).
+        // Num frasco opaco ela fica escondida; no Explodir ou no frasco transparente aparece.
+        const pm = new THREE.Mesh(pg, pipetteMat); pm.userData.idx = idx;
+        pm.name = `${String(idx + 1).padStart(2, '0')}_pipeta`; pm.renderOrder = 18; product.add(pm);
       } else if (pg) add(pg, 'pescante');
     }
     // Líquido dentro do corpo, até o nível escolhido.
