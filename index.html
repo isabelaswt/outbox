@@ -297,7 +297,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-24.bico-dosador.sphere-radius-control';
+const BUILD = '2026-09-24.bico-dosador.sphere-radius-geometry';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -507,6 +507,18 @@ function buildDraftPresets() {
 
 const FINISHES = [['fosco', 'Fosco'], ['acetinado', 'Acetinado'], ['brilho', 'Brilho'], ['perolado', 'Perolado'], ['vidro', 'Transparente / vidro'], ['metal', 'Metalizado']];
 
+const typeKey = m => m?.type || Object.keys(LIB).find(k => LIB[k].name === m?.name);
+const isSphereCap = m => typeKey(m) === 'esfera';
+const sphereMaxR = m => r1(Math.min(m.W || 0, m.D || 0, m.h || 0) / 2);
+function syncSphereRadius(m, auto = false) {
+  if (!isSphereCap(m)) return;
+  const maxR = sphereMaxR(m);
+  if (auto || m.roundLock || typeof m.sphereR !== 'number') m.sphereR = maxR;
+  m.sphereR = r1(clamp(m.sphereR, 0, maxR));
+  m.rBot = m.rTop = m.sphereR;
+  m.rBotW = m.rTopW = 0;
+}
+
 let S = normalize(store.get('shape.autosave', null) || { name: 'Cápsula + esfera', wall: 1.2, bg: '#f1f0ed', ...structuredClone(PRESETS['Cápsula + esfera']) });
 let sel = 0;
 function normalize(s) {
@@ -517,6 +529,11 @@ function normalize(s) {
   s.logos ??= [];
   // Peças em malha (versão antiga da Draft) não existem mais.
   s.modules = (s.modules || []).filter(m => m.kind !== 'malha').map(m => ({ ...m, color: unpink(m.color) })).map(m => ({ ...BASE, uid: newUid(), ...m, ...(m.sprayType === 'gatilho' ? { sprayType: 'mist' } : m.sprayType === 'pump' ? { sprayType: 'locao' } : {}) }));
+  s.modules.forEach(m => {
+    if (!isSphereCap(m)) return;
+    if (typeof m.roundLock !== 'boolean') m.roundLock = true;
+    syncSphereRadius(m, m.roundLock);
+  });
   if (!s.modules.length) s.modules = [M('reto')];
   return s;
 }
@@ -962,6 +979,10 @@ function slabGeo(m0, y0, { inset = 0, lift = 0, lo = false } = {}) {
 
 // inset/lift geram o volume interno (parede e fundo) para a capacidade.
 function moduleGeo(m0, y0, opts = {}) {
+  if (isSphereCap(m0)) {
+    m0 = { ...m0 };
+    syncSphereRadius(m0, m0.roundLock);
+  }
   if (m0.kind === 'placa') return slabGeo(m0, y0, opts);
   if (m0.kind === 'bisnaga') return tubeGeo(m0, y0, opts);
   if (m0.kind === 'gargalo') return opts.inset ? null : neckGeo(m0, y0, opts);
@@ -1767,16 +1788,6 @@ const G = d => only('giro', d), P = d => only('placa', d), B = d => only('bisnag
 const notK = (kinds, d) => { const a = padDef(d); a[6] = m => !kinds.includes(m.kind); return a; };
 const K = d => only('spray', d), isType = t => m => m.sprayType === t;
 const GB = d => { const a = padDef(d); const prev = a[6]; a[6] = m => ['giro', 'bisnaga', 'perfil'].includes(m.kind) && (!prev || prev(m)); return a; };
-const isSphereCap = m => typeOf(m) === 'esfera';
-const sphereMaxR = m => r1(Math.min(m.W || 0, m.D || 0, m.h || 0) / 2);
-function syncSphereRadius(m, auto = false) {
-  if (!isSphereCap(m)) return;
-  const maxR = sphereMaxR(m);
-  if (auto || m.roundLock || typeof m.sphereR !== 'number') m.sphereR = maxR;
-  m.sphereR = r1(clamp(m.sphereR, 0, maxR));
-  m.rBot = m.rTop = m.sphereR;
-  m.rBotW = m.rTopW = 0;
-}
 // Grupos do editor. Cada peça mostra só os grupos que valem para ela; o nome
 // do grupo dá o contexto, então os rótulos ficam curtos.
 const MF = [
@@ -1991,7 +2002,7 @@ function renderEditor() {
           if (k === 'sphereR') m.roundLock = false;
           syncSphereRadius(m, k === 'roundLock' && m.roundLock || ['W', 'D', 'h'].includes(k) && m.roundLock);
         }
-        if (structural || ['rep', 'groove', 'ridges', 'own'].includes(k)) renderEditorKeepScroll();
+        if (structural || ['rep', 'groove', 'ridges', 'own'].includes(k) || (isSphereCap(m) && ['W', 'D', 'h', 'roundLock', 'sphereR'].includes(k))) renderEditorKeepScroll();
         renderStack(); queueBuild();
       });
       if (show && !show(m)) el.classList.add('hidden');
