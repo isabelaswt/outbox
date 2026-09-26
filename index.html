@@ -149,21 +149,6 @@ canvas{display:block;width:100%;height:100%;touch-action:none}
     <div class="tip" id="saveStatus"></div>
   </details>
 
-  <details id="genBox">
-    <summary>Gerador</summary>
-    <div class="tip">Clique nas características e gere opções. Nada marcado num grupo = qualquer uma. A mesma seed repete a mesma leva; o dado sorteia outra.</div>
-    <div id="genOpts"></div>
-    <div class="gen-l">Volume</div>
-    <div class="row"><input type="number" id="genMl" value="300" min="5" max="3000" step="5" style="flex:1"><span class="tip" style="margin:0">ml</span></div>
-    <div class="gen-l">Seed</div>
-    <div class="row">
-      <input type="number" id="genSeed" value="1" style="flex:1">
-      <button class="btn" id="genDice" title="Sortear outra seed">🎲 Outra</button>
-      <button class="btn pri" id="genBtn">Gerar</button>
-    </div>
-    <div class="gallery" id="genGrid"></div>
-  </details>
-
   <details open id="lineBox">
     <summary>Lado a lado</summary>
     <div class="tip">Outros produtos da linha, ao lado deste. Clique num deles (aqui ou no 3D) para editar.</div>
@@ -263,6 +248,21 @@ canvas{display:block;width:100%;height:100%;touch-action:none}
       <button class="btn" id="dlStl">STL</button>
     </div>
     <div class="tip">GLB sai em metros (padrão glTF: Blender, Keyshot, Dimension, AR). OBJ e STL saem em milímetros. Cada módulo vira uma peça separada.</div>
+  </details>
+
+  <details id="genBox">
+    <summary>Gerador</summary>
+    <div class="tip">Clique nas características e gere opções. Nada marcado num grupo = qualquer uma. A mesma seed repete a mesma leva; o dado sorteia outra.</div>
+    <div id="genOpts"></div>
+    <div class="gen-l">Volume</div>
+    <div class="row"><input type="number" id="genMl" value="300" min="5" max="3000" step="5" style="flex:1"><span class="tip" style="margin:0">ml</span></div>
+    <div class="gen-l">Seed</div>
+    <div class="row">
+      <input type="number" id="genSeed" value="1" style="flex:1">
+      <button class="btn" id="genDice" title="Sortear outra seed">🎲 Outra</button>
+      <button class="btn pri" id="genBtn">Gerar</button>
+    </div>
+    <div class="gallery" id="genGrid"></div>
   </details>
 
   <details id="teamBox" class="hidden">
@@ -439,7 +439,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-26.gerador';
+const BUILD = '2026-09-26.gerador-baixo';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
