@@ -215,7 +215,7 @@ canvas{display:block;width:100%;height:100%;touch-action:none}
     <div class="tip">Cenário, luz e vídeo girando para mostrar o produto. O cenário se ajusta ao tamanho do produto (e dos que estão ao lado).</div>
     <div id="sceneFields"></div>
     <div class="row">
-      <select id="spinMode"><option value="360">Volta inteira (360°)</option><option value="balanco">Vai e volta (frente sempre à vista)</option><option value="arte">Artístico: inclinado 45° girando no ar</option></select>
+      <select id="spinMode"><option value="360">Volta inteira (360°)</option><option value="balanco">Vai e volta (frente sempre à vista)</option><option value="detalhes">Artístico: detalhes (relevo de perto, tampa abrindo)</option><option value="arte">Inclinado 45° girando no ar</option></select>
       <select id="spinSec"><option value="6">6 s</option><option value="10" selected>10 s</option><option value="15">15 s</option></select>
     </div>
     <div class="row">
@@ -422,7 +422,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-26.vidro-jateado-contraste';
+const BUILD = '2026-09-26.video-detalhes';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -2162,6 +2162,83 @@ function renderScene() {
 // Vídeo: o produto gira no prato (360° ou vai e volta) com câmera e luz fixas, ou
 // inclinado no ar (artístico); o canvas é gravado.
 let spinning = false;
+// Vídeo de detalhes: roteiro de câmera — produto inteiro → relevo de perto (a
+// câmera passa rasante pelo logo) → tampa (flip/disc abre e fecha; tampa de rosca
+// sobe girando e volta) → produto inteiro. As etapas da tampa abrindo são montadas
+// antes de gravar (a gravação só troca qual aparece).
+function detailShow() {
+  const V = THREE.Vector3, all = new THREE.Box3().setFromObject(product);
+  const C = all.getCenter(new V()), sz = all.getSize(new V());
+  const vh = THREE.MathUtils.degToRad(persp.fov / 2), hh = Math.atan(Math.tan(vh) * persp.aspect);
+  const fitDist = r => r / Math.sin(Math.min(vh, hh));
+  const dist0 = fitDist(all.getBoundingSphere(new THREE.Sphere()).radius * 1.1);
+  const base = cam.position.clone().sub(controls.target); base.y = 0; if (base.lengthSq() < 1e-6) base.set(0, 0, 1); base.normalize();
+  const baseAng = Math.atan2(base.z, base.x);
+  // Relevo: o logo (ou o rótulo); sem nenhum, a frente do corpo.
+  const mark = product.children.find(o => o.userData.logo) || product.children.find(o => o.userData.label);
+  let relT, relAng = baseAng, relR = sz.y * 0.16;
+  if (mark) {
+    const b = new THREE.Box3().setFromObject(mark); relT = b.getCenter(new V());
+    const n = new V(relT.x - C.x, 0, relT.z - C.z); if (n.lengthSq() > 1e-6) relAng = Math.atan2(n.z, n.x);
+    relR = Math.max(b.getSize(new V()).length() * 0.45, sz.y * 0.1);
+  } else relT = new V(C.x, all.min.y + sz.y * 0.45, C.z);
+  // Tampa: tudo acima do gargalo (ou a peça de cima, se não houver gargalo).
+  const neckI = S.modules.findIndex(m => m.kind === 'gargalo'), last = S.modules.length - 1;
+  const capIdx = S.modules.map((m, i) => i).filter(i => (neckI >= 0 ? i > neckI : i === last && !S.modules[i].vol) && !S.modules[i].hidden);
+  const capMeshes = product.children.filter(o => capIdx.includes(o.userData.idx));
+  const capBox = new THREE.Box3(); capMeshes.forEach(o => capBox.expandByObject(o));
+  const capT = capBox.isEmpty() ? new V(C.x, all.max.y, C.z) : capBox.getCenter(new V());
+  const capR = capBox.isEmpty() ? sz.y * 0.2 : Math.max(capBox.getSize(new V()).length() * 0.55, sz.y * 0.12);
+  const openI = [...capIdx].reverse().find(i => { const m = S.modules[i]; return (m.topType === 'flip' && m.groove > 0) || m.topType === 'disc'; });
+  let frames = null, openMeshes = [];
+  if (openI !== undefined) { // etapas da tampa abrindo, montadas antes
+    frames = [];
+    for (let k = 0; k <= 10; k++) {
+      const g = new THREE.Group();
+      buildInto(g, { ...S, modules: S.modules.map((m, i) => (i === openI ? { ...m, openPct: k * 10 } : m)) }, 0);
+      const parts = g.children.filter(o => o.userData.idx === openI);
+      g.children.filter(o => o.userData.idx !== openI).forEach(o => o.geometry?.dispose());
+      const grp = new THREE.Group(); parts.forEach(o => grp.add(o)); grp.visible = false; product.add(grp); frames.push(grp);
+    }
+    openMeshes = product.children.filter(o => o.userData.idx === openI && o.isMesh);
+  }
+  const lift = capBox.isEmpty() ? 0 : capBox.getSize(new V()).y * 0.9;
+  const pose = (T, ang, elev, d) => ({ T, P: new V(T.x + Math.cos(ang) * Math.cos(elev) * d, T.y + Math.sin(elev) * d, T.z + Math.sin(ang) * Math.cos(elev) * d) });
+  const shots = [
+    { t0: 0, t1: 0.2, f: u => pose(C, baseAng - 0.45 + 0.5 * u, 0.2, dist0) },
+    { t0: 0.28, t1: 0.5, f: u => pose(relT, relAng + 0.6 - 1.0 * u, 0.08, fitDist(relR)) },
+    { t0: 0.58, t1: 0.84, f: u => pose(capT, baseAng + 0.4 - 0.35 * u, 0.5, fitDist(capR)) },
+    { t0: 0.92, t1: 1, f: u => pose(C, baseAng - 0.1 + 0.1 * u, 0.15, dist0) },
+  ];
+  const ease = x => x * x * (3 - 2 * x);
+  const at = t => {
+    t = clamp(t, 0, 1);
+    for (let i = 0; i < shots.length; i++) {
+      const s0 = shots[i];
+      if (t <= s0.t1) {
+        if (t >= s0.t0) return s0.f((t - s0.t0) / (s0.t1 - s0.t0));
+        const p = shots[i - 1].f(1), q = s0.f(0), w = ease((t - shots[i - 1].t1) / (s0.t0 - shots[i - 1].t1));
+        return { T: p.T.clone().lerp(q.T, w), P: p.P.clone().lerp(q.P, w) };
+      }
+    }
+    return shots[shots.length - 1].f(1);
+  };
+  return {
+    update(t) {
+      const { T, P } = at(t); cam.position.copy(P); cam.lookAt(T);
+      // tampa, dentro da cena da tampa: abre 15→50%, fica, fecha 70→95%
+      const u = clamp((t - 0.58) / 0.26, 0, 1), k = u < 0.15 ? 0 : u < 0.5 ? ease((u - 0.15) / 0.35) : u < 0.7 ? 1 : u < 0.95 ? 1 - ease((u - 0.7) / 0.25) : 0;
+      if (frames) {
+        const fi = Math.round(k * 10); openMeshes.forEach(o => { o.visible = fi === 0; }); frames.forEach((g, j) => { g.visible = fi > 0 && j === fi; });
+      } else capMeshes.forEach(o => { o.position.set(0, lift * k, 0); o.rotation.y = -1.6 * k; });
+    },
+    cleanup() {
+      frames?.forEach(g => { g.traverse(o => o.geometry?.dispose()); product.remove(g); });
+      openMeshes.forEach(o => { o.visible = true; });
+      capMeshes.forEach(o => { o.position.set(0, 0, 0); o.rotation.y = 0; });
+    },
+  };
+}
 async function recordSpin(sec, mode = '360') {
   if (spinning || !window.MediaRecorder) { if (!window.MediaRecorder) toast('Este navegador não grava vídeo'); return; }
   spinning = true; const btn = $('#spinBtn'); btn.disabled = true; btn.textContent = 'Gravando…';
@@ -2187,14 +2264,16 @@ async function recordSpin(sec, mode = '360') {
     const dir = cam.position.clone().sub(T).normalize(), dist = sph.radius * 1.3 / Math.sin(Math.min(vh, hh));
     art.T = pivot.position.clone(); cam.position.copy(art.T).addScaledVector(dir, dist); cam.lookAt(art.T);
   }
+  const show = mode === 'detalhes' ? detailShow() : null;
   rec.start();
   await new Promise(res => {
     const t0 = performance.now();
     const step = now => {
       // 360°: volta inteira. Vai e volta: balança ±40° em torno do ângulo atual
       // (o logo/rótulo da frente nunca vai para trás).
-      const f = Math.min(1, (now - t0) / (sec * 1000)), a = mode === 'balanco' ? a0 + Math.sin(f * Math.PI * 2) * 0.7 : a0 + f * Math.PI * 2;
-      if (art) { // inclinado, girando no próprio eixo e flutuando de leve
+      const f = clamp((now - t0) / (sec * 1000), 0, 1), a = mode === 'balanco' ? a0 + Math.sin(f * Math.PI * 2) * 0.7 : a0 + f * Math.PI * 2;
+      if (show) { try { show.update(f); } catch (e) { console.error(e); } } // nunca trava a gravação
+      else if (art) { // inclinado, girando no próprio eixo e flutuando de leve
         const spin = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), f * Math.PI * 2);
         art.pivot.quaternion.copy(art.tilt).multiply(spin);
         art.pivot.position.y = art.T.y + Math.sin(f * Math.PI * 4) * art.lift * 0.08;
@@ -2210,6 +2289,7 @@ async function recordSpin(sec, mode = '360') {
     requestAnimationFrame(step);
   });
   rec.stop(); await done;
+  show?.cleanup();
   product.rotation.y = 0; sideRoot.children.forEach(g => { g.rotation.y = 0; });
   if (art) { // devolve o produto ao lugar
     art.pivot.quaternion.identity(); art.pivot.updateMatrixWorld(true); scene.attach(product);
@@ -2218,9 +2298,13 @@ async function recordSpin(sec, mode = '360') {
   cam.position.copy(keep.pos); cam.lookAt(T); grid.visible = keep.grid; refMesh.visible = keep.ref; controls.enabled = true; controls.update(); req();
   download(new Blob(chunks, { type: mime }), fname(mime.includes('mp4') ? 'mp4' : 'webm'));
   btn.disabled = false; btn.textContent = 'Gravar vídeo'; spinning = false;
+  if (buildPending) { buildPending = false; build(); }
 }
 
+let buildPending = false;
 function build() {
+  // Durante a gravação a cena não é remontada (apagaria o roteiro); fica para o fim.
+  if (spinning) { buildPending = true; return; }
   holeMat.color.set(S.color).multiplyScalar(0.55);
   buildInto(product, S, explode ? 18 : 0);
   applyLabelsTo(product, S);
@@ -2772,7 +2856,7 @@ function updateUndoBtns() {
 
 // Monta as peças de um modelo num grupo (cena principal ou miniatura).
 function buildInto(product, S, explodeAmt = 0) {
-  product.children.forEach(o => { o.geometry.dispose(); if (o.userData.liquid) o.material.dispose(); });
+  product.children.forEach(o => o.traverse(q => { q.geometry?.dispose(); if (q.userData.liquid) q.material?.dispose(); }));
   product.clear();
   const base = layout(S), floor = Math.min(...base.filter(e => e.m.vol).map(e => e.y0));
   const glassBody = base.some(e => e.m.vol && isGlass(e.m.own ? e.m.finish : S.finish));
