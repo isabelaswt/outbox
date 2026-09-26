@@ -418,7 +418,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-26.luz-produto';
+const BUILD = '2026-09-26.inclinado-referencia';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -2341,10 +2341,13 @@ async function recordSpin(sec, mode = '360') {
     const pivot = new THREE.Group(), lift = sph.radius * 0.35 + 10;
     pivot.position.copy(sph.center); scene.add(pivot); pivot.attach(product); pivot.position.y += lift; // gira no próprio centro
     const fwd = cam.getWorldDirection(new THREE.Vector3()); fwd.y = 0; fwd.normalize();
-    art = { pivot, tilt: new THREE.Quaternion().setFromAxisAngle(fwd, -Math.PI / 4), stageVis: stage.visible, lift };
+    // Topo inclinado para a direita (~40°), como na referência.
+    art = { pivot, tilt: new THREE.Quaternion().setFromAxisAngle(fwd, THREE.MathUtils.degToRad(40)), stageVis: stage.visible, lift };
     stage.visible = false; // pedestal e sombra de contato não fazem sentido com a peça no ar
     const vh = THREE.MathUtils.degToRad(persp.fov / 2), hh = Math.atan(Math.tan(vh) * persp.aspect);
-    const dir = cam.position.clone().sub(T).normalize(), dist = sph.radius * 1.3 / Math.sin(Math.min(vh, hh));
+    // Câmera de perto e um pouco de baixo (a peça quase enche o quadro, cortando as pontas).
+    const hz = cam.position.clone().sub(T); hz.y = 0; if (hz.lengthSq() < 1e-6) hz.set(0, 0, 1); hz.normalize();
+    const el = -0.12, dir = new THREE.Vector3(hz.x * Math.cos(el), Math.sin(el), hz.z * Math.cos(el)), dist = sph.radius * 0.92 / Math.sin(Math.min(vh, hh));
     art.T = pivot.position.clone(); cam.position.copy(art.T).addScaledVector(dir, dist); cam.lookAt(art.T);
   }
   const show = mode === 'detalhes' ? detailShow() : null;
