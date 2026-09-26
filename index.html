@@ -419,7 +419,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-26.video-lentes';
+const BUILD = '2026-09-26.video-perspectiva';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -1753,10 +1753,12 @@ function flipOpenGeo(m, y0, rings, seg, disp, ang) {
   const gBase = loft(baseR, seg, disp);
   const hinge = lidR.find(r => Math.abs(r.ly - yg) < 1e-6) || lidR[up ? 0 : lidR.length - 1];
   const hy = y0 + yg, hz = -hinge.b;
-  const ro = m.orifD / 2 + 1.2, sh = 3, zc = Math.min(hinge.b * 0.25, hinge.b - ro - 0.5);
   // Tampinha oca: casca aberta do lado do corte (parede t), com o pino de
   // vedação (macho) por dentro, alinhado ao furo do bico (fêmea).
   const t = 1.2, dir = up ? 1 : -1, cut = up ? lidR : [...lidR].reverse(), far = cut[cut.length - 1].ly;
+  // o bico cabe dentro da tampinha fechada: em tampinha rasa (disco) ele fica baixo,
+  // senão atravessava o topo e o furo aparecia por fora
+  const ro = m.orifD / 2 + 1.2, sh = clamp(Math.abs(far - yg) - t - 0.4, 0.6, 3), zc = Math.min(hinge.b * 0.25, hinge.b - ro - 0.5);
   const inner = cut.filter(r => Math.abs(far - r.ly) >= t)
     .map(r => ({ ...r, a: Math.max(r.a - t, 0.3), b: Math.max(r.b - t, 0.3), noDisp: true }));
   const lidParts = [loft(inner.length >= 2 ? [...inner.reverse(), ...cut] : cut, seg, disp)];
@@ -2521,6 +2523,14 @@ async function encodeFrames(frameAt, sec, W, H, onProgress) {
 async function recordSpin(sec, mode = '360') {
   const offline = 'VideoEncoder' in window && 'VideoFrame' in window;
   if (spinning || (!offline && !window.MediaRecorder)) { if (!offline && !window.MediaRecorder) toast('Este navegador não grava vídeo'); return; }
+  // Vista ortográfica não aproxima com a distância (close, inclinado e tampa saíam
+  // todos do mesmo tamanho): o vídeo grava sempre em perspectiva, na mesma direção.
+  const orthoT = cam === ortho ? controls.target.clone() : null, orthoDir = orthoT && ortho.position.clone().sub(orthoT).normalize();
+  if (orthoT) {
+    cam = persp; fit();
+    const dist = persp.position.distanceTo(controls.target);
+    persp.position.copy(controls.target).addScaledVector(orthoDir, dist); persp.lookAt(controls.target); controls.update();
+  }
   // Formato do vídeo: a área de desenho vai para o tamanho final ANTES de enquadrar,
   // então todas as tomadas se ajustam a ele (vertical, quadrado, horizontal).
   const size0 = renderer.getSize(new THREE.Vector2()), pr0 = renderer.getPixelRatio();
@@ -2606,6 +2616,9 @@ async function recordSpin(sec, mode = '360') {
   download(blob, fname(ext));
   btn.disabled = false; btn.textContent = 'Gravar vídeo'; spinning = false;
   resize();
+  if (orthoT) { // volta para a vista ortográfica em que estava
+    cam = ortho; ortho.position.copy(orthoT).addScaledVector(orthoDir, 3000); ortho.up.set(0, 1, 0); ortho.lookAt(orthoT); makeControls(orthoT); req();
+  }
   if (buildPending) { buildPending = false; build(); }
 }
 
