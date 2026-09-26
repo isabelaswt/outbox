@@ -407,7 +407,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-25.revolve';
+const BUILD = '2026-09-25.revolve-suave';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -463,7 +463,17 @@ function profAt(m, ly) {
   const P = m.prof, t = clamp(ly / m.h, 0, 1);
   let i = 0; while (i < P.length - 2 && P[i + 1][0] < t) i++;
   const A = P[i], B = P[i + 1] || A, f = B[0] > A[0] ? clamp((t - A[0]) / (B[0] - A[0]), 0, 1) : 0;
-  const L = k => (A[k] ?? 0) + ((B[k] ?? 0) - (A[k] ?? 0)) * f, sc = m.W / (m.W0 || m.W);
+  let L = k => (A[k] ?? 0) + ((B[k] ?? 0) - (A[k] ?? 0)) * f;
+  const sc = m.W / (m.W0 || m.W);
+  // Perfil de silhueta: curva suave (Catmull-Rom) entre as medidas, sem quinas
+  // horizontais (o relevo do logo acompanhava cada quina e serrilhava).
+  if (m.smoothProf) {
+    const P0 = P[Math.max(0, i - 1)], P3 = P[Math.min(P.length - 1, i + 2)], lin = L;
+    L = k => k === 1 || k === 2 ? (() => {
+      const p0 = P0[k], p1 = A[k], p2 = B[k], p3 = P3[k], f2 = f * f, f3 = f2 * f;
+      return 0.5 * (2 * p1 + (-p0 + p2) * f + (2 * p0 - 5 * p1 + 4 * p2 - p3) * f2 + (-p0 + 3 * p1 - 3 * p2 + p3) * f3);
+    })() : lin(k);
+  }
   return { a: L(1) * m.W / 2, b: L(2) * m.D / 2, n: clamp(L(3), 2, 12), cx: L(4) * sc, cz: L(5) * sc };
 }
 // Zona do ombro que fecha até o gargalo (frasco da Draft com rosca trocada).
@@ -474,6 +484,8 @@ function shoulderZone(m) {
 }
 function profSamples(m, lo) {
   const h = m.h, S = m.prof.map(r => r[0] * h), { rB, rT } = radii(m);
+  // Perfil suave: anéis a cada ~0,3 mm (a curva entre medidas precisa de amostras).
+  if (m.smoothProf && !lo) { const n = Math.ceil(h / 0.3); for (let i = 0; i <= n; i++) S.push(h * i / n); }
   for (let i = 0; i <= 20; i++) { const c = 1 - Math.cos(i / 20 * Math.PI / 2); S.push(rB * c, h - rT * c); }
   if (!lo && m.groove > 0) { const yg = h - m.groove; [-.6, -.5, -.3, -.12, 0, .12, .3, .5, .6].forEach(d => S.push(yg + d)); }
   if (!lo && m.notch) {
@@ -2351,14 +2363,14 @@ async function silhouetteProfile(file) {
   let bot = H - 1; while (bot > top && wid[bot] < 0.75) bot--;
   if (bot - top < 8) return null;
   // Suaviza na vertical (gaussiana), tirando os degraus de pixel sem perder a forma.
-  const sm = new Float32Array(H), R = 3, sg = 1.6;
+  const sm = new Float32Array(H), R = 9, sg = 3.2;
   for (let y = top; y <= bot; y++) {
     let a = 0, wsum = 0;
     for (let k = -R; k <= R; k++) { const q = y + k; if (q < top || q > bot) continue; const g = Math.exp(-k * k / (2 * sg * sg)); a += wid[q] * g; wsum += g; }
     sm[y] = a / wsum;
   }
   let wmax = 0; for (let y = top; y <= bot; y++) wmax = Math.max(wmax, sm[y]);
-  const N = clamp(Math.round((bot - top) / 4), 24, 140), prof = [];
+  const N = clamp(Math.round((bot - top) / 7), 24, 90), prof = [];
   for (let i = 0; i <= N; i++) {
     const t = i / N, yf = bot - t * (bot - top), y0 = Math.floor(yf), f = yf - y0, y1 = Math.min(bot, y0 + 1);
     prof.push([t, Math.max(0.02, (sm[y0] * (1 - f) + sm[y1] * f) / wmax)]);
@@ -2371,7 +2383,7 @@ $('#revFile').onchange = async e => {
   const r = await silhouetteProfile(f);
   if (!r) { toast('Não achei a forma nessa imagem (use forma escura em fundo claro ou transparente)'); return; }
   const h = clamp(+$('#revH').value || 140, 10, 400), W = r1(h * r.ratio);
-  const body = M('reto', { name: 'Corpo revolve', type: 'revolve', kind: 'perfil', vol: true, pesc: false, rBot: 0, rTop: 0,
+  const body = M('reto', { name: 'Corpo revolve', type: 'revolve', kind: 'perfil', smoothProf: true, vol: true, pesc: false, rBot: 0, rTop: 0,
     W, D: W, W0: W, h, prof: r.prof, ribs: [] });
   let bi = S.modules.findIndex(m => m.vol);
   if (bi < 0) { S.modules = [body, NECK(neckFor(body)), M('flip')]; bi = 0; }
