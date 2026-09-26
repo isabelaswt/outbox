@@ -216,7 +216,7 @@ canvas{display:block;width:100%;height:100%;touch-action:none}
     <div id="sceneFields"></div>
     <div class="row">
       <select id="spinMode"><option value="360">Volta inteira (360°)</option><option value="balanco">Vai e volta (frente sempre à vista)</option><option value="detalhes">Artístico: detalhes (relevo de perto, tampa abrindo)</option><option value="arte">Inclinado 45° girando no ar</option></select>
-      <select id="spinSec"><option value="6">6 s</option><option value="10" selected>10 s</option><option value="15">15 s</option></select>
+      <select id="spinSec"><option value="6">6 s</option><option value="10" selected>10 s</option><option value="15">15 s</option><option value="20">20 s</option></select>
     </div>
     <div class="row">
       <button class="btn pri" id="spinBtn">Gravar vídeo</button>
@@ -418,7 +418,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-26.autosave-copia';
+const BUILD = '2026-09-26.video-wireframe';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -2339,12 +2339,32 @@ function detailShow() {
   const shots = [
     { d: 3, T0: C, T1: C, P0: pose(C, A - 0.62, -0.02, dist0 * 1.18), P1: pose(C, A - 0.48, 0.02, dist0 * 0.98), fov: 26 },
     { d: 3, T0: relT, T1: relT, P0: pose(relT, A + 0.3, 0.04, fitDist(relR * 1.6)), P1: pose(relT, A - 0.3, 0.04, fitDist(relR * 1.6)), fov: 18 },
+    // deitado em diagonal (topo à direita), bem perto, com a malha virando acabamento da base ao topo
+    { d: 4, T0: C, T1: C, P0: pose(C, A - 0.15, -0.1, dist0 * 0.86), P1: pose(C, A + 0.12, -0.06, dist0 * 0.8), fov: 24, tilt: true, wire: true },
     { d: 4, T0: capT, T1: capT, P0: pose(capT, A + 0.35, 0.5, fitDist(capR * 2.3)), P1: pose(capT, A + 0.6, 0.55, fitDist(capR * 2.1)), fov: 22, cap: true },
     { d: 3, T0: C, T1: C, P0: pose(C, A, 0.06, dist0 * 1.02), P1: pose(C, A, 0.06, dist0 * 1.02), fov: 28, turn: [0.7, -0.7] },
     { d: 3, T0: C, T1: C, P0: pose(C, A - 0.28, 0.1, dist0 * 1.06), P1: pose(C, A - 0.28, 0.1, dist0 * 0.99), fov: 28, hold: 0.35 },
   ];
   const total = shots.reduce((a, x) => a + x.d, 0);
   const ease = x => x * x * (3 - 2 * x);
+  // Inclinação em torno do centro do produto (topo para a direita de quem olha a marca).
+  const Y = new V(0, 1, 0), fwdA = new V(-Math.cos(A), 0, -Math.sin(A));
+  const tiltQ = new THREE.Quaternion().setFromAxisAngle(fwdA, THREE.MathUtils.degToRad(40));
+  const setPose = q => { product.quaternion.copy(q); product.position.copy(C).sub(C.clone().applyQuaternion(q)); };
+  // Wireframe: malha fina por cima; um plano corta o acabamento (fica embaixo) e a malha (fica em cima).
+  const wire = new THREE.Group(), wireMat = new THREE.LineBasicMaterial({ color: '#3b3d42', transparent: true, opacity: 0.28, depthWrite: false });
+  product.children.filter(o => o.isMesh && o.visible && !o.userData.logo && !o.userData.label).forEach(o => {
+    const l = new THREE.LineSegments(new THREE.WireframeGeometry(o.geometry), wireMat); l.position.copy(o.position); l.quaternion.copy(o.quaternion); wire.add(l);
+  });
+  wire.visible = false; product.add(wire);
+  const solidPlane = new THREE.Plane(), wirePlane = new THREE.Plane();
+  wireMat.clippingPlanes = [wirePlane];
+  const clipMats = new Set(); product.traverse(o => { if (o.isMesh && o.material) (Array.isArray(o.material) ? o.material : [o.material]).forEach(m => clipMats.add(m)); });
+  let clipping = false;
+  const origClip = new Map([...clipMats].map(m => [m, m.clippingPlanes])); // o líquido já tem o corte do nível
+  const setClip = on => { if (on === clipping) return; clipping = on;
+    clipMats.forEach(m => { const o = origClip.get(m); m.clippingPlanes = on ? [...(o || []), solidPlane] : o; m.needsUpdate = true; }); wire.visible = on; };
+  const half = sz.y * 0.62;
   return {
     update(t) {
       let a = clamp(t, 0, 1) * total, sh = shots[shots.length - 1], u = 1, si = shots.length - 1;
@@ -2352,7 +2372,14 @@ function detailShow() {
       const m = sh.hold ? glide(Math.min(1, u / (1 - sh.hold))) : glide(u);
       cam.position.copy(sh.P0).lerp(sh.P1, m); cam.lookAt(sh.T0.clone().lerp(sh.T1, m));
       if (persp.fov !== sh.fov) { persp.fov = sh.fov; persp.updateProjectionMatrix(); }
-      product.rotation.y = sh.turn ? sh.turn[0] + (sh.turn[1] - sh.turn[0]) * glide(u) : 0; // prato giratório só na tomada 4 (a marca passa pela frente)
+      if (sh.tilt) setPose(tiltQ.clone().multiply(new THREE.Quaternion().setFromAxisAngle(Y, 0.35 * glide(u) - 0.1)));
+      else { product.position.set(0, 0, 0); product.quaternion.identity(); product.rotation.y = sh.turn ? sh.turn[0] + (sh.turn[1] - sh.turn[0]) * glide(u) : 0; }
+      if (sh.wire) { // o acabamento sobe da base ao topo; acima dele, só a malha
+        product.updateMatrixWorld(true);
+        const ax = Y.clone().applyQuaternion(product.quaternion), P = C.clone().addScaledVector(ax, -half + 2 * half * ease(clamp((u - 0.12) / 0.76, 0, 1)));
+        solidPlane.setFromNormalAndCoplanarPoint(ax.clone().negate(), P); wirePlane.setFromNormalAndCoplanarPoint(ax, P);
+      }
+      setClip(!!sh.wire);
       // tampa: abre suave na tomada 3 e fica aberta; nas outras, fechada
       const k = sh.cap ? ease(clamp((u - 0.2) / 0.45, 0, 1)) : 0;
       if (frames) {
@@ -2360,7 +2387,9 @@ function detailShow() {
       } else capMeshes.forEach(o => { o.position.set(0, lift * k, 0); o.rotation.y = -1.6 * k; });
     },
     cleanup() {
-      persp.fov = fov0; persp.updateProjectionMatrix(); product.rotation.y = 0;
+      persp.fov = fov0; persp.updateProjectionMatrix(); setClip(false);
+      product.remove(wire); wire.traverse(o => o.geometry?.dispose()); wireMat.dispose();
+      product.position.set(0, 0, 0); product.quaternion.identity();
       frames?.forEach(g => { g.traverse(o => o.geometry?.dispose()); product.remove(g); });
       openMeshes.forEach(o => { o.visible = true; });
       capMeshes.forEach(o => { o.position.set(0, 0, 0); o.rotation.y = 0; });
