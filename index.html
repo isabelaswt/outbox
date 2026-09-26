@@ -395,7 +395,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-25.bico-conico';
+const BUILD = '2026-09-25.massimo';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -579,6 +579,23 @@ const PRESETS = {
     M('domo', { name: 'Domo redondo', W: 44, D: 44, n: 2, h: 30, rBot: 1, rTop: 18, groove: 15, notch: true, notchY: 15, notchW: 16, notchH: 7, notchD: 1.6, notchP: 2 })] },
   'Frasco molho (bico cônico)': { color: BEIGE, finish: 'fosco', modules: [
     M('cone', { name: 'Corpo molho', W: 58, D: 58, h: 118, taper: 80, rBot: 8, rTop: 9 }), NECK('38/400'), M('bicoConico', { W: 46, D: 46 })] },
+  // Referência Prose: cilindro de ombro reto e pump com luva alta lisa e cabeça de bico reto longo.
+  'Cilindro + pump luva alta': { color: BEIGE, finish: 'fosco', modules: [
+    M('reto', { W: 50, D: 50, h: 146, rBot: 3, rTop: 7 }), NECK('24/410'),
+    M('pump', { name: 'Pump luva alta', W: 29, D: 29, h: 31, ridges: 0, collarR: 0.6, stemD: 8, stemH: 2,
+      actW: 22, headH: 12, armT: 7, armW: 10, nozzleL: 28, droop: 0 })] },
+  // Referência Candeur: cilindro com ombro inclinado reto e pump de haste alta com bico fino curvo.
+  'Ombro inclinado + pump fino': { color: BEIGE, finish: 'fosco', modules: [
+    M('reto', { W: 62, D: 62, h: 92, rBot: 4, rTop: 0 }), M('cone', { name: 'Ombro inclinado', W: 62, D: 62, h: 20, taper: 60, rBot: 0, rTop: 3 }),
+    NECK('24/410'),
+    M('locao', { name: 'Pump bico fino', W: 32, D: 32, h: 22, collarR: 0.6, stemD: 6, stemH: 20, actW: 11, headH: 9, domeH: 1.5,
+      nozzleL: 26, droop: 5, spoutD: 3.2 })] },
+  // Referência Massimo Dutti: cilindro largo e baixo, ombro inclinado curto, pump de luva larga e cabeça achatada.
+  'Largo baixo + pump chato': { color: BEIGE, finish: 'fosco', modules: [
+    M('reto', { W: 72, D: 72, h: 80, rBot: 3, rTop: 0 }), M('cone', { name: 'Ombro inclinado', W: 72, D: 72, h: 18, taper: 56, rBot: 0, rTop: 3 }),
+    NECK('28/410'),
+    M('pump', { name: 'Pump cabeça chata', W: 36, D: 36, h: 24, ridges: 0, collarR: 1, stemD: 9, stemH: 8,
+      actW: 26, headH: 8, armT: 5, armW: 17, nozzleL: 20, droop: 1 })] },
   'Cápsula dividida': { color: BEIGE, finish: 'fosco', modules: [
     M('capsula', { W: 44, D: 44, h: 96, rBot: 22, rTop: 2 }), NECK('24/410'),
     M('domo', { name: 'Tampa cápsula', W: 44, D: 44, h: 38, rBot: 1.5, rTop: 22, groove: 12, notch: true, notchW: 14, notchH: 5, notchD: 1.4, notchP: 2 })] },
