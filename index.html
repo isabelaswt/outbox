@@ -418,7 +418,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-26.luz-editavel';
+const BUILD = '2026-09-26.video-tomadas';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -2317,9 +2317,10 @@ function detailShow() {
   let frames = null, openMeshes = [];
   if (openI !== undefined) { // etapas da tampa abrindo, montadas antes
     frames = [];
-    for (let k = 0; k <= 10; k++) {
+    for (let k = 0; k <= 5; k++) {
       const g = new THREE.Group();
-      buildInto(g, { ...S, modules: S.modules.map((m, i) => (i === openI ? { ...m, openPct: k * 10 } : m)) }, 0);
+      // só a tampa é montada (as outras peças ficam ocultas, mas continuam no lugar)
+      buildInto(g, { ...S, modules: S.modules.map((m, i) => (i === openI ? { ...m, openPct: k * 20 } : { ...m, hidden: true })) }, 0);
       const parts = g.children.filter(o => o.userData.idx === openI);
       g.children.filter(o => o.userData.idx !== openI).forEach(o => o.geometry?.dispose());
       const grp = new THREE.Group(); parts.forEach(o => grp.add(o)); grp.visible = false; product.add(grp); frames.push(grp);
@@ -2328,40 +2329,38 @@ function detailShow() {
   }
   const lift = capBox.isEmpty() ? 0 : capBox.getSize(new V()).y * 0.9;
   const pose = (T, ang, elev, d) => new V(T.x + Math.cos(ang) * Math.cos(elev) * d, T.y + Math.sin(elev) * d, T.z + Math.sin(ang) * Math.cos(elev) * d);
-  // Roteiro contínuo (uma curva só, sem parar entre as cenas): nasce baixo na base e
-  // sobe revelando o frasco (grua) → desliza rente ao relevo → passa por cima da
-  // tampa olhando para baixo enquanto ela abre → se afasta até a pose de capa.
-  // Lente mais longa nos closes (fov menor), como câmera de cinema.
-  const baseT = new V(C.x, all.min.y + sz.y * 0.28, C.z);
-  const keys = [
-    { T: baseT, P: pose(baseT, baseAng - 0.75, -0.02, dist0 * 0.5), fov: 24 },
-    { T: C, P: pose(C, baseAng - 0.35, 0.12, dist0 * 0.95), fov: 28 },
-    { T: relT, P: pose(relT, relAng + 0.55, 0.06, fitDist(relR * 1.25)), fov: 22 },
-    { T: relT, P: pose(relT, relAng - 0.5, 0.02, fitDist(relR)), fov: 20 },
-    { T: capT, P: pose(capT, baseAng + 0.25, 0.38, fitDist(capR * 1.25)), fov: 22 },
-    { T: capT, P: pose(capT, baseAng + 0.65, 0.95, fitDist(capR * 1.15)), fov: 22 },
-    { T: C.clone().lerp(capT, 0.4), P: pose(C, baseAng + 0.85, 0.35, dist0 * 0.8), fov: 26 },
-    { T: C, P: pose(C, baseAng + 0.3, 0.14, dist0), fov: 28 },
+  // Filme de produto: tomadas separadas com corte seco, cada uma com um único
+  // movimento limpo, lento e constante (só amacia nas pontas).
+  //  1 herói 3/4 de baixo, aproximando · 2 macro rasante no relevo · 3 tampa de cima
+  //  abrindo · 4 prato giratório de frente · 5 herói final com pausa.
+  const fov0 = persp.fov, glide = x => 0.7 * x + 0.3 * x * x * (3 - 2 * x);
+  // Tudo orientado pela frente da marca (lado do logo/rótulo), não pelo ângulo da câmera.
+  const A = mark ? relAng : baseAng;
+  const shots = [
+    { d: 3, T0: C, T1: C, P0: pose(C, A - 0.62, -0.02, dist0 * 1.18), P1: pose(C, A - 0.48, 0.02, dist0 * 0.98), fov: 26 },
+    { d: 3, T0: relT, T1: relT, P0: pose(relT, A + 0.3, 0.04, fitDist(relR * 1.6)), P1: pose(relT, A - 0.3, 0.04, fitDist(relR * 1.6)), fov: 18 },
+    { d: 4, T0: capT, T1: capT, P0: pose(capT, A + 0.35, 0.5, fitDist(capR * 2.3)), P1: pose(capT, A + 0.6, 0.55, fitDist(capR * 2.1)), fov: 22, cap: true },
+    { d: 3, T0: C, T1: C, P0: pose(C, A, 0.06, dist0 * 1.02), P1: pose(C, A, 0.06, dist0 * 1.02), fov: 28, turn: [0.7, -0.7] },
+    { d: 3, T0: C, T1: C, P0: pose(C, A - 0.28, 0.1, dist0 * 1.06), P1: pose(C, A - 0.28, 0.1, dist0 * 0.99), fov: 28, hold: 0.35 },
   ];
-  const curveP = new THREE.CatmullRomCurve3(keys.map(k => k.P), false, 'centripetal');
-  const curveT = new THREE.CatmullRomCurve3(keys.map(k => k.T), false, 'centripetal');
-  const nK = keys.length - 1, fov0 = persp.fov;
-  const smoother = x => x * x * x * (x * (x * 6 - 15) + 10); // início e fim bem suaves
+  const total = shots.reduce((a, x) => a + x.d, 0);
   const ease = x => x * x * (3 - 2 * x);
   return {
     update(t) {
-      const u = smoother(clamp(t, 0, 1));
-      cam.position.copy(curveP.getPoint(u)); cam.lookAt(curveT.getPoint(u));
-      const kf = u * nK, i0 = Math.min(nK - 1, Math.floor(kf)), fw = ease(kf - i0);
-      persp.fov = keys[i0].fov + (keys[i0 + 1].fov - keys[i0].fov) * fw; persp.updateProjectionMatrix();
-      // tampa: abre quando a câmera chega por cima (≈ chave 4→5), fica, fecha saindo
-      const a = kf, kOpen = a < 4.1 ? 0 : a < 5 ? ease((a - 4.1) / 0.9) : a < 5.6 ? 1 : a < 6.4 ? 1 - ease((a - 5.6) / 0.8) : 0;
+      let a = clamp(t, 0, 1) * total, sh = shots[shots.length - 1], u = 1, si = shots.length - 1;
+      for (let i = 0; i < shots.length; i++) { if (a <= shots[i].d || i === shots.length - 1) { sh = shots[i]; si = i; u = clamp(a / shots[i].d, 0, 1); break; } a -= shots[i].d; }
+      const m = sh.hold ? glide(Math.min(1, u / (1 - sh.hold))) : glide(u);
+      cam.position.copy(sh.P0).lerp(sh.P1, m); cam.lookAt(sh.T0.clone().lerp(sh.T1, m));
+      if (persp.fov !== sh.fov) { persp.fov = sh.fov; persp.updateProjectionMatrix(); }
+      product.rotation.y = sh.turn ? sh.turn[0] + (sh.turn[1] - sh.turn[0]) * glide(u) : 0; // prato giratório só na tomada 4 (a marca passa pela frente)
+      // tampa: abre suave na tomada 3 e fica aberta; nas outras, fechada
+      const k = sh.cap ? ease(clamp((u - 0.2) / 0.45, 0, 1)) : 0;
       if (frames) {
-        const fi = Math.round(kOpen * 10); openMeshes.forEach(o => { o.visible = fi === 0; }); frames.forEach((g, j) => { g.visible = fi > 0 && j === fi; });
-      } else capMeshes.forEach(o => { o.position.set(0, lift * kOpen, 0); o.rotation.y = -1.6 * kOpen; });
+        const fi = Math.round(k * (frames.length - 1)); openMeshes.forEach(o => { o.visible = fi === 0; }); frames.forEach((g, j) => { g.visible = fi > 0 && j === fi; });
+      } else capMeshes.forEach(o => { o.position.set(0, lift * k, 0); o.rotation.y = -1.6 * k; });
     },
     cleanup() {
-      persp.fov = fov0; persp.updateProjectionMatrix();
+      persp.fov = fov0; persp.updateProjectionMatrix(); product.rotation.y = 0;
       frames?.forEach(g => { g.traverse(o => o.geometry?.dispose()); product.remove(g); });
       openMeshes.forEach(o => { o.visible = true; });
       capMeshes.forEach(o => { o.position.set(0, 0, 0); o.rotation.y = 0; });
@@ -2396,7 +2395,9 @@ async function recordSpin(sec, mode = '360') {
     const el = -0.12, dir = new THREE.Vector3(hz.x * Math.cos(el), Math.sin(el), hz.z * Math.cos(el)), dist = sph.radius * 0.92 / Math.sin(Math.min(vh, hh));
     art.T = pivot.position.clone(); cam.position.copy(art.T).addScaledVector(dir, dist); cam.lookAt(art.T);
   }
+  if (mode === 'detalhes') { btn.textContent = 'Preparando…'; await new Promise(r => setTimeout(r, 40)); }
   const show = mode === 'detalhes' ? detailShow() : null;
+  btn.textContent = 'Gravando…';
   rec.start();
   await new Promise(res => {
     const t0 = performance.now();
@@ -4225,7 +4226,7 @@ $('#dlObj').onclick = () => download(new Blob([new OBJExporter().parse(exportRoo
 
 // ───────────────────────── início ─────────────────────────
 // Acesso para inspeção no console do navegador.
-window.OUTBOX = { get S() { return S; }, get swapScroll() { return swapScroll; }, product, layout, scene, sun, stage, ground, renderer, areaKey, areaFill, hemi, get cam() { return cam; } };
+window.OUTBOX = { get S() { return S; }, get swapScroll() { return swapScroll; }, product, layout, scene, sun, stage, ground, renderer, areaKey, areaFill, hemi, detailShow, render: () => renderFrame(), get cam() { return cam; } };
 
 buildDraftPresets();
 resize();
