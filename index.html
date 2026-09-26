@@ -419,7 +419,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-26.takes-giro';
+const BUILD = '2026-09-26.takes-luz';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -2400,19 +2400,26 @@ function detailShow() {
   //  1 herói 3/4 de baixo, aproximando · 2 macro rasante no relevo · 3 tampa de cima
   //  abrindo · 4 prato giratório de frente · 5 herói final com pausa.
   const fov0 = persp.fov, glide = x => 0.7 * x + 0.3 * x * x * (3 - 2 * x);
-  // Tudo orientado pela frente da marca (lado do logo/rótulo), não pelo ângulo da câmera.
-  const A = mark ? relAng : baseAng;
+  // As luzes do estúdio são fixas e desenhadas para a frente (+z, girada pelo
+  // "girar luz"). O produto gira para a marca ficar de frente para essa luz e todas
+  // as câmeras trabalham do lado iluminado — antes a câmera ia atrás do logo e,
+  // se ele apontava para outro lado, filmava o lado escuro.
+  const A = Math.PI / 2 + THREE.MathUtils.degToRad((S.scene || {}).luzRot || 0);
+  const off = mark ? relAng - A : 0, Yax = new V(0, 1, 0);
+  // pontos que acompanham o produto girado (o eixo de giro é a origem)
+  relT.applyAxisAngle(Yax, off); const capAimR = capAim.clone().applyAxisAngle(Yax, off), CR = C.clone().applyAxisAngle(Yax, off);
   const shots = [
     // abertura: câmera parada em 3/4, o produto gira no próprio eixo (sem aproximar)
-    { d: 3, T0: C, T1: C, P0: pose(C, A - 0.5, 0.02, distHero), P1: pose(C, A - 0.5, 0.02, distHero), fov: 26, turn: [-0.75, 0.15] },
+    { d: 3, T0: CR, T1: CR, P0: pose(CR, A - 0.45, 0.02, distHero), P1: pose(CR, A - 0.45, 0.02, distHero), fov: 26, turn: [-0.75, 0.15] },
     { d: 3, T0: relT, T1: relT, P0: pose(relT, A + 0.3, 0.04, fitDist(relR * 1.6, 18)), P1: pose(relT, A - 0.3, 0.04, fitDist(relR * 1.6, 18)), fov: 18 },
     // deitado em diagonal (topo à direita), bem perto, com a malha virando acabamento da base ao topo
     { d: 6, T0: C, T1: C, P0: pose(C, A - 0.15, -0.1, distTilt * 1.08), P1: pose(C, A + 0.12, -0.06, distTilt), fov: 24, tilt: true, wire: true },
-    { d: 5.5, T0: capAim, T1: capAim, P0: pose(capAim, A + 0.35, 0.45, fitDist(capFit * 1.1, 22)), P1: pose(capAim, A + 0.6, 0.5, fitDist(capFit, 22)), fov: 22, cap: true },
-    // depois da tampa: nada de frente de novo — plongée (de cima, ~35°), a câmera contorna devagar
-    { d: 3, T0: C, T1: C, P0: pose(C, A + 0.55, 0.62, dist0 * 1.02), P1: pose(C, A + 1.05, 0.58, dist0 * 1.02), fov: 28 },
-    // final: contra-plongée (de baixo), produto imponente, quase parado
-    { d: 3, T0: C, T1: C, P0: pose(C, A - 0.55, -0.3, dist0 * 1.08), P1: pose(C, A - 0.45, -0.26, dist0 * 1.02), fov: 28, hold: 0.35 },
+    { d: 5.5, T0: capAimR, T1: capAimR, P0: pose(capAimR, A - 0.3, 0.45, fitDist(capFit * 1.1, 22)), P1: pose(capAimR, A - 0.55, 0.5, fitDist(capFit, 22)), fov: 22, cap: true },
+    // depois da tampa: lateral bem aberta do lado da luz principal, na altura do ombro,
+    // a câmera contornando devagar (não é frente nem de cima)
+    { d: 3, T0: CR, T1: CR, P0: pose(CR, A - 1.15, 0.12, dist0 * 1.02), P1: pose(CR, A - 0.8, 0.14, dist0 * 1.0), fov: 28 },
+    // final, mais longo: contra-plongée suave (de baixo), 3/4 do lado iluminado, quase parado
+    { d: 5, T0: CR, T1: CR, P0: pose(CR, A - 0.5, -0.24, dist0 * 1.06), P1: pose(CR, A - 0.38, -0.2, dist0 * 1.01), fov: 28, hold: 0.4 },
   ];
   const total = shots.reduce((a, x) => a + x.d, 0);
   const ease = x => x * x * (3 - 2 * x);
@@ -2475,8 +2482,8 @@ function detailShow() {
       const m = sh.hold ? glide(Math.min(1, u / (1 - sh.hold))) : glide(u);
       cam.position.copy(sh.P0).lerp(sh.P1, m); cam.lookAt(sh.T0.clone().lerp(sh.T1, m));
       if (persp.fov !== sh.fov) { persp.fov = sh.fov; persp.updateProjectionMatrix(); }
-      if (sh.tilt) setPose(tiltQ.clone().multiply(new THREE.Quaternion().setFromAxisAngle(Y, 0.35 * glide(u) - 0.1)));
-      else { product.position.set(0, 0, 0); product.quaternion.identity(); product.rotation.y = sh.turn ? sh.turn[0] + (sh.turn[1] - sh.turn[0]) * glide(u) : 0; }
+      if (sh.tilt) setPose(tiltQ.clone().multiply(new THREE.Quaternion().setFromAxisAngle(Y, off + 0.35 * glide(u) - 0.1)));
+      else { product.position.set(0, 0, 0); product.quaternion.identity(); product.rotation.y = off + (sh.turn ? sh.turn[0] + (sh.turn[1] - sh.turn[0]) * glide(u) : 0); }
       if (sh.wire) { // o acabamento sobe da base ao topo, suave nas pontas; acima dele, só a malha
         product.updateMatrixWorld(true);
         const ax = Y.clone().applyQuaternion(product.quaternion), P = C.clone().addScaledVector(ax, -half - band + 2 * (half + band) * smoother(clamp((u - 0.06) / 0.88, 0, 1)));
