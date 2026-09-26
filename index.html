@@ -439,7 +439,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-26.logo-vidro';
+const BUILD = '2026-09-26.grao';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -2157,6 +2157,32 @@ const pipetteFrostMat = glassTubeMat(0.02, 0.22);
 // (só o contorno aparece); atrás de vidro fosco, mais apagado ainda.
 const plastMat = glassTubeMat(0.04, 0.4);
 const plastFrostMat = glassTubeMat(0.01, 0.06);
+// Grão fino na superfície (plástico e vidro jateado): micro-relevo que quebra o
+// brilho e a cor de leve, como a textura real do molde. Preso ao objeto (não
+// escorrega girando) e some sozinho quando fica menor que um pixel (sem cintilar).
+const GRAIN_GLSL = `
+varying vec3 vGrainP;
+float gHash(vec3 p) { p = fract(p * 0.3183099 + 0.1); p *= 17.0; return fract(p.x * p.y * p.z * (p.x + p.y + p.z)); }
+float gNoise(vec3 x) { vec3 i = floor(x), f = fract(x); f = f * f * (3.0 - 2.0 * f);
+  return mix(mix(mix(gHash(i), gHash(i + vec3(1, 0, 0)), f.x), mix(gHash(i + vec3(0, 1, 0)), gHash(i + vec3(1, 1, 0)), f.x), f.y),
+             mix(mix(gHash(i + vec3(0, 0, 1)), gHash(i + vec3(1, 0, 1)), f.x), mix(gHash(i + vec3(0, 1, 1)), gHash(i + vec3(1, 1, 1)), f.x), f.y), f.z); }
+// duas camadas giradas entre si: sem a grade quadriculada do ruído simples
+const mat3 gRot = mat3(0.00, 0.80, 0.60, -0.80, 0.36, -0.48, -0.60, -0.48, 0.64);
+float gGrain(vec3 q) { return 0.55 * gNoise(q) + 0.3 * gNoise(gRot * q * 2.03 + 3.1) + 0.15 * gNoise(gRot * gRot * q * 4.01 + 7.7); }`;
+function addGrain(m, amt, cell = 0.3) {
+  const prev = m.onBeforeCompile, prevKey = m.customProgramCacheKey?.bind(m);
+  m.onBeforeCompile = (sh, r) => {
+    prev?.call(m, sh, r);
+    sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vGrainP;')
+      .replace('#include <begin_vertex>', '#include <begin_vertex>\nvGrainP = position;');
+    const q = `vec3 gq = vGrainP / ${cell.toFixed(3)}; float gk = ${amt.toFixed(2)} * clamp(${cell.toFixed(3)} / (length(fwidth(vGrainP)) * 1.6) - 0.4, 0.0, 1.0);`;
+    sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\n' + GRAIN_GLSL)
+      .replace('#include <color_fragment>', `#include <color_fragment>\n${q}\ndiffuseColor.rgb *= 1.0 + (gGrain(gq * 0.9 + 9.0) - 0.5) * 0.05 * gk;`)
+      .replace('#include <roughnessmap_fragment>', '#include <roughnessmap_fragment>\nroughnessFactor = clamp(roughnessFactor * (1.0 + (gGrain(gq * 1.7 + 5.0) - 0.5) * 0.3 * gk), 0.04, 1.0);')
+      .replace('#include <normal_fragment_maps>', '#include <normal_fragment_maps>\nnormal = normalize(normal + (vec3(gGrain(gq), gGrain(gq + 17.1), gGrain(gq + 31.7)) - 0.5) * 0.22 * gk);');
+  };
+  m.customProgramCacheKey = () => (prevKey ? prevKey() : '') + `|grao${amt}_${cell}`;
+}
 function material(color, finish) {
   const key = color + finish;
   if (matCache.has(key)) return matCache.get(key);
@@ -2193,6 +2219,8 @@ function material(color, finish) {
     };
     m.customProgramCacheKey = () => 'jateado3'; }
   if (finish === 'metal') { m.metalness = 1; m.roughness = 0.3; } // um pouco menos espelhado: sem brilho piscando nas quinas
+  const grain = { fosco: 1, acetinado: 0.8, perolado: 0.6, vidroFosco: 1 }[finish];
+  if (grain) addGrain(m, grain);
   matCache.set(key, m);
   return m;
 }
@@ -2450,7 +2478,7 @@ function detailShow() {
     // deitado em diagonal (topo à direita), bem perto, com a malha virando acabamento da base ao topo
     { d: 6, T0: C, T1: C, P0: pose(C, A - 0.15, -0.1, distTilt * 1.08), P1: pose(C, A + 0.12, -0.06, distTilt), fov: 24, tilt: true, wire: true },
     // fecho: de frente, em vista ortográfica (sem perspectiva), um giro inteiro no próprio eixo
-    { d: 5, T0: CR, T1: CR, P0: pose(CR, A, 0, 3000), P1: pose(CR, A, 0, 3000), fov: 28, ortho: true, turn: [-Math.PI * 2, 0] },
+    { d: 7.5, T0: CR, T1: CR, P0: pose(CR, A, 0, 3000), P1: pose(CR, A, 0, 3000), fov: 28, ortho: true, turn: [-Math.PI * 2, 0], land: true },
   ];
   const total = shots.reduce((a, x) => a + x.d, 0);
   const ease = x => x * x * (3 - 2 * x);
@@ -2506,6 +2534,7 @@ function detailShow() {
   let clipping = false;
   const setClip = on => { if (on === clipping) return; clipping = on; frameHook = on ? composite : null; };
   const half = sz.y * 0.62, smoother = x => x * x * x * (x * (x * 6 - 15) + 10);
+  const land = x => smoother(Math.pow(x, 0.72)); // arranque macio, pouso longo e suave no fim
   return {
     update(t) {
       let a = clamp(t, 0, 1) * total, sh = shots[shots.length - 1], u = 1, si = shots.length - 1;
@@ -2518,7 +2547,7 @@ function detailShow() {
       cam.position.copy(sh.P0).lerp(sh.P1, m); cam.lookAt(sh.T0.clone().lerp(sh.T1, m));
       if (persp.fov !== sh.fov) { persp.fov = sh.fov; persp.updateProjectionMatrix(); }
       if (sh.tilt) setPose(tiltQ.clone().multiply(new THREE.Quaternion().setFromAxisAngle(Y, off + 0.35 * glide(u) - 0.1)));
-      else { product.position.set(0, 0, 0); product.quaternion.identity(); product.rotation.y = off + (sh.turn ? sh.turn[0] + (sh.turn[1] - sh.turn[0]) * glide(u) : 0); }
+      else { product.position.set(0, 0, 0); product.quaternion.identity(); product.rotation.y = off + (sh.turn ? sh.turn[0] + (sh.turn[1] - sh.turn[0]) * (sh.land ? land(u) : glide(u)) : 0); }
       if (sh.wire) { // o acabamento sobe da base ao topo, suave nas pontas; acima dele, só a malha
         product.updateMatrixWorld(true);
         const ax = Y.clone().applyQuaternion(product.quaternion), P = C.clone().addScaledVector(ax, -half - band + 2 * (half + band) * smoother(clamp((u - 0.06) / 0.88, 0, 1)));
