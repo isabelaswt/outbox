@@ -422,7 +422,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-26.estudio-area';
+const BUILD = '2026-09-26.vidro-jateado-contraste';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -2064,7 +2064,12 @@ function material(color, finish) {
   // e as peças opacas da frente continuam cobrindo.
   if (finish === 'vidro') { m.roughness = 0.05; m.transmission = 1; m.thickness = 4; m.ior = 1.5; m.depthWrite = false; }
   // Vidro fosco (jateado): transmite a luz mas embaça o que está dentro e atrás.
-  if (finish === 'vidroFosco') { m.roughness = 0.42; m.transmission = 1; m.thickness = 5; m.ior = 1.5; m.depthWrite = false; m.sheen = 0.2; m.sheenRoughness = 0.9; m.sheenColor = new THREE.Color('#ffffff'); }
+  // Contraste: parte da luz é espalhada pelo jateado (o vidro ganha o degradê do
+  // estúdio), a cor fica mais densa com a espessura e o contorno pega um brilho
+  // acetinado (a borda do fosco acende, como no vidro de verdade).
+  if (finish === 'vidroFosco') { m.roughness = 0.45; m.transmission = 0.8; m.thickness = 8; m.ior = 1.5; m.depthWrite = false;
+    m.attenuationColor = new THREE.Color(color); m.attenuationDistance = 30;
+    m.sheen = 0.55; m.sheenRoughness = 0.5; m.sheenColor = new THREE.Color('#ffffff'); m.specularIntensity = 1; }
   if (finish === 'metal') { m.metalness = 1; m.roughness = 0.3; } // um pouco menos espelhado: sem brilho piscando nas quinas
   matCache.set(key, m);
   return m;
