@@ -423,7 +423,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-26.logo-duas-faces-autosave';
+const BUILD = '2026-09-26.pescante-transparente';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -1954,7 +1954,6 @@ function applyHand() {
 }
 
 const matCache = new Map();
-const sleeveMat = new THREE.MeshStandardMaterial({ color: '#dfe3e6', roughness: 0.3, transparent: true, opacity: 0.32, depthTest: false, depthWrite: false });
 const insertMat = new THREE.MeshStandardMaterial({ color: '#ececea', roughness: 0.35 });
 // Sobretampa transparente (pump de bisnaga): por fora de tudo, então pode ser transparente comum.
 const clearMat = new THREE.MeshPhysicalMaterial({ color: '#f6f7f5', roughness: 0.12, transparent: true, opacity: 0.22, depthWrite: false, clearcoat: 1 });
@@ -1980,6 +1979,10 @@ function glassTubeMat(a0, a1) {
 const pipetteMat = glassTubeMat(0.05, 0.7);
 // Atrás de vidro fosco (jateado): a pipeta aparece embaçada, bem mais apagada.
 const pipetteFrostMat = glassTubeMat(0.02, 0.22);
+// Pescante, mola e carcaça dentro de frasco de vidro: plástico quase transparente
+// (só o contorno aparece); atrás de vidro fosco, mais apagado ainda.
+const plastMat = glassTubeMat(0.04, 0.4);
+const plastFrostMat = glassTubeMat(0.01, 0.06);
 function material(color, finish) {
   const key = color + finish;
   if (matCache.has(key)) return matCache.get(key);
@@ -2643,6 +2646,8 @@ function buildInto(product, S, explodeAmt = 0) {
   product.clear();
   const base = layout(S), floor = Math.min(...base.filter(e => e.m.vol).map(e => e.y0));
   const glassBody = base.some(e => e.m.vol && isGlass(e.m.own ? e.m.finish : S.finish));
+  const frostBody = base.some(e => e.m.vol && (e.m.own ? e.m.finish : S.finish) === 'vidroFosco');
+  const innerMat = glassBody ? (frostBody ? plastFrostMat : plastMat) : pescMat; // peças internas (pescante, mola, carcaça)
   const L = layout(S, explodeAmt);
   const tubeBody = base.some(e => e.m.kind === 'bisnaga' && e.m.vol);
   const valvePesc = !tubeBody && S.modules.some(v => v.kind === 'spray' && v.pesc && !['pushpull', 'bico', 'conico', 'sport', 'tubo', 'sextavada'].includes(v.sprayType));
@@ -2691,16 +2696,15 @@ function buildInto(product, S, explodeAmt = 0) {
     (g.userData.extras || []).forEach(xg => { const xm = new THREE.Mesh(xg, xg.userData.mat === 'insert' ? insertMat : xg.userData.mat === 'clear' ? clearMat : holeMat); xm.userData.idx = idx; product.add(xm); });
     if (!tubeBody && (m.kind === 'spray' || (m.kind === 'perfil' && !m.vol)) && m.pesc && isFinite(floor)) {
       // Comprimento medido montado; na vista explodida desce junto com a válvula.
-      const add = (geo, name) => { const pm = new THREE.Mesh(geo, pescMat); pm.userData.idx = idx; pm.name = `${String(idx + 1).padStart(2, '0')}_${name}`; product.add(pm); };
+      const add = (geo, name) => { const pm = new THREE.Mesh(geo, innerMat); pm.userData.idx = idx; pm.name = `${String(idx + 1).padStart(2, '0')}_${name}`; product.add(pm); };
       let yTop = y0 + m.h * 0.6;
       if (m.mola) {
         const mech = pumpMechGeo(m, yTop, y0); mech.parts.forEach(g => add(g, 'bomba')); yTop = mech.yEnd;
         if (mech.sleeve) {
           // Transparente só se o frasco for de vidro: por cima de tudo, como
           // plástico claro visto através do vidro (senão fica escondida dentro).
-          const see = m.sleeve === 'transparente' && glassBody;
-          const sm = new THREE.Mesh(mech.sleeve, see ? sleeveMat : pescMat); sm.userData.idx = idx;
-          sm.name = `${String(idx + 1).padStart(2, '0')}_carcaca`; if (see) sm.renderOrder = 20; product.add(sm);
+          const sm = new THREE.Mesh(mech.sleeve, innerMat); sm.userData.idx = idx;
+          sm.name = `${String(idx + 1).padStart(2, '0')}_carcaca`; product.add(sm);
         }
       }
       const len = yTop - (y0 - base[i].y0) - (floor + S.wall + m.pescGap);
@@ -2726,12 +2730,12 @@ function buildInto(product, S, explodeAmt = 0) {
         // mecanismo de spray sob a tampa (carcaça, mola, assento), como nas válvulas
         const mech = pumpMechGeo({ ...BASE, houseD: Math.max(5, m0.bpescD + 2.5), springL: 16, coils: 11, pescD: m0.bpescD, sleeve: 'transparente', ox: m0.ox || 0 },
           yTop, capE ? capE.y0 : yTop + 50);
-        mech.parts.forEach(g => addP(g, pescMat, 'bomba'));
-        if (mech.sleeve) { const see = glassBody; addP(mech.sleeve, see ? sleeveMat : pescMat, 'carcaca', see ? 20 : 0); }
+        mech.parts.forEach(g => addP(g, innerMat, 'bomba'));
+        if (mech.sleeve) addP(mech.sleeve, innerMat, 'carcaca');
         yTop = mech.yEnd;
       }
       const pg = yTop - yBot > 5 ? pescanteGeo({ pescD: m0.bpescD, pescCurve: m0.bpescCurve, pescWave: m0.bpescWave, ox: m0.ox || 0 }, yBot, yTop) : null;
-      if (pg) addP(pg, pescMat, 'pescante');
+      if (pg) addP(pg, innerMat, 'pescante');
     }
   });
 }
