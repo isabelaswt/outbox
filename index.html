@@ -393,7 +393,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-25.flip-aba';
+const BUILD = '2026-09-25.keune-verniz';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -566,6 +566,15 @@ const PRESETS = {
   'Pote flip com aba': { color: BEIGE, finish: 'fosco', modules: [
     M('reto', { name: 'Pote baixo', W: 72, D: 72, h: 46, rBot: 12, rTop: 8 }), NECK('38/400'),
     M('flipAba', { W: 50, D: 50, h: 22, groove: 10, lidOver: 1.5 })] },
+  // Referência Keune (REFFL): base redonda, ombro facetado afinando e pump cilíndrico de bico pato curto.
+  'Ombro facetado + pump': { color: BEIGE, finish: 'fosco', modules: [
+    M('cone', { name: 'Corpo facetado', W: 60, D: 60, h: 148, taper: 58, bulge: 6, bulgePos: 30, sides: 6, sideR: 0.45, rBot: 12, rTop: 5 }), NECK('28/410'),
+    M('pump', { name: 'Pump cilíndrico', W: 31, D: 31, h: 12, ridges: 0, collarR: 1.2, stemD: 10, stemH: 3,
+      actW: 29, headH: 17, armT: 4.4, armW: 11, nozzleL: 12, droop: 0 })] },
+  // Referência Forever Banho de Verniz: plano bem arredondado, domo redondo com meia-lua.
+  'Plano + domo redondo': { color: BEIGE, finish: 'fosco', modules: [
+    M('plano', { W: 70, D: 40, n: 4, h: 108, rBot: 18, rTop: 16 }), NECK('24/410'),
+    M('domo', { name: 'Domo redondo', W: 44, D: 44, n: 2, h: 30, rBot: 1, rTop: 18, groove: 15, notch: true, notchY: 15, notchW: 16, notchH: 7, notchD: 1.6, notchP: 2 })] },
   'Cápsula dividida': { color: BEIGE, finish: 'fosco', modules: [
     M('capsula', { W: 44, D: 44, h: 96, rBot: 22, rTop: 2 }), NECK('24/410'),
     M('domo', { name: 'Tampa cápsula', W: 44, D: 44, h: 38, rBot: 1.5, rTop: 22, groove: 12, notch: true, notchW: 14, notchH: 5, notchD: 1.4, notchP: 2 })] },
