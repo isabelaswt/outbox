@@ -419,7 +419,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-26.takes-luz';
+const BUILD = '2026-09-26.fecho-orto';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -2412,14 +2412,11 @@ function detailShow() {
     // abertura: câmera parada em 3/4, o produto gira no próprio eixo (sem aproximar)
     { d: 3, T0: CR, T1: CR, P0: pose(CR, A - 0.45, 0.02, distHero), P1: pose(CR, A - 0.45, 0.02, distHero), fov: 26, turn: [-0.75, 0.15] },
     { d: 3, T0: relT, T1: relT, P0: pose(relT, A + 0.3, 0.04, fitDist(relR * 1.6, 18)), P1: pose(relT, A - 0.3, 0.04, fitDist(relR * 1.6, 18)), fov: 18 },
+    { d: 5.5, T0: capAimR, T1: capAimR, P0: pose(capAimR, A - 0.3, 0.45, fitDist(capFit * 1.1, 22)), P1: pose(capAimR, A - 0.55, 0.5, fitDist(capFit, 22)), fov: 22, cap: true },
     // deitado em diagonal (topo à direita), bem perto, com a malha virando acabamento da base ao topo
     { d: 6, T0: C, T1: C, P0: pose(C, A - 0.15, -0.1, distTilt * 1.08), P1: pose(C, A + 0.12, -0.06, distTilt), fov: 24, tilt: true, wire: true },
-    { d: 5.5, T0: capAimR, T1: capAimR, P0: pose(capAimR, A - 0.3, 0.45, fitDist(capFit * 1.1, 22)), P1: pose(capAimR, A - 0.55, 0.5, fitDist(capFit, 22)), fov: 22, cap: true },
-    // depois da tampa: lateral bem aberta do lado da luz principal, na altura do ombro,
-    // a câmera contornando devagar (não é frente nem de cima)
-    { d: 3, T0: CR, T1: CR, P0: pose(CR, A - 1.15, 0.12, dist0 * 1.02), P1: pose(CR, A - 0.8, 0.14, dist0 * 1.0), fov: 28 },
-    // final, mais longo: contra-plongée suave (de baixo), 3/4 do lado iluminado, quase parado
-    { d: 5, T0: CR, T1: CR, P0: pose(CR, A - 0.5, -0.24, dist0 * 1.06), P1: pose(CR, A - 0.38, -0.2, dist0 * 1.01), fov: 28, hold: 0.4 },
+    // fecho: de frente, em vista ortográfica (sem perspectiva), um giro inteiro no próprio eixo
+    { d: 5, T0: CR, T1: CR, P0: pose(CR, A, 0, 3000), P1: pose(CR, A, 0, 3000), fov: 28, ortho: true, turn: [-Math.PI * 2, 0] },
   ];
   const total = shots.reduce((a, x) => a + x.d, 0);
   const ease = x => x * x * (3 - 2 * x);
@@ -2480,6 +2477,10 @@ function detailShow() {
       let a = clamp(t, 0, 1) * total, sh = shots[shots.length - 1], u = 1, si = shots.length - 1;
       for (let i = 0; i < shots.length; i++) { if (a <= shots[i].d || i === shots.length - 1) { sh = shots[i]; si = i; u = clamp(a / shots[i].d, 0, 1); break; } a -= shots[i].d; }
       const m = sh.hold ? glide(Math.min(1, u / (1 - sh.hold))) : glide(u);
+      if (sh.ortho && cam !== ortho) { // fecho ortográfico: enquadra a peça girando (a diagonal da base cabe)
+        cam = ortho; const hh = Math.max(sz.y / 2, Math.hypot(sz.x, sz.z) / 2 / persp.aspect) * 1.2;
+        Object.assign(ortho, { left: -hh * persp.aspect, right: hh * persp.aspect, top: hh, bottom: -hh, zoom: 1 }); ortho.updateProjectionMatrix();
+      } else if (!sh.ortho && cam !== persp) cam = persp;
       cam.position.copy(sh.P0).lerp(sh.P1, m); cam.lookAt(sh.T0.clone().lerp(sh.T1, m));
       if (persp.fov !== sh.fov) { persp.fov = sh.fov; persp.updateProjectionMatrix(); }
       if (sh.tilt) setPose(tiltQ.clone().multiply(new THREE.Quaternion().setFromAxisAngle(Y, off + 0.35 * glide(u) - 0.1)));
@@ -2502,7 +2503,7 @@ function detailShow() {
       } else topMeshes.forEach(o => { o.position.set(0, topLift * k, 0); o.rotation.y = -1.6 * k; });
     },
     cleanup() {
-      persp.fov = fov0; persp.updateProjectionMatrix(); setClip(false);
+      cam = persp; persp.fov = fov0; persp.updateProjectionMatrix(); setClip(false);
       product.remove(wire); wire.traverse(o => o.geometry?.dispose()); [wireMat, maskMat, depthMat, mixMat, texA, texB, maskRT].forEach(x => x?.dispose());
       product.position.set(0, 0, 0); product.quaternion.identity();
       frames?.forEach(g => { g.traverse(o => o.geometry?.dispose()); product.remove(g); });
