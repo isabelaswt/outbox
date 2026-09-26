@@ -418,7 +418,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-26.gargalo-raso';
+const BUILD = '2026-09-26.revela-suave';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -2368,14 +2368,35 @@ function detailShow() {
     const l = new THREE.LineSegments(new THREE.WireframeGeometry(o.geometry), wireMat); l.position.copy(o.position); l.quaternion.copy(o.quaternion); wire.add(l);
   });
   wire.visible = false; product.add(wire);
-  const solidPlane = new THREE.Plane(), wirePlane = new THREE.Plane();
-  wireMat.clippingPlanes = [wirePlane];
-  const clipMats = new Set(); product.traverse(o => { if (o.isMesh && o.material) (Array.isArray(o.material) ? o.material : [o.material]).forEach(m => clipMats.add(m)); });
+  // Revelação suave (dissolve): numa faixa de alguns mm a cor aparece aos poucos
+  // (transparência pontilhada, sem problema de ordem) e a malha some junto.
+  const band = Math.max(4, sz.y * 0.07), revP = { value: new THREE.Vector4() }, revB = { value: band };
+  const injectV = sh => sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vRevW;')
+    .replace('#include <project_vertex>', '#include <project_vertex>\nvRevW = (modelMatrix * vec4(transformed, 1.0)).xyz;');
+  const headF = '#include <common>\nvarying vec3 vRevW;\nuniform vec4 uRevP; uniform float uRevB;';
+  wireMat.onBeforeCompile = sh => {
+    sh.uniforms.uRevP = revP; sh.uniforms.uRevB = revB; sh.vertexShader = injectV(sh);
+    sh.fragmentShader = sh.fragmentShader.replace('#include <common>', headF).replace('#include <opaque_fragment>',
+      'diffuseColor.a *= smoothstep(-0.6 * uRevB, uRevB, dot(uRevP.xyz, vRevW) + uRevP.w);\n#include <opaque_fragment>');
+  };
+  const revealMats = new Map();
+  const revealOf = base => {
+    if (revealMats.has(base)) return revealMats.get(base);
+    const m = base.clone(), prev = base.onBeforeCompile; m.alphaHash = true;
+    m.onBeforeCompile = (sh, r) => {
+      if (prev) prev.call(m, sh, r);
+      sh.uniforms.uRevP = revP; sh.uniforms.uRevB = revB; sh.vertexShader = injectV(sh);
+      sh.fragmentShader = sh.fragmentShader.replace('#include <common>', headF).replace('#include <alphahash_fragment>',
+        'diffuseColor.a *= 1.0 - smoothstep(-uRevB, uRevB, dot(uRevP.xyz, vRevW) + uRevP.w);\n#include <alphahash_fragment>');
+    };
+    m.customProgramCacheKey = () => (base.customProgramCacheKey ? base.customProgramCacheKey() : '') + '|revela';
+    revealMats.set(base, m); return m;
+  };
+  const solids = []; product.traverse(o => { if (o.isMesh && o.material && !Array.isArray(o.material)) solids.push([o, o.material]); });
   let clipping = false;
-  const origClip = new Map([...clipMats].map(m => [m, m.clippingPlanes])); // o líquido já tem o corte do nível
   const setClip = on => { if (on === clipping) return; clipping = on;
-    clipMats.forEach(m => { const o = origClip.get(m); m.clippingPlanes = on ? [...(o || []), solidPlane] : o; m.needsUpdate = true; }); wire.visible = on; };
-  const half = sz.y * 0.62;
+    solids.forEach(([o, m]) => { o.material = on ? revealOf(m) : m; }); wire.visible = on; };
+  const half = sz.y * 0.62, smoother = x => x * x * x * (x * (x * 6 - 15) + 10);
   return {
     update(t) {
       let a = clamp(t, 0, 1) * total, sh = shots[shots.length - 1], u = 1, si = shots.length - 1;
@@ -2385,10 +2406,10 @@ function detailShow() {
       if (persp.fov !== sh.fov) { persp.fov = sh.fov; persp.updateProjectionMatrix(); }
       if (sh.tilt) setPose(tiltQ.clone().multiply(new THREE.Quaternion().setFromAxisAngle(Y, 0.35 * glide(u) - 0.1)));
       else { product.position.set(0, 0, 0); product.quaternion.identity(); product.rotation.y = sh.turn ? sh.turn[0] + (sh.turn[1] - sh.turn[0]) * glide(u) : 0; }
-      if (sh.wire) { // o acabamento sobe da base ao topo; acima dele, só a malha
+      if (sh.wire) { // o acabamento sobe da base ao topo, suave nas pontas; acima dele, só a malha
         product.updateMatrixWorld(true);
-        const ax = Y.clone().applyQuaternion(product.quaternion), P = C.clone().addScaledVector(ax, -half + 2 * half * ease(clamp((u - 0.12) / 0.76, 0, 1)));
-        solidPlane.setFromNormalAndCoplanarPoint(ax.clone().negate(), P); wirePlane.setFromNormalAndCoplanarPoint(ax, P);
+        const ax = Y.clone().applyQuaternion(product.quaternion), P = C.clone().addScaledVector(ax, -half - band + 2 * (half + band) * smoother(clamp((u - 0.06) / 0.88, 0, 1)));
+        revP.value.set(ax.x, ax.y, ax.z, -ax.dot(P)); // distância com sinal: + acima da faixa
       }
       setClip(!!sh.wire);
       // tampa: abre suave na tomada 3 e fica aberta; nas outras, fechada
@@ -2399,7 +2420,7 @@ function detailShow() {
     },
     cleanup() {
       persp.fov = fov0; persp.updateProjectionMatrix(); setClip(false);
-      product.remove(wire); wire.traverse(o => o.geometry?.dispose()); wireMat.dispose();
+      product.remove(wire); wire.traverse(o => o.geometry?.dispose()); wireMat.dispose(); revealMats.forEach(m => m.dispose());
       product.position.set(0, 0, 0); product.quaternion.identity();
       frames?.forEach(g => { g.traverse(o => o.geometry?.dispose()); product.remove(g); });
       openMeshes.forEach(o => { o.visible = true; });
