@@ -373,7 +373,7 @@ const LIB = {
   bicoDosador: { name: 'Bico dosador', kind: 'spray', sprayType: 'bico', W: 32, D: 32, h: 18, collarR: 0.8, ridges: 76, ridgeD: 0.32,
              actW: 22, actH: 24, nozzleL: 24, spoutD: 2.7, mola: false, pesc: false },
   bicoConico: { name: 'Bico cônico (molho)', kind: 'spray', sprayType: 'conico', W: 38, D: 38, h: 14, collarR: 0.8, ridges: 90, ridgeD: 0.35,
-             actW: 12, nozzleL: 26, spoutD: 3, mola: false, pesc: false },
+             actW: 13, nozzleL: 25, spoutD: 3, mola: false, pesc: false },
   gargalo: { name: 'Gargalo com rosca', kind: 'gargalo', W: 23.9, D: 23.9, h: 16, neckStd: '24/410', pitch: 3.18, turns: 1.5 },
   bisnaga: { name: 'Corpo bisnaga', kind: 'bisnaga', W: 45, D: 45, h: 165, rBot: 4, flatStart: 10, sealH: 5.5, sealT: 1.2, sealW: 1.5, sealR: 2, serrD: 0.16, vol: true },
   tampaBisnaga: { name: 'Tampa de bisnaga', W: 49, D: 49, h: 28, rBot: 8, rTop: 3, groove: 19, notch: true, notchUp: true, notchW: 13, notchH: 5, notchD: 0.9, notchP: 7, orifD: 3, topType: 'flip', lidSide: 'baixo' },
@@ -395,7 +395,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-25.nuvem-bola-airless';
+const BUILD = '2026-09-25.bico-conico-proporcao';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -578,7 +578,7 @@ const PRESETS = {
     M('plano', { W: 70, D: 40, n: 4, h: 108, rBot: 18, rTop: 16 }), NECK('24/410'),
     M('domo', { name: 'Domo redondo', W: 44, D: 44, n: 2, h: 30, rBot: 1, rTop: 18, groove: 15, notch: true, notchY: 15, notchW: 16, notchH: 7, notchD: 1.6, notchP: 2 })] },
   'Frasco molho (bico cônico)': { color: BEIGE, finish: 'fosco', modules: [
-    M('cone', { name: 'Corpo molho', W: 58, D: 58, h: 118, taper: 80, rBot: 8, rTop: 9 }), NECK('38/400'), M('bicoConico', { W: 46, D: 46 })] },
+    M('cone', { name: 'Corpo molho', W: 58, D: 58, h: 118, taper: 80, rBot: 8, rTop: 9 }), NECK('38/400'), M('bicoConico', { W: 46, D: 46, actW: 15.7, nozzleL: 30, spoutD: 3.4 })] },
   // Referência Prose: cilindro de ombro reto e pump com luva alta lisa e cabeça de bico reto longo.
   'Cilindro + pump luva alta': { color: BEIGE, finish: 'fosco', modules: [
     M('reto', { W: 50, D: 50, h: 146, rBot: 3, rTop: 7 }), NECK('24/410'),
@@ -3009,7 +3009,8 @@ function adaptSwap(old, nw, label) {
     let neck = null;
     for (let i = sel - 1; i >= 0; i--) { const q = S.modules[i]; if (q.kind === 'gargalo') { neck = q; break; } if (q.vol) break; }
     const tube = S.modules[sel + 1]?.kind === 'bisnaga' ? S.modules[sel + 1] : null;
-    const want = neck ? neck.W + 2.4 : tube ? tube.W * 0.94 : collarOf(nw);
+    // Bico cônico: tampa de rosca bem mais larga que o gargalo (como nas de molho).
+    const want = neck ? Math.max(neck.W + 2.4, nw.sprayType === 'conico' ? neck.W * 1.35 : 0) : tube ? tube.W * 0.94 : collarOf(nw);
     scaleModule(nw, want / collarOf(nw));
     if (neck && collarOf(nw) < minValveW(nw, neck.W)) scaleModule(nw, minValveW(nw, neck.W) / collarOf(nw));
   } else scaleModule(nw, collarOf(old) / collarOf(nw));
