@@ -439,7 +439,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-26.jateado-cor';
+const BUILD = '2026-09-26.jateado2';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -2178,18 +2178,20 @@ function material(color, finish) {
   // A cor do vidro vem da espessura (absorção), não de tinta: fino no centro fica
   // claro, nas bordas (mais vidro no caminho) fica denso e saturado. Por cima, o véu
   // leitoso do jateado; e a luz do estúdio que vem de trás atravessa e acende o miolo.
-  if (finish === 'vidroFosco') { m.roughness = 0.4; m.transmission = 0.85; m.thickness = 8; m.ior = 1.5; m.depthWrite = false;
-    m.color.lerp(new THREE.Color('#ffffff'), 0.3); // véu do jateado
-    m.attenuationColor = new THREE.Color(color); m.attenuationDistance = 10;
-    m.sheen = 0.7; m.sheenRoughness = 0.45; m.sheenColor = new THREE.Color('#ffffff'); m.specularIntensity = 1;
+  // O three multiplica a luz que atravessa pela cor da superfície; com a cor do
+  // vidro ali, ela passava duas vezes pelo azul e o frasco virava tinta escura.
+  // Por isso a superfície é quase branca (o véu do jateado) e a cor sai só da absorção.
+  if (finish === 'vidroFosco') { m.roughness = 0.35; m.transmission = 0.9; m.thickness = 6; m.ior = 1.5; m.depthWrite = false;
+    m.color.lerp(new THREE.Color('#ffffff'), 0.9); // véu do jateado
+    m.attenuationColor = new THREE.Color(color); m.attenuationDistance = 5;
+    m.sheen = 0.4; m.sheenRoughness = 0.45; m.sheenColor = new THREE.Color('#ffffff'); m.specularIntensity = 1;
     m.onBeforeCompile = sh => {
       sh.fragmentShader = sh.fragmentShader.replace('#include <transmission_fragment>', THREE.ShaderChunk.transmission_fragment
-        .replace('material.thickness = thickness;', `float frEdge = pow(1.0 - abs(dot(normalize(vViewPosition), normal)), 1.6);
-	material.thickness = thickness * mix(0.35, 4.5, frEdge);
-	material.transmission *= mix(1.0, 0.35, frEdge);`)
-        + '\n#ifdef USE_ENVMAP\n totalDiffuse += material.diffuseColor * attenuationColor * getIBLIrradiance(-normal) * 0.6 * (1.0 - frEdge);\n#endif');
+        .replace('material.thickness = thickness;', `float frEdge = pow(1.0 - abs(dot(normalize(vViewPosition), normal)), 1.3);
+\tmaterial.thickness = thickness * mix(0.35, 5.0, frEdge);`)
+        + '\n#ifdef USE_ENVMAP\n totalDiffuse += material.diffuseColor * attenuationColor * getIBLIrradiance(-normal) * 0.15 * (1.0 - frEdge);\n#endif');
     };
-    m.customProgramCacheKey = () => 'jateado2'; }
+    m.customProgramCacheKey = () => 'jateado3'; }
   if (finish === 'metal') { m.metalness = 1; m.roughness = 0.3; } // um pouco menos espelhado: sem brilho piscando nas quinas
   matCache.set(key, m);
   return m;
