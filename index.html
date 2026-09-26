@@ -418,7 +418,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-26.png-transparente-vidro';
+const BUILD = '2026-09-26.camera-login';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -3069,8 +3069,13 @@ function updateStats() {
 // ───────────────────────── câmeras e vistas ─────────────────────────
 const VIEWS = { front: [0, 0.02, 1], side: [1, 0.02, 0], three: [0.75, 0.32, 1], top: [0, 1, 0.001] };
 let curView = 'three';
+let fitPending = false;
 function fit(viewName = curView) {
   curView = viewName;
+  // Área 3D ainda sem tamanho (tela de login por cima): enquadra quando ela aparecer.
+  // Sem isso a conta dividia por zero e a câmera ia para NaN (produto "sumia").
+  if (!view.clientWidth || !view.clientHeight) { fitPending = true; return; }
+  fitPending = false;
   document.querySelectorAll('[data-view]').forEach(b => b.classList.toggle('on', b.dataset.view === viewName));
   const b = boundsAll(); if (b.isEmpty()) return;
   const sz = b.getSize(new THREE.Vector3()), c = b.getCenter(new THREE.Vector3());
@@ -3091,6 +3096,7 @@ function fit(viewName = curView) {
 }
 function resize() {
   const w = view.clientWidth, h = view.clientHeight; if (!w || !h) return;
+  if (fitPending || !Number.isFinite(cam.position.x + cam.position.y + cam.position.z)) setTimeout(() => fit(), 0);
   renderer.setSize(w, h, false);
   persp.aspect = w / h; persp.updateProjectionMatrix();
   Object.assign(ortho, { left: -orthoHalf * w / h, right: orthoHalf * w / h, top: orthoHalf, bottom: -orthoHalf });
