@@ -141,6 +141,7 @@ canvas{display:block;width:100%;height:100%;touch-action:none}
       <button class="btn" id="importJsonBtn">JSON ↑</button>
       <input type="file" id="importJson" accept=".json,application/json" class="hidden">
     </div>
+    <div class="tip" id="saveStatus"></div>
   </details>
 
   <details open id="lineBox">
@@ -214,8 +215,11 @@ canvas{display:block;width:100%;height:100%;touch-action:none}
     <div class="tip">Cenário, luz e vídeo girando para mostrar o produto. O cenário se ajusta ao tamanho do produto (e dos que estão ao lado).</div>
     <div id="sceneFields"></div>
     <div class="row">
+      <select id="spinMode"><option value="360">Volta inteira (360°)</option><option value="balanco">Vai e volta (frente sempre à vista)</option></select>
       <select id="spinSec"><option value="6">6 s</option><option value="10" selected>10 s</option><option value="15">15 s</option></select>
-      <button class="btn pri" id="spinBtn">Gravar vídeo 360°</button>
+    </div>
+    <div class="row">
+      <button class="btn pri" id="spinBtn">Gravar vídeo</button>
     </div>
     <div class="row"><button class="btn" id="fullBtn">Tela cheia</button></div>
   </details>
@@ -419,7 +423,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-26.logo-sem-pisca';
+const BUILD = '2026-09-26.logo-duas-faces-autosave';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -2076,7 +2080,7 @@ function renderScene() {
 }
 // Vídeo 360°: a câmera dá uma volta completa em torno do alvo e o canvas é gravado.
 let spinning = false;
-async function recordSpin(sec) {
+async function recordSpin(sec, mode = '360') {
   if (spinning || !window.MediaRecorder) { if (!window.MediaRecorder) toast('Este navegador não grava vídeo'); return; }
   spinning = true; const btn = $('#spinBtn'); btn.disabled = true; btn.textContent = 'Gravando…';
   const keep = { grid: grid.visible, ref: refMesh.visible, pos: cam.position.clone() };
@@ -2090,7 +2094,9 @@ async function recordSpin(sec) {
   await new Promise(res => {
     const t0 = performance.now();
     const step = now => {
-      const f = Math.min(1, (now - t0) / (sec * 1000)), a = a0 + f * Math.PI * 2;
+      // 360°: volta inteira. Vai e volta: balança ±40° em torno do ângulo atual
+      // (o logo/rótulo da frente nunca vai para trás).
+      const f = Math.min(1, (now - t0) / (sec * 1000)), a = mode === 'balanco' ? a0 + Math.sin(f * Math.PI * 2) * 0.7 : a0 + f * Math.PI * 2;
       cam.position.set(T.x + R * Math.cos(a), T.y + off.y, T.z + R * Math.sin(a)); cam.lookAt(T);
       renderFrame();
       f < 1 ? requestAnimationFrame(step) : res();
@@ -2100,7 +2106,7 @@ async function recordSpin(sec) {
   rec.stop(); await done;
   cam.position.copy(keep.pos); cam.lookAt(T); grid.visible = keep.grid; refMesh.visible = keep.ref; controls.enabled = true; controls.update(); req();
   download(new Blob(chunks, { type: mime }), fname(mime.includes('mp4') ? 'mp4' : 'webm'));
-  btn.disabled = false; btn.textContent = 'Gravar vídeo 360°'; spinning = false;
+  btn.disabled = false; btn.textContent = 'Gravar vídeo'; spinning = false;
 }
 
 function build() {
@@ -2292,6 +2298,13 @@ function logoSkin(L, F, M, base, top, trim = false) {
   g.computeVertexNormals();
   return g;
 }
+// Pele do logo desenhada dos dois lados: se a malha sair com as faces invertidas
+// (curvas fechadas, laterais do frasco), a face da letra não some mais girando.
+const logoMats = new WeakMap();
+function logoMat(base) {
+  if (!logoMats.has(base)) { const m = base.clone(); m.side = THREE.DoubleSide; logoMats.set(base, m); }
+  return logoMats.get(base);
+}
 let logoTimer;
 let logoRun = 0;
 function scheduleLogos() { clearTimeout(logoTimer); if (S.logos?.length) logoTimer = setTimeout(applyLogos, 120); }
@@ -2316,7 +2329,7 @@ async function applyLogosTo(group, st, alive) {
     // Alto-relevo fica levemente embutido na base; baixo-relevo usa uma pele
     // cavada sem boolean pesado, para não travar com logos complexos.
     const skin = emboss ? logoSkin(L, F, M, -0.05, L.depth, true) : logoSkin(L, F, M, 0.025, L.depth);
-    const lm = new THREE.Mesh(skin, emboss && L.own ? material(L.color, L.finish) : target.material);
+    const lm = new THREE.Mesh(skin, logoMat(emboss && L.own ? material(L.color, L.finish) : target.material));
     if (!emboss) { lm.material = lm.material.clone(); lm.material.depthTest = false; lm.renderOrder = 20; }
     lm.castShadow = true; lm.receiveShadow = true; lm.frustumCulled = false; // o logo nunca é tido como fora da tela
     lm.userData = { logo: true, idx: target.userData.idx }; lm.name = `logo_${L.name}`;
@@ -3613,7 +3626,27 @@ $('#savePreset').onclick = async () => {
     cloud[name] = structuredClone(S);
   } else { const sv = saved(); sv[name] = structuredClone(S); store.set('shape.presets', sv); }
   galleryKey = ''; renderPresets(); toast(`Salvo: ${name}`); // miniatura do salvo é refeita
+  saveStatus(`Salvo às ${hhmm()}. Daqui em diante salva sozinho a cada minuto.`);
 };
+// Salvamento automático: modelo que já foi salvo (mesmo nome na biblioteca) é
+// regravado a cada minuto quando mudou. Modelo novo só entra ao clicar Salvar.
+const hhmm = () => new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+const saveStatus = t => { const el = $('#saveStatus'); if (el) el.textContent = t; };
+let autoBusy = false;
+async function autoSave() {
+  if (autoBusy || spinning) return;
+  const name = (S.name || '').trim(), sv = saved();
+  if (!name || !sv[name] || JSON.stringify(sv[name]) === JSON.stringify(S)) return;
+  autoBusy = true;
+  try {
+    if (cloud) { await api('models.php?a=save', { name, data: S }); cloud[name] = structuredClone(S); }
+    else { sv[name] = structuredClone(S); store.set('shape.presets', sv); }
+    saveStatus(`Salvo automaticamente às ${hhmm()}.`);
+  } catch (e) { saveStatus(e.status === 401 ? 'Salvamento automático parou: sua sessão expirou, entre de novo.' : 'Salvamento automático falhou; clique em Salvar.'); }
+  finally { autoBusy = false; }
+}
+setInterval(autoSave, 60000);
+window.addEventListener('beforeunload', () => { autoSave(); });
 $('#delPreset').onclick = async () => {
   const sv = saved(); if (!sv[S.name]) return toast('Esse nome não está entre os salvos');
   if (cloud) {
@@ -3788,7 +3821,7 @@ $('#dlGlb').onclick = () => {
   new GLTFExporter().parse(exportRoot(0.001), buf => download(new Blob([buf], { type: 'model/gltf-binary' }), fname('glb')),
     err => toast('Erro ao gerar GLB: ' + err), { binary: true });
 };
-$('#spinBtn').onclick = () => recordSpin(+$('#spinSec').value || 10);
+$('#spinBtn').onclick = () => recordSpin(+$('#spinSec').value || 10, $('#spinMode').value);
 $('#fullBtn').onclick = () => { document.fullscreenElement ? document.exitFullscreen() : view.requestFullscreen?.(); setTimeout(() => window.dispatchEvent(new Event('resize')), 200); };
 $('#dlStl').onclick = () => download(new Blob([new STLExporter().parse(exportRoot(1), { binary: true })], { type: 'model/stl' }), fname('stl'));
 $('#dlObj').onclick = () => download(new Blob([new OBJExporter().parse(exportRoot(1))], { type: 'text/plain' }), fname('obj'));
