@@ -443,7 +443,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-26.jateado-gomos';
+const BUILD = '2026-09-26.grao-fino';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -2178,7 +2178,7 @@ float gNoise(vec3 x) { vec3 i = floor(x), f = fract(x); f = f * f * (3.0 - 2.0 *
 // duas camadas giradas entre si: sem a grade quadriculada do ruído simples
 const mat3 gRot = mat3(0.00, 0.80, 0.60, -0.80, 0.36, -0.48, -0.60, -0.48, 0.64);
 float gGrain(vec3 q) { return 0.55 * gNoise(q) + 0.3 * gNoise(gRot * q * 2.03 + 3.1) + 0.15 * gNoise(gRot * gRot * q * 4.01 + 7.7); }`;
-function addGrain(m, amt, cell = 0.3) {
+function addGrain(m, amt, cell = 0.18) {
   const prev = m.onBeforeCompile, prevKey = m.customProgramCacheKey?.bind(m);
   m.onBeforeCompile = (sh, r) => {
     prev?.call(m, sh, r);
@@ -2186,9 +2186,9 @@ function addGrain(m, amt, cell = 0.3) {
       .replace('#include <begin_vertex>', '#include <begin_vertex>\nvGrainP = position;');
     const q = `vec3 gq = vGrainP / ${cell.toFixed(3)}; float gk = ${amt.toFixed(2)} * clamp(${cell.toFixed(3)} / (length(fwidth(vGrainP)) * 1.6) - 0.4, 0.0, 1.0);`;
     sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\n' + GRAIN_GLSL)
-      .replace('#include <color_fragment>', `#include <color_fragment>\n${q}\ndiffuseColor.rgb *= 1.0 + (gGrain(gq * 0.9 + 9.0) - 0.5) * 0.05 * gk;`)
-      .replace('#include <roughnessmap_fragment>', '#include <roughnessmap_fragment>\nroughnessFactor = clamp(roughnessFactor * (1.0 + (gGrain(gq * 1.7 + 5.0) - 0.5) * 0.3 * gk), 0.04, 1.0);')
-      .replace('#include <normal_fragment_maps>', '#include <normal_fragment_maps>\nnormal = normalize(normal + (vec3(gGrain(gq), gGrain(gq + 17.1), gGrain(gq + 31.7)) - 0.5) * 0.22 * gk);');
+      .replace('#include <color_fragment>', `#include <color_fragment>\n${q}\ndiffuseColor.rgb *= 1.0 + (gGrain(gq * 0.9 + 9.0) - 0.5) * 0.025 * gk;`)
+      .replace('#include <roughnessmap_fragment>', '#include <roughnessmap_fragment>\nroughnessFactor = clamp(roughnessFactor * (1.0 + (gGrain(gq * 1.7 + 5.0) - 0.5) * 0.18 * gk), 0.04, 1.0);')
+      .replace('#include <normal_fragment_maps>', '#include <normal_fragment_maps>\nnormal = normalize(normal + (vec3(gGrain(gq), gGrain(gq + 17.1), gGrain(gq + 31.7)) - 0.5) * 0.11 * gk);');
   };
   m.customProgramCacheKey = () => (prevKey ? prevKey() : '') + `|grao${amt}_${cell}`;
 }
