@@ -279,6 +279,7 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+import { RectAreaLightUniformsLib } from 'three/addons/lights/RectAreaLightUniformsLib.js';
 import { RGBELoader } from 'three/addons/loaders/RGBELoader.js';
 import { GLTFExporter } from 'three/addons/exporters/GLTFExporter.js';
 import { STLExporter } from 'three/addons/exporters/STLExporter.js';
@@ -421,7 +422,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-26.luz-unica';
+const BUILD = '2026-09-26.estudio-area';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -1927,6 +1928,27 @@ function stripScene() {
   return sc;
 }
 const stripEnv = pmrem.fromScene(stripScene(), 0.01).texture;
+// Estúdio claro (padrão): uma caixa de luz grande no alto à direita e à frente
+// (degradê que escurece para a esquerda e para baixo, como foto de produto), topo
+// para as quinas, preenchimento fraco à esquerda e chão claro rebatendo por baixo
+// (sombra funda mas nunca preta embaixo das tampas).
+function refStudioScene() {
+  const sc = new THREE.Scene();
+  const room = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshBasicMaterial({ color: new THREE.Color('#4b4a48'), side: THREE.BackSide }));
+  room.scale.set(30, 18, 30); room.position.y = 5; sc.add(room);
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(30, 30), new THREE.MeshBasicMaterial({ color: new THREE.Color('#bdbab4') }));
+  floor.rotation.x = -Math.PI / 2; floor.position.y = -2.9; sc.add(floor);
+  const soft = (w, h, k, pos, look = [0, 1, 0]) => {
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ color: new THREE.Color('#ffffff').multiplyScalar(k), side: THREE.DoubleSide }));
+    m.position.set(...pos); m.lookAt(...look); sc.add(m);
+  };
+  soft(8, 9, 5, [7, 6, 8]);                  // reflexo da caixa principal (direita-frente)
+  soft(9, 3, 4, [0, 11, 2], [0, 0, 0]);      // topo: quinas e ombros
+  soft(4, 7, 0.9, [-9, 3, 5]);               // preenchimento fraco à esquerda
+  soft(1.4, 9, 2.2, [-6, 3, -7]);            // recorte leve atrás
+  return sc;
+}
+const refEnv = pmrem.fromScene(refStudioScene(), 0.02).texture;
 scene.environment = roomEnv;
 // Luz padrão pensada para ler volume: ambiente baixo, luz principal lateral
 // forte e um contraluz frio do outro lado para recortar a silhueta.
@@ -1941,7 +1963,24 @@ sun.shadow.mapSize.set(2048, 2048);
 Object.assign(sun.shadow.camera, { left: -300, right: 300, top: 300, bottom: -300, near: 10, far: 1500 });
 sun.shadow.bias = -0.0004; sun.shadow.normalBias = 0.4; sun.shadow.radius = 12; sun.shadow.blurSamples = 20;
 scene.add(sun, sun.target);
-const baseLight = { env: roomEnv, envI: 1, envRot: scene.environmentRotation?.clone(), hemi: 0.08, sun: 1.7, sunPos: sun.position.clone() };
+// Caixa de luz principal de verdade (luz de área, perto do produto): a luz cai com
+// a distância e o ângulo, então até uma face plana ganha degradê, como na foto.
+// Posição e tamanho acompanham o produto (buildStage); só acende no estúdio claro.
+RectAreaLightUniformsLib.init();
+const areaKey = new THREE.RectAreaLight(0xfff8ef, 0, 100, 100); scene.add(areaKey);
+const areaFill = new THREE.RectAreaLight(0xeef2f8, 0, 100, 100); scene.add(areaFill);
+let areaOn = 0;
+function placeAreaLights() {
+  const b = new THREE.Box3().setFromObject(product).union(new THREE.Box3().setFromObject(sideRoot));
+  if (b.isEmpty()) return;
+  const c = b.getCenter(new THREE.Vector3()), sz = b.getSize(new THREE.Vector3()), R = Math.max(sz.x, sz.y, sz.z);
+  areaKey.width = R * 1.1; areaKey.height = R * 1.5;
+  areaKey.position.set(c.x + R * 0.75, c.y + R * 0.55, c.z + R * 0.85); areaKey.lookAt(c.x, c.y - R * 0.1, c.z);
+  areaFill.width = R * 0.8; areaFill.height = R * 1.2;
+  areaFill.position.set(c.x - R * 1.1, c.y + R * 0.2, c.z + R * 0.5); areaFill.lookAt(c);
+  areaKey.intensity = areaOn * 4.2; areaFill.intensity = areaOn * 0.9;
+}
+const baseLight = { area: 0, env: roomEnv, envI: 1, envRot: scene.environmentRotation?.clone(), hemi: 0.08, sun: 1.7, sunPos: sun.position.clone() };
 
 const ground = new THREE.Mesh(new THREE.PlaneGeometry(6000, 6000), new THREE.ShadowMaterial({ opacity: 0.16 }));
 ground.rotation.x = -Math.PI / 2; ground.position.y = -0.05; ground.receiveShadow = true;
@@ -2044,6 +2083,7 @@ const contactMat = (() => {
 const SCENE0 = { cena: 'nenhum', cenaCor: '#e6e0d6', cenaH: 40, luz: 'studio', ao: true };
 const sceneOf = () => ({ ...SCENE0, ...(S.scene || {}) });
 function buildStage() {
+  placeAreaLights();
   stage.children.slice().forEach(o => { o.geometry?.dispose(); stage.remove(o); });
   const sc = sceneOf(); ground.visible = true; ground.position.y = -0.05;
   // Sombra de contato: mancha suave logo embaixo de cada produto (ocupa a base e
@@ -3825,9 +3865,10 @@ function toast(msg) { const t = $('#toast'); t.textContent = msg; t.classList.ad
 
 const HDR = { env: null, url: null, name: '', rot: 0, strength: 100 };
 function snapshotLighting() {
-  return { env: scene.environment, envI: scene.environmentIntensity, envRot: scene.environmentRotation?.clone(), hemi: hemi.intensity, sun: sun.intensity, sunPos: sun.position.clone() };
+  return { env: scene.environment, envI: scene.environmentIntensity, envRot: scene.environmentRotation?.clone(), hemi: hemi.intensity, sun: sun.intensity, sunPos: sun.position.clone(), area: areaOn };
 }
 function setLighting(keep) {
+  if (keep.area !== undefined) { areaOn = keep.area; placeAreaLights(); }
   scene.environment = keep.env; scene.environmentIntensity = keep.envI; hemi.intensity = keep.hemi; sun.intensity = keep.sun; sun.position.copy(keep.sunPos);
   if (scene.environmentRotation && keep.envRot) scene.environmentRotation.copy(keep.envRot);
 }
@@ -3856,9 +3897,12 @@ function applyLightingMode(mode) {
     scene.environmentIntensity = 1.05 * boost; hemi.intensity = 0.55; sun.intensity = 0.85; sun.position.set(140, 360, 280);
   } else if (mode === 'contrast') {
     scene.environmentIntensity = 1.15 * boost; hemi.intensity = 0.18; sun.intensity = 2.1; sun.position.set(-180, 460, 220);
-  } else {
-    scene.environmentIntensity = (HDR.env && mode === 'hdr' ? 1.25 : 1.35) * boost; hemi.intensity = 0.42; sun.intensity = 1.15; sun.position.set(180, 420, 300);
+  } else if (mode === 'hdr' && HDR.env) {
+    scene.environmentIntensity = 1.25 * boost; hemi.intensity = 0.42; sun.intensity = 1.15; sun.position.set(180, 420, 300);
+  } else { // estúdio claro (padrão): caixa de luz de área + ambiente de estúdio
+    scene.environment = refEnv; scene.environmentIntensity = 0.5 * boost; hemi.intensity = 0.08; sun.intensity = 0.5; sun.position.set(220, 520, 260);
   }
+  areaOn = mode === 'studio' ? 1 : 0; placeAreaLights();
 }
 function applyPngLighting(mode) {
   const keep = snapshotLighting();
