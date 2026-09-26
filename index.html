@@ -395,7 +395,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-25.gatilho-novo';
+const BUILD = '2026-09-25.nuvem-bola-airless';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -600,6 +600,31 @@ const PRESETS = {
   'Frasco gatilho': { color: BEIGE, finish: 'fosco', modules: [
     M('reto', { W: 64, D: 64, h: 128, rBot: 8, rTop: 24 }), NECK('28/410'),
     M('gatilho', { W: 31, D: 31, h: 17, ridges: 80, ridgeD: 0.35 })] },
+  // Referência sérum: vidro bojudo com pezinho e pump de luva alta.
+  'Sérum com pé + pump': { color: BEIGE, finish: 'fosco', modules: [
+    M('disco', { name: 'Pé', W: 44, D: 44, h: 6, rBot: 1, rTop: 0, vol: true }),
+    M('capsula', { W: 62, D: 62, h: 66, rBot: 16, rTop: 17 }), NECK('24/410'),
+    M('spray', { name: 'Pump luva alta', W: 32, D: 32, h: 30, skirtPct: 100, ridges: 0, actW: 24, actH: 14, stemH: 2 })] },
+  // Referência Method Men: plano alto arredondado com tampa que segue o ombro; bastão de desodorante.
+  'Plano alto + tampa ombro': { color: BEIGE, finish: 'fosco', modules: [
+    M('plano', { W: 72, D: 46, n: 3, h: 150, rBot: 18, rTop: 20 }), NECK('24/410'),
+    M('flip', { name: 'Tampa ombro', W: 54, D: 38, n: 2.8, h: 17, taper: 78, rBot: 1, rTop: 2, groove: 5 })] },
+  'Bastão desodorante': { color: BEIGE, finish: 'fosco', modules: [
+    M('plano', { name: 'Corpo bastão', W: 46, D: 32, n: 3, h: 72, rBot: 3, rTop: 1 }),
+    M('flip', { name: 'Tampa bastão', W: 46.6, D: 32.6, n: 3, h: 38, taper: 100, rBot: 0.5, rTop: 7, groove: 0, topType: 'nenhum' })] },
+  // Referência Wildhood: cilindro com tampa nuvem (lóbulos) mais larga que o corpo.
+  'Cilindro + tampa nuvem': { color: BEIGE, finish: 'fosco', modules: [
+    M('reto', { W: 42, D: 42, h: 96, rBot: 3, rTop: 4 }), NECK('20/410'),
+    M('canelado', { name: 'Tampa nuvem', W: 54, D: 54, h: 40, rBot: 1, rTop: 3, ridges: 6, ridgeD: 6 })] },
+  // Referência Mojoki: cilindro reto e bola grande de tampa.
+  'Cilindro + bola': { color: BEIGE, finish: 'fosco', modules: [
+    M('reto', { W: 40, D: 40, h: 96, rBot: 2, rTop: 3 }), NECK('18/410'),
+    M('esfera', { W: 42, D: 42, h: 42, rBot: 21, rTop: 21, sphereR: 21, groove: 0, topType: 'nenhum' })] },
+  // Referência Versiani: airless cápsula com cabeça em domo e bico curto.
+  'Airless cápsula': { color: BEIGE, finish: 'fosco', modules: [
+    M('capsula', { W: 46, D: 46, h: 66, rBot: 21, rTop: 1 }), NECK('24/410'),
+    M('locao', { name: 'Cabeça domo', W: 46, D: 46, h: 6, collarR: 0.6, stemD: 38, stemH: 2, actW: 40, headH: 14, domeH: 11,
+      nozzleL: 7, droop: 1, spoutD: 5 })] },
   'Cápsula dividida': { color: BEIGE, finish: 'fosco', modules: [
     M('capsula', { W: 44, D: 44, h: 96, rBot: 22, rTop: 2 }), NECK('24/410'),
     M('domo', { name: 'Tampa cápsula', W: 44, D: 44, h: 38, rBot: 1.5, rTop: 22, groove: 12, notch: true, notchW: 14, notchH: 5, notchD: 1.4, notchP: 2 })] },
@@ -2631,7 +2656,7 @@ const MF = [
     K(['h', 'Altura', 4, 40, 0.5, 'mm']),
     K(['collarR', 'Arredondamento do topo', 0, 40, 0.5, 'mm']),
     K(['ridges', 'Frisos', 0, 120, 1, '']),
-    K(['ridgeD', 'Profundidade dos frisos', 0.1, 3, 0.1, 'mm', m => m.ridges > 0]),
+    K(['ridgeD', 'Profundidade dos frisos', 0.1, 8, 0.1, 'mm', m => m.ridges > 0]),
     K(['skirtPct', 'Altura da saia lisa (100 = sem serrilhado)', 10, 100, 1, '%', isType('mist')]),
     K(['bandInset', 'Recuo da faixa serrilhada', 0, 5, 0.1, 'mm', m => m.sprayType === 'mist' && m.skirtPct < 99]),
   ]],
@@ -2695,7 +2720,7 @@ const MF = [
   ]],
   ['Frisos', [
     G(['ridges', 'Frisos na faixa reta do meio', 0, 120, 1, '']),
-    G(['ridgeD', 'Profundidade', 0.1, 3, 0.1, 'mm', m => m.ridges > 0]),
+    G(['ridgeD', 'Profundidade', 0.1, 8, 0.1, 'mm', m => m.ridges > 0]),
     // + lista de faixas (renderRibs), para peças redondas/ovais e da Draft
   ]],
   ['Encaixe', [
