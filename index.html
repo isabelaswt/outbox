@@ -439,7 +439,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-26.gerador-pescoco';
+const BUILD = '2026-09-26.tampa-frente';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -2432,7 +2432,8 @@ function detailShow() {
     // abertura: câmera parada em 3/4, o produto gira no próprio eixo (sem aproximar)
     { d: 3, T0: CR, T1: CR, P0: pose(CR, A - 0.45, 0.02, distHero), P1: pose(CR, A - 0.45, 0.02, distHero), fov: 26, turn: [-0.75, 0.15] },
     { d: 3, T0: relT, T1: relT, P0: pose(relT, A + 0.3, 0.04, fitDist(relR * 1.6, 18)), P1: pose(relT, A - 0.3, 0.04, fitDist(relR * 1.6, 18)), fov: 18 },
-    { d: 5.5, T0: capAimR, T1: capAimR, P0: pose(capAimR, A - 0.3, 0.45, fitDist(capFit * 1.1, 22)), P1: pose(capAimR, A - 0.55, 0.5, fitDist(capFit, 22)), fov: 22, cap: true },
+    // tampa abrindo de frente, câmera quase na altura da tampa (bico e furo ficam discretos)
+    { d: 5.5, T0: capAimR, T1: capAimR, P0: pose(capAimR, A, 0.1, fitDist(capFit * 1.12, 22)), P1: pose(capAimR, A, 0.12, fitDist(capFit * 1.04, 22)), fov: 22, cap: true },
     // deitado em diagonal (topo à direita), bem perto, com a malha virando acabamento da base ao topo
     { d: 6, T0: C, T1: C, P0: pose(C, A - 0.15, -0.1, distTilt * 1.08), P1: pose(C, A + 0.12, -0.06, distTilt), fov: 24, tilt: true, wire: true },
     // fecho: de frente, em vista ortográfica (sem perspectiva), um giro inteiro no próprio eixo
