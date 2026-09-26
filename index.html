@@ -423,7 +423,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-26.super-qualidade';
+const BUILD = '2026-09-26.video-prato-giratorio';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -2113,7 +2113,8 @@ function renderScene() {
   field(f, S.scene, ['ao', 'Sombra de contato (o produto pesa na superfície)', 'check'], ch);
   field(f, S, ['bg', 'Fundo da cena', 'color'], queueBuild);
 }
-// Vídeo 360°: a câmera dá uma volta completa em torno do alvo e o canvas é gravado.
+// Vídeo: o produto gira no prato (360° ou vai e volta) com câmera e luz fixas, ou
+// inclinado no ar (artístico); o canvas é gravado.
 let spinning = false;
 async function recordSpin(sec, mode = '360') {
   if (spinning || !window.MediaRecorder) { if (!window.MediaRecorder) toast('Este navegador não grava vídeo'); return; }
@@ -2151,13 +2152,19 @@ async function recordSpin(sec, mode = '360') {
         const spin = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), f * Math.PI * 2);
         art.pivot.quaternion.copy(art.tilt).multiply(spin);
         art.pivot.position.y = art.T.y + Math.sin(f * Math.PI * 4) * art.lift * 0.08;
-      } else { cam.position.set(T.x + R * Math.cos(a), T.y + off.y, T.z + R * Math.sin(a)); cam.lookAt(T); }
+      } else {
+        // Prato giratório: o produto (e os ao lado) gira no próprio eixo; câmera,
+        // luzes e cenário ficam parados, então a luz não "anda" pelo produto.
+        const turn = -(a - a0);
+        product.rotation.y = turn; sideRoot.children.forEach(g => { g.rotation.y = turn; });
+      }
       renderFrame();
       f < 1 ? requestAnimationFrame(step) : res();
     };
     requestAnimationFrame(step);
   });
   rec.stop(); await done;
+  product.rotation.y = 0; sideRoot.children.forEach(g => { g.rotation.y = 0; });
   if (art) { // devolve o produto ao lugar
     art.pivot.quaternion.identity(); art.pivot.updateMatrixWorld(true); scene.attach(product);
     product.position.set(0, 0, 0); product.quaternion.identity(); scene.remove(art.pivot); stage.visible = art.stageVis;
