@@ -418,7 +418,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-26.luz-salva-igual';
+const BUILD = '2026-09-26.luz-editavel';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -1993,9 +1993,14 @@ function placeAreaLights() {
   placeAreaCore(c, R);
   // girar a luz: as caixas giram em volta do centro do produto; intensidade junto
   const sc = S.scene || {}, rot = -THREE.MathUtils.degToRad(sc.luzRot || 0), k = envStrength(sc.luzInt ?? 100), Y = new THREE.Vector3(0, 1, 0);
+  const A = lightAdj(sc);
   for (const L of [areaKey, areaFill]) {
-    L.position.sub(c).applyAxisAngle(Y, rot).add(c); L.lookAt(c.x, c.y - (L === areaKey && areaMode !== 'faixa' ? R * 0.1 : 0), c.z);
-    L.intensity *= k * (L === areaKey ? conKey(sc) : conAmb(sc));
+    const o = L.position.sub(c).applyAxisAngle(Y, rot), len = o.length(), hz = Math.hypot(o.x, o.z) || 1e-6;
+    const el = clamp(Math.atan2(o.y, hz) + A.alt, -0.35, 1.45); // altura da luz
+    o.set(o.x / hz * len * Math.cos(el), len * Math.sin(el), o.z / hz * len * Math.cos(el)); L.position.copy(o).add(c);
+    L.lookAt(c.x, c.y - (L === areaKey && areaMode !== 'faixa' ? R * 0.1 : 0), c.z);
+    L.width *= A.s; L.height *= A.s; // maciez: caixa maior, mesma luz total
+    L.intensity *= k * (L === areaKey ? conKey(sc) * A.key : conAmb(sc) * A.fill) / (A.s * A.s);
   }
 }
 function placeAreaCore(c, R) {
@@ -2146,7 +2151,9 @@ const contactMat = (() => {
   const t = new THREE.CanvasTexture(cv); t.colorSpace = THREE.SRGBColorSpace;
   return new THREE.MeshBasicMaterial({ map: t, transparent: true, depthWrite: false, toneMapped: false, polygonOffset: true, polygonOffsetFactor: -1 });
 })();
-const SCENE0 = { cena: 'nenhum', cenaCor: '#e6e0d6', cenaH: 40, luz: 'studio', ao: true, luzRot: 0, luzInt: 100, luzCon: 50 };
+const SCENE0 = { cena: 'nenhum', cenaCor: '#e6e0d6', cenaH: 40, luz: 'studio', ao: true, luzRot: 0, luzInt: 100, luzCon: 50,
+  luzAlt: 0, luzKey: 100, luzFill: 100, luzSoft: 50 };
+const LIGHT_KEYS = ['luz', 'luzRot', 'luzInt', 'luzCon', 'luzAlt', 'luzKey', 'luzFill', 'luzSoft'];
 // Contraste da luz: 50 = neutro; mais = luz principal forte e ambiente/preenchimento
 // fracos (lado escuro mais escuro, mais volume); menos = luz mais uniforme.
 const conKey = sc => 1 + 1.1 * (clamp((sc.luzCon ?? 50) / 100, 0, 1) - 0.5);
@@ -2206,12 +2213,20 @@ function buildStage() {
 }
 // Girar a luz / Intensidade valem para todas as luzes: gira o estúdio inteiro
 // (ambiente, sol/sombra e caixas de luz de área) em volta do produto.
+// Ajustes que valem para qualquer luz (os presets são só o ponto de partida).
+function lightAdj(sc) {
+  return { key: (sc.luzKey ?? 100) / 100, fill: (sc.luzFill ?? 100) / 100, alt: THREE.MathUtils.degToRad(sc.luzAlt ?? 0),
+    s: 0.5 + clamp((sc.luzSoft ?? 50) / 100, 0, 1), soft: clamp((sc.luzSoft ?? 50) / 100, 0, 1) };
+}
 function applySceneLight() {
-  const sc = sceneOf(), l = sc.luz, boost = envStrength(sc.luzInt), rot = THREE.MathUtils.degToRad(sc.luzRot || 0);
+  const sc = sceneOf(), l = sc.luz, boost = envStrength(sc.luzInt), rot = THREE.MathUtils.degToRad(sc.luzRot || 0), A = lightAdj(sc);
   if (l === 'padrao') { setLighting(baseLight); scene.environmentIntensity *= boost; setEnvRotation(sc.luzRot || 0); }
   else applyLightingMode(l);
-  sun.intensity *= boost * conKey(sc); sun.position.applyAxisAngle(new THREE.Vector3(0, 1, 0), -rot);
-  scene.environmentIntensity *= conAmb(sc); hemi.intensity *= conAmb(sc);
+  sun.intensity *= boost * conKey(sc) * A.key; sun.position.applyAxisAngle(new THREE.Vector3(0, 1, 0), -rot);
+  { const p = sun.position, r = p.length(), az = Math.atan2(p.z, p.x), el = clamp(Math.asin(p.y / r) + A.alt, 0.08, 1.45);
+    p.set(r * Math.cos(el) * Math.cos(az), r * Math.sin(el), r * Math.cos(el) * Math.sin(az)); }
+  sun.shadow.radius = 3 + 18 * A.soft; // sombra mais macia com a luz mais macia
+  scene.environmentIntensity *= conAmb(sc) * A.fill; hemi.intensity *= conAmb(sc) * A.fill;
   placeAreaLights();
 }
 function renderScene() {
@@ -2221,7 +2236,7 @@ function renderScene() {
   if (S.scene.luzV !== 2) { if (S.scene.luz === 'padrao') S.scene.luz = 'studio'; S.scene.luzV = 2; }
   // Qualquer ajuste de luz recalcula tudo (ambiente, sol/sombra e caixas): o que se vê
   // mexendo é exatamente o que é salvo e reaplicado depois.
-  const ch = (k) => { if (['luz', 'luzRot', 'luzInt', 'luzCon'].includes(k)) applySceneLight(); buildStage(); if (k === 'cena') { renderScene(); fit(); } store.set('shape.autosave', S); req(); };
+  const ch = (k) => { if (LIGHT_KEYS.includes(k)) applySceneLight(); buildStage(); if (k === 'cena') { renderScene(); fit(); } store.set('shape.autosave', S); req(); };
   field(f, S.scene, ['cena', 'Cenário', 'select', [['nenhum', 'Nenhum (só a sombra)'], ['pedestal', 'Pedestal redondo'], ['bloco', 'Bloco'],
     ['degraus', 'Degraus (vitrine)'], ['arco', 'Arco ao fundo'], ['infinito', 'Fundo infinito (estúdio)']]], ch);
   if (S.scene.cena !== 'nenhum') field(f, S.scene, ['cenaCor', 'Cor do cenário', 'color'], ch);
@@ -2233,9 +2248,13 @@ function renderScene() {
   field(f, S.scene, ['luzRot', 'Girar a luz (o estúdio todo em volta do produto)', -180, 180, 1, '°'], ch);
   field(f, S.scene, ['luzInt', 'Intensidade da luz', 20, 250, 1, '%'], ch);
   field(f, S.scene, ['luzCon', 'Contraste da luz (− uniforme, + mais volume)', 0, 100, 1, ''], ch);
+  field(f, S.scene, ['luzAlt', 'Altura da luz (− mais de lado, + mais de cima)', -40, 40, 1, '°'], ch);
+  field(f, S.scene, ['luzKey', 'Luz principal', 0, 200, 1, '%'], ch);
+  field(f, S.scene, ['luzFill', 'Preenchimento (lado escuro e ambiente)', 0, 200, 1, '%'], ch);
+  field(f, S.scene, ['luzSoft', 'Maciez (− marcada, + macia)', 0, 100, 1, ''], ch);
   const rb = document.createElement('div'); rb.className = 'row';
   rb.innerHTML = '<button class="btn">Voltar a luz ao padrão</button>';
-  rb.querySelector('button').onclick = () => { Object.assign(S.scene, { luzRot: 0, luzInt: 100, luzCon: 50 }); renderScene(); applySceneLight(); buildStage(); store.set('shape.autosave', S); req(); };
+  rb.querySelector('button').onclick = () => { Object.assign(S.scene, { luzRot: 0, luzInt: 100, luzCon: 50, luzAlt: 0, luzKey: 100, luzFill: 100, luzSoft: 50 }); renderScene(); applySceneLight(); buildStage(); store.set('shape.autosave', S); req(); };
   f.appendChild(rb);
   // Minhas luzes: a luz escolhida + girar/intensidade/contraste + cor do fundo, com nome.
   const mine = store.get('shape.lights', {}), names = Object.keys(mine);
@@ -2247,13 +2266,14 @@ function renderScene() {
   const [sel, useB, delB, saveB] = [ml.querySelector('select'), ...ml.querySelectorAll('button')];
   useB.onclick = () => {
     const L = mine[sel.value]; if (!L) return;
-    Object.assign(S.scene, { luz: L.luz, luzRot: L.luzRot, luzInt: L.luzInt, luzCon: L.luzCon }); if (L.bg) S.bg = L.bg;
+    Object.assign(S.scene, { luzRot: 0, luzInt: 100, luzCon: 50, luzAlt: 0, luzKey: 100, luzFill: 100, luzSoft: 50 });
+    LIGHT_KEYS.forEach(k => { if (L[k] !== undefined) S.scene[k] = L[k]; }); if (L.bg) S.bg = L.bg;
     renderScene(); renderGlobal(); applySceneLight(); build(); toast(`Luz aplicada: ${sel.value}`);
   };
   delB.onclick = () => { if (!mine[sel.value]) return; delete mine[sel.value]; store.set('shape.lights', mine); renderScene(); toast('Luz excluída'); };
   saveB.onclick = () => {
     const n = (prompt('Nome da luz:', names.includes(sel.value) ? sel.value : 'Minha luz') || '').trim(); if (!n) return;
-    const sc = sceneOf(); mine[n] = { luz: sc.luz, luzRot: sc.luzRot, luzInt: sc.luzInt, luzCon: sc.luzCon, bg: S.bg };
+    const sc = sceneOf(); mine[n] = { bg: S.bg }; LIGHT_KEYS.forEach(k => { mine[n][k] = sc[k]; });
     store.set('shape.lights', mine); renderScene(); toast(`Luz salva: ${n}`);
   };
   f.appendChild(ml);
