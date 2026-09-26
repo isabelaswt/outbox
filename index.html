@@ -392,7 +392,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-25.plano-flip-redonda';
+const BUILD = '2026-09-25.novos-shapes';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -536,6 +536,30 @@ const PRESETS = {
     M('plano', { name: 'Corpo plano largo', W: 78, D: 44, n: 4, h: 94, rBot: 15, rTop: 13 }), NECK('24/410'),
     M('flip', { name: 'Flip-top redonda', W: 40, D: 40, n: 2, h: 22, rBot: 0.6, rTop: 2, groove: 14,
       notch: true, notchUp: true, notchW: 10, notchH: 3.5, notchD: 0.8, notchP: 8 })] },
+  // Referências Ápice/Forever (25/09): combinações que ainda não existiam.
+  'Bloco + tampa bala': { color: BEIGE, finish: 'fosco', modules: [
+    M('plano', { name: 'Corpo bloco', W: 52, D: 40, n: 10, h: 118, rBot: 4, rTop: 4 }), NECK('24/410'),
+    M('domo', { name: 'Tampa bala', W: 28, D: 28, n: 2, h: 32, rBot: 1, rTop: 14, groove: 4, notch: false })] },
+  'Cápsula + colar + tigela': { color: BEIGE, finish: 'fosco', modules: [
+    M('capsula', { W: 54, D: 54, h: 112, rBot: 22, rTop: 18 }), NECK('24/410'),
+    M('colar', { W: 44, D: 44, h: 20, rBot: 3, rTop: 3 }), M('tigela', { W: 52, D: 52, h: 20, rBot: 9 }), M('disco', { W: 54, D: 54, h: 5 })] },
+  'Ombro cônico + esfera': { color: BEIGE, finish: 'fosco', modules: [
+    M('reto', { W: 52, D: 52, h: 92, rBot: 8, rTop: 0 }), M('cone', { name: 'Ombro cônico', W: 52, D: 52, h: 32, taper: 62, rBot: 0, rTop: 4 }),
+    NECK('24/410'), M('esfera', { W: 34, D: 34, h: 34, rBot: 17, rTop: 17, sphereR: 17 })] },
+  'Diamante + funil': { color: BEIGE, finish: 'fosco', modules: [
+    M('cone', { name: 'Base chanfrada', W: 44, D: 44, h: 10, taper: 118, rBot: 1, rTop: 0 }),
+    M('reto', { W: 52, D: 52, h: 92, rBot: 0, rTop: 0 }), M('cone', { name: 'Ombro cônico', W: 52, D: 52, h: 26, taper: 60, rBot: 0, rTop: 2 }),
+    NECK('24/410'), M('taca', { name: 'Tampa funil', W: 24, D: 24, h: 26, taper: 200, bulge: 0, rBot: 0.5, rTop: 1.5 })] },
+  'Cilindro + colar + esfera': { color: BEIGE, finish: 'fosco', modules: [
+    M('reto', { W: 46, D: 46, h: 100, rBot: 20, rTop: 2 }), NECK('24/410'),
+    M('colar', { W: 50, D: 50, h: 24, rBot: 2, rTop: 2 }), M('esfera', { W: 36, D: 36, h: 36, rBot: 18, rTop: 18, sphereR: 18 })] },
+  'Violão flip': { color: BEIGE, finish: 'fosco', modules: [
+    M('plano', { name: 'Corpo violão (baixo)', W: 66, D: 40, n: 4, h: 76, rBot: 16, rTop: 9 }),
+    M('plano', { name: 'Corpo violão (cima)', W: 58, D: 38, n: 4, h: 44, rBot: 7, rTop: 14 }), NECK('24/410'),
+    M('flip', { name: 'Flip-top redonda', W: 38, D: 38, n: 2, h: 22, rBot: 0.6, rTop: 2, groove: 14 })] },
+  'Plano + cogumelo': { color: BEIGE, finish: 'fosco', modules: [
+    M('plano', { W: 58, D: 34, n: 8, h: 110, rBot: 12, rTop: 3 }), NECK('18/410'),
+    M('disco', { name: 'Haste', W: 20, D: 20, h: 14, rBot: 0, rTop: 0 }), M('disco', { name: 'Chapéu', W: 38, D: 38, h: 7, rBot: 3.5, rTop: 3.5 })] },
   'Cápsula dividida': { color: BEIGE, finish: 'fosco', modules: [
     M('capsula', { W: 44, D: 44, h: 96, rBot: 22, rTop: 2 }), NECK('24/410'),
     M('domo', { name: 'Tampa cápsula', W: 44, D: 44, h: 38, rBot: 1.5, rTop: 22, groove: 12, notch: true, notchW: 14, notchH: 5, notchD: 1.4, notchP: 2 })] },
