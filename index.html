@@ -419,7 +419,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-26.tampa-continua';
+const BUILD = '2026-09-26.video-lentes';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -1769,13 +1769,16 @@ function flipOpenGeo(m, y0, rings, seg, disp, ang) {
   const gLid = mergeGeometries(lidParts);
   gLid.translate(0, -hy, -hz);
   // Bico no corte da base, com o furo escuro na ponta.
-  const spout = cyl(ro, up ? hy - 0.5 : hy - sh, sh + 0.5, up ? 0.6 : 0, up ? 0 : 0.6); spout.translate(0, 0, zc);
-  const hole = cyl(m.orifD / 2, up ? hy + sh - 0.25 : hy - sh - 0.05, 0.3); hole.translate(0, 0, zc);
+  // bico com furo de verdade (escavado), não um disco escuro por cima
+  const spout0 = cyl(ro, up ? hy - 0.5 : hy - sh, sh + 0.5, up ? 0.6 : 0, up ? 0 : 0.6); spout0.translate(0, 0, zc);
+  const drill = cyl(m.orifD / 2, up ? hy + sh - 2.2 : hy - sh - 0.5, 2.7); drill.translate(0, 0, zc);
+  const [spout, hole] = cutHole(spout0, drill);
+  const ni = x => { const y = x.index ? x.toNonIndexed() : x; for (const k in y.attributes) if (k !== 'position' && k !== 'normal') y.deleteAttribute(k); return y; };
   if (m._splitLid) { // vídeo: tampinha separada, girada na dobradiça quadro a quadro
-    const g = mergeGeometries([gBase, spout]); g.userData.lid = { geo: gLid, hy, hz, sign: up ? -1 : 1 }; return [g, [hole]];
+    const g = mergeGeometries([ni(gBase), ni(spout)]); g.userData.lid = { geo: gLid, hy, hz, sign: up ? -1 : 1 }; return [g, [hole]];
   }
   gLid.rotateX((up ? -1 : 1) * ang * 110 * Math.PI / 180); gLid.translate(0, hy, hz);
-  return [mergeGeometries([gBase, gLid, spout]), [hole]];
+  return [mergeGeometries([ni(gBase), ni(gLid), ni(spout)]), [hole]];
 }
 
 // Disc-top: disco quase da largura da tampa, saltado no rebaixo da borda,
@@ -2313,12 +2316,16 @@ let spinning = false;
 function detailShow() {
   const V = THREE.Vector3, all = new THREE.Box3().setFromObject(product);
   const C = all.getCenter(new V()), sz = all.getSize(new V());
-  const vh = THREE.MathUtils.degToRad(persp.fov / 2), hh = Math.atan(Math.tan(vh) * persp.aspect);
-  const fitDist = r => r / Math.sin(Math.min(vh, hh));
+  // cada tomada tem sua lente: o enquadramento é calculado com o fov da própria tomada
+  const halves = fov => { const vh = THREE.MathUtils.degToRad(fov / 2); return [vh, Math.atan(Math.tan(vh) * persp.aspect)]; };
+  const fitDist = (r, fov) => { const [vh, hh] = halves(fov); return r / Math.sin(Math.min(vh, hh)); };
   // Enquadra pela caixa do produto: a altura enche o quadro vertical e a largura o
   // horizontal (antes a esfera envolvente deixava o produto pequeno no vertical).
-  const fitBox = (h, w, d, m = 1.12) => Math.max((h / 2) / Math.tan(vh), (w / 2) / Math.tan(hh)) * m + d / 2;
-  const dist0 = fitBox(sz.y, Math.max(sz.x, sz.z), Math.max(sz.x, sz.z));
+  const fitBox = (fov, h, w, d, m = 1.12) => { const [vh, hh] = halves(fov); return Math.max((h / 2) / Math.tan(vh), (w / 2) / Math.tan(hh)) * m + d / 2; };
+  const dist0 = fitBox(28, sz.y, Math.max(sz.x, sz.z), Math.max(sz.x, sz.z)), distHero = fitBox(26, sz.y, Math.max(sz.x, sz.z), Math.max(sz.x, sz.z));
+  // inclinado 40°: a peça ocupa a diagonal; enquadra pela projeção inclinada
+  const tc = Math.cos(THREE.MathUtils.degToRad(40)), ts = Math.sin(THREE.MathUtils.degToRad(40)), wd = Math.max(sz.x, sz.z);
+  const distTilt = fitBox(24, sz.y * tc + wd * ts, sz.y * ts + wd * tc, wd, 1.12);
   const base = cam.position.clone().sub(controls.target); base.y = 0; if (base.lengthSq() < 1e-6) base.set(0, 0, 1); base.normalize();
   const baseAng = Math.atan2(base.z, base.x);
   // Relevo: o logo (ou o rótulo); sem nenhum, a frente do corpo.
@@ -2329,7 +2336,7 @@ function detailShow() {
     const n = new V(relT.x - C.x, 0, relT.z - C.z); if (n.lengthSq() > 1e-6) relAng = Math.atan2(n.z, n.x);
     // close de verdade: o relevo enche o quadro (as letras podem cortar nas bordas)
     const bs = b.getSize(new V()); relR = Math.max(Math.max(bs.x, bs.z, bs.y) * 0.38, 7);
-  } else relT = new V(C.x, all.min.y + sz.y * 0.45, C.z);
+  }
   // Tampa: tudo acima do gargalo (ou a peça de cima, se não houver gargalo).
   const neckI = S.modules.findIndex(m => m.kind === 'gargalo'), last = S.modules.length - 1;
   const capIdx = S.modules.map((m, i) => i).filter(i => (neckI >= 0 ? i > neckI : i === last && !S.modules[i].vol) && !S.modules[i].hidden);
@@ -2337,8 +2344,18 @@ function detailShow() {
   const capMeshes = product.children.filter(o => capIdx.includes(o.userData.idx));
   const capBox = new THREE.Box3(); capMeshes.filter(o => !internal(o)).forEach(o => capBox.expandByObject(o));
   const isPump = capIdx.some(i => S.modules[i].kind === 'spray');
+  // sem flip/pump: destampa só a peça de cima (a tampa), girando e subindo um pouco
+  const topI = capIdx.length ? capIdx[capIdx.length - 1] : -1;
+  const topMeshes = capMeshes.filter(o => o.userData.idx === topI && !internal(o));
+  const topBox = new THREE.Box3(); topMeshes.forEach(o => topBox.expandByObject(o));
+  const topLift = topBox.isEmpty() ? 0 : topBox.getSize(new V()).y * 0.8;
   const capT = capBox.isEmpty() ? new V(C.x, all.max.y, C.z) : capBox.getCenter(new V());
   const capR = capBox.isEmpty() ? sz.y * 0.2 : Math.max(capBox.getSize(new V()).length() * 0.55, sz.y * 0.12);
+  // sem logo nem rótulo, o close vai para onde há desenho: a junção do ombro com a tampa
+  if (!mark) {
+    if (capBox.isEmpty()) relT = new V(C.x, all.min.y + sz.y * 0.8, C.z);
+    else { relT = new V(C.x, capBox.min.y, C.z); relR = Math.max(capBox.getSize(new V()).x * 0.42, 8); }
+  }
   const openI = [...capIdx].reverse().find(i => { const m = S.modules[i]; return (m.topType === 'flip' && m.groove > 0) || m.topType === 'disc'; });
   let frames = null, openMeshes = [], flipRig = null;
   if (openI !== undefined && S.modules[openI].topType === 'flip') {
@@ -2370,6 +2387,9 @@ function detailShow() {
     }
     openMeshes = product.children.filter(o => o.userData.idx === openI && o.isMesh);
   }
+  // flip abrindo: a tampinha sobe além da caixa fechada; mira e distância incluem o arco dela
+  const capAim = flipRig ? capT.clone().add(new V(0, capBox.getSize(new V()).y * 0.55, 0)) : topLift ? capT.clone().add(new V(0, topLift * 0.5, 0)) : capT;
+  const capFit = capR * (flipRig ? 1.45 : 1.15);
   const lift = capBox.isEmpty() ? 0 : capBox.getSize(new V()).y * 0.9;
   const pose = (T, ang, elev, d) => new V(T.x + Math.cos(ang) * Math.cos(elev) * d, T.y + Math.sin(elev) * d, T.z + Math.sin(ang) * Math.cos(elev) * d);
   // Filme de produto: tomadas separadas com corte seco, cada uma com um único
@@ -2380,11 +2400,11 @@ function detailShow() {
   // Tudo orientado pela frente da marca (lado do logo/rótulo), não pelo ângulo da câmera.
   const A = mark ? relAng : baseAng;
   const shots = [
-    { d: 3, T0: C, T1: C, P0: pose(C, A - 0.62, -0.02, dist0 * 1.18), P1: pose(C, A - 0.48, 0.02, dist0 * 0.98), fov: 26 },
-    { d: 3, T0: relT, T1: relT, P0: pose(relT, A + 0.3, 0.04, fitDist(relR * 1.6)), P1: pose(relT, A - 0.3, 0.04, fitDist(relR * 1.6)), fov: 18 },
+    { d: 3, T0: C, T1: C, P0: pose(C, A - 0.62, -0.02, distHero * 1.18), P1: pose(C, A - 0.48, 0.02, distHero * 0.98), fov: 26 },
+    { d: 3, T0: relT, T1: relT, P0: pose(relT, A + 0.3, 0.04, fitDist(relR * 1.6, 18)), P1: pose(relT, A - 0.3, 0.04, fitDist(relR * 1.6, 18)), fov: 18 },
     // deitado em diagonal (topo à direita), bem perto, com a malha virando acabamento da base ao topo
-    { d: 6, T0: C, T1: C, P0: pose(C, A - 0.15, -0.1, dist0 * 1.12), P1: pose(C, A + 0.12, -0.06, dist0 * 1.02), fov: 24, tilt: true, wire: true },
-    { d: 4, T0: capT, T1: capT, P0: pose(capT, A + 0.35, 0.5, fitDist(capR * 2.3)), P1: pose(capT, A + 0.6, 0.55, fitDist(capR * 2.1)), fov: 22, cap: true },
+    { d: 6, T0: C, T1: C, P0: pose(C, A - 0.15, -0.1, distTilt * 1.08), P1: pose(C, A + 0.12, -0.06, distTilt), fov: 24, tilt: true, wire: true },
+    { d: 4, T0: capAim, T1: capAim, P0: pose(capAim, A + 0.35, 0.45, fitDist(capFit * 1.1, 22)), P1: pose(capAim, A + 0.6, 0.5, fitDist(capFit, 22)), fov: 22, cap: true },
     { d: 3, T0: C, T1: C, P0: pose(C, A, 0.06, dist0 * 1.02), P1: pose(C, A, 0.06, dist0 * 1.02), fov: 28, turn: [0.7, -0.7] },
     { d: 3, T0: C, T1: C, P0: pose(C, A - 0.28, 0.1, dist0 * 1.06), P1: pose(C, A - 0.28, 0.1, dist0 * 0.99), fov: 28, hold: 0.35 },
   ];
@@ -2454,7 +2474,7 @@ function detailShow() {
         // sempre parte da tampa fechada (etapa 0), mesmo que o modelo esteja salvo aberto
         const fi = Math.round(k * (frames.length - 1)); openMeshes.forEach(o => { o.visible = false; }); frames.forEach((g, j) => { g.visible = j === fi; });
       } else if (isPump) { // pump: fica no lugar (não puxa o pescante para fora); a tomada é o close
-      } else capMeshes.forEach(o => { o.position.set(0, lift * k, 0); o.rotation.y = -1.6 * k; });
+      } else topMeshes.forEach(o => { o.position.set(0, topLift * k, 0); o.rotation.y = -1.6 * k; });
     },
     cleanup() {
       persp.fov = fov0; persp.updateProjectionMatrix(); setClip(false);
@@ -2463,7 +2483,7 @@ function detailShow() {
       frames?.forEach(g => { g.traverse(o => o.geometry?.dispose()); product.remove(g); });
       if (flipRig) { flipRig.rig.traverse(o => o.geometry?.dispose()); product.remove(flipRig.rig); }
       openMeshes.forEach(o => { o.visible = true; });
-      capMeshes.forEach(o => { o.position.set(0, 0, 0); o.rotation.y = 0; });
+      capMeshes.forEach(o => { o.position.set(0, 0, 0); o.rotation.y = 0; }); topMeshes.forEach(o => { o.position.set(0, 0, 0); o.rotation.y = 0; });
     },
   };
 }
@@ -2512,7 +2532,7 @@ async function recordSpin(sec, mode = '360') {
     VW -= VW % 2; VH -= VH % 2;
     renderer.setPixelRatio(1); renderer.setSize(VW, VH, false); persp.aspect = VW / VH; persp.updateProjectionMatrix();
   }
-  const restoreSize = () => { renderer.setPixelRatio(pr0); renderer.setSize(size0.x, size0.y, false); resize(); };
+  const restoreSize = () => { renderer.setPixelRatio(pr0); renderer.setSize(size0.x, size0.y, false); persp.aspect = size0.x / size0.y; persp.updateProjectionMatrix(); };
   spinning = true; const btn = $('#spinBtn'); btn.disabled = true; btn.textContent = 'Gravando…';
   const keep = { grid: grid.visible, ref: refMesh.visible, pos: cam.position.clone(), ground: ground.visible, stage: stage.visible };
   grid.visible = false; refMesh.visible = false; controls.enabled = false;
@@ -2585,6 +2605,7 @@ async function recordSpin(sec, mode = '360') {
   ground.visible = keep.ground; stage.visible = keep.stage;
   download(blob, fname(ext));
   btn.disabled = false; btn.textContent = 'Gravar vídeo'; spinning = false;
+  resize();
   if (buildPending) { buildPending = false; build(); }
 }
 
@@ -3368,6 +3389,7 @@ function fit(viewName = curView) {
   req();
 }
 function resize() {
+  if (spinning) return; // gravando: o vídeo tem tamanho próprio (mudar aqui estragava o enquadramento)
   const w = view.clientWidth, h = view.clientHeight; if (!w || !h) return;
   if (fitPending || !Number.isFinite(cam.position.x + cam.position.y + cam.position.z)) setTimeout(() => fit(), 0);
   renderer.setSize(w, h, false);
@@ -4406,7 +4428,7 @@ $('#dlObj').onclick = () => download(new Blob([new OBJExporter().parse(exportRoo
 
 // ───────────────────────── início ─────────────────────────
 // Acesso para inspeção no console do navegador.
-window.OUTBOX = { get S() { return S; }, get swapScroll() { return swapScroll; }, product, layout, scene, sun, stage, ground, renderer, areaKey, areaFill, hemi, detailShow, render: () => renderFrame(), get cam() { return cam; } };
+window.OUTBOX = { get S() { return S; }, get swapScroll() { return swapScroll; }, product, layout, scene, sun, stage, ground, renderer, areaKey, areaFill, hemi, detailShow, applyLogos, build, render: () => renderFrame(), get cam() { return cam; } };
 
 buildDraftPresets();
 resize();
