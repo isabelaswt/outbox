@@ -189,6 +189,16 @@ canvas{display:block;width:100%;height:100%;touch-action:none}
   </details>
 
   <details>
+    <summary>Silhueta → revolve (torno)</summary>
+    <div class="tip">Carregue a <b>silhueta do corpo</b> de frente (SVG ou PNG/JPG, forma escura em fundo claro ou transparente). Ela gira em volta do eixo e vira o corpo do produto; gargalo e tampa continuam. Depois dá para mudar largura, profundidade (oval) e altura no editor.</div>
+    <div class="field"><div class="top"><label>Altura do corpo</label><span class="num"><input type="number" id="revH" value="140" min="10" max="400" step="1"> mm</span></div></div>
+    <div class="row">
+      <button class="btn" id="revBtn">Carregar silhueta</button>
+      <input type="file" id="revFile" accept="image/*,.svg" class="hidden">
+    </div>
+  </details>
+
+  <details>
     <summary>Referência (imagem ou desenho técnico)</summary>
     <div class="tip">Carregue a imagem e ela aparece na vista <b>Frente · ortográfica</b>, em escala de mm. Ajuste a altura até a embalagem da imagem bater com a grade.</div>
     <div class="row">
@@ -397,7 +407,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-25.rotulo';
+const BUILD = '2026-09-25.revolve';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -2316,6 +2326,60 @@ function renderLogos() {
 }
 // Baixo-relevo altera a peça: precisa remontar; alto-relevo só refaz o logo.
 function scheduleLogosOrBuild() { queueBuild(); }
+// Silhueta → revolve: mede a largura da forma em cada altura e gera um corpo
+// "perfil" (o mesmo motor dos frascos da Draft), redondo; profundidade editável.
+async function silhouetteProfile(file) {
+  const url = await new Promise(res => { const r = new FileReader(); r.onload = () => res(r.result); r.readAsDataURL(file); });
+  const img = await new Promise(res => { const i = new Image(); i.onload = () => res(i); i.onerror = () => res(null); i.src = url; });
+  if (!img) return null;
+  const iw = img.naturalWidth || 600, ih = img.naturalHeight || 900, sc = 900 / Math.max(iw, ih);
+  const W = Math.max(8, Math.round(iw * sc)), H = Math.max(8, Math.round(ih * sc));
+  const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+  const cx = cv.getContext('2d'); cx.drawImage(img, 0, 0, W, H);
+  const d = cx.getImageData(0, 0, W, H).data, px = (x, y) => (y * W + x) * 4;
+  const lum = k => 0.3 * d[k] + 0.59 * d[k + 1] + 0.11 * d[k + 2];
+  // Fundo: transparente (usa o alfa) ou claro (usa o contraste com os cantos).
+  const corners = [px(0, 0), px(W - 1, 0), px(0, H - 1), px(W - 1, H - 1)];
+  const transp = corners.some(k => d[k + 3] < 200), bgL = corners.reduce((a, k) => a + lum(k), 0) / 4;
+  // Cobertura de 0 a 1 por pixel (borda antisserrilhada conta fração): a largura
+  // da linha é a soma da cobertura, com precisão abaixo do pixel.
+  let con = 1; if (!transp) for (let k = 0; k < d.length; k += 16) con = Math.max(con, Math.abs(lum(k) - bgL));
+  const cov = (x, y) => { const k = px(x, y); return transp ? d[k + 3] / 255 : (d[k + 3] / 255) * clamp(Math.abs(lum(k) - bgL) / con, 0, 1); };
+  const wid = new Float32Array(H);
+  for (let y = 0; y < H; y++) { let sum = 0; for (let x = 0; x < W; x++) sum += cov(x, y); wid[y] = sum / 2; }
+  let top = 0; while (top < H && wid[top] < 0.75) top++;
+  let bot = H - 1; while (bot > top && wid[bot] < 0.75) bot--;
+  if (bot - top < 8) return null;
+  // Suaviza na vertical (gaussiana), tirando os degraus de pixel sem perder a forma.
+  const sm = new Float32Array(H), R = 3, sg = 1.6;
+  for (let y = top; y <= bot; y++) {
+    let a = 0, wsum = 0;
+    for (let k = -R; k <= R; k++) { const q = y + k; if (q < top || q > bot) continue; const g = Math.exp(-k * k / (2 * sg * sg)); a += wid[q] * g; wsum += g; }
+    sm[y] = a / wsum;
+  }
+  let wmax = 0; for (let y = top; y <= bot; y++) wmax = Math.max(wmax, sm[y]);
+  const N = clamp(Math.round((bot - top) / 4), 24, 140), prof = [];
+  for (let i = 0; i <= N; i++) {
+    const t = i / N, yf = bot - t * (bot - top), y0 = Math.floor(yf), f = yf - y0, y1 = Math.min(bot, y0 + 1);
+    prof.push([t, Math.max(0.02, (sm[y0] * (1 - f) + sm[y1] * f) / wmax)]);
+  }
+  return { prof: prof.map(([t, a]) => [t, a, a, 2, 0, 0]), ratio: (2 * wmax) / (bot - top + 1) };
+}
+$('#revBtn').onclick = () => $('#revFile').click();
+$('#revFile').onchange = async e => {
+  const f = e.target.files[0]; e.target.value = ''; if (!f) return;
+  const r = await silhouetteProfile(f);
+  if (!r) { toast('Não achei a forma nessa imagem (use forma escura em fundo claro ou transparente)'); return; }
+  const h = clamp(+$('#revH').value || 140, 10, 400), W = r1(h * r.ratio);
+  const body = M('reto', { name: 'Corpo revolve', type: 'revolve', kind: 'perfil', vol: true, pesc: false, rBot: 0, rTop: 0,
+    W, D: W, W0: W, h, prof: r.prof, ribs: [] });
+  let bi = S.modules.findIndex(m => m.vol);
+  if (bi < 0) { S.modules = [body, NECK(neckFor(body)), M('flip')]; bi = 0; }
+  else { S.logos = S.logos.filter(L => L.uid !== S.modules[bi].uid); S.modules[bi] = body; }
+  refitAfterBodySwap(bi);
+  sel = bi; renderAll(); build();
+  toast(`Corpo revolve: ${W} × ${h} mm`);
+};
 $('#logoBtn').onclick = () => $('#logoFile').click();
 $('#logoFile').onchange = async e => {
   const f = e.target.files[0]; if (!f) return;
