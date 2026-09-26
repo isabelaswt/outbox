@@ -423,7 +423,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-26.pescante-transparente';
+const BUILD = '2026-09-26.logo-no-vidro';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -2299,14 +2299,35 @@ function logoSkin(L, F, M, base, top, trim = false) {
   const g = new THREE.BufferGeometry();
   g.setAttribute('position', new THREE.BufferAttribute(pos, 3)); g.setIndex(I);
   g.computeVertexNormals();
+  // Conferência final: as normais têm que apontar para fora da superfície (a
+  // votação por faces podia errar); se a maioria aponta para dentro, inverte.
+  const vn = g.attributes.normal.array; let dotSum = 0;
+  for (let k = 0; k < vn.length; k += 3) dotSum += vn[k] * nrm[k] + vn[k + 1] * nrm[k + 1] + vn[k + 2] * nrm[k + 2];
+  if (dotSum < 0) { const J = g.index.array; for (let q = 0; q < J.length; q += 3) { const t = J[q + 1]; J[q + 1] = J[q + 2]; J[q + 2] = t; } g.index.needsUpdate = true; g.computeVertexNormals(); }
   return g;
 }
 // Pele do logo desenhada dos dois lados: se a malha sair com as faces invertidas
 // (curvas fechadas, laterais do frasco), a face da letra não some mais girando.
-const logoMats = new WeakMap();
-function logoMat(base) {
-  if (!logoMats.has(base)) { const m = base.clone(); m.side = THREE.DoubleSide; logoMats.set(base, m); }
-  return logoMats.get(base);
+const logoMats = new Map();
+// Em frasco de vidro o logo fica fora da imagem que o vidro borra (senão o fosco
+// fazia manchas que tremiam em volta das letras) e, quando está de costas, vira
+// um fantasma leve visto através do vidro (bem apagado no fosco).
+function logoMat(base, glass = null) {
+  const key = base.uuid + '|' + (glass || '');
+  if (!logoMats.has(key)) {
+    const m = base.clone(); m.side = THREE.DoubleSide;
+    if (glass) {
+      const back = glass === 'fosco' ? 0.12 : 0.45;
+      m.transparent = true; m.depthWrite = true; m.forceSinglePass = true; // sem a passada de costas (que inverte as normais)
+      m.onBeforeCompile = sh => {
+        sh.fragmentShader = sh.fragmentShader.replace('#include <opaque_fragment>',
+          `float facing = dot(normalize(vNormal), normalize(vViewPosition));\n diffuseColor.a *= mix(${back.toFixed(2)}, 1.0, smoothstep(-0.05, 0.3, facing));\n#include <opaque_fragment>`);
+      };
+      m.customProgramCacheKey = () => 'logoVidro' + back;
+    }
+    logoMats.set(key, m);
+  }
+  return logoMats.get(key);
 }
 let logoTimer;
 let logoRun = 0;
@@ -2332,7 +2353,8 @@ async function applyLogosTo(group, st, alive) {
     // Alto-relevo fica levemente embutido na base; baixo-relevo usa uma pele
     // cavada sem boolean pesado, para não travar com logos complexos.
     const skin = emboss ? logoSkin(L, F, M, -0.05, L.depth, true) : logoSkin(L, F, M, 0.025, L.depth);
-    const lm = new THREE.Mesh(skin, logoMat(emboss && L.own ? material(L.color, L.finish) : target.material));
+    const tm = target.material, glass = tm.transmission > 0 ? (tm.roughness > 0.3 ? 'fosco' : 'claro') : null;
+    const lm = new THREE.Mesh(skin, logoMat(emboss && L.own ? material(L.color, L.finish) : target.material, glass));
     if (!emboss) { lm.material = lm.material.clone(); lm.material.depthTest = false; lm.renderOrder = 20; }
     lm.castShadow = true; lm.receiveShadow = true; lm.frustumCulled = false; // o logo nunca é tido como fora da tela
     lm.userData = { logo: true, idx: target.userData.idx }; lm.name = `logo_${L.name}`;
@@ -3832,7 +3854,7 @@ $('#dlObj').onclick = () => download(new Blob([new OBJExporter().parse(exportRoo
 
 // ───────────────────────── início ─────────────────────────
 // Acesso para inspeção no console do navegador.
-window.OUTBOX = { get S() { return S; }, get swapScroll() { return swapScroll; }, product, layout, scene, sun, stage, ground };
+window.OUTBOX = { get S() { return S; }, get swapScroll() { return swapScroll; }, product, layout, scene, sun, stage, ground, get cam() { return cam; } };
 
 buildDraftPresets();
 resize();
