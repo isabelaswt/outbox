@@ -439,7 +439,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-26.tampa-frente';
+const BUILD = '2026-09-26.pescoco-pump';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -4528,9 +4528,7 @@ function genOne(seed, want) {
   const from = (g, all) => (genSel[g].size ? [...genSel[g]] : all);
   const formato = genSel.formato.size ? [...genSel.formato][0] : pick(['vertical', 'vertical', 'baixo']);
   const secao = pick(from('secao', ['redonda', 'redonda', 'oval', 'quadrada']));
-  // pescoço escultural pedido: fica com fechamentos que vestem o gargalo (pump/spray precisam da rosca à mostra)
-  const querPesc = [...genSel.pescoco].some(k => k !== 'liso');
-  const fecho = pick(from('fecho', querPesc ? ['flip', 'escultural', 'escultural', 'disc'] : ['pump', 'spray', 'flip', 'escultural', 'escultural', 'disc']));
+  const fecho = pick(from('fecho', ['pump', 'spray', 'flip', 'escultural', 'escultural', 'disc']));
   const pesc = pick(from('pescoco', ['liso', 'liso', 'aneis', 'almofada', 'canelado']));
   const det = genSel.detalhe;
   // corpo (o volume ajusta o tamanho depois; aqui só a proporção)
@@ -4569,23 +4567,31 @@ function genOne(seed, want) {
   const sized = (t, w, o = {}) => { const L = LIB[t], f = w / L.W; return M(t, { W: r1(w), D: r1((L.D || L.W) * f), h: r1(L.h * f), rBot: r1((L.rBot || 0) * f), rTop: r1((L.rTop || 0) * f), ...(L.lobeD ? { lobeD: r1(L.lobeD * f) } : {}), ...o }); };
   const mods = [body];
   let nome = '';
+  // pescoço escultural: peça larga e macia entre o corpo e a tampa. Com tampa ele
+  // cobre o gargalo; com pump/spray fica embaixo e o gargalo sai do topo dele.
+  const collar = (pw) => {
+    if (pesc === 'aneis') { const n = Math.round(R(3, 5)), h = r1(pw * R(0.22, 0.32)); return M('anel', { name: 'Pescoço de anéis', W: r1(pw), D: r1(pw), h, rBot: r1(h / 2), rTop: r1(h / 2), rep: n }); }
+    if (pesc === 'almofada') { const h = r1(pw * R(0.75, 1.05)), rr = r1(Math.min(pw, h) * R(0.25, 0.38)); return M('barril', { name: 'Pescoço almofada', W: r1(pw), D: r1(pw), h, bulge: r1(R(0, 2.5)), rBot: rr, rTop: rr }); }
+    if (pesc === 'canelado') { const w = pw * R(0.6, 0.8); return M('canelado', { name: 'Pescoço canelado', W: r1(w), D: r1(w), h: r1(w * R(0.6, 1.1)), rBot: 2, rTop: 2, lobes: Math.round(R(10, 18)), lobeD: r1(w * R(0.03, 0.05)) }); }
+    return null;
+  };
+  // com válvula: pescoço no ombro, gargalo por cima (largo o bastante para a rosca)
+  const collarUnder = () => { const c = collar(Math.max(40, bw * R(0.55, 0.9))); if (c) mods.push(c); };
   if (fecho === 'pump') {
     const t = pick(['pump', 'locao', 'lamina', 'pumpFrisos']);
-    mods.push(NECK('24/410'), M(t)); nome = LIB[t].name;
+    collarUnder(); mods.push(NECK('24/410'), M(t)); nome = LIB[t].name;
   } else if (fecho === 'spray') {
+    collarUnder();
     if (rnd() < 0.7) { mods.push(NECK('20/410'), M('spray')); nome = 'Spray fino'; }
     else { mods.push(NECK('28/410'), M('gatilho', { W: 31, D: 31, h: 17, ridges: 80, ridgeD: 0.35 })); nome = 'Spray gatilho'; }
   } else if (fecho === 'gotas') {
-    mods.push(NECK('18/410'), M('contaGotas', { W: 21, D: 21 })); nome = 'Conta-gotas';
+    collarUnder(); mods.push(NECK('18/410'), M('contaGotas', { W: 21, D: 21 })); nome = 'Conta-gotas';
   } else {
     const std = neckMax(['20/410', '24/410', '28/410']), nw = NECKS[std].W, minW = nw + 10;
     mods.push(NECK(std));
     const capW = Math.max(minW, bw * R(0.55, 0.9));
-    // pescoço escultural: peça larga e macia entre o corpo e a tampa (cobre o gargalo)
-    const pw = Math.max(minW, bw * R(0.55, 0.95));
-    if (pesc === 'aneis') { const n = Math.round(R(3, 5)), h = r1(pw * R(0.22, 0.32)); mods.push(M('anel', { name: 'Pescoço de anéis', W: r1(pw), D: r1(pw), h, rBot: r1(h / 2), rTop: r1(h / 2), rep: n })); }
-    else if (pesc === 'almofada') { const h = r1(pw * R(0.75, 1.05)), rr = r1(Math.min(pw, h) * R(0.25, 0.38)); mods.push(M('barril', { name: 'Pescoço almofada', W: r1(pw), D: r1(pw), h, bulge: r1(R(0, 2.5)), rBot: rr, rTop: rr })); }
-    else if (pesc === 'canelado') { const w = Math.max(minW, pw * R(0.6, 0.8)); mods.push(M('canelado', { name: 'Pescoço canelado', W: r1(w), D: r1(w), h: r1(w * R(0.6, 1.1)), rBot: 2, rTop: 2, lobes: Math.round(R(10, 18)), lobeD: r1(w * R(0.03, 0.05)) })); }
+    const pw = Math.max(minW, bw * R(0.55, 0.95)), col = collar(pw);
+    if (col) { col.W = Math.max(col.W, r1(minW)); col.D = Math.max(col.D, r1(minW)); mods.push(col); }
     if (det.has('rep') && !repBody && pesc === 'liso') mods.push(M('anel', { W: r1(capW * R(0.7, 0.9)), D: r1(capW * R(0.7, 0.9)), h: r1(R(6, 10)), rBot: 3, rTop: 3, rep: Math.round(R(2, 4)) }));
     if (fecho === 'disc') { mods.push(M('disctop', { W: r1(Math.max(minW, bw * R(0.7, 0.9))), D: r1(Math.max(minW, bw * R(0.7, 0.9))) })); nome = 'Disc-top'; }
     else if (fecho === 'flip') {
@@ -4604,7 +4610,7 @@ function genOne(seed, want) {
   }
   st.modules = mods;
   const ml = volumes(normalize(structuredClone(st))).cap;
-  return { st, info: `${Math.round(ml)} ml · ${pesc !== 'liso' && !['pump', 'spray', 'gotas'].includes(fecho) ? GEN.pescoco.opts[pesc].toLowerCase() + ' · ' : ''}${nome}` };
+  return { st, info: `${Math.round(ml)} ml · ${pesc !== 'liso' ? GEN.pescoco.opts[pesc].toLowerCase() + ' · ' : ''}${nome}` };
 }
 function runGen() {
   const seed = Math.round(+$('#genSeed').value || 1), want = clamp(+$('#genMl').value || 300, 5, 3000), n = +[...genSel.qtd][0] || 9;
