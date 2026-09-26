@@ -419,7 +419,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-26.video-perspectiva';
+const BUILD = '2026-09-26.malha-limpa';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -2086,7 +2086,8 @@ const persp = new THREE.PerspectiveCamera(28, 1, 1, 20000);
 const ortho = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 20000);
 let cam = persp, controls, orthoHalf = 150, needs = true;
 const req = () => { needs = true; };
-function renderFrame() { renderer.render(scene, cam); }
+let frameHook = null; // vídeo: um quadro composto (ex.: revelação da malha) no lugar do render simples
+function renderFrame() { if (frameHook) frameHook(); else renderer.render(scene, cam); }
 function makeControls(target) {
   controls?.dispose();
   controls = new OrbitControls(cam, canvas);
@@ -2416,41 +2417,53 @@ function detailShow() {
   const Y = new V(0, 1, 0), fwdA = new V(-Math.cos(A), 0, -Math.sin(A));
   const tiltQ = new THREE.Quaternion().setFromAxisAngle(fwdA, THREE.MathUtils.degToRad(40));
   const setPose = q => { product.quaternion.copy(q); product.position.copy(C).sub(C.clone().applyQuaternion(q)); };
-  // Wireframe: malha fina por cima; um plano corta o acabamento (fica embaixo) e a malha (fica em cima).
-  const wire = new THREE.Group(), wireMat = new THREE.LineBasicMaterial({ color: '#3b3d42', transparent: true, opacity: 0.28, depthWrite: false });
-  product.children.filter(o => o.isMesh && o.visible && !o.userData.logo && !o.userData.label).forEach(o => {
+  // Revelação da malha: três passes por quadro, misturados pixel a pixel.
+  //  A = o produto de verdade (materiais originais, cor exata, vidro, brilho)
+  //  B = fundo + malha só da frente (as linhas de trás ficam escondidas pelo próprio produto)
+  //  M = máscara em degradê pelo plano que sobe da base ao topo
+  // Nada de material transparente trocado: a cor nunca muda durante a transição.
+  const wire = new THREE.Group(), wireMat = new THREE.LineBasicMaterial({ color: '#2b2d31', transparent: true, opacity: 0.2, depthWrite: false });
+  // linhas um tiquinho à frente da superfície (o depth log ignora polygonOffset)
+  wireMat.onBeforeCompile = sh => { sh.vertexShader = sh.vertexShader.replace('#include <project_vertex>', '#include <project_vertex>\nmvPosition.xyz *= 0.9985; gl_Position = projectionMatrix * mvPosition;'); };
+  product.children.filter(o => o.isMesh && o.visible && !o.userData.logo && !o.userData.label && !internal(o)).forEach(o => {
     const l = new THREE.LineSegments(new THREE.WireframeGeometry(o.geometry), wireMat); l.position.copy(o.position); l.quaternion.copy(o.quaternion); wire.add(l);
   });
   wire.visible = false; product.add(wire);
-  // Revelação suave: numa faixa de alguns mm a cor aparece aos poucos (degradê de
-  // transparência) e a malha some junto.
   const band = Math.max(8, sz.y * 0.14), revP = { value: new THREE.Vector4() }, revB = { value: band };
-  const injectV = sh => sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vRevW;')
-    .replace('#include <project_vertex>', '#include <project_vertex>\nvRevW = (modelMatrix * vec4(transformed, 1.0)).xyz;');
-  const headF = '#include <common>\nvarying vec3 vRevW;\nuniform vec4 uRevP; uniform float uRevB;';
-  wireMat.onBeforeCompile = sh => {
-    sh.uniforms.uRevP = revP; sh.uniforms.uRevB = revB; sh.vertexShader = injectV(sh);
-    sh.fragmentShader = sh.fragmentShader.replace('#include <common>', headF).replace('#include <opaque_fragment>',
-      'diffuseColor.a *= smoothstep(-0.6 * uRevB, uRevB, dot(uRevP.xyz, vRevW) + uRevP.w);\n#include <opaque_fragment>');
+  const maskMat = new THREE.ShaderMaterial({ side: THREE.DoubleSide, uniforms: { uRevP: revP, uRevB: revB },
+    vertexShader: 'varying vec3 vW; void main() { vec4 w = modelMatrix * vec4(position, 1.0); vW = w.xyz; gl_Position = projectionMatrix * viewMatrix * w; }',
+    fragmentShader: 'uniform vec4 uRevP; uniform float uRevB; varying vec3 vW; void main() { float m = 1.0 - smoothstep(-uRevB, uRevB, dot(uRevP.xyz, vW) + uRevP.w); gl_FragColor = vec4(m, m, m, 1.0); }' });
+  const depthMat = new THREE.MeshBasicMaterial({ colorWrite: false, side: THREE.DoubleSide });
+  const mixMat = new THREE.ShaderMaterial({ depthTest: false, depthWrite: false, toneMapped: false,
+    uniforms: { tA: { value: null }, tB: { value: null }, tM: { value: null }, uRes: { value: new THREE.Vector2() } },
+    vertexShader: 'void main() { gl_Position = vec4(position.xy, 0.0, 1.0); }',
+    fragmentShader: 'uniform sampler2D tA, tB, tM; uniform vec2 uRes; void main() { vec2 uv = gl_FragCoord.xy / uRes; gl_FragColor = mix(texture2D(tB, uv), texture2D(tA, uv), texture2D(tM, uv).r); }' });
+  const mixScene = new THREE.Scene(), mixCam = new THREE.Camera(); mixScene.add(new THREE.Mesh(new THREE.PlaneGeometry(2, 2), mixMat));
+  let texA = null, texB = null, maskRT = null;
+  const composite = () => {
+    const ds = renderer.getDrawingBufferSize(new THREE.Vector2()), w = ds.x, h = ds.y;
+    if (!texA || texA.image.width !== w || texA.image.height !== h) {
+      texA?.dispose(); texB?.dispose(); maskRT?.dispose();
+      texA = new THREE.FramebufferTexture(w, h); texB = new THREE.FramebufferTexture(w, h); maskRT = new THREE.WebGLRenderTarget(w, h);
+      [texA, texB, maskRT.texture].forEach(t => { t.minFilter = t.magFilter = THREE.NearestFilter; });
+    }
+    const meshes = []; product.traverse(o => { if (o.isMesh && o.visible) meshes.push([o, o.material]); });
+    // A: o produto como ele é
+    wire.visible = false; renderer.render(scene, cam); renderer.copyFramebufferToTexture(texA);
+    // B: fundo + malha; o produto só ocupa profundidade (esconde as linhas de trás)
+    meshes.forEach(([o]) => { o.material = depthMat; }); wire.visible = true;
+    renderer.render(scene, cam); renderer.copyFramebufferToTexture(texB);
+    meshes.forEach(([o, m]) => { o.material = m; }); wire.visible = false;
+    // M: máscara (1 = acabamento, 0 = malha), só do produto
+    const bg = scene.background, side = sideRoot.visible, cc = renderer.getClearColor(new THREE.Color()), ca = renderer.getClearAlpha();
+    scene.background = null; sideRoot.visible = false; scene.overrideMaterial = maskMat; renderer.setClearColor(0x000000, 1);
+    renderer.setRenderTarget(maskRT); renderer.clear(); renderer.render(scene, cam); renderer.setRenderTarget(null);
+    scene.overrideMaterial = null; scene.background = bg; sideRoot.visible = side; renderer.setClearColor(cc, ca);
+    const U = mixMat.uniforms; U.tA.value = texA; U.tB.value = texB; U.tM.value = maskRT.texture; U.uRes.value.set(w, h);
+    renderer.render(mixScene, mixCam);
   };
-  const revealMats = new Map();
-  const revealOf = base => {
-    if (revealMats.has(base)) return revealMats.get(base);
-    // transparência de verdade (degradê limpo), não pontilhada
-    const m = base.clone(), prev = base.onBeforeCompile; m.transparent = true; m.alphaHash = false; m.depthWrite = base.depthWrite !== false;
-    m.onBeforeCompile = (sh, r) => {
-      if (prev) prev.call(m, sh, r);
-      sh.uniforms.uRevP = revP; sh.uniforms.uRevB = revB; sh.vertexShader = injectV(sh);
-      sh.fragmentShader = sh.fragmentShader.replace('#include <common>', headF).replace('#include <alphahash_fragment>',
-        'diffuseColor.a *= 1.0 - smoothstep(-uRevB, uRevB, dot(uRevP.xyz, vRevW) + uRevP.w);\n#include <alphahash_fragment>');
-    };
-    m.customProgramCacheKey = () => (base.customProgramCacheKey ? base.customProgramCacheKey() : '') + '|revela';
-    revealMats.set(base, m); return m;
-  };
-  const solids = []; product.traverse(o => { if (o.isMesh && o.material && !Array.isArray(o.material)) solids.push([o, o.material]); });
   let clipping = false;
-  const setClip = on => { if (on === clipping) return; clipping = on;
-    solids.forEach(([o, m]) => { o.material = on ? revealOf(m) : m; }); wire.visible = on; };
+  const setClip = on => { if (on === clipping) return; clipping = on; frameHook = on ? composite : null; };
   const half = sz.y * 0.62, smoother = x => x * x * x * (x * (x * 6 - 15) + 10);
   return {
     update(t) {
@@ -2480,7 +2493,7 @@ function detailShow() {
     },
     cleanup() {
       persp.fov = fov0; persp.updateProjectionMatrix(); setClip(false);
-      product.remove(wire); wire.traverse(o => o.geometry?.dispose()); wireMat.dispose(); revealMats.forEach(m => m.dispose());
+      product.remove(wire); wire.traverse(o => o.geometry?.dispose()); [wireMat, maskMat, depthMat, mixMat, texA, texB, maskRT].forEach(x => x?.dispose());
       product.position.set(0, 0, 0); product.quaternion.identity();
       frames?.forEach(g => { g.traverse(o => o.geometry?.dispose()); product.remove(g); });
       if (flipRig) { flipRig.rig.traverse(o => o.geometry?.dispose()); product.remove(flipRig.rig); }
