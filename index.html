@@ -217,6 +217,7 @@ canvas{display:block;width:100%;height:100%;touch-action:none}
     <div class="row">
       <select id="spinMode"><option value="360">Volta inteira (360°)</option><option value="balanco">Vai e volta (frente sempre à vista)</option><option value="detalhes">Artístico: detalhes (relevo de perto, tampa abrindo)</option><option value="arte">Inclinado 45° girando no ar</option></select>
       <select id="spinSec"><option value="6">6 s</option><option value="10" selected>10 s</option><option value="15">15 s</option><option value="20">20 s</option></select>
+      <select id="spinFmt"><option value="tela">Formato da tela</option><option value="9x16" selected>Vertical 9:16</option><option value="1x1">Quadrado 1:1</option><option value="16x9">Horizontal 16:9</option></select>
     </div>
     <div class="row">
       <button class="btn pri" id="spinBtn">Gravar vídeo</button>
@@ -418,7 +419,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-26.video-quadro-a-quadro';
+const BUILD = '2026-09-26.video-enquadramento';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -1760,8 +1761,9 @@ function flipOpenGeo(m, y0, rings, seg, disp, ang) {
     .map(r => ({ ...r, a: Math.max(r.a - t, 0.3), b: Math.max(r.b - t, 0.3), noDisp: true }));
   const lidParts = [loft(inner.length >= 2 ? [...inner.reverse(), ...cut] : cut, seg, disp)];
   const pinFrom = hy + dir * (sh - 1.5), pinTo = y0 + far - dir * t;
-  if ((pinTo - pinFrom) * dir > 0.5) {
-    const pin = cyl(m.orifD / 2 - 0.1, Math.min(pinFrom, pinTo), Math.abs(pinTo - pinFrom) + 0.3, 0, 0);
+  { // pino de vedação (macho) sempre existe, mesmo em tampinha fina
+    const len = Math.max(1.4, (pinTo - pinFrom) * dir), a = pinTo - dir * len;
+    const pin = cyl(m.orifD / 2 - 0.1, Math.min(a, pinTo) - 0.15, len + 0.3, 0, 0.25);
     pin.translate(0, 0, zc); lidParts.push(pin);
   }
   const gLid = mergeGeometries(lidParts);
@@ -2309,7 +2311,10 @@ function detailShow() {
   const C = all.getCenter(new V()), sz = all.getSize(new V());
   const vh = THREE.MathUtils.degToRad(persp.fov / 2), hh = Math.atan(Math.tan(vh) * persp.aspect);
   const fitDist = r => r / Math.sin(Math.min(vh, hh));
-  const dist0 = fitDist(all.getBoundingSphere(new THREE.Sphere()).radius * 1.1);
+  // Enquadra pela caixa do produto: a altura enche o quadro vertical e a largura o
+  // horizontal (antes a esfera envolvente deixava o produto pequeno no vertical).
+  const fitBox = (h, w, d, m = 1.12) => Math.max((h / 2) / Math.tan(vh), (w / 2) / Math.tan(hh)) * m + d / 2;
+  const dist0 = fitBox(sz.y, Math.max(sz.x, sz.z), Math.max(sz.x, sz.z));
   const base = cam.position.clone().sub(controls.target); base.y = 0; if (base.lengthSq() < 1e-6) base.set(0, 0, 1); base.normalize();
   const baseAng = Math.atan2(base.z, base.x);
   // Relevo: o logo (ou o rótulo); sem nenhum, a frente do corpo.
@@ -2318,13 +2323,16 @@ function detailShow() {
   if (mark) {
     const b = new THREE.Box3().setFromObject(mark); relT = b.getCenter(new V());
     const n = new V(relT.x - C.x, 0, relT.z - C.z); if (n.lengthSq() > 1e-6) relAng = Math.atan2(n.z, n.x);
-    relR = Math.max(b.getSize(new V()).length() * 0.45, sz.y * 0.1);
+    // close de verdade: o relevo enche o quadro (as letras podem cortar nas bordas)
+    const bs = b.getSize(new V()); relR = Math.max(Math.max(bs.x, bs.z, bs.y) * 0.38, 7);
   } else relT = new V(C.x, all.min.y + sz.y * 0.45, C.z);
   // Tampa: tudo acima do gargalo (ou a peça de cima, se não houver gargalo).
   const neckI = S.modules.findIndex(m => m.kind === 'gargalo'), last = S.modules.length - 1;
   const capIdx = S.modules.map((m, i) => i).filter(i => (neckI >= 0 ? i > neckI : i === last && !S.modules[i].vol) && !S.modules[i].hidden);
+  const internal = o => /pescante|bomba|carcaca/.test(o.name);
   const capMeshes = product.children.filter(o => capIdx.includes(o.userData.idx));
-  const capBox = new THREE.Box3(); capMeshes.forEach(o => capBox.expandByObject(o));
+  const capBox = new THREE.Box3(); capMeshes.filter(o => !internal(o)).forEach(o => capBox.expandByObject(o));
+  const isPump = capIdx.some(i => S.modules[i].kind === 'spray');
   const capT = capBox.isEmpty() ? new V(C.x, all.max.y, C.z) : capBox.getCenter(new V());
   const capR = capBox.isEmpty() ? sz.y * 0.2 : Math.max(capBox.getSize(new V()).length() * 0.55, sz.y * 0.12);
   const openI = [...capIdx].reverse().find(i => { const m = S.modules[i]; return (m.topType === 'flip' && m.groove > 0) || m.topType === 'disc'; });
@@ -2354,7 +2362,7 @@ function detailShow() {
     { d: 3, T0: C, T1: C, P0: pose(C, A - 0.62, -0.02, dist0 * 1.18), P1: pose(C, A - 0.48, 0.02, dist0 * 0.98), fov: 26 },
     { d: 3, T0: relT, T1: relT, P0: pose(relT, A + 0.3, 0.04, fitDist(relR * 1.6)), P1: pose(relT, A - 0.3, 0.04, fitDist(relR * 1.6)), fov: 18 },
     // deitado em diagonal (topo à direita), bem perto, com a malha virando acabamento da base ao topo
-    { d: 4, T0: C, T1: C, P0: pose(C, A - 0.15, -0.1, dist0 * 0.86), P1: pose(C, A + 0.12, -0.06, dist0 * 0.8), fov: 24, tilt: true, wire: true },
+    { d: 6, T0: C, T1: C, P0: pose(C, A - 0.15, -0.1, dist0 * 1.12), P1: pose(C, A + 0.12, -0.06, dist0 * 1.02), fov: 24, tilt: true, wire: true },
     { d: 4, T0: capT, T1: capT, P0: pose(capT, A + 0.35, 0.5, fitDist(capR * 2.3)), P1: pose(capT, A + 0.6, 0.55, fitDist(capR * 2.1)), fov: 22, cap: true },
     { d: 3, T0: C, T1: C, P0: pose(C, A, 0.06, dist0 * 1.02), P1: pose(C, A, 0.06, dist0 * 1.02), fov: 28, turn: [0.7, -0.7] },
     { d: 3, T0: C, T1: C, P0: pose(C, A - 0.28, 0.1, dist0 * 1.06), P1: pose(C, A - 0.28, 0.1, dist0 * 0.99), fov: 28, hold: 0.35 },
@@ -2371,9 +2379,9 @@ function detailShow() {
     const l = new THREE.LineSegments(new THREE.WireframeGeometry(o.geometry), wireMat); l.position.copy(o.position); l.quaternion.copy(o.quaternion); wire.add(l);
   });
   wire.visible = false; product.add(wire);
-  // Revelação suave (dissolve): numa faixa de alguns mm a cor aparece aos poucos
-  // (transparência pontilhada, sem problema de ordem) e a malha some junto.
-  const band = Math.max(4, sz.y * 0.07), revP = { value: new THREE.Vector4() }, revB = { value: band };
+  // Revelação suave: numa faixa de alguns mm a cor aparece aos poucos (degradê de
+  // transparência) e a malha some junto.
+  const band = Math.max(8, sz.y * 0.14), revP = { value: new THREE.Vector4() }, revB = { value: band };
   const injectV = sh => sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vRevW;')
     .replace('#include <project_vertex>', '#include <project_vertex>\nvRevW = (modelMatrix * vec4(transformed, 1.0)).xyz;');
   const headF = '#include <common>\nvarying vec3 vRevW;\nuniform vec4 uRevP; uniform float uRevB;';
@@ -2385,7 +2393,8 @@ function detailShow() {
   const revealMats = new Map();
   const revealOf = base => {
     if (revealMats.has(base)) return revealMats.get(base);
-    const m = base.clone(), prev = base.onBeforeCompile; m.alphaHash = true;
+    // transparência de verdade (degradê limpo), não pontilhada
+    const m = base.clone(), prev = base.onBeforeCompile; m.transparent = true; m.alphaHash = false; m.depthWrite = base.depthWrite !== false;
     m.onBeforeCompile = (sh, r) => {
       if (prev) prev.call(m, sh, r);
       sh.uniforms.uRevP = revP; sh.uniforms.uRevB = revB; sh.vertexShader = injectV(sh);
@@ -2418,7 +2427,9 @@ function detailShow() {
       // tampa: abre suave na tomada 3 e fica aberta; nas outras, fechada
       const k = sh.cap ? ease(clamp((u - 0.2) / 0.45, 0, 1)) : 0;
       if (frames) {
-        const fi = Math.round(k * (frames.length - 1)); openMeshes.forEach(o => { o.visible = fi === 0; }); frames.forEach((g, j) => { g.visible = fi > 0 && j === fi; });
+        // sempre parte da tampa fechada (etapa 0), mesmo que o modelo esteja salvo aberto
+        const fi = Math.round(k * (frames.length - 1)); openMeshes.forEach(o => { o.visible = false; }); frames.forEach((g, j) => { g.visible = j === fi; });
+      } else if (isPump) { // pump: fica no lugar (não puxa o pescante para fora); a tomada é o close
       } else capMeshes.forEach(o => { o.position.set(0, lift * k, 0); o.rotation.y = -1.6 * k; });
     },
     cleanup() {
@@ -2435,10 +2446,8 @@ function detailShow() {
 // direto para o codificador — o vídeo sai fluido mesmo se a cena pesar (só demora
 // mais para gerar). Full HD, 30 quadros/s, MP4.
 const yieldTask = () => new Promise(r => { const ch = new MessageChannel(); ch.port1.onmessage = () => r(); ch.port2.postMessage(0); });
-async function encodeFrames(frameAt, sec, onProgress) {
+async function encodeFrames(frameAt, sec, W, H, onProgress) {
   const { Muxer, ArrayBufferTarget } = await import('https://cdn.jsdelivr.net/npm/mp4-muxer@5.1.5/+esm');
-  const size = renderer.getSize(new THREE.Vector2()), pr = renderer.getPixelRatio(), asp = size.x / size.y;
-  let W = asp >= 1 ? 1920 : Math.round(1920 * asp), H = asp >= 1 ? Math.round(1920 / asp) : 1920; W -= W % 2; H -= H % 2;
   const fps = 30, N = Math.max(2, Math.round(sec * fps));
   let cfg = null;
   for (const codec of ['avc1.640033', 'avc1.4d0033', 'avc1.42003e']) {
@@ -2451,7 +2460,6 @@ async function encodeFrames(frameAt, sec, onProgress) {
   let encErr = null;
   const enc = new VideoEncoder({ output: (chunk, meta) => muxer.addVideoChunk(chunk, meta), error: e => { encErr = e; } });
   enc.configure(cfg);
-  renderer.setPixelRatio(1); renderer.setSize(W, H, false); persp.aspect = W / H; persp.updateProjectionMatrix();
   try {
     for (let i = 0; i < N; i++) {
       frameAt(i / (N - 1)); renderFrame();
@@ -2462,14 +2470,24 @@ async function encodeFrames(frameAt, sec, onProgress) {
       if (i % 3 === 0) { onProgress(i / N); await yieldTask(); }
     }
     await enc.flush(); muxer.finalize();
-  } finally {
-    enc.close?.(); renderer.setPixelRatio(pr); renderer.setSize(size.x, size.y, false); resize();
-  }
+  } finally { try { enc.close(); } catch {} }
   return new Blob([target.buffer], { type: 'video/mp4' });
 }
 async function recordSpin(sec, mode = '360') {
   const offline = 'VideoEncoder' in window && 'VideoFrame' in window;
   if (spinning || (!offline && !window.MediaRecorder)) { if (!offline && !window.MediaRecorder) toast('Este navegador não grava vídeo'); return; }
+  // Formato do vídeo: a área de desenho vai para o tamanho final ANTES de enquadrar,
+  // então todas as tomadas se ajustam a ele (vertical, quadrado, horizontal).
+  const size0 = renderer.getSize(new THREE.Vector2()), pr0 = renderer.getPixelRatio();
+  let VW = 0, VH = 0;
+  if (offline) {
+    const fmt = $('#spinFmt')?.value || 'tela', asp = size0.x / size0.y;
+    [VW, VH] = fmt === '9x16' ? [1080, 1920] : fmt === '1x1' ? [1440, 1440] : fmt === '16x9' ? [1920, 1080]
+      : asp >= 1 ? [1920, Math.round(1920 / asp)] : [Math.round(1920 * asp), 1920];
+    VW -= VW % 2; VH -= VH % 2;
+    renderer.setPixelRatio(1); renderer.setSize(VW, VH, false); persp.aspect = VW / VH; persp.updateProjectionMatrix();
+  }
+  const restoreSize = () => { renderer.setPixelRatio(pr0); renderer.setSize(size0.x, size0.y, false); resize(); };
   spinning = true; const btn = $('#spinBtn'); btn.disabled = true; btn.textContent = 'Gravando…';
   const keep = { grid: grid.visible, ref: refMesh.visible, pos: cam.position.clone(), ground: ground.visible, stage: stage.visible };
   grid.visible = false; refMesh.visible = false; controls.enabled = false;
@@ -2515,8 +2533,9 @@ async function recordSpin(sec, mode = '360') {
   };
   let blob = null, ext = 'mp4';
   try {
-    if (offline) blob = await encodeFrames(frameAt, sec, p => { btn.textContent = `Gerando vídeo… ${Math.round(p * 100)}%`; });
+    if (offline) blob = await encodeFrames(frameAt, sec, VW, VH, p => { btn.textContent = `Gerando vídeo… ${Math.round(p * 100)}%`; });
   } catch (e) { console.error(e); blob = null; }
+  if (offline) restoreSize();
   if (!blob) { // gravação em tempo real (navegador sem WebCodecs)
     const mime = ['video/mp4;codecs=avc1', 'video/mp4', 'video/webm;codecs=vp9', 'video/webm'].find(t => MediaRecorder.isTypeSupported(t));
     const rec = new MediaRecorder(canvas.captureStream(60), { mimeType: mime, videoBitsPerSecond: 16e6 }), chunks = [];
@@ -2557,6 +2576,13 @@ function applyBackground() {
   cx.fillStyle = gr; cx.fillRect(0, 0, 1024, 1024);
   bgTex?.dispose(); bgTex = new THREE.CanvasTexture(cv); bgTex.colorSpace = THREE.SRGBColorSpace;
   scene.background = bgTex; req();
+}
+// Furo/cavidade: sempre um escuro da cor da própria peça (antes vinha da cor geral e,
+// numa tampa de outra cor, o furo aparecia rosa-claro no lugar do buraco).
+const holeMats = new Map();
+function holeFor(color) {
+  if (!holeMats.has(color)) holeMats.set(color, new THREE.MeshStandardMaterial({ color: new THREE.Color(color).multiplyScalar(0.28), roughness: 0.9 }));
+  return holeMats.get(color);
 }
 let buildPending = false;
 function build() {
@@ -3164,7 +3190,7 @@ function buildInto(product, S, explodeAmt = 0) {
     Object.assign(mesh.userData, { main: true, uid: m.uid, y0, ox: m.ox || 0, rep });
     mesh.name = `${String(idx + 1).padStart(2, '0')}_${m.name}`;
     product.add(mesh);
-    (g.userData.extras || []).forEach(xg => { const xm = new THREE.Mesh(xg, xg.userData.mat === 'insert' ? insertMat : xg.userData.mat === 'clear' ? clearMat : holeMat); xm.userData.idx = idx; product.add(xm); });
+    (g.userData.extras || []).forEach(xg => { const xm = new THREE.Mesh(xg, xg.userData.mat === 'insert' ? insertMat : xg.userData.mat === 'clear' ? clearMat : holeFor(ms.own ? ms.color : S.color)); xm.userData.idx = idx; product.add(xm); });
     if (!tubeBody && (m.kind === 'spray' || (m.kind === 'perfil' && !m.vol)) && m.pesc && isFinite(floor)) {
       // Comprimento medido montado; na vista explodida desce junto com a válvula.
       const add = (geo, name) => { const pm = new THREE.Mesh(geo, innerMat); pm.userData.idx = idx; pm.name = `${String(idx + 1).padStart(2, '0')}_${name}`; product.add(pm); };
