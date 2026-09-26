@@ -423,7 +423,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-26.sombra-macia';
+const BUILD = '2026-09-26.super-qualidade';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -917,6 +917,10 @@ function sp(a, b, n, th) {
 
 function radii(m) {
   let rB = clamp(m.rBot, 0, m.h), rT = clamp(m.rTop, 0, m.h);
+  // Peça injetada nunca tem quina viva: tampas e peças de encaixe ganham um
+  // microarredondamento (0,5 mm), que é o que pega a linha de luz na aresta.
+  // Corpos ficam como estão (a junta entre corpos empilhados tem que ser lisa).
+  if (!m.vol && m.kind === 'giro' && m.h > 2) { const mb = Math.min(0.5, m.h / 6); rB = Math.max(rB, mb); rT = Math.max(rT, mb); }
   if (rB + rT > m.h) { const k = m.h / (rB + rT); rB *= k; rT *= k; }
   return { rB, rT };
 }
@@ -1718,6 +1722,15 @@ function moduleGeo(m0, y0, opts = {}) {
     g = mergeGeometries([g, t2]) || g;
   }
   if (!inset && m.topType === 'disc') { const [dg, dx] = discTopGeo(m, y0, ang, lo); g = mergeGeometries([g, dg]); extras.push(...dx); }
+  // Linha de abertura: fenda escura de verdade no fundo do vinco (faixa fina logo
+  // abaixo da superfície; só aparece onde a superfície afunda, no vinco).
+  if (!inset && !lo && !flipOpen && ms.groove > 0 && ms.grooveD > 0) {
+    const yg = m.h - ms.groove, r0 = rings.reduce((best, r) => (Math.abs(r.ly - yg) < Math.abs(best.ly - yg) ? r : best), rings[0]);
+    if (Math.abs(r0.ly - yg) < 0.2) {
+      const band = [-0.16, 0.16].map(d => ({ ...r0, y: r0.y + d, ly: r0.ly + d, a: Math.max(r0.a - 0.04, 0.05), b: Math.max(r0.b - 0.04, 0.05) }));
+      extras.push(loft(band, seg, disp));
+    }
+  }
   if (!inset && !lo && m.spout) { const [tube, hole] = spoutGeo(m, y0); g = mergeGeometries([g, tube]); extras.push(hole); }
   if (m.ox) { g.translate(m.ox, 0, 0); extras.forEach(e => e.translate(m.ox, 0, 0)); }
   g.userData.extras = extras; // peças em material escuro (furos)
@@ -3873,9 +3886,19 @@ $('#dlPng').onclick = () => {
   grid.visible = false; refMesh.visible = false;
   if ($('#pngTransp').checked) scene.background = null;
   ground.visible = $('#pngShadow').checked;
-  renderer.setPixelRatio(1); renderer.setSize(w, h, false);
+  // Super qualidade só na exportação: renderiza no dobro (antisserrilhado forte)
+  // com sombra em alta resolução e reduz para o tamanho pedido.
+  const gl = renderer.getContext(), cap = Math.min(8192, gl.getParameter(gl.MAX_RENDERBUFFER_SIZE) || 4096);
+  const ss = Math.max(1, Math.min(2, cap / Math.max(w, h)));
+  const hiShadow = sm => { sun.shadow.mapSize.set(sm, sm); sun.shadow.map?.dispose(); sun.shadow.map = null; };
+  hiShadow(4096);
+  renderer.setPixelRatio(1); renderer.setSize(Math.round(w * ss), Math.round(h * ss), false);
   renderer.render(scene, cam);
-  const data = renderer.domElement.toDataURL('image/png');
+  const out = document.createElement('canvas'); out.width = w; out.height = h;
+  const oc = out.getContext('2d'); oc.imageSmoothingEnabled = true; oc.imageSmoothingQuality = 'high';
+  oc.drawImage(renderer.domElement, 0, 0, w, h);
+  const data = out.toDataURL('image/png');
+  hiShadow(2048);
   grid.visible = keep.grid; refMesh.visible = keep.ref; scene.background = keep.bg; ground.visible = keep.ground; setLighting(keep.light); applySceneLight();
   renderer.setPixelRatio(pr); renderer.setSize(size.x, size.y, false); req();
   fetch(data).then(r => r.blob()).then(b => download(b, fname('png')));
