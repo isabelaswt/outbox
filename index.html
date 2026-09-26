@@ -419,7 +419,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-26.inclinado-sem-flutuar';
+const BUILD = '2026-09-26.tampa-continua';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -1739,7 +1739,7 @@ function moduleGeo(m0, y0, opts = {}) {
     }
   }
   if (!inset && !lo && m.spout) { const [tube, hole] = spoutGeo(m, y0); g = mergeGeometries([g, tube]); extras.push(hole); }
-  if (m.ox) { g.translate(m.ox, 0, 0); extras.forEach(e => e.translate(m.ox, 0, 0)); }
+  if (m.ox) { g.translate(m.ox, 0, 0); extras.forEach(e => e.translate(m.ox, 0, 0)); if (g.userData.lid) g.userData.lid.ox = m.ox; }
   g.userData.extras = extras; // peças em material escuro (furos)
   return g;
 }
@@ -1767,10 +1767,14 @@ function flipOpenGeo(m, y0, rings, seg, disp, ang) {
     pin.translate(0, 0, zc); lidParts.push(pin);
   }
   const gLid = mergeGeometries(lidParts);
-  gLid.translate(0, -hy, -hz); gLid.rotateX((up ? -1 : 1) * ang * 110 * Math.PI / 180); gLid.translate(0, hy, hz);
+  gLid.translate(0, -hy, -hz);
   // Bico no corte da base, com o furo escuro na ponta.
   const spout = cyl(ro, up ? hy - 0.5 : hy - sh, sh + 0.5, up ? 0.6 : 0, up ? 0 : 0.6); spout.translate(0, 0, zc);
   const hole = cyl(m.orifD / 2, up ? hy + sh - 0.25 : hy - sh - 0.05, 0.3); hole.translate(0, 0, zc);
+  if (m._splitLid) { // vídeo: tampinha separada, girada na dobradiça quadro a quadro
+    const g = mergeGeometries([gBase, spout]); g.userData.lid = { geo: gLid, hy, hz, sign: up ? -1 : 1 }; return [g, [hole]];
+  }
+  gLid.rotateX((up ? -1 : 1) * ang * 110 * Math.PI / 180); gLid.translate(0, hy, hz);
   return [mergeGeometries([gBase, gLid, spout]), [hole]];
 }
 
@@ -2336,13 +2340,30 @@ function detailShow() {
   const capT = capBox.isEmpty() ? new V(C.x, all.max.y, C.z) : capBox.getCenter(new V());
   const capR = capBox.isEmpty() ? sz.y * 0.2 : Math.max(capBox.getSize(new V()).length() * 0.55, sz.y * 0.12);
   const openI = [...capIdx].reverse().find(i => { const m = S.modules[i]; return (m.topType === 'flip' && m.groove > 0) || m.topType === 'disc'; });
-  let frames = null, openMeshes = [];
-  if (openI !== undefined) { // etapas da tampa abrindo, montadas antes
+  let frames = null, openMeshes = [], flipRig = null;
+  if (openI !== undefined && S.modules[openI].topType === 'flip') {
+    // flip: base + bico montados uma vez; a tampinha é peça à parte que gira na
+    // dobradiça a cada quadro (abertura contínua e suave, sem etapas)
+    const g = new THREE.Group();
+    buildInto(g, { ...S, modules: S.modules.map((m, i) => (i === openI ? { ...m, openPct: 1, _splitLid: true } : { ...m, hidden: true })) }, 0);
+    const parts = g.children.filter(o => o.userData.idx === openI);
+    g.children.filter(o => o.userData.idx !== openI).forEach(o => o.geometry?.dispose());
+    const rig = new THREE.Group(); parts.forEach(o => rig.add(o));
+    const main = parts.find(o => o.userData.main), L = main?.geometry.userData.lid;
+    if (L) {
+      const pivot = new THREE.Group(); pivot.position.set(L.ox || 0, L.hy, L.hz);
+      pivot.add(new THREE.Mesh(L.geo, main.material)); pivot.children[0].castShadow = true; rig.add(pivot);
+      flipRig = { rig, pivot, sign: L.sign };
+    }
+    rig.visible = false; product.add(rig);
+    openMeshes = product.children.filter(o => o.userData.idx === openI && o.isMesh);
+    if (!flipRig) { rig.traverse(o => o.geometry?.dispose()); product.remove(rig); }
+  } else if (openI !== undefined) { // disc-top: etapas montadas antes
     frames = [];
-    for (let k = 0; k <= 5; k++) {
+    for (let k = 0; k <= 12; k++) {
       const g = new THREE.Group();
       // só a tampa é montada (as outras peças ficam ocultas, mas continuam no lugar)
-      buildInto(g, { ...S, modules: S.modules.map((m, i) => (i === openI ? { ...m, openPct: k * 20 } : { ...m, hidden: true })) }, 0);
+      buildInto(g, { ...S, modules: S.modules.map((m, i) => (i === openI ? { ...m, openPct: k * 100 / 12 } : { ...m, hidden: true })) }, 0);
       const parts = g.children.filter(o => o.userData.idx === openI);
       g.children.filter(o => o.userData.idx !== openI).forEach(o => o.geometry?.dispose());
       const grp = new THREE.Group(); parts.forEach(o => grp.add(o)); grp.visible = false; product.add(grp); frames.push(grp);
@@ -2426,7 +2447,10 @@ function detailShow() {
       setClip(!!sh.wire);
       // tampa: abre suave na tomada 3 e fica aberta; nas outras, fechada
       const k = sh.cap ? ease(clamp((u - 0.2) / 0.45, 0, 1)) : 0;
-      if (frames) {
+      if (flipRig) {
+        openMeshes.forEach(o => { o.visible = false; }); flipRig.rig.visible = true;
+        flipRig.pivot.rotation.x = flipRig.sign * k * 110 * Math.PI / 180;
+      } else if (frames) {
         // sempre parte da tampa fechada (etapa 0), mesmo que o modelo esteja salvo aberto
         const fi = Math.round(k * (frames.length - 1)); openMeshes.forEach(o => { o.visible = false; }); frames.forEach((g, j) => { g.visible = j === fi; });
       } else if (isPump) { // pump: fica no lugar (não puxa o pescante para fora); a tomada é o close
@@ -2437,6 +2461,7 @@ function detailShow() {
       product.remove(wire); wire.traverse(o => o.geometry?.dispose()); wireMat.dispose(); revealMats.forEach(m => m.dispose());
       product.position.set(0, 0, 0); product.quaternion.identity();
       frames?.forEach(g => { g.traverse(o => o.geometry?.dispose()); product.remove(g); });
+      if (flipRig) { flipRig.rig.traverse(o => o.geometry?.dispose()); product.remove(flipRig.rig); }
       openMeshes.forEach(o => { o.visible = true; });
       capMeshes.forEach(o => { o.position.set(0, 0, 0); o.rotation.y = 0; });
     },
