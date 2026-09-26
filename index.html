@@ -423,7 +423,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-26.luz-faixas';
+const BUILD = '2026-09-26.sombra-macia';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -1871,7 +1871,7 @@ renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
 renderer.toneMapping = THREE.NeutralToneMapping;
 renderer.shadowMap.enabled = true;
 renderer.localClippingEnabled = true; // corte do líquido no nível
-renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.shadowMap.type = THREE.VSMShadowMap; // sombra macia (desfocada), como luz de estúdio difusa
 
 const scene = new THREE.Scene();
 const pmrem = new THREE.PMREMGenerator(renderer);
@@ -1923,12 +1923,12 @@ scene.environmentIntensity = 1;
 const hemi = new THREE.HemisphereLight(0xffffff, 0xb3a898, 0.08);
 scene.add(hemi);
 const sun = new THREE.DirectionalLight(0xfff6ea, 1.7);
-sun.position.set(-260, 380, 240); sun.castShadow = true;
+sun.position.set(-170, 540, 230); sun.castShadow = true; // mais alta: sombra curta, sem cara de CG
 const rim = new THREE.DirectionalLight(0xe8eef5, 0.5);
 rim.position.set(300, 220, -260); scene.add(rim);
 sun.shadow.mapSize.set(2048, 2048);
 Object.assign(sun.shadow.camera, { left: -300, right: 300, top: 300, bottom: -300, near: 10, far: 1500 });
-sun.shadow.bias = -0.0004; sun.shadow.normalBias = 0.4;
+sun.shadow.bias = -0.0004; sun.shadow.normalBias = 0.4; sun.shadow.radius = 12; sun.shadow.blurSamples = 20;
 scene.add(sun, sun.target);
 const baseLight = { env: roomEnv, envI: 1, envRot: scene.environmentRotation?.clone(), hemi: 0.08, sun: 1.7, sunPos: sun.position.clone() };
 
@@ -3898,7 +3898,7 @@ $('#dlObj').onclick = () => download(new Blob([new OBJExporter().parse(exportRoo
 
 // ───────────────────────── início ─────────────────────────
 // Acesso para inspeção no console do navegador.
-window.OUTBOX = { get S() { return S; }, get swapScroll() { return swapScroll; }, product, layout, scene, sun, stage, ground, get cam() { return cam; } };
+window.OUTBOX = { get S() { return S; }, get swapScroll() { return swapScroll; }, product, layout, scene, sun, stage, ground, renderer, get cam() { return cam; } };
 
 buildDraftPresets();
 resize();
