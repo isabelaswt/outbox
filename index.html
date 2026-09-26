@@ -396,7 +396,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-25.aba-gomos';
+const BUILD = '2026-09-25.pilula';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -636,6 +636,14 @@ const PRESETS = {
   'Bola + bola': { color: BEIGE, finish: 'fosco', modules: [
     M('capsula', { name: 'Corpo bola', W: 72, D: 72, h: 71, rBot: 34, rTop: 36 }), NECK('24/410'),
     M('esfera', { W: 38, D: 38, h: 38, rBot: 19, rTop: 19, sphereR: 19, groove: 0, topType: 'nenhum' })] },
+  // Referência pote de creme: pote largo e baixo com tampa domo um pouco mais estreita.
+  'Pote + tampa domo': { color: BEIGE, finish: 'fosco', modules: [
+    M('reto', { name: 'Pote', W: 82, D: 82, h: 40, rBot: 8, rTop: 6 }), NECK('70/400'),
+    M('domo', { name: 'Tampa domo', W: 72, D: 72, n: 2, h: 27, rBot: 1, rTop: 20, groove: 0, notch: false, topType: 'nenhum' })] },
+  // Referência Sephora mist: pílula — corpo com fundo meia-esfera e sobretampa do mesmo diâmetro com topo meia-esfera.
+  'Pílula mist': { color: BEIGE, finish: 'fosco', modules: [
+    M('capsula', { name: 'Corpo pílula', W: 44, D: 44, h: 72, rBot: 22, rTop: 1.5 }), NECK('18/410'),
+    M('sobretampa', { name: 'Sobretampa pílula', W: 44, D: 44, h: 56, rBot: 1, rTop: 22 })] },
   'Cápsula dividida': { color: BEIGE, finish: 'fosco', modules: [
     M('capsula', { W: 44, D: 44, h: 96, rBot: 22, rTop: 2 }), NECK('24/410'),
     M('domo', { name: 'Tampa cápsula', W: 44, D: 44, h: 38, rBot: 1.5, rTop: 22, groove: 12, notch: true, notchW: 14, notchH: 5, notchD: 1.4, notchP: 2 })] },
