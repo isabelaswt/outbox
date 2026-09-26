@@ -231,11 +231,7 @@ canvas{display:block;width:100%;height:100%;touch-action:none}
       <select id="pngRes"><option value="2048">2048 px</option><option value="3072">3072 px</option><option value="4096" selected>4096 px</option></select>
     </div>
     <div class="tip">A imagem e o vídeo saem com a luz escolhida em Apresentação.</div>
-    <div class="row">
-      <button class="btn" id="hdrBtn">Carregar HDR</button>
-      <input type="file" id="hdrFile" accept=".hdr,image/vnd.radiance" class="hidden">
-    </div>
-    <div id="hdrControls"></div>
+    <input type="file" id="hdrFile" accept=".hdr,image/vnd.radiance" class="hidden">
     <label class="chk"><input type="checkbox" id="pngTransp" checked> Fundo transparente</label>
     <label class="chk"><input type="checkbox" id="pngShadow" checked> Incluir sombra</label>
     <div class="row"><button class="btn pri" id="dlPng">Baixar PNG</button></div>
@@ -422,7 +418,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-26.jateado-faixas';
+const BUILD = '2026-09-26.png-transparente-vidro';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -1974,6 +1970,15 @@ function placeAreaLights() {
   const b = new THREE.Box3().setFromObject(product).union(new THREE.Box3().setFromObject(sideRoot));
   if (b.isEmpty()) return;
   const c = b.getCenter(new THREE.Vector3()), sz = b.getSize(new THREE.Vector3()), R = Math.max(sz.x, sz.y, sz.z);
+  placeAreaCore(c, R);
+  // girar a luz: as caixas giram em volta do centro do produto; intensidade junto
+  const sc = S.scene || {}, rot = -THREE.MathUtils.degToRad(sc.luzRot || 0), k = envStrength(sc.luzInt ?? 100), Y = new THREE.Vector3(0, 1, 0);
+  for (const L of [areaKey, areaFill]) {
+    L.position.sub(c).applyAxisAngle(Y, rot).add(c); L.lookAt(c.x, c.y - (L === areaKey && areaMode !== 'faixa' ? R * 0.1 : 0), c.z);
+    L.intensity *= k * (L === areaKey ? conKey(sc) : conAmb(sc));
+  }
+}
+function placeAreaCore(c, R) {
   if (areaMode === 'faixa') { // faixa alta e estreita na frente (à esquerda) + faixa fraca à direita
     areaKey.width = R * 0.28; areaKey.height = R * 2.2;
     areaKey.position.set(c.x - R * 0.35, c.y + R * 0.15, c.z + R * 1.05); areaKey.lookAt(c.x, c.y, c.z);
@@ -2094,7 +2099,11 @@ const contactMat = (() => {
   const t = new THREE.CanvasTexture(cv); t.colorSpace = THREE.SRGBColorSpace;
   return new THREE.MeshBasicMaterial({ map: t, transparent: true, depthWrite: false, toneMapped: false, polygonOffset: true, polygonOffsetFactor: -1 });
 })();
-const SCENE0 = { cena: 'nenhum', cenaCor: '#e6e0d6', cenaH: 40, luz: 'studio', ao: true };
+const SCENE0 = { cena: 'nenhum', cenaCor: '#e6e0d6', cenaH: 40, luz: 'studio', ao: true, luzRot: 0, luzInt: 100, luzCon: 50 };
+// Contraste da luz: 50 = neutro; mais = luz principal forte e ambiente/preenchimento
+// fracos (lado escuro mais escuro, mais volume); menos = luz mais uniforme.
+const conKey = sc => 1 + 1.1 * (clamp((sc.luzCon ?? 50) / 100, 0, 1) - 0.5);
+const conAmb = sc => 1 - 1.25 * (clamp((sc.luzCon ?? 50) / 100, 0, 1) - 0.5);
 const sceneOf = () => ({ ...SCENE0, ...(S.scene || {}) });
 function buildStage() {
   placeAreaLights();
@@ -2148,9 +2157,15 @@ function buildStage() {
     ground.visible = false;
   }
 }
+// Girar a luz / Intensidade valem para todas as luzes: gira o estúdio inteiro
+// (ambiente, sol/sombra e caixas de luz de área) em volta do produto.
 function applySceneLight() {
-  const l = sceneOf().luz;
-  if (l === 'padrao') setLighting(baseLight); else applyLightingMode(l);
+  const sc = sceneOf(), l = sc.luz, boost = envStrength(sc.luzInt), rot = THREE.MathUtils.degToRad(sc.luzRot || 0);
+  if (l === 'padrao') { setLighting(baseLight); scene.environmentIntensity *= boost; setEnvRotation(sc.luzRot || 0); }
+  else applyLightingMode(l);
+  sun.intensity *= boost * conKey(sc); sun.position.applyAxisAngle(new THREE.Vector3(0, 1, 0), -rot);
+  scene.environmentIntensity *= conAmb(sc); hemi.intensity *= conAmb(sc);
+  placeAreaLights();
 }
 function renderScene() {
   const f = $('#sceneFields'); if (!f) return; f.innerHTML = '';
@@ -2165,6 +2180,12 @@ function renderScene() {
   field(f, S.scene, ['luz', 'Luz (vale para tela, imagem e vídeo)', 'select', [['studio', 'Estúdio claro (padrão)'], ['padrao', 'Volume (mais contraste de lado)'],
     ['soft', 'Suave'], ['contrast', 'Contraste'], ['sol', 'Sol (sombra longa)'], ['drama', 'Dramática'], ['faixa', 'Faixas de estúdio (reflexo vertical)'],
     ...(HDR.env ? [['hdr', `HDR carregado (${HDR.name})`]] : [])]], ch);
+  field(f, S.scene, ['luzRot', 'Girar a luz (o estúdio todo em volta do produto)', -180, 180, 1, '°'], ch);
+  field(f, S.scene, ['luzInt', 'Intensidade da luz', 20, 250, 1, '%'], ch);
+  field(f, S.scene, ['luzCon', 'Contraste da luz (− uniforme, + mais volume)', 0, 100, 1, ''], ch);
+  const hb = document.createElement('div'); hb.className = 'row';
+  hb.innerHTML = `<button class="btn">${HDR.env ? 'Trocar HDR' : 'Carregar HDR (luz de foto)'}</button>`;
+  hb.querySelector('button').onclick = () => $('#hdrFile').click(); f.appendChild(hb);
   field(f, S.scene, ['ao', 'Sombra de contato (o produto pesa na superfície)', 'check'], ch);
   field(f, S, ['bg', 'Fundo da cena', 'color'], queueBuild);
 }
@@ -2212,36 +2233,41 @@ function detailShow() {
     openMeshes = product.children.filter(o => o.userData.idx === openI && o.isMesh);
   }
   const lift = capBox.isEmpty() ? 0 : capBox.getSize(new V()).y * 0.9;
-  const pose = (T, ang, elev, d) => ({ T, P: new V(T.x + Math.cos(ang) * Math.cos(elev) * d, T.y + Math.sin(elev) * d, T.z + Math.sin(ang) * Math.cos(elev) * d) });
-  const shots = [
-    { t0: 0, t1: 0.2, f: u => pose(C, baseAng - 0.45 + 0.5 * u, 0.2, dist0) },
-    { t0: 0.28, t1: 0.5, f: u => pose(relT, relAng + 0.6 - 1.0 * u, 0.08, fitDist(relR)) },
-    { t0: 0.58, t1: 0.84, f: u => pose(capT, baseAng + 0.4 - 0.35 * u, 0.5, fitDist(capR)) },
-    { t0: 0.92, t1: 1, f: u => pose(C, baseAng - 0.1 + 0.1 * u, 0.15, dist0) },
+  const pose = (T, ang, elev, d) => new V(T.x + Math.cos(ang) * Math.cos(elev) * d, T.y + Math.sin(elev) * d, T.z + Math.sin(ang) * Math.cos(elev) * d);
+  // Roteiro contínuo (uma curva só, sem parar entre as cenas): nasce baixo na base e
+  // sobe revelando o frasco (grua) → desliza rente ao relevo → passa por cima da
+  // tampa olhando para baixo enquanto ela abre → se afasta até a pose de capa.
+  // Lente mais longa nos closes (fov menor), como câmera de cinema.
+  const baseT = new V(C.x, all.min.y + sz.y * 0.28, C.z);
+  const keys = [
+    { T: baseT, P: pose(baseT, baseAng - 0.75, -0.02, dist0 * 0.5), fov: 24 },
+    { T: C, P: pose(C, baseAng - 0.35, 0.12, dist0 * 0.95), fov: 28 },
+    { T: relT, P: pose(relT, relAng + 0.55, 0.06, fitDist(relR * 1.25)), fov: 22 },
+    { T: relT, P: pose(relT, relAng - 0.5, 0.02, fitDist(relR)), fov: 20 },
+    { T: capT, P: pose(capT, baseAng + 0.25, 0.38, fitDist(capR * 1.25)), fov: 22 },
+    { T: capT, P: pose(capT, baseAng + 0.65, 0.95, fitDist(capR * 1.15)), fov: 22 },
+    { T: C.clone().lerp(capT, 0.4), P: pose(C, baseAng + 0.85, 0.35, dist0 * 0.8), fov: 26 },
+    { T: C, P: pose(C, baseAng + 0.3, 0.14, dist0), fov: 28 },
   ];
+  const curveP = new THREE.CatmullRomCurve3(keys.map(k => k.P), false, 'centripetal');
+  const curveT = new THREE.CatmullRomCurve3(keys.map(k => k.T), false, 'centripetal');
+  const nK = keys.length - 1, fov0 = persp.fov;
+  const smoother = x => x * x * x * (x * (x * 6 - 15) + 10); // início e fim bem suaves
   const ease = x => x * x * (3 - 2 * x);
-  const at = t => {
-    t = clamp(t, 0, 1);
-    for (let i = 0; i < shots.length; i++) {
-      const s0 = shots[i];
-      if (t <= s0.t1) {
-        if (t >= s0.t0) return s0.f((t - s0.t0) / (s0.t1 - s0.t0));
-        const p = shots[i - 1].f(1), q = s0.f(0), w = ease((t - shots[i - 1].t1) / (s0.t0 - shots[i - 1].t1));
-        return { T: p.T.clone().lerp(q.T, w), P: p.P.clone().lerp(q.P, w) };
-      }
-    }
-    return shots[shots.length - 1].f(1);
-  };
   return {
     update(t) {
-      const { T, P } = at(t); cam.position.copy(P); cam.lookAt(T);
-      // tampa, dentro da cena da tampa: abre 15→50%, fica, fecha 70→95%
-      const u = clamp((t - 0.58) / 0.26, 0, 1), k = u < 0.15 ? 0 : u < 0.5 ? ease((u - 0.15) / 0.35) : u < 0.7 ? 1 : u < 0.95 ? 1 - ease((u - 0.7) / 0.25) : 0;
+      const u = smoother(clamp(t, 0, 1));
+      cam.position.copy(curveP.getPoint(u)); cam.lookAt(curveT.getPoint(u));
+      const kf = u * nK, i0 = Math.min(nK - 1, Math.floor(kf)), fw = ease(kf - i0);
+      persp.fov = keys[i0].fov + (keys[i0 + 1].fov - keys[i0].fov) * fw; persp.updateProjectionMatrix();
+      // tampa: abre quando a câmera chega por cima (≈ chave 4→5), fica, fecha saindo
+      const a = kf, kOpen = a < 4.1 ? 0 : a < 5 ? ease((a - 4.1) / 0.9) : a < 5.6 ? 1 : a < 6.4 ? 1 - ease((a - 5.6) / 0.8) : 0;
       if (frames) {
-        const fi = Math.round(k * 10); openMeshes.forEach(o => { o.visible = fi === 0; }); frames.forEach((g, j) => { g.visible = fi > 0 && j === fi; });
-      } else capMeshes.forEach(o => { o.position.set(0, lift * k, 0); o.rotation.y = -1.6 * k; });
+        const fi = Math.round(kOpen * 10); openMeshes.forEach(o => { o.visible = fi === 0; }); frames.forEach((g, j) => { g.visible = fi > 0 && j === fi; });
+      } else capMeshes.forEach(o => { o.position.set(0, lift * kOpen, 0); o.rotation.y = -1.6 * kOpen; });
     },
     cleanup() {
+      persp.fov = fov0; persp.updateProjectionMatrix();
       frames?.forEach(g => { g.traverse(o => o.geometry?.dispose()); product.remove(g); });
       openMeshes.forEach(o => { o.visible = true; });
       capMeshes.forEach(o => { o.position.set(0, 0, 0); o.rotation.y = 0; });
@@ -3982,9 +4008,9 @@ function applyLightingMode(mode) {
     return;
   }
   const env = mode === 'hdr' && HDR.env ? HDR.env : roomEnv;
-  const boost = envStrength(HDR.strength);
+  const boost = envStrength(sceneOf().luzInt);
   scene.environment = env;
-  setEnvRotation(HDR.rot);
+  setEnvRotation(sceneOf().luzRot || 0);
   if (mode === 'faixa') { // faixas verticais de estúdio: reflexo alto na frente e laterais escuras
     scene.environment = stripEnv; scene.environmentIntensity = 0.75 * boost; hemi.intensity = 0.04; sun.intensity = 0.45; sun.position.set(-60, 520, 260);
   } else if (mode === 'sol') { // sol baixo: sombra longa e marcada, como foto de luz natural
@@ -4007,10 +4033,7 @@ function applyPngLighting(mode) {
   applyLightingMode(mode);
   return keep;
 }
-const hdrCh = () => { applySceneLight(); req(); };
-field($('#hdrControls'), HDR, ['rot', 'Rotação do HDR', -180, 180, 1, '°'], hdrCh);
-field($('#hdrControls'), HDR, ['strength', 'Força do HDR', 0, 300, 1, '%'], hdrCh);
-$('#hdrBtn').onclick = () => $('#hdrFile').click();
+
 $('#hdrFile').onchange = e => {
   const f = e.target.files[0]; if (!f) return;
   const url = URL.createObjectURL(f);
@@ -4031,21 +4054,45 @@ $('#dlPng').onclick = () => {
   const w = aspect >= 1 ? res : Math.round(res * aspect), h = aspect >= 1 ? Math.round(res / aspect) : res;
   const keep = { grid: grid.visible, ref: refMesh.visible, bg: scene.background, ground: ground.visible, light: snapshotLighting() }; // mesma luz da tela
   grid.visible = false; refMesh.visible = false;
-  if ($('#pngTransp').checked) scene.background = null;
+  const transp = $('#pngTransp').checked;
   ground.visible = $('#pngShadow').checked;
   // Super qualidade só na exportação: renderiza no dobro (antisserrilhado forte)
   // com sombra em alta resolução e reduz para o tamanho pedido.
   const gl = renderer.getContext(), cap = Math.min(8192, gl.getParameter(gl.MAX_RENDERBUFFER_SIZE) || 4096);
   const ss = Math.max(1, Math.min(2, cap / Math.max(w, h)));
-  const hiShadow = sm => { sun.shadow.mapSize.set(sm, sm); sun.shadow.map?.dispose(); sun.shadow.map = null; };
-  hiShadow(4096);
+  // (a sombra é VSM, já desfocada: não troca a resolução do mapa aqui — recriado
+  //  na hora, ele saía inválido e deixava o chão todo "na sombra")
   renderer.setPixelRatio(1); renderer.setSize(Math.round(w * ss), Math.round(h * ss), false);
-  renderer.render(scene, cam);
-  const out = document.createElement('canvas'); out.width = w; out.height = h;
-  const oc = out.getContext('2d'); oc.imageSmoothingEnabled = true; oc.imageSmoothingQuality = 'high';
-  oc.drawImage(renderer.domElement, 0, 0, w, h);
+  const shot = bg => {
+    if (bg !== undefined) scene.background = bg;
+    renderer.render(scene, cam);
+    const c = document.createElement('canvas'); c.width = w; c.height = h;
+    const cx = c.getContext('2d'); cx.imageSmoothingEnabled = true; cx.imageSmoothingQuality = 'high';
+    cx.drawImage(renderer.domElement, 0, 0, w, h); return c;
+  };
+  let out;
+  if (!transp) out = shot();
+  else {
+    // Fundo transparente de verdade. A cor vem da imagem normal (vidro com a cor
+    // que se vê na tela); a transparência vem de duas imagens com o vidro sólido,
+    // sobre preto e sobre branco: a diferença é o quanto cada pixel deixa passar
+    // (fundo some, sombra fica suave, o vidro não "some" nem vaza luz).
+    const cC = shot(keep.bg || new THREE.Color(S.bg));
+    const glass = []; scene.traverse(o => { const ms = o.material ? (Array.isArray(o.material) ? o.material : [o.material]) : [];
+      ms.forEach(m => { if (m.transmission > 0) { glass.push([m, m.transmission, m.transparent, m.depthWrite]); m.transmission = 0; m.transparent = false; m.depthWrite = true; m.needsUpdate = true; } }); });
+    const cB = shot(new THREE.Color(0, 0, 0)), cW = shot(new THREE.Color(1, 1, 1));
+    glass.forEach(([m, t, tr, dw]) => { m.transmission = t; m.transparent = tr; m.depthWrite = dw; m.needsUpdate = true; });
+    const iC = cC.getContext('2d').getImageData(0, 0, w, h), iB = cB.getContext('2d').getImageData(0, 0, w, h), iW = cW.getContext('2d').getImageData(0, 0, w, h);
+    const c = iC.data, d = iB.data, e = iW.data;
+    for (let k = 0; k < d.length; k += 4) {
+      const a = clamp(1 - ((e[k] - d[k]) + (e[k + 1] - d[k + 1]) + (e[k + 2] - d[k + 2])) / 765, 0, 1);
+      if (a > 0.985) { d[k] = c[k]; d[k + 1] = c[k + 1]; d[k + 2] = c[k + 2]; } // produto: cor da tela
+      else if (a > 0.002) { d[k] = Math.min(255, d[k] / a); d[k + 1] = Math.min(255, d[k + 1] / a); d[k + 2] = Math.min(255, d[k + 2] / a); }
+      d[k + 3] = Math.round(a * 255);
+    }
+    cB.getContext('2d').putImageData(iB, 0, 0); out = cB;
+  }
   const data = out.toDataURL('image/png');
-  hiShadow(2048);
   grid.visible = keep.grid; refMesh.visible = keep.ref; scene.background = keep.bg; ground.visible = keep.ground; setLighting(keep.light); applySceneLight();
   renderer.setPixelRatio(pr); renderer.setSize(size.x, size.y, false); req();
   fetch(data).then(r => r.blob()).then(b => download(b, fname('png')));
