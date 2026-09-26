@@ -230,9 +230,7 @@ canvas{display:block;width:100%;height:100%;touch-action:none}
     <div class="row">
       <select id="pngRes"><option value="2048">2048 px</option><option value="3072">3072 px</option><option value="4096" selected>4096 px</option></select>
     </div>
-    <div class="row">
-      <select id="pngLight"><option value="studio" selected>Luz estúdio / HDR</option><option value="atual">Luz atual da cena</option><option value="soft">Luz suave</option><option value="contrast">Luz com mais contraste</option><option value="hdr">HDR carregado</option></select>
-    </div>
+    <div class="tip">A imagem e o vídeo saem com a luz escolhida em Apresentação.</div>
     <div class="row">
       <button class="btn" id="hdrBtn">Carregar HDR</button>
       <input type="file" id="hdrFile" accept=".hdr,image/vnd.radiance" class="hidden">
@@ -423,7 +421,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-26.video-prato-giratorio';
+const BUILD = '2026-09-26.luz-unica';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -2043,7 +2041,7 @@ const contactMat = (() => {
   const t = new THREE.CanvasTexture(cv); t.colorSpace = THREE.SRGBColorSpace;
   return new THREE.MeshBasicMaterial({ map: t, transparent: true, depthWrite: false, toneMapped: false, polygonOffset: true, polygonOffsetFactor: -1 });
 })();
-const SCENE0 = { cena: 'nenhum', cenaCor: '#e6e0d6', cenaH: 40, luz: 'padrao', ao: true };
+const SCENE0 = { cena: 'nenhum', cenaCor: '#e6e0d6', cenaH: 40, luz: 'studio', ao: true };
 const sceneOf = () => ({ ...SCENE0, ...(S.scene || {}) });
 function buildStage() {
   stage.children.slice().forEach(o => { o.geometry?.dispose(); stage.remove(o); });
@@ -2103,13 +2101,16 @@ function applySceneLight() {
 function renderScene() {
   const f = $('#sceneFields'); if (!f) return; f.innerHTML = '';
   S.scene = sceneOf();
+  // A luz padrão passou a ser a clara (a que antes só saía na exportação).
+  if (S.scene.luzV !== 2) { if (S.scene.luz === 'padrao') S.scene.luz = 'studio'; S.scene.luzV = 2; }
   const ch = (k) => { if (k === 'luz') applySceneLight(); buildStage(); if (k === 'cena') { renderScene(); fit(); } store.set('shape.autosave', S); req(); };
   field(f, S.scene, ['cena', 'Cenário', 'select', [['nenhum', 'Nenhum (só a sombra)'], ['pedestal', 'Pedestal redondo'], ['bloco', 'Bloco'],
     ['degraus', 'Degraus (vitrine)'], ['arco', 'Arco ao fundo'], ['infinito', 'Fundo infinito (estúdio)']]], ch);
   if (S.scene.cena !== 'nenhum') field(f, S.scene, ['cenaCor', 'Cor do cenário', 'color'], ch);
   if (['pedestal', 'bloco', 'degraus'].includes(S.scene.cena)) field(f, S.scene, ['cenaH', 'Altura do pedestal', 5, 150, 1, 'mm'], ch);
-  field(f, S.scene, ['luz', 'Luz', 'select', [['padrao', 'Padrão (leitura do volume)'], ['soft', 'Suave'], ['contrast', 'Contraste'],
-    ['sol', 'Sol (sombra longa)'], ['drama', 'Dramática'], ['faixa', 'Faixas de estúdio (reflexo vertical)']]], ch);
+  field(f, S.scene, ['luz', 'Luz (vale para tela, imagem e vídeo)', 'select', [['studio', 'Estúdio claro (padrão)'], ['padrao', 'Volume (mais contraste de lado)'],
+    ['soft', 'Suave'], ['contrast', 'Contraste'], ['sol', 'Sol (sombra longa)'], ['drama', 'Dramática'], ['faixa', 'Faixas de estúdio (reflexo vertical)'],
+    ...(HDR.env ? [['hdr', `HDR carregado (${HDR.name})`]] : [])]], ch);
   field(f, S.scene, ['ao', 'Sombra de contato (o produto pesa na superfície)', 'check'], ch);
   field(f, S, ['bg', 'Fundo da cena', 'color'], queueBuild);
 }
@@ -3864,10 +3865,9 @@ function applyPngLighting(mode) {
   applyLightingMode(mode);
   return keep;
 }
-const hdrCh = () => { applyLightingMode($('#pngLight').value); req(); };
+const hdrCh = () => { applySceneLight(); req(); };
 field($('#hdrControls'), HDR, ['rot', 'Rotação do HDR', -180, 180, 1, '°'], hdrCh);
 field($('#hdrControls'), HDR, ['strength', 'Força do HDR', 0, 300, 1, '%'], hdrCh);
-$('#pngLight').onchange = () => { applyLightingMode($('#pngLight').value); req(); };
 $('#hdrBtn').onclick = () => $('#hdrFile').click();
 $('#hdrFile').onchange = e => {
   const f = e.target.files[0]; if (!f) return;
@@ -3876,8 +3876,7 @@ $('#hdrFile').onchange = e => {
     const env = pmrem.fromEquirectangular(tex).texture;
     tex.dispose(); HDR.env?.dispose(); if (HDR.url) URL.revokeObjectURL(HDR.url);
     HDR.env = env; HDR.url = url; HDR.name = f.name;
-    $('#pngLight').value = 'hdr';
-    applyLightingMode('hdr');
+    S.scene = { ...sceneOf(), luz: 'hdr' }; renderScene(); applySceneLight(); // HDR carregado vira a luz da cena
     toast(`HDR carregado: ${f.name}`);
     req();
   }, undefined, () => { URL.revokeObjectURL(url); toast('Não consegui carregar esse HDR'); });
@@ -3888,8 +3887,7 @@ $('#dlPng').onclick = () => {
   const res = +$('#pngRes').value, size = renderer.getSize(new THREE.Vector2()), pr = renderer.getPixelRatio();
   const aspect = size.x / size.y;
   const w = aspect >= 1 ? res : Math.round(res * aspect), h = aspect >= 1 ? Math.round(res / aspect) : res;
-  const sl = sceneOf().luz;
-  const keep = { grid: grid.visible, ref: refMesh.visible, bg: scene.background, ground: ground.visible, light: applyPngLighting(sl !== 'padrao' ? sl : $('#pngLight').value) };
+  const keep = { grid: grid.visible, ref: refMesh.visible, bg: scene.background, ground: ground.visible, light: snapshotLighting() }; // mesma luz da tela
   grid.visible = false; refMesh.visible = false;
   if ($('#pngTransp').checked) scene.background = null;
   ground.visible = $('#pngShadow').checked;
