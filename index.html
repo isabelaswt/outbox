@@ -392,7 +392,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-25.ocultar-pecas';
+const BUILD = '2026-09-25.plano-retangular';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -527,8 +527,9 @@ const PRESETS = {
   'Plano + taça': { color: BEIGE, finish: 'fosco', modules: [
     M('plano', { W: 62, D: 40, n: 3.2, h: 118, rBot: 16, rTop: 12 }), NECK('24/410'),
     M('taca', { W: 38, D: 24, n: 2.6, h: 18, taper: 155, bulge: 0, rBot: 8, rTop: 1.5 })] },
+  // Medidas definidas pela Isabela (Plano_tampa_retangular.json).
   'Plano + tampa retangular': { color: BEIGE, finish: 'fosco', modules: [
-    M('plano', { W: 60, D: 38, n: 3.4, h: 112, rBot: 12, rTop: 10 }), NECK('24/410'),
+    M('plano', { W: 60, D: 38, n: 10, h: 112, rBot: 12, rTop: 10 }), NECK('24/410'),
     M('flip', { name: 'Tampa retangular com entalhe', W: 58, D: 36, n: 6, h: 22, rBot: 1, rTop: 2.5, groove: 5,
       notch: true, notchW: 12, notchH: 3.5, notchD: 1, notchP: 4 })] },
   'Cápsula dividida': { color: BEIGE, finish: 'fosco', modules: [
