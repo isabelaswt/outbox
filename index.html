@@ -305,7 +305,7 @@ const BASE = {
   // líquido dentro do corpo
   liq: false, liqLevel: 80, liqColor: '#c9a45c', liqType: 'cremoso', liqClear: 60,
   // sistema de abertura da tampa: flip-top (dobradiça na linha) ou disc-top.
-  topType: 'nenhum', openPct: 0, lidSide: 'cima', orifD: 4, discD: 36, discDip: 4, discDimple: 1.2, discRise: 0,
+  topType: 'nenhum', openPct: 0, lidSide: 'cima', lidOver: 0, aba: false, orifD: 4, discD: 36, discDip: 4, discDimple: 1.2, discRise: 0,
   // bisnaga: tubo que achata até a solda mantendo o perímetro.
   flatStart: 8, flatCurve: 1.15, sealH: 7, sealT: 1.4, sealW: 2,
   sealShape: 'reta', sealArc: 4, sealR: 1.8, serr: true, serrP: 1, serrD: 0.18,
@@ -378,6 +378,7 @@ const LIB = {
   placa:   { name: 'Corpo placa assimétrico', kind: 'placa', W: 66, D: 34, h: 134, rTL: 5, rTR: 30, rBL: 7, rBR: 7, rEdge: 5, chamfer: true, vol: true },
   flip:    { name: 'Tampa flip-top', W: 46, D: 34, n: 2.8, h: 24, rBot: 1, rTop: 3, groove: 6, topType: 'flip' },
   sobretampa: { name: 'Sobretampa (cobre a válvula)', W: 30, D: 30, h: 42, rBot: 0.5, rTop: 2 },
+  flipAba: { name: 'Flip-top com aba', W: 36, D: 36, h: 28, rBot: 0.8, rTop: 2.5, groove: 12, grooveD: 0.8, lidOver: 1.2, aba: true, topType: 'flip', lidSide: 'cima' },
   flipRedondo: { name: 'Tampa flip-top redonda', W: 40, D: 40, h: 30, rBot: 1, rTop: 2.5, groove: 10, notch: true, notchUp: false,
     notchW: 17, notchH: 8, notchD: 1.4, notchP: 6, topType: 'flip', lidSide: 'cima' },
   disctop: { name: 'Tampa disc-top', W: 48.3, D: 48.3, h: 32.5, taper: 95, rBot: 1, rTop: 0.8, topType: 'disc', discD: 42.4, discDip: 5 },
@@ -392,7 +393,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-25.novos-shapes';
+const BUILD = '2026-09-25.flip-aba';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -560,6 +561,11 @@ const PRESETS = {
   'Plano + cogumelo': { color: BEIGE, finish: 'fosco', modules: [
     M('plano', { W: 58, D: 34, n: 8, h: 110, rBot: 12, rTop: 3 }), NECK('18/410'),
     M('disco', { name: 'Haste', W: 20, D: 20, h: 14, rBot: 0, rTop: 0 }), M('disco', { name: 'Chapéu', W: 38, D: 38, h: 7, rBot: 3.5, rTop: 3.5 })] },
+  'Frasco flip com aba': { color: BEIGE, finish: 'fosco', modules: [
+    M('reto', { W: 50, D: 50, h: 128, rBot: 10, rTop: 9 }), NECK('24/410'), M('flipAba')] },
+  'Pote flip com aba': { color: BEIGE, finish: 'fosco', modules: [
+    M('reto', { name: 'Pote baixo', W: 72, D: 72, h: 46, rBot: 12, rTop: 8 }), NECK('38/400'),
+    M('flipAba', { W: 50, D: 50, h: 22, groove: 10, lidOver: 1.5 })] },
   'Cápsula dividida': { color: BEIGE, finish: 'fosco', modules: [
     M('capsula', { W: 44, D: 44, h: 96, rBot: 22, rTop: 2 }), NECK('24/410'),
     M('domo', { name: 'Tampa cápsula', W: 44, D: 44, h: 38, rBot: 1.5, rTop: 22, groove: 12, notch: true, notchW: 14, notchH: 5, notchD: 1.4, notchP: 2 })] },
@@ -809,6 +815,11 @@ function sectionAt(m, y, rB, rT) {
   if (m.groove > 0) {
     const g = m.grooveD * Math.max(0, 1 - Math.abs(y - (h - m.groove)) / 0.5);
     a -= g; b -= g;
+    // Tampinha mais larga que a base (flip com aba): degrau logo acima da linha.
+    if (m.topType === 'flip' && m.lidOver > 0) {
+      const d = (m.lidSide === 'baixo' ? -1 : 1) * (y - (h - m.groove)), o = m.lidOver * smooth(0, 0.3, d);
+      a += o; b += o;
+    }
   }
   return [Math.max(a, 0.05), Math.max(b, 0.05)];
 }
@@ -1541,6 +1552,16 @@ function moduleGeo(m0, y0, opts = {}) {
   let g, extras = [];
   if (flipOpen) [g, extras] = flipOpenGeo(m, y0, rings, seg, disp, ang);
   else g = loft(rings, seg, disp, !!(disp && (kmax || m.ridges > 0)));
+  // Puxador na frente da tampinha, logo acima da linha (onde o dedo abre).
+  if (!inset && !flipOpen && m.aba && m.topType === 'flip' && m.groove > 0 && !isProf) {
+    const up = m.lidSide !== 'baixo', yg = m.h - m.groove, yl = yg + (up ? 0.9 : -0.9);
+    const bl = sectionAt(m, clamp(yl, 0, m.h), rB, rT)[1], L = Math.min(8, m.W * 0.22);
+    const tab = new THREE.CapsuleGeometry(0.85, L, 4, lo ? 6 : 16); tab.rotateZ(Math.PI / 2);
+    tab.scale(1, 1, 1.4); tab.translate(0, y0 + lift + yl, bl + 0.25);
+    const t2 = g.index ? tab : tab.toNonIndexed();
+    for (const k in t2.attributes) if (!g.attributes[k]) t2.deleteAttribute(k);
+    g = mergeGeometries([g, t2]) || g;
+  }
   if (!inset && m.topType === 'disc') { const [dg, dx] = discTopGeo(m, y0, ang, lo); g = mergeGeometries([g, dg]); extras.push(...dx); }
   if (!inset && !lo && m.spout) { const [tube, hole] = spoutGeo(m, y0); g = mergeGeometries([g, tube]); extras.push(hole); }
   if (m.ox) { g.translate(m.ox, 0, 0); extras.forEach(e => e.translate(m.ox, 0, 0)); }
@@ -2604,6 +2625,8 @@ const MF = [
     GT(['openPct', 'Abrir', 0, 100, 1, '%', m => m.topType !== 'nenhum']),
     GT(['lidSide', 'Tampinha fica', 'select', [['cima', 'Em cima'], ['baixo', 'Embaixo (bisnaga em pé na tampa)']], m => m.topType === 'flip']),
     GT(['orifD', 'Furo do bico: diâmetro', 1, 12, 0.1, 'mm', m => m.topType === 'flip']),
+    GT(['lidOver', 'Tampinha mais larga que a base', 0, 4, 0.1, 'mm', m => m.topType === 'flip' && m.groove > 0]),
+    GT(['aba', 'Puxador na frente da tampinha', 'check', 0, 0, 0, m => m.topType === 'flip' && m.groove > 0]),
     GT(['discD', 'Disco: diâmetro', 6, 120, 0.5, 'mm', m => m.topType === 'disc']),
     GT(['discDip', 'Rebaixo da borda (sela)', 0, 20, 0.5, 'mm', m => m.topType === 'disc']),
     GT(['discRise', 'Disco sobressai da borda', 0, 10, 0.1, 'mm', m => m.topType === 'disc']),
@@ -3001,7 +3024,7 @@ function renderAll() { renderStack(); renderEditor(); renderGlobal(); renderPres
 // Corpo, tampa e peça de encaixe ficam em listas separadas.
 const CATS = [
   ['Corpo', ['reto', 'boston', 'quadrado', 'capsula', 'perfumeOval', 'plano', 'arco', 'cone', 'placa', 'bisnaga', ...DRAFT_KEYS.corpo]],
-  ['Tampa', ['esfera', 'esferaBisnaga', 'taca', 'domo', 'seixo', 'flip', 'flipRedondo', 'disctop', 'sobretampa', 'tampaBisnaga', 'tampaSextavada', 'disco']],
+  ['Tampa', ['esfera', 'esferaBisnaga', 'taca', 'domo', 'seixo', 'flip', 'flipRedondo', 'flipAba', 'disctop', 'sobretampa', 'tampaBisnaga', 'tampaSextavada', 'disco']],
   ['Válvula', ['pump', 'pumpFrisos', 'locao', 'espuma', 'spray', 'contaGotas', 'pushPull', 'pushSport', 'bicoDosador', 'lamina', 'pumpOnda', 'gatilho', 'pumpBisnaga']],
   ['Peça de encaixe', ['gargalo', 'colar', 'barril', 'flare', 'anel', 'tigela', 'bola', 'sextavado', 'canelado']],
 ];
