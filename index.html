@@ -324,7 +324,7 @@ const BASE = {
   pesc: true, pescD: 4, pescCurve: 0, pescWave: 0, pescGap: 3,
   mola: true, houseD: 8, springL: 18, coils: 11, sleeve: 'transparente',
   // pescante do corpo (quando não há válvula na pilha)
-  bpesc: false, bpescD: 4, bpescGap: 3, bpescCurve: 0, bpescWave: 0, bpescMola: true,
+  bpesc: true, bpescV: 2, bpescD: 4, bpescGap: 3, bpescCurve: 0, bpescWave: 0, bpescMola: false,
   // líquido dentro do corpo
   liq: false, liqLevel: 80, liqColor: '#c9a45c', liqType: 'cremoso', liqClear: 60,
   // sistema de abertura da tampa: flip-top (dobradiça na linha) ou disc-top.
@@ -419,7 +419,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-25.estudio-preenchimento';
+const BUILD = '2026-09-26.pescante-corpos';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -875,7 +875,11 @@ function normalize(s) {
       if ((m.orifD || 0) > 3.2) m.orifD = 3;
     }
   });
-  s.modules.forEach(m => { if (m.kind === 'bisnaga') m.pesc = false; if (m.vol) m.bpesc = false; }); // pescante só vem da válvula
+  // Todo corpo tem pescante (menos bisnaga); o da válvula, quando existe, vale no lugar.
+  s.modules.forEach(m => {
+    if (m.kind === 'bisnaga') { m.pesc = false; m.bpesc = false; }
+    else if (m.vol && m.bpescV !== 2) { m.bpesc = true; m.bpescMola = false; m.bpescV = 2; }
+  });
   // Modelos salvos antes: corpo da Draft com rosca própria + gargalo extra → tira o extra.
   for (let i = 0; i < s.modules.length - 1; i++) {
     const b = s.modules[i], nk = s.modules[i + 1], d = nk?.kind === 'gargalo' && !(b.cutTop > 0) ? builtInThread(b) : null;
@@ -2626,6 +2630,8 @@ function buildInto(product, S, explodeAmt = 0) {
   const L = layout(S, explodeAmt);
   const tubeBody = base.some(e => e.m.kind === 'bisnaga' && e.m.vol);
   const valvePesc = !tubeBody && S.modules.some(v => v.kind === 'spray' && v.pesc && !['pushpull', 'bico', 'conico', 'sport', 'tubo', 'sextavada'].includes(v.sprayType));
+  // Corpos empilhados: o pescante sai só do corpo que recebe o gargalo (ou do de cima).
+  const hasNeck = L.some(e => e.m.kind === 'gargalo'), topVol = L.reduce((a, e, k) => (e.m.vol ? k : a), -1);
   L.forEach(({ m: m0, idx, y0: yl }, i) => {
     let y0 = yl;
     // O gargalo cabe na peça que o veste: anel de apoio nunca mais largo que
@@ -2694,7 +2700,8 @@ function buildInto(product, S, explodeAmt = 0) {
     // Líquido dentro do corpo, até o nível escolhido.
     if (m0.vol && m0.liq) liquidMeshes(m0, y0).forEach(o => { o.userData.idx = idx; product.add(o); });
     // Pescante do próprio corpo: do topo do gargalo (ou do corpo) até o fundo.
-    if (m0.vol && m0.kind !== 'bisnaga' && m0.bpesc && !valvePesc && isFinite(floor)) {
+    if (m0.vol && m0.kind !== 'bisnaga' && m0.bpesc && !valvePesc && !tubeBody && isFinite(floor)
+      && (hasNeck ? L[i + 1]?.m.kind === 'gargalo' : i === topVol)) {
       const nx = L[i + 1]?.m.kind === 'gargalo' ? L[i + 1] : null, capE = nx ? L[i + 2] : L[i + 1];
       let yTop = nx ? nx.y0 + nx.m.h - 1 : y0 + m0.h - 1;
       const shift = y0 - base[i].y0, yBot = floor + S.wall + m0.bpescGap + shift;
@@ -3083,6 +3090,14 @@ const MF = [
     ['labColor', 'Cor do papel', 'color', 0, 0, 0, m => m.vol && m.labType && m.labType !== 'nenhum'],
     ['labFinish', 'Acabamento do rótulo', 'finish', 0, 0, 0, m => m.vol && m.labType && m.labType !== 'nenhum'],
   ]],
+  // Pescante do corpo (tampas sem pescante próprio); bisnaga não tem.
+  ['Pescante', [
+    ['bpesc', 'Pescante até o fundo (se a válvula tiver o dela, vale o da válvula)', 'check', 0, 0, 0, m => m.vol && m.kind !== 'bisnaga'],
+    ['bpescD', 'Diâmetro', 2, 10, 0.1, 'mm', m => m.vol && m.kind !== 'bisnaga' && m.bpesc],
+    ['bpescGap', 'Folga do fundo', 0, 20, 0.5, 'mm', m => m.vol && m.kind !== 'bisnaga' && m.bpesc],
+    ['bpescCurve', 'Curva no pé (− esquerda)', -40, 40, 0.5, 'mm', m => m.vol && m.kind !== 'bisnaga' && m.bpesc],
+    ['bpescWave', 'Ondulação em S', -15, 15, 0.5, 'mm', m => m.vol && m.kind !== 'bisnaga' && m.bpesc],
+  ]],
   ['Encaixe', [
     ['gap', 'Distância do módulo de baixo', -40, 40, 0.1, 'mm'],
     ['ox', 'Deslocar para o lado (− esquerda)', -100, 100, 0.5, 'mm'],
@@ -3207,7 +3222,7 @@ function renderEditor() {
           if (k === 'sphereR') m.roundLock = false;
           syncSphereRadius(m, k === 'roundLock' && m.roundLock || ['W', 'D', 'h'].includes(k) && m.roundLock);
         }
-        if (structural || ['rep', 'groove', 'ridges', 'own', 'labType'].includes(k) || (isSphereCap(m) && ['W', 'D', 'h', 'roundLock', 'sphereR'].includes(k))) renderEditorKeepScroll();
+        if (structural || ['rep', 'groove', 'ridges', 'own', 'labType', 'bpesc'].includes(k) || (isSphereCap(m) && ['W', 'D', 'h', 'roundLock', 'sphereR'].includes(k))) renderEditorKeepScroll();
         renderStack(); queueBuild();
       });
       if (show && !show(m)) el.classList.add('hidden');
