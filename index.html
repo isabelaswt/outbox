@@ -78,6 +78,11 @@ select,input[type=text]{font:inherit;font-size:12px;border:1px solid var(--line)
 .card{border:1px solid var(--line);border-radius:9px;background:var(--soft);cursor:pointer;padding:4px 4px 5px;text-align:center;font-size:10.5px;line-height:1.2;color:#444}
 .card:hover{border-color:#bdb8b0}
 .card.on{border-color:var(--ink);box-shadow:0 0 0 1px var(--ink) inset}
+.chips{display:flex;flex-wrap:wrap;gap:4px;margin:4px 0 8px}
+.chip{border:1px solid var(--line);border-radius:999px;padding:3px 9px;font-size:11px;cursor:pointer;background:var(--soft);color:#444;user-select:none}
+.chip:hover{border-color:#bdb8b0}
+.chip.on{background:var(--ink);border-color:var(--ink);color:#fff}
+.gen-l{font-size:10.5px;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);font-weight:600;margin-top:6px}
 .card .ph{width:100%;aspect-ratio:9/11;display:block;object-fit:contain;border-radius:6px;background:linear-gradient(180deg,#fff,#f1efeb)}
 .edit{background:var(--soft);border-radius:10px;padding:4px 10px 8px;margin-top:6px}
 .edit h3:first-child{margin-top:8px}
@@ -142,6 +147,21 @@ canvas{display:block;width:100%;height:100%;touch-action:none}
       <input type="file" id="importJson" accept=".json,application/json" class="hidden">
     </div>
     <div class="tip" id="saveStatus"></div>
+  </details>
+
+  <details id="genBox">
+    <summary>Gerador</summary>
+    <div class="tip">Clique nas características e gere opções. Nada marcado num grupo = qualquer uma. A mesma seed repete a mesma leva; o dado sorteia outra.</div>
+    <div id="genOpts"></div>
+    <div class="gen-l">Volume</div>
+    <div class="row"><input type="number" id="genMl" value="300" min="5" max="3000" step="5" style="flex:1"><span class="tip" style="margin:0">ml</span></div>
+    <div class="gen-l">Seed</div>
+    <div class="row">
+      <input type="number" id="genSeed" value="1" style="flex:1">
+      <button class="btn" id="genDice" title="Sortear outra seed">🎲 Outra</button>
+      <button class="btn pri" id="genBtn">Gerar</button>
+    </div>
+    <div class="gallery" id="genGrid"></div>
   </details>
 
   <details open id="lineBox">
@@ -419,7 +439,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-26.fecho-orto';
+const BUILD = '2026-09-26.gerador';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -4466,6 +4486,130 @@ $('#dlObj').onclick = () => download(new Blob([new OBJExporter().parse(exportRoo
 
 // ───────────────────────── início ─────────────────────────
 // Acesso para inspeção no console do navegador.
+
+// ───────────────────────── gerador de opções ─────────────────────────
+// Escolhas (formato, seção, fechamento, detalhes, volume) → uma leva de opções
+// montadas com os módulos que já existem e ajustadas ao volume. Tudo sorteado
+// por seed: a mesma seed repete a leva; outra seed traz outras.
+const GEN = {
+  formato: { label: 'Formato', one: true, opts: { vertical: 'Vertical', baixo: 'Baixo e largo' } },
+  secao: { label: 'Seção', opts: { redonda: 'Redonda', oval: 'Oval / achatada', quadrada: 'Quadrada' } },
+  fecho: { label: 'Fechamento', opts: { pump: 'Pump', spray: 'Spray', flip: 'Flip-top', escultural: 'Tampa escultural', disc: 'Disc-top', gotas: 'Conta-gotas' } },
+  detalhe: { label: 'Detalhes', all: true, opts: { rep: 'Repetições', gomos: 'Gomos', cintura: 'Cintura', funil: 'Afunilado' } },
+  qtd: { label: 'Quantas opções', one: true, opts: { 6: '6', 9: '9', 12: '12' } },
+};
+const genSel = { formato: new Set(['vertical']), secao: new Set(), fecho: new Set(), detalhe: new Set(), qtd: new Set(['9']) };
+(function renderGenOpts() {
+  const box = $('#genOpts'); box.innerHTML = '';
+  for (const [g, def] of Object.entries(GEN)) {
+    const l = document.createElement('div'); l.className = 'gen-l'; l.textContent = def.label; box.appendChild(l);
+    const row = document.createElement('div'); row.className = 'chips';
+    for (const [k, txt] of Object.entries(def.opts)) {
+      const c = document.createElement('span'); c.className = 'chip' + (genSel[g].has(k) ? ' on' : ''); c.textContent = txt;
+      c.onclick = () => {
+        const set = genSel[g];
+        if (def.one) { if (set.has(k) && g !== 'qtd') set.clear(); else { set.clear(); set.add(k); } }
+        else set.has(k) ? set.delete(k) : set.add(k);
+        renderGenOpts();
+      };
+      row.appendChild(c);
+    }
+    box.appendChild(row);
+  }
+})();
+function genRng(seed) { // mulberry32
+  let a = seed >>> 0;
+  return () => { a = (a + 0x6D2B79F5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+}
+function genOne(seed, want) {
+  const rnd = genRng(seed), R = (a, b) => a + (b - a) * rnd(), pick = a => a[Math.floor(rnd() * a.length) % a.length];
+  const from = (g, all) => (genSel[g].size ? [...genSel[g]] : all);
+  const formato = genSel.formato.size ? [...genSel.formato][0] : pick(['vertical', 'vertical', 'baixo']);
+  const secao = pick(from('secao', ['redonda', 'redonda', 'oval', 'quadrada']));
+  const fecho = pick(from('fecho', ['pump', 'spray', 'flip', 'escultural', 'escultural', 'disc']));
+  const det = genSel.detalhe;
+  // corpo (o volume ajusta o tamanho depois; aqui só a proporção)
+  const W = 60, ratio = formato === 'vertical' ? R(2.1, 3.1) : R(0.85, 1.3), H = W * ratio;
+  let body;
+  if (secao === 'oval') body = M(pick(['plano', 'plano', 'arco']), { W, D: r1(W * R(0.52, 0.7)), n: r1(R(2.4, 4.5)), h: H, rBot: r1(W * R(0.06, 0.2)), rTop: r1(W * R(0.08, 0.3)) });
+  else if (secao === 'quadrada') body = M('quadrado', { W, D: W, n: r1(R(4.5, 8)), h: H, rBot: r1(R(3, 9)), rTop: r1(R(5, 14)) });
+  else {
+    const t = formato === 'vertical' ? pick(['reto', 'reto', 'capsula', 'boston']) : pick(['reto', 'reto', 'perfumeOval']);
+    body = t === 'capsula' ? M('capsula', { W, D: W, h: H, rBot: r1(W * R(0.2, 0.5)), rTop: r1(W * 0.5) })
+      : t === 'boston' ? M('boston', { W, D: W, h: H, rBot: r1(R(3, 8)), rTop: r1(W * R(0.3, 0.42)) })
+      : t === 'perfumeOval' ? M('perfumeOval', { W, D: W, h: H })
+      : M('reto', { W, D: W, h: H, rBot: r1(R(3, 14)), rTop: r1(pick([R(4, 12), W * R(0.25, 0.4)])) });
+  }
+  if (det.has('funil')) body.taper = r1(R(66, 86));
+  if (det.has('cintura')) { body.bulge = r1(W * pick([-1, 1]) * R(0.06, 0.12)); body.bulgePos = r1(R(38, 62)); }
+  if (det.has('gomos') && secao !== 'oval') { body.lobes = Math.round(R(6, 16)); body.lobeD = r1(W * R(0.02, 0.045)); }
+  // repetições no corpo (gomos empilhados) ou em anéis sob a tampa escultural
+  const repBody = det.has('rep') && (fecho !== 'escultural' || rnd() < 0.5);
+  if (repBody) {
+    const n = Math.round(R(2, 4)); body.rep = n; body.h = r1(H / n);
+    const rr = Math.min(body.W, body.h) * R(0.22, 0.4); body.rBot = r1(rr); body.rTop = r1(rr);
+  }
+  // ajusta ao volume pedido, proporcional (como o botão Ajustar)
+  const st = { wall: S.wall, color: BEIGE, finish: 'fosco', modules: [body] };
+  for (let it = 0; it < 12; it++) {
+    const c = volumes(normalize(structuredClone(st))).cap; if (c <= 0) break;
+    if (Math.abs(c - want) < 0.5) break;
+    const f = Math.cbrt(want / c);
+    for (const k of ['W', 'D', 'h', 'rBot', 'rTop', 'lobeD', 'bulge']) if (body[k]) body[k] *= f;
+  }
+  for (const k of ['W', 'D', 'h', 'rBot', 'rTop', 'lobeD', 'bulge']) if (body[k]) body[k] = r1(body[k]);
+  const topW = neckTopW(body), bw = Math.min(body.W, body.D);
+  const neckMax = (allowed) => allowed.filter(k => NECKS[k].W + 3.6 <= topW).sort((a, b) => NECKS[b].W - NECKS[a].W)[0] || allowed[allowed.length - 1];
+  // escala uma peça da biblioteca para uma largura
+  const sized = (t, w, o = {}) => { const L = LIB[t], f = w / L.W; return M(t, { W: r1(w), D: r1((L.D || L.W) * f), h: r1(L.h * f), rBot: r1((L.rBot || 0) * f), rTop: r1((L.rTop || 0) * f), ...(L.lobeD ? { lobeD: r1(L.lobeD * f) } : {}), ...o }); };
+  const mods = [body];
+  let nome = '';
+  if (fecho === 'pump') {
+    const t = pick(['pump', 'locao', 'lamina', 'pumpFrisos']);
+    mods.push(NECK('24/410'), M(t)); nome = LIB[t].name;
+  } else if (fecho === 'spray') {
+    if (rnd() < 0.7) { mods.push(NECK('20/410'), M('spray')); nome = 'Spray fino'; }
+    else { mods.push(NECK('28/410'), M('gatilho', { W: 31, D: 31, h: 17, ridges: 80, ridgeD: 0.35 })); nome = 'Spray gatilho'; }
+  } else if (fecho === 'gotas') {
+    mods.push(NECK('18/410'), M('contaGotas', { W: 21, D: 21 })); nome = 'Conta-gotas';
+  } else {
+    const std = neckMax(['20/410', '24/410', '28/410']), nw = NECKS[std].W, minW = nw + 10;
+    mods.push(NECK(std));
+    const capW = Math.max(minW, bw * R(0.55, 0.9));
+    if (det.has('rep') && !repBody) mods.push(M('anel', { W: r1(capW * R(0.7, 0.9)), D: r1(capW * R(0.7, 0.9)), h: r1(R(6, 10)), rBot: 3, rTop: 3, rep: Math.round(R(2, 4)) }));
+    if (fecho === 'disc') { mods.push(M('disctop', { W: r1(Math.max(minW, bw * R(0.7, 0.9))), D: r1(Math.max(minW, bw * R(0.7, 0.9))) })); nome = 'Disc-top'; }
+    else if (fecho === 'flip') {
+      if (secao === 'oval') { const t = pick(['flip', 'seixo', 'domo']); mods.push(sized(t, Math.max(minW, body.W * R(0.7, 0.95)), { D: r1(Math.max(minW - 4, body.D * R(0.8, 1))) })); nome = LIB[t].name; }
+      else { const t = pick(['flipRedondo', 'flipAba', 'esfera']); mods.push(sized(t, Math.max(minW, t === 'esfera' ? capW * 0.8 : capW))); nome = LIB[t].name; }
+    } else {
+      const combo = pick(['tigela', 'barril', 'nuvem', 'taca', 'sextavado', 'canelado', 'bola', 'flare']);
+      if (combo === 'tigela') mods.push(sized('tigela', capW), sized('disco', capW * 1.05));
+      else if (combo === 'barril') mods.push(sized('barril', capW), sized('disco', capW * 0.9));
+      else if (combo === 'canelado') mods.push(sized('canelado', capW), sized('disco', capW * 1.1));
+      else if (combo === 'flare') mods.push(sized('flare', Math.max(minW, capW * 0.6)), sized('disco', capW));
+      else mods.push(sized(combo, capW));
+      nome = { tigela: 'Tigela + disco', barril: 'Barril + disco', nuvem: 'Tampa nuvem', taca: 'Tampa taça', sextavado: 'Sextavada', canelado: 'Canelada + disco', bola: 'Bola', flare: 'Flare + disco' }[combo];
+    }
+  }
+  st.modules = mods;
+  const ml = volumes(normalize(structuredClone(st))).cap;
+  return { st, info: `${Math.round(ml)} ml · ${nome}` };
+}
+function runGen() {
+  const seed = Math.round(+$('#genSeed').value || 1), want = clamp(+$('#genMl').value || 300, 5, 3000), n = +[...genSel.qtd][0] || 9;
+  const grid = $('#genGrid'); grid.innerHTML = '';
+  for (let i = 0; i < n; i++) {
+    let r; try { r = genOne(seed * 1009 + i * 7919, want); } catch (e) { console.error(e); continue; }
+    const name = `Opção ${seed}-${i + 1}`;
+    const card = document.createElement('div'); card.className = 'card'; card.title = name;
+    card.innerHTML = `<img class="ph" alt=""><div>${r.info}</div>`;
+    card.onclick = () => { loadState(r.st, name); grid.querySelectorAll('.card').forEach(c => c.classList.toggle('on', c === card)); };
+    grid.appendChild(card); queueThumb(card.querySelector('img'), r.st);
+  }
+}
+$('#genBtn').onclick = runGen;
+$('#genDice').onclick = () => { $('#genSeed').value = Math.floor(Math.random() * 99999) + 1; runGen(); };
+
 window.OUTBOX = { get S() { return S; }, get swapScroll() { return swapScroll; }, product, layout, scene, sun, stage, ground, renderer, areaKey, areaFill, hemi, detailShow, applyLogos, build, render: () => renderFrame(), get cam() { return cam; } };
 
 buildDraftPresets();
