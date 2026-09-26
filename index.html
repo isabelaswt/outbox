@@ -389,7 +389,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-25.explodir-volta';
+const BUILD = '2026-09-25.gargalo-cor-do-frasco';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -2186,7 +2186,9 @@ function buildInto(product, S, explodeAmt = 0) {
     const hasLogo = S.logos?.some(L => L.uid === m.uid);
     const under = m0.kind === 'gargalo' && L[i - 1]?.m.vol && L[i - 1].m.kind === 'giro' ? { m: L[i - 1].m, y0: L[i - 1].y0 } : null;
     const g = moduleGeo(m, y0, { logoQuality: hasLogo, body: under }); if (!g) return;
-    const mesh = new THREE.Mesh(g, material(m.own ? m.color : S.color, m.own ? m.finish : S.finish));
+    // Gargalo é parte do frasco: sempre a cor e o acabamento do corpo de baixo.
+    const ms = m0.kind === 'gargalo' && L[i - 1]?.m.vol ? L[i - 1].m : m;
+    const mesh = new THREE.Mesh(g, material(ms.own ? ms.color : S.color, ms.own ? ms.finish : S.finish));
     mesh.castShadow = true; mesh.receiveShadow = true;
     mesh.userData.idx = idx;
     // Cada repetição é alvo de logo, com o número da cópia (0 = a primeira).
