@@ -423,7 +423,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-26.video-artistico';
+const BUILD = '2026-09-26.luz-faixas';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -1897,6 +1897,25 @@ function studioScene() {
   return sc;
 }
 const roomEnv = pmrem.fromScene(studioScene(), 0.02).texture;
+// Luz de faixas (strip lights): sala escura, uma faixa vertical alta na frente um
+// pouco à esquerda (o reflexo vertical no corpo), outra fraca à direita e luz de
+// topo para ombro e tampa. As laterais ficam escuras e desenham o cilindro.
+function stripScene() {
+  const sc = new THREE.Scene();
+  const room = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshBasicMaterial({ color: new THREE.Color('#1c1c1f'), side: THREE.BackSide }));
+  room.scale.set(30, 18, 30); room.position.y = 5; sc.add(room);
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(30, 30), new THREE.MeshBasicMaterial({ color: new THREE.Color('#4a4a4e') }));
+  floor.rotation.x = -Math.PI / 2; floor.position.y = -2.9; sc.add(floor);
+  const soft = (w, h, k, pos, look = [0, 1, 0]) => {
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ color: new THREE.Color('#ffffff').multiplyScalar(k), side: THREE.DoubleSide }));
+    m.position.set(...pos); m.lookAt(...look); sc.add(m);
+  };
+  soft(3.4, 16, 10, [-2.4, 3, 9]);           // faixa principal (frente, à esquerda)
+  soft(1.6, 14, 3, [6, 3, 7]);               // faixa de apoio (direita)
+  soft(8, 3, 6, [0, 11, 1], [0, 0, 0]);      // topo: ombro e tampa
+  return sc;
+}
+const stripEnv = pmrem.fromScene(stripScene(), 0.01).texture;
 scene.environment = roomEnv;
 // Luz padrão pensada para ler volume: ambiente baixo, luz principal lateral
 // forte e um contraluz frio do outro lado para recortar a silhueta.
@@ -2077,7 +2096,7 @@ function renderScene() {
   if (S.scene.cena !== 'nenhum') field(f, S.scene, ['cenaCor', 'Cor do cenário', 'color'], ch);
   if (['pedestal', 'bloco', 'degraus'].includes(S.scene.cena)) field(f, S.scene, ['cenaH', 'Altura do pedestal', 5, 150, 1, 'mm'], ch);
   field(f, S.scene, ['luz', 'Luz', 'select', [['padrao', 'Padrão (leitura do volume)'], ['soft', 'Suave'], ['contrast', 'Contraste'],
-    ['sol', 'Sol (sombra longa)'], ['drama', 'Dramática']]], ch);
+    ['sol', 'Sol (sombra longa)'], ['drama', 'Dramática'], ['faixa', 'Faixas de estúdio (reflexo vertical)']]], ch);
   field(f, S.scene, ['ao', 'Sombra de contato (o produto pesa na superfície)', 'check'], ch);
   field(f, S, ['bg', 'Fundo da cena', 'color'], queueBuild);
 }
@@ -3806,7 +3825,9 @@ function applyLightingMode(mode) {
   const boost = envStrength(HDR.strength);
   scene.environment = env;
   setEnvRotation(HDR.rot);
-  if (mode === 'sol') { // sol baixo: sombra longa e marcada, como foto de luz natural
+  if (mode === 'faixa') { // faixas verticais de estúdio: reflexo alto na frente e laterais escuras
+    scene.environment = stripEnv; scene.environmentIntensity = 1.1 * boost; hemi.intensity = 0.05; sun.intensity = 0.7; sun.position.set(-60, 520, 260);
+  } else if (mode === 'sol') { // sol baixo: sombra longa e marcada, como foto de luz natural
     scene.environmentIntensity = 0.85 * boost; hemi.intensity = 0.2; sun.intensity = 2.4; sun.position.set(-460, 260, 220);
   } else if (mode === 'drama') { // fundo escuro de luz: lateral forte e contraluz
     scene.environmentIntensity = 0.5 * boost; hemi.intensity = 0.06; sun.intensity = 2.6; sun.position.set(-380, 300, -40);
