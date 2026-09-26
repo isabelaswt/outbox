@@ -215,7 +215,7 @@ canvas{display:block;width:100%;height:100%;touch-action:none}
     <div class="tip">Cenário, luz e vídeo girando para mostrar o produto. O cenário se ajusta ao tamanho do produto (e dos que estão ao lado).</div>
     <div id="sceneFields"></div>
     <div class="row">
-      <select id="spinMode"><option value="360">Volta inteira (360°)</option><option value="balanco">Vai e volta (frente sempre à vista)</option></select>
+      <select id="spinMode"><option value="360">Volta inteira (360°)</option><option value="balanco">Vai e volta (frente sempre à vista)</option><option value="arte">Artístico: inclinado 45° girando no ar</option></select>
       <select id="spinSec"><option value="6">6 s</option><option value="10" selected>10 s</option><option value="15">15 s</option></select>
     </div>
     <div class="row">
@@ -423,7 +423,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-26.logo-no-vidro';
+const BUILD = '2026-09-26.video-artistico';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -2093,6 +2093,21 @@ async function recordSpin(sec, mode = '360') {
   rec.ondataavailable = e => e.data.size && chunks.push(e.data);
   const done = new Promise(r => { rec.onstop = r; });
   const T = controls.target.clone(), off = cam.position.clone().sub(T), R = Math.hypot(off.x, off.z), a0 = Math.atan2(off.z, off.x);
+  // Artístico: o produto vai para um pivô no próprio centro, inclina 45° para o
+  // lado (em relação à câmera), sobe um pouco e gira no próprio eixo; a câmera
+  // fica parada, reenquadrada para caber a peça inclinada.
+  let art = null;
+  if (mode === 'arte') {
+    const sph = new THREE.Box3().setFromObject(product).getBoundingSphere(new THREE.Sphere());
+    const pivot = new THREE.Group(), lift = sph.radius * 0.35 + 10;
+    pivot.position.copy(sph.center); scene.add(pivot); pivot.attach(product); pivot.position.y += lift; // gira no próprio centro
+    const fwd = cam.getWorldDirection(new THREE.Vector3()); fwd.y = 0; fwd.normalize();
+    art = { pivot, tilt: new THREE.Quaternion().setFromAxisAngle(fwd, -Math.PI / 4), stageVis: stage.visible, lift };
+    stage.visible = false; // pedestal e sombra de contato não fazem sentido com a peça no ar
+    const vh = THREE.MathUtils.degToRad(persp.fov / 2), hh = Math.atan(Math.tan(vh) * persp.aspect);
+    const dir = cam.position.clone().sub(T).normalize(), dist = sph.radius * 1.3 / Math.sin(Math.min(vh, hh));
+    art.T = pivot.position.clone(); cam.position.copy(art.T).addScaledVector(dir, dist); cam.lookAt(art.T);
+  }
   rec.start();
   await new Promise(res => {
     const t0 = performance.now();
@@ -2100,13 +2115,21 @@ async function recordSpin(sec, mode = '360') {
       // 360°: volta inteira. Vai e volta: balança ±40° em torno do ângulo atual
       // (o logo/rótulo da frente nunca vai para trás).
       const f = Math.min(1, (now - t0) / (sec * 1000)), a = mode === 'balanco' ? a0 + Math.sin(f * Math.PI * 2) * 0.7 : a0 + f * Math.PI * 2;
-      cam.position.set(T.x + R * Math.cos(a), T.y + off.y, T.z + R * Math.sin(a)); cam.lookAt(T);
+      if (art) { // inclinado, girando no próprio eixo e flutuando de leve
+        const spin = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), f * Math.PI * 2);
+        art.pivot.quaternion.copy(art.tilt).multiply(spin);
+        art.pivot.position.y = art.T.y + Math.sin(f * Math.PI * 4) * art.lift * 0.08;
+      } else { cam.position.set(T.x + R * Math.cos(a), T.y + off.y, T.z + R * Math.sin(a)); cam.lookAt(T); }
       renderFrame();
       f < 1 ? requestAnimationFrame(step) : res();
     };
     requestAnimationFrame(step);
   });
   rec.stop(); await done;
+  if (art) { // devolve o produto ao lugar
+    art.pivot.quaternion.identity(); art.pivot.updateMatrixWorld(true); scene.attach(product);
+    product.position.set(0, 0, 0); product.quaternion.identity(); scene.remove(art.pivot); stage.visible = art.stageVis;
+  }
   cam.position.copy(keep.pos); cam.lookAt(T); grid.visible = keep.grid; refMesh.visible = keep.ref; controls.enabled = true; controls.update(); req();
   download(new Blob(chunks, { type: mime }), fname(mime.includes('mp4') ? 'mp4' : 'webm'));
   btn.disabled = false; btn.textContent = 'Gravar vídeo'; spinning = false;
