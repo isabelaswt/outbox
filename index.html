@@ -439,7 +439,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-26.jateado2';
+const BUILD = '2026-09-26.logo-vidro';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -2912,11 +2912,14 @@ function logoMat(base, glass = null) {
     if (glass) {
       const back = glass === 'fosco' ? 0.12 : 0.45;
       m.transparent = true; m.depthWrite = true; m.forceSinglePass = true; // sem a passada de costas (que inverte as normais)
-      m.onBeforeCompile = sh => {
+      // soma ao shader do próprio vidro (senão o logo perdia o jateado e ficava escuro)
+      const prev = base.onBeforeCompile, prevKey = base.customProgramCacheKey?.bind(base);
+      m.onBeforeCompile = (sh, r) => {
+        prev?.call(m, sh, r);
         sh.fragmentShader = sh.fragmentShader.replace('#include <opaque_fragment>',
           `float facing = dot(normalize(vNormal), normalize(vViewPosition));\n diffuseColor.a *= mix(${back.toFixed(2)}, 1.0, smoothstep(-0.05, 0.3, facing));\n#include <opaque_fragment>`);
       };
-      m.customProgramCacheKey = () => 'logoVidro' + back;
+      m.customProgramCacheKey = () => 'logoVidro' + back + (prevKey ? prevKey() : '');
     }
     logoMats.set(key, m);
   }
