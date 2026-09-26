@@ -439,7 +439,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-26.gerador-baixo';
+const BUILD = '2026-09-26.gerador-pescoco';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -4495,10 +4495,11 @@ const GEN = {
   formato: { label: 'Formato', one: true, opts: { vertical: 'Vertical', baixo: 'Baixo e largo' } },
   secao: { label: 'Seção', opts: { redonda: 'Redonda', oval: 'Oval / achatada', quadrada: 'Quadrada' } },
   fecho: { label: 'Fechamento', opts: { pump: 'Pump', spray: 'Spray', flip: 'Flip-top', escultural: 'Tampa escultural', disc: 'Disc-top', gotas: 'Conta-gotas' } },
+  pescoco: { label: 'Pescoço (entre corpo e tampa)', opts: { liso: 'Liso', aneis: 'Anéis empilhados', almofada: 'Almofada', canelado: 'Coluna canelada' } },
   detalhe: { label: 'Detalhes', all: true, opts: { rep: 'Repetições', gomos: 'Gomos', cintura: 'Cintura', funil: 'Afunilado' } },
   qtd: { label: 'Quantas opções', one: true, opts: { 6: '6', 9: '9', 12: '12' } },
 };
-const genSel = { formato: new Set(['vertical']), secao: new Set(), fecho: new Set(), detalhe: new Set(), qtd: new Set(['9']) };
+const genSel = { formato: new Set(['vertical']), secao: new Set(), pescoco: new Set(), fecho: new Set(), detalhe: new Set(), qtd: new Set(['9']) };
 (function renderGenOpts() {
   const box = $('#genOpts'); box.innerHTML = '';
   for (const [g, def] of Object.entries(GEN)) {
@@ -4526,7 +4527,10 @@ function genOne(seed, want) {
   const from = (g, all) => (genSel[g].size ? [...genSel[g]] : all);
   const formato = genSel.formato.size ? [...genSel.formato][0] : pick(['vertical', 'vertical', 'baixo']);
   const secao = pick(from('secao', ['redonda', 'redonda', 'oval', 'quadrada']));
-  const fecho = pick(from('fecho', ['pump', 'spray', 'flip', 'escultural', 'escultural', 'disc']));
+  // pescoço escultural pedido: fica com fechamentos que vestem o gargalo (pump/spray precisam da rosca à mostra)
+  const querPesc = [...genSel.pescoco].some(k => k !== 'liso');
+  const fecho = pick(from('fecho', querPesc ? ['flip', 'escultural', 'escultural', 'disc'] : ['pump', 'spray', 'flip', 'escultural', 'escultural', 'disc']));
+  const pesc = pick(from('pescoco', ['liso', 'liso', 'aneis', 'almofada', 'canelado']));
   const det = genSel.detalhe;
   // corpo (o volume ajusta o tamanho depois; aqui só a proporção)
   const W = 60, ratio = formato === 'vertical' ? R(2.1, 3.1) : R(0.85, 1.3), H = W * ratio;
@@ -4576,24 +4580,30 @@ function genOne(seed, want) {
     const std = neckMax(['20/410', '24/410', '28/410']), nw = NECKS[std].W, minW = nw + 10;
     mods.push(NECK(std));
     const capW = Math.max(minW, bw * R(0.55, 0.9));
-    if (det.has('rep') && !repBody) mods.push(M('anel', { W: r1(capW * R(0.7, 0.9)), D: r1(capW * R(0.7, 0.9)), h: r1(R(6, 10)), rBot: 3, rTop: 3, rep: Math.round(R(2, 4)) }));
+    // pescoço escultural: peça larga e macia entre o corpo e a tampa (cobre o gargalo)
+    const pw = Math.max(minW, bw * R(0.55, 0.95));
+    if (pesc === 'aneis') { const n = Math.round(R(3, 5)), h = r1(pw * R(0.22, 0.32)); mods.push(M('anel', { name: 'Pescoço de anéis', W: r1(pw), D: r1(pw), h, rBot: r1(h / 2), rTop: r1(h / 2), rep: n })); }
+    else if (pesc === 'almofada') { const h = r1(pw * R(0.75, 1.05)), rr = r1(Math.min(pw, h) * R(0.25, 0.38)); mods.push(M('barril', { name: 'Pescoço almofada', W: r1(pw), D: r1(pw), h, bulge: r1(R(0, 2.5)), rBot: rr, rTop: rr })); }
+    else if (pesc === 'canelado') { const w = Math.max(minW, pw * R(0.6, 0.8)); mods.push(M('canelado', { name: 'Pescoço canelado', W: r1(w), D: r1(w), h: r1(w * R(0.6, 1.1)), rBot: 2, rTop: 2, lobes: Math.round(R(10, 18)), lobeD: r1(w * R(0.03, 0.05)) })); }
+    if (det.has('rep') && !repBody && pesc === 'liso') mods.push(M('anel', { W: r1(capW * R(0.7, 0.9)), D: r1(capW * R(0.7, 0.9)), h: r1(R(6, 10)), rBot: 3, rTop: 3, rep: Math.round(R(2, 4)) }));
     if (fecho === 'disc') { mods.push(M('disctop', { W: r1(Math.max(minW, bw * R(0.7, 0.9))), D: r1(Math.max(minW, bw * R(0.7, 0.9))) })); nome = 'Disc-top'; }
     else if (fecho === 'flip') {
       if (secao === 'oval') { const t = pick(['flip', 'seixo', 'domo']); mods.push(sized(t, Math.max(minW, body.W * R(0.7, 0.95)), { D: r1(Math.max(minW - 4, body.D * R(0.8, 1))) })); nome = LIB[t].name; }
       else { const t = pick(['flipRedondo', 'flipAba', 'esfera']); mods.push(sized(t, Math.max(minW, t === 'esfera' ? capW * 0.8 : capW))); nome = LIB[t].name; }
     } else {
-      const combo = pick(['tigela', 'barril', 'nuvem', 'taca', 'sextavado', 'canelado', 'bola', 'flare']);
-      if (combo === 'tigela') mods.push(sized('tigela', capW), sized('disco', capW * 1.05));
+      const combo = pick(['tigela', 'barril', 'nuvem', 'taca', 'sextavado', 'canelado', 'bola', 'flare', ...(pesc !== 'liso' ? ['disco', 'tigela'] : [])]);
+      if (combo === 'disco') mods.push(sized('disco', Math.max(minW, pw * R(1.0, 1.1)), { h: r1(pw * R(0.14, 0.22)) }));
+      else if (combo === 'tigela') mods.push(sized('tigela', capW), sized('disco', capW * 1.05));
       else if (combo === 'barril') mods.push(sized('barril', capW), sized('disco', capW * 0.9));
       else if (combo === 'canelado') mods.push(sized('canelado', capW), sized('disco', capW * 1.1));
       else if (combo === 'flare') mods.push(sized('flare', Math.max(minW, capW * 0.6)), sized('disco', capW));
       else mods.push(sized(combo, capW));
-      nome = { tigela: 'Tigela + disco', barril: 'Barril + disco', nuvem: 'Tampa nuvem', taca: 'Tampa taça', sextavado: 'Sextavada', canelado: 'Canelada + disco', bola: 'Bola', flare: 'Flare + disco' }[combo];
+      nome = { disco: 'Disco', tigela: 'Tigela + disco', barril: 'Barril + disco', nuvem: 'Tampa nuvem', taca: 'Tampa taça', sextavado: 'Sextavada', canelado: 'Canelada + disco', bola: 'Bola', flare: 'Flare + disco' }[combo];
     }
   }
   st.modules = mods;
   const ml = volumes(normalize(structuredClone(st))).cap;
-  return { st, info: `${Math.round(ml)} ml · ${nome}` };
+  return { st, info: `${Math.round(ml)} ml · ${pesc !== 'liso' && !['pump', 'spray', 'gotas'].includes(fecho) ? GEN.pescoco.opts[pesc].toLowerCase() + ' · ' : ''}${nome}` };
 }
 function runGen() {
   const seed = Math.round(+$('#genSeed').value || 1), want = clamp(+$('#genMl').value || 300, 5, 3000), n = +[...genSel.qtd][0] || 9;
