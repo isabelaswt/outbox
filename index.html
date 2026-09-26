@@ -422,7 +422,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-26.video-detalhes';
+const BUILD = '2026-09-26.jateado-faixas';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -1969,11 +1969,19 @@ scene.add(sun, sun.target);
 RectAreaLightUniformsLib.init();
 const areaKey = new THREE.RectAreaLight(0xfff8ef, 0, 100, 100); scene.add(areaKey);
 const areaFill = new THREE.RectAreaLight(0xeef2f8, 0, 100, 100); scene.add(areaFill);
-let areaOn = 0;
+let areaOn = 0, areaMode = 'studio';
 function placeAreaLights() {
   const b = new THREE.Box3().setFromObject(product).union(new THREE.Box3().setFromObject(sideRoot));
   if (b.isEmpty()) return;
   const c = b.getCenter(new THREE.Vector3()), sz = b.getSize(new THREE.Vector3()), R = Math.max(sz.x, sz.y, sz.z);
+  if (areaMode === 'faixa') { // faixa alta e estreita na frente (à esquerda) + faixa fraca à direita
+    areaKey.width = R * 0.28; areaKey.height = R * 2.2;
+    areaKey.position.set(c.x - R * 0.35, c.y + R * 0.15, c.z + R * 1.05); areaKey.lookAt(c.x, c.y, c.z);
+    areaFill.width = R * 0.2; areaFill.height = R * 1.8;
+    areaFill.position.set(c.x + R * 1.0, c.y + R * 0.1, c.z + R * 0.55); areaFill.lookAt(c);
+    areaKey.intensity = areaOn * 14; areaFill.intensity = areaOn * 3;
+    return;
+  }
   areaKey.width = R * 1.1; areaKey.height = R * 1.5;
   areaKey.position.set(c.x + R * 0.75, c.y + R * 0.55, c.z + R * 0.85); areaKey.lookAt(c.x, c.y - R * 0.1, c.z);
   areaFill.width = R * 0.8; areaFill.height = R * 1.2;
@@ -2067,9 +2075,10 @@ function material(color, finish) {
   // Contraste: parte da luz é espalhada pelo jateado (o vidro ganha o degradê do
   // estúdio), a cor fica mais densa com a espessura e o contorno pega um brilho
   // acetinado (a borda do fosco acende, como no vidro de verdade).
-  if (finish === 'vidroFosco') { m.roughness = 0.45; m.transmission = 0.8; m.thickness = 8; m.ior = 1.5; m.depthWrite = false;
-    m.attenuationColor = new THREE.Color(color); m.attenuationDistance = 30;
-    m.sheen = 0.55; m.sheenRoughness = 0.5; m.sheenColor = new THREE.Color('#ffffff'); m.specularIntensity = 1; }
+  if (finish === 'vidroFosco') { m.roughness = 0.5; m.transmission = 0.55; m.thickness = 10; m.ior = 1.5; m.depthWrite = false;
+    m.attenuationColor = new THREE.Color(color); m.attenuationDistance = 14;
+    m.clearcoat = 0.2; m.clearcoatRoughness = 0.38; // brilho largo e macio na superfície, como o acetinado
+    m.sheen = 0.6; m.sheenRoughness = 0.45; m.sheenColor = new THREE.Color('#ffffff'); m.specularIntensity = 1; }
   if (finish === 'metal') { m.metalness = 1; m.roughness = 0.3; } // um pouco menos espelhado: sem brilho piscando nas quinas
   matCache.set(key, m);
   return m;
@@ -3977,7 +3986,7 @@ function applyLightingMode(mode) {
   scene.environment = env;
   setEnvRotation(HDR.rot);
   if (mode === 'faixa') { // faixas verticais de estúdio: reflexo alto na frente e laterais escuras
-    scene.environment = stripEnv; scene.environmentIntensity = 1.1 * boost; hemi.intensity = 0.05; sun.intensity = 0.7; sun.position.set(-60, 520, 260);
+    scene.environment = stripEnv; scene.environmentIntensity = 0.75 * boost; hemi.intensity = 0.04; sun.intensity = 0.45; sun.position.set(-60, 520, 260);
   } else if (mode === 'sol') { // sol baixo: sombra longa e marcada, como foto de luz natural
     scene.environmentIntensity = 0.85 * boost; hemi.intensity = 0.2; sun.intensity = 2.4; sun.position.set(-460, 260, 220);
   } else if (mode === 'drama') { // fundo escuro de luz: lateral forte e contraluz
@@ -3991,7 +4000,7 @@ function applyLightingMode(mode) {
   } else { // estúdio claro (padrão): caixa de luz de área + ambiente de estúdio
     scene.environment = refEnv; scene.environmentIntensity = 0.5 * boost; hemi.intensity = 0.08; sun.intensity = 0.5; sun.position.set(220, 520, 260);
   }
-  areaOn = mode === 'studio' ? 1 : 0; placeAreaLights();
+  areaOn = mode === 'studio' || mode === 'faixa' ? 1 : 0; areaMode = mode === 'faixa' ? 'faixa' : 'studio'; placeAreaLights();
 }
 function applyPngLighting(mode) {
   const keep = snapshotLighting();
