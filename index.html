@@ -418,7 +418,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-26.inclinado-referencia';
+const BUILD = '2026-09-26.salvar-luz';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -2231,6 +2231,26 @@ function renderScene() {
   rb.innerHTML = '<button class="btn">Voltar a luz ao padrão</button>';
   rb.querySelector('button').onclick = () => { Object.assign(S.scene, { luzRot: 0, luzInt: 100, luzCon: 50 }); renderScene(); applySceneLight(); buildStage(); store.set('shape.autosave', S); req(); };
   f.appendChild(rb);
+  // Minhas luzes: a luz escolhida + girar/intensidade/contraste + cor do fundo, com nome.
+  const mine = store.get('shape.lights', {}), names = Object.keys(mine);
+  const ml = document.createElement('div'); ml.className = 'f';
+  ml.innerHTML = `<div class="top"><label>Minhas luzes</label></div>
+    <div class="row"><select style="flex:1">${names.length ? names.map(n => `<option>${n.replace(/</g, '&lt;')}</option>`).join('') : '<option value="">(nenhuma salva ainda)</option>'}</select>
+    <button class="btn sm">Usar</button><button class="btn sm">Excluir</button></div>
+    <div class="row"><button class="btn">Salvar esta luz</button></div>`;
+  const [sel, useB, delB, saveB] = [ml.querySelector('select'), ...ml.querySelectorAll('button')];
+  useB.onclick = () => {
+    const L = mine[sel.value]; if (!L) return;
+    Object.assign(S.scene, { luz: L.luz, luzRot: L.luzRot, luzInt: L.luzInt, luzCon: L.luzCon }); if (L.bg) S.bg = L.bg;
+    renderScene(); renderGlobal(); applySceneLight(); build(); toast(`Luz aplicada: ${sel.value}`);
+  };
+  delB.onclick = () => { if (!mine[sel.value]) return; delete mine[sel.value]; store.set('shape.lights', mine); renderScene(); toast('Luz excluída'); };
+  saveB.onclick = () => {
+    const n = (prompt('Nome da luz:', names.includes(sel.value) ? sel.value : 'Minha luz') || '').trim(); if (!n) return;
+    const sc = sceneOf(); mine[n] = { luz: sc.luz, luzRot: sc.luzRot, luzInt: sc.luzInt, luzCon: sc.luzCon, bg: S.bg };
+    store.set('shape.lights', mine); renderScene(); toast(`Luz salva: ${n}`);
+  };
+  f.appendChild(ml);
   const hb = document.createElement('div'); hb.className = 'row';
   hb.innerHTML = `<button class="btn">${HDR.env ? 'Trocar HDR' : 'Carregar HDR (luz de foto)'}</button>`;
   hb.querySelector('button').onclick = () => $('#hdrFile').click(); f.appendChild(hb);
