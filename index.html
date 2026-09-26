@@ -418,7 +418,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-26.luz-janela-recorte';
+const BUILD = '2026-09-26.luz-produto';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -1945,6 +1945,25 @@ function refStudioScene() {
   return sc;
 }
 const refEnv = pmrem.fromScene(refStudioScene(), 0.02).texture;
+// Produto (e-commerce): uma caixa de luz grande e vertical na frente, um pouco à
+// direita — no plástico fosco ela vira a faixa larga e macia do centro-direita —,
+// topo claro para ombros e quinas, laterais e chão escuros (degradê para baixo).
+function productScene() {
+  const sc = new THREE.Scene();
+  const room = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshBasicMaterial({ color: new THREE.Color('#2a2c30'), side: THREE.BackSide }));
+  room.scale.set(30, 18, 30); room.position.y = 5; sc.add(room);
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(30, 30), new THREE.MeshBasicMaterial({ color: new THREE.Color('#3c3d40') }));
+  floor.rotation.x = -Math.PI / 2; floor.position.y = -2.9; sc.add(floor);
+  const soft = (w, h, k, pos, look = [0, 1, 0], tint = '#ffffff') => {
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ color: new THREE.Color(tint).multiplyScalar(k), side: THREE.DoubleSide }));
+    m.position.set(...pos); m.lookAt(...look); sc.add(m);
+  };
+  soft(6, 16, 4.2, [2.2, 3, 10]);                     // faixa larga na frente, centro-direita
+  soft(10, 4, 3.2, [0, 11, 1], [0, 0, 0]);            // topo: ombro e quinas
+  soft(4, 12, 1.1, [11, 3, 1], [0, 1, 0], '#e8eef8'); // lateral direita fraca, fria
+  return sc;
+}
+const productEnv = pmrem.fromScene(productScene(), 0.03).texture;
 scene.environment = roomEnv;
 // Luz padrão pensada para ler volume: ambiente baixo, luz principal lateral
 // forte e um contraluz frio do outro lado para recortar a silhueta.
@@ -1979,6 +1998,14 @@ function placeAreaLights() {
   }
 }
 function placeAreaCore(c, R) {
+  if (areaMode === 'produto') { // caixa perto e oblíqua na frente-direita: degradê de um lado ao outro da face + topo
+    areaKey.width = R * 0.45; areaKey.height = R * 1.5;
+    areaKey.position.set(c.x + R * 0.62, c.y + R * 0.25, c.z + R * 0.42); areaKey.lookAt(c.x, c.y, c.z);
+    areaFill.width = R * 1.0; areaFill.height = R * 0.5;
+    areaFill.position.set(c.x, c.y + R * 1.3, c.z + R * 0.3); areaFill.lookAt(c);
+    areaKey.intensity = areaOn * 14; areaFill.intensity = areaOn * 2.5;
+    return;
+  }
   if (areaMode === 'janela') { // janela grande ao lado: degradê longo de um lado ao outro
     areaKey.width = R * 1.4; areaKey.height = R * 2.2;
     areaKey.position.set(c.x - R * 1.5, c.y + R * 0.35, c.z + R * 0.35); areaKey.lookAt(c.x, c.y, c.z);
@@ -2193,7 +2220,7 @@ function renderScene() {
     ['degraus', 'Degraus (vitrine)'], ['arco', 'Arco ao fundo'], ['infinito', 'Fundo infinito (estúdio)']]], ch);
   if (S.scene.cena !== 'nenhum') field(f, S.scene, ['cenaCor', 'Cor do cenário', 'color'], ch);
   if (['pedestal', 'bloco', 'degraus'].includes(S.scene.cena)) field(f, S.scene, ['cenaH', 'Altura do pedestal', 5, 150, 1, 'mm'], ch);
-  field(f, S.scene, ['luz', 'Luz (vale para tela, imagem e vídeo)', 'select', [['studio', 'Estúdio claro (padrão)'], ['padrao', 'Volume (mais contraste de lado)'],
+  field(f, S.scene, ['luz', 'Luz (vale para tela, imagem e vídeo)', 'select', [['studio', 'Estúdio claro (padrão)'], ['produto', 'Produto (e-commerce, faixa macia)'], ['padrao', 'Volume (mais contraste de lado)'],
     ['soft', 'Suave'], ['contrast', 'Contraste'], ['sol', 'Sol (sombra longa)'], ['drama', 'Dramática'], ['faixa', 'Faixas de estúdio (reflexo vertical)'],
     ['janela', 'Janela lateral (degradê longo)'], ['recorte', 'Recorte / contraluz (contornos acesos)'],
     ...(HDR.env ? [['hdr', `HDR carregado (${HDR.name})`]] : [])]], ch);
@@ -4038,7 +4065,9 @@ function applyLightingMode(mode) {
   const boost = envStrength(sceneOf().luzInt);
   scene.environment = env;
   setEnvRotation(sceneOf().luzRot || 0);
-  if (mode === 'janela') {
+  if (mode === 'produto') { // e-commerce: faixa macia de reflexo, pouca sombra, degradê para baixo
+    scene.environment = productEnv; scene.environmentIntensity = 0.35 * boost; hemi.intensity = 0.04; sun.intensity = 0.2; sun.position.set(120, 600, 260);
+  } else if (mode === 'janela') {
     scene.environment = refEnv; scene.environmentIntensity = 0.42 * boost; hemi.intensity = 0.05; sun.intensity = 0.9; sun.position.set(-520, 330, 120);
   } else if (mode === 'recorte') {
     scene.environment = stripEnv; scene.environmentIntensity = 0.35 * boost; hemi.intensity = 0.04; sun.intensity = 0.35; sun.position.set(40, 560, -220);
@@ -4057,8 +4086,8 @@ function applyLightingMode(mode) {
   } else { // estúdio claro (padrão): caixa de luz de área + ambiente de estúdio
     scene.environment = refEnv; scene.environmentIntensity = 0.5 * boost; hemi.intensity = 0.08; sun.intensity = 0.5; sun.position.set(220, 520, 260);
   }
-  areaOn = ['studio', 'faixa', 'janela', 'recorte'].includes(mode) ? 1 : 0;
-  areaMode = ['faixa', 'janela', 'recorte'].includes(mode) ? mode : 'studio'; placeAreaLights();
+  areaOn = ['studio', 'faixa', 'janela', 'recorte', 'produto'].includes(mode) ? 1 : 0;
+  areaMode = ['faixa', 'janela', 'recorte', 'produto'].includes(mode) ? mode : 'studio'; placeAreaLights();
 }
 function applyPngLighting(mode) {
   const keep = snapshotLighting();
@@ -4147,7 +4176,7 @@ $('#dlObj').onclick = () => download(new Blob([new OBJExporter().parse(exportRoo
 
 // ───────────────────────── início ─────────────────────────
 // Acesso para inspeção no console do navegador.
-window.OUTBOX = { get S() { return S; }, get swapScroll() { return swapScroll; }, product, layout, scene, sun, stage, ground, renderer, get cam() { return cam; } };
+window.OUTBOX = { get S() { return S; }, get swapScroll() { return swapScroll; }, product, layout, scene, sun, stage, ground, renderer, areaKey, areaFill, hemi, get cam() { return cam; } };
 
 buildDraftPresets();
 resize();
