@@ -288,6 +288,7 @@ const BASE = {
   groove: 0, grooveD: 0.6,
   notch: false, notchLock: true, notchY: 12, notchW: 20, notchH: 8, notchD: 2, notchP: 2,
   ridges: 0, ridgeD: 0.6, lobes: 0, lobeD: 3,
+  labType: 'nenhum', labH: 50, labY: 50, labW: 40, labColor: '#ffffff', labFinish: 'fosco', labImg: '', labImgB: '',
   own: false, color: '#e8dcc6', finish: 'fosco', vol: false,
   // kind 'giro': seção girando no eixo; 'placa': silhueta frontal extrudada na profundidade.
   kind: 'giro', ox: 0, rTL: 6, rTR: 6, rBL: 6, rBR: 6, rEdge: 3, chamfer: false,
@@ -396,7 +397,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-25.pilula';
+const BUILD = '2026-09-25.rotulo';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -1932,6 +1933,7 @@ function material(color, finish) {
 function build() {
   holeMat.color.set(S.color).multiplyScalar(0.55);
   buildInto(product, S, explode ? 18 : 0);
+  applyLabelsTo(product, S);
   buildLineup();
   record();
   scheduleLogos();
@@ -2148,6 +2150,86 @@ async function applyLogosTo(group, st, alive) {
   });
   group.position.x = px; group.updateMatrixWorld(true);
   req();
+}
+// ───────────────────────── rótulo ─────────────────────────
+// Película fina assentada na superfície do corpo: envolvendo tudo ou dois adesivos
+// (frente e verso). Cada linha é medida por raios vindos de fora na direção do eixo,
+// então o rótulo segue qualquer seção (oval, plana, gomos) sem esticar.
+const labTex = new Map();
+function labelTexture(url) {
+  if (!url) return null;
+  if (labTex.has(url)) return labTex.get(url);
+  const t = new THREE.TextureLoader().load(url, () => req());
+  t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8;
+  labTex.set(url, t); return t;
+}
+const labMats = new Map();
+function labelMaterial(m, img) {
+  const key = [m.labColor, m.labFinish, img?.slice(-40) || '', img?.length || 0].join('|');
+  if (labMats.has(key)) return labMats.get(key);
+  const mt = material(m.labColor || '#ffffff', m.labFinish || 'fosco').clone();
+  const t = labelTexture(img); if (t) { mt.map = t; mt.transparent = img.startsWith('data:image/png'); }
+  mt.side = THREE.DoubleSide; mt.polygonOffset = true; mt.polygonOffsetFactor = -2; mt.polygonOffsetUnits = -2;
+  mt.depthWrite = true; mt.transmission = 0;
+  labMats.set(key, mt); return mt;
+}
+function applyLabelsTo(group, st) {
+  const mods = new Map(st.modules.map(m => [m.uid, m]));
+  const px = group.position.x; group.position.x = 0; group.updateMatrixWorld(true);
+  const rc = new THREE.Raycaster(), V = THREE.Vector3; rc.firstHitOnly = true;
+  for (const o of group.children.filter(o => o.userData.main && !(o.userData.rep > 0))) {
+    const m = mods.get(o.userData.uid);
+    if (!m || !m.vol || !m.labType || m.labType === 'nenhum') continue;
+    if (!o.geometry.boundsTree) o.geometry.computeBoundsTree();
+    const bb = new THREE.Box3().setFromObject(o), BH = bb.max.y - bb.min.y;
+    const H = clamp(m.labH, 2, BH - 0.4), yc = clamp(bb.min.y + BH * m.labY / 100, bb.min.y + H / 2 + 0.2, bb.max.y - H / 2 - 0.2);
+    const cx = o.userData.ox || 0, NR = clamp(Math.round(H / 0.8), 8, 160), NA = 360, off = 0.14;
+    // Anel de amostras por altura: começa atrás (−z) e dá a volta; arco acumulado.
+    const rows = [];
+    for (let r = 0; r <= NR; r++) {
+      const yy = yc - H / 2 + H * r / NR, pts = [], acc = [0];
+      for (let j = 0; j < NA; j++) {
+        const th = -Math.PI / 2 + j / NA * TAU, d = new V(Math.cos(th), 0, Math.sin(th));
+        rc.set(new V(cx + d.x * 600, yy, d.z * 600), d.clone().negate());
+        const h = rc.intersectObject(o)[0];
+        pts.push(h ? h.point.clone().addScaledVector(d, off) : (pts[j - 1]?.clone() || new V(cx, yy, 0)));
+        if (j) acc.push(acc[j - 1] + pts[j].distanceTo(pts[j - 1]));
+      }
+      const total = acc[NA - 1] + pts[0].distanceTo(pts[NA - 1]);
+      rows.push({ pts, acc, total });
+    }
+    // Ponto no arco s (cíclico) de uma linha.
+    const at = (R, sArc) => {
+      let q = ((sArc % R.total) + R.total) % R.total;
+      let lo = 0, hi = NA; const A = i => (i === NA ? R.total : R.acc[i]), P = i => R.pts[i % NA];
+      while (hi - lo > 1) { const mid = (lo + hi) >> 1; A(mid) <= q ? lo = mid : hi = mid; }
+      const f = (q - A(lo)) / Math.max(A(hi) - A(lo), 1e-6);
+      return P(lo).clone().lerp(P(hi), f);
+    };
+    const patch = (sOf, NC, img) => {
+      const pos = [], uv = [], idx = [];
+      for (let r = 0; r <= NR; r++) for (let c = 0; c <= NC; c++) {
+        const u = c / NC, p = at(rows[r], sOf(rows[r], u)); pos.push(p.x, p.y, p.z); uv.push(u, r / NR);
+      }
+      for (let r = 0; r < NR; r++) for (let c = 0; c < NC; c++) {
+        const a = r * (NC + 1) + c, b = a + 1, d = a + NC + 1, e = d + 1; idx.push(a, b, d, b, e, d);
+      }
+      const g = new THREE.BufferGeometry();
+      g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+      g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); g.setIndex(idx); g.computeVertexNormals();
+      const lm = new THREE.Mesh(g, labelMaterial(m, img));
+      lm.castShadow = true; lm.receiveShadow = true; lm.userData = { label: true, idx: o.userData.idx }; lm.name = 'rotulo';
+      group.add(lm);
+    };
+    // u cresce da esquerda para a direita de quem olha de fora (θ decrescente).
+    if (m.labType === 'envolve') patch((R, u) => (1 - u) * R.total, 256, m.labImg);
+    else {
+      const half = R => Math.min(m.labW, R.total * 0.49) / 2;
+      patch((R, u) => R.total / 2 + half(R) * (1 - 2 * u), 96, m.labImg);   // frente (+z)
+      patch((R, u) => half(R) * (1 - 2 * u), 96, m.labImgB);                 // verso (−z)
+    }
+  }
+  group.position.x = px; group.updateMatrixWorld(true);
 }
 let placing = null, placingMask = null, preview = null;
 // Imagem da prévia: área clara com borda e o desenho do logo por cima.
@@ -2418,7 +2500,7 @@ function boundsAll() { const b = bounds(); sideRoot.children.forEach(g => b.unio
 // ordem de "slot", com S.gap mm entre as caixas.
 function buildLineup() {
   sideRoot.children.slice().forEach(g => { g.traverse(o => o.geometry?.dispose()); sideRoot.remove(g); });
-  const groups = S.side.map(it => { const g = new THREE.Group(); buildInto(g, it, 0); sideRoot.add(g); return g; });
+  const groups = S.side.map(it => { const g = new THREE.Group(); buildInto(g, it, 0); applyLabelsTo(g, it); sideRoot.add(g); return g; });
   const all = [{ slot: S.slot, g: product }, ...S.side.map((it, i) => ({ slot: it.slot, g: groups[i] }))].sort((a, b) => a.slot - b.slot);
   let x = 0; const pos = new Map();
   for (const e of all) { const b = new THREE.Box3().setFromObject(e.g); if (b.isEmpty()) continue; pos.set(e.g, x - b.min.x); x += b.max.x - b.min.x + S.gap; }
@@ -2766,6 +2848,15 @@ const MF = [
     G(['ridgeD', 'Profundidade', 0.1, 8, 0.1, 'mm', m => m.ridges > 0]),
     // + lista de faixas (renderRibs), para peças redondas/ovais e da Draft
   ]],
+  // Rótulo do corpo: envolve tudo ou adesivo frente e verso (arte opcional).
+  ['Rótulo', [
+    ['labType', 'Rótulo', 'select', [['nenhum', 'Sem rótulo'], ['envolve', 'Envolve o produto todo'], ['frenteVerso', 'Adesivo frente e verso']], 0, 0, m => m.vol],
+    ['labH', 'Altura do rótulo', 5, 300, 0.5, 'mm', m => m.vol && m.labType && m.labType !== 'nenhum'],
+    ['labY', 'Posição (centro, % da altura do corpo)', 0, 100, 1, '%', m => m.vol && m.labType && m.labType !== 'nenhum'],
+    ['labW', 'Largura de cada adesivo', 5, 300, 0.5, 'mm', m => m.vol && m.labType === 'frenteVerso'],
+    ['labColor', 'Cor do papel', 'color', 0, 0, 0, m => m.vol && m.labType && m.labType !== 'nenhum'],
+    ['labFinish', 'Acabamento do rótulo', 'finish', 0, 0, 0, m => m.vol && m.labType && m.labType !== 'nenhum'],
+  ]],
   ['Encaixe', [
     ['gap', 'Distância do módulo de baixo', -40, 40, 0.1, 'mm'],
     ['ox', 'Deslocar para o lado (− esquerda)', -100, 100, 0.5, 'mm'],
@@ -2890,17 +2981,48 @@ function renderEditor() {
           if (k === 'sphereR') m.roundLock = false;
           syncSphereRadius(m, k === 'roundLock' && m.roundLock || ['W', 'D', 'h'].includes(k) && m.roundLock);
         }
-        if (structural || ['rep', 'groove', 'ridges', 'own'].includes(k) || (isSphereCap(m) && ['W', 'D', 'h', 'roundLock', 'sphereR'].includes(k))) renderEditorKeepScroll();
+        if (structural || ['rep', 'groove', 'ridges', 'own', 'labType'].includes(k) || (isSphereCap(m) && ['W', 'D', 'h', 'roundLock', 'sphereR'].includes(k))) renderEditorKeepScroll();
         renderStack(); queueBuild();
       });
       if (show && !show(m)) el.classList.add('hidden');
       els[def[0]] = el;
     }
     if (ribsHere) renderRibs(grp, m);
+    if (title === 'Rótulo' && m.labType && m.labType !== 'nenhum') renderLabelArt(grp, m);
   }
   // Mola e pescante são da válvula (grupo "Mola e pescante" dela), não do corpo.
   syncFacet();
   if (isBody(m) && m.kind !== 'gargalo') { renderBodyNeck(ed, m); renderBodyLiquid(ed, m); }
+}
+// Arte do rótulo: imagem (PNG/JPG/SVG) reduzida e guardada no próprio corpo.
+function renderLabelArt(grp, m) {
+  const faces = m.labType === 'envolve' ? [['labImg', 'Arte do rótulo']] : [['labImg', 'Arte da frente'], ['labImgB', 'Arte do verso']];
+  for (const [k, label] of faces) {
+    const row = document.createElement('div'); row.className = 'row'; row.style.margin = '6px 0';
+    row.innerHTML = `<span style="flex:1;font-size:12px">${label}${m[k] ? ' ✓' : ''}</span>
+      <button class="btn sm">${m[k] ? 'Trocar' : 'Escolher imagem'}</button>${m[k] ? '<button class="btn sm">Tirar</button>' : ''}`;
+    const [pick, rm] = row.querySelectorAll('button');
+    pick.onclick = () => {
+      const inp = document.createElement('input'); inp.type = 'file'; inp.accept = 'image/png,image/jpeg,image/svg+xml,image/webp';
+      inp.onchange = async () => {
+        const f = inp.files[0]; if (!f) return;
+        const url = await new Promise(res => { const r = new FileReader(); r.onload = () => res(r.result); r.readAsDataURL(f); });
+        const img = await new Promise(res => { const i = new Image(); i.onload = () => res(i); i.onerror = () => res(null); i.src = url; });
+        if (!img) { toast('Não consegui abrir essa imagem'); return; }
+        const sc = Math.min(1, 2048 / Math.max(img.naturalWidth || 1024, img.naturalHeight || 1024));
+        const cv = document.createElement('canvas'); cv.width = Math.round((img.naturalWidth || 1024) * sc); cv.height = Math.round((img.naturalHeight || 1024) * sc);
+        cv.getContext('2d').drawImage(img, 0, 0, cv.width, cv.height);
+        m[k] = f.type === 'image/jpeg' ? cv.toDataURL('image/jpeg', 0.9) : cv.toDataURL('image/png');
+        renderEditorKeepScroll(); queueBuild();
+      };
+      inp.click();
+    };
+    if (rm) rm.onclick = () => { m[k] = ''; renderEditorKeepScroll(); queueBuild(); };
+    grp.appendChild(row);
+  }
+  const tip = document.createElement('div'); tip.className = 'tip';
+  tip.textContent = 'A arte estica para a altura e a largura do rótulo; use uma imagem na mesma proporção.';
+  grp.appendChild(tip);
 }
 // Maior padrão de gargalo que cabe no topo do corpo (anel incluído).
 function neckTopW(m) { return Math.max(22, Math.min(m.W, m.D) * (m.taper || 100) / 100 - 2 * (m.rTopW || m.rTop || 0) + 8); }
