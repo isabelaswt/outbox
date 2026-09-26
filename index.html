@@ -419,7 +419,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-26.malha-limpa';
+const BUILD = '2026-09-26.vertical-tela';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -2554,8 +2554,9 @@ async function recordSpin(sec, mode = '360') {
       : asp >= 1 ? [1920, Math.round(1920 / asp)] : [Math.round(1920 * asp), 1920];
     VW -= VW % 2; VH -= VH % 2;
     renderer.setPixelRatio(1); renderer.setSize(VW, VH, false); persp.aspect = VW / VH; persp.updateProjectionMatrix();
+    canvas.style.objectFit = 'contain'; // na tela, o quadro do vídeo aparece na proporção certa (não esticado)
   }
-  const restoreSize = () => { renderer.setPixelRatio(pr0); renderer.setSize(size0.x, size0.y, false); persp.aspect = size0.x / size0.y; persp.updateProjectionMatrix(); };
+  const restoreSize = () => { canvas.style.objectFit = ''; renderer.setPixelRatio(pr0); renderer.setSize(size0.x, size0.y, false); persp.aspect = size0.x / size0.y; persp.updateProjectionMatrix(); };
   spinning = true; const btn = $('#spinBtn'); btn.disabled = true; btn.textContent = 'Gravando…';
   const keep = { grid: grid.visible, ref: refMesh.visible, pos: cam.position.clone(), ground: ground.visible, stage: stage.visible };
   grid.visible = false; refMesh.visible = false; controls.enabled = false;
