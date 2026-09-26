@@ -326,7 +326,7 @@ const store = {
 // ───────────────────────── módulos ─────────────────────────
 const BASE = {
   name: 'Módulo', W: 50, D: 50, n: 2, sides: 0, sideR: 0.1, h: 40, taper: 100, bulge: 0, bulgePos: 50,
-  rBot: 2, rTop: 2, rBotW: 0, rTopW: 0, gap: 0, rep: 1, repGap: 0,
+  rBot: 2, rTop: 2, rBotW: 0, rTopW: 0, gap: 0, rep: 1, repGap: 0, veste: true,
   groove: 0, grooveD: 0.6,
   notch: false, notchLock: true, notchY: 12, notchW: 20, notchH: 8, notchD: 2, notchP: 2,
   ridges: 0, ridgeD: 0.6, lobes: 0, lobeD: 3,
@@ -403,6 +403,10 @@ const LIB = {
              mola: false, pescD: 6.5, pescGap: 12 },
   pushPull: { name: 'Tampa push-pull', kind: 'spray', sprayType: 'pushpull', W: 31, D: 31, h: 15, collarR: 0.8, ridges: 64, ridgeD: 0.32,
              actW: 15, actH: 12, stemD: 8, stemH: 2.8, mola: false, pesc: false },
+  // Spray clássico de perfume: virola lisa (ferrolho) e atuador cilíndrico estreito
+  // com o furinho na lateral; a tampa de cima veste tudo.
+  sprayClassico: { name: 'Válvula spray clássica', kind: 'spray', sprayType: 'mist', W: 20, D: 20, h: 13, skirtPct: 100, ridges: 0, collarR: 0.8,
+             guideW: 0, guideH: 0, actW: 13.5, actH: 11, stemH: 1.2, stemD: 4.6, houseD: 6.5, springL: 16 },
   gatilho: { name: 'Spray gatilho', kind: 'spray', sprayType: 'gatilho', W: 24, D: 24, h: 16.5, collarR: 0.8, ridges: 0, actW: 11 },
   pumpOnda: { name: 'Pump bico onda', kind: 'spray', sprayType: 'onda', W: 28, D: 28, h: 14.5, collarR: 0.6, ridges: 64, ridgeD: 0.3,
              stemD: 10, stemH: 14.5, actW: 12 },
@@ -439,7 +443,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-26.grao';
+const BUILD = '2026-09-26.tampa-valvula';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -1877,6 +1881,10 @@ function openForNeck(body, neck) {
   if (a0 - rTw >= need) return body;
   return { ...body, rTopW: Math.max(0.5, a0 - need) };
 }
+// Tampa da válvula: a peça logo acima de um spray desce até a base dele e o veste
+// (com a cavidade no tamanho da válvula), em vez de empilhar sobre a virola.
+const vestsValve = (s, idx) => { const m = s.modules[idx], d = s.modules[idx - 1];
+  return !!d && d.kind === 'spray' && m.kind !== 'spray' && m.kind !== 'gargalo' && !m.vol && m.veste !== false; };
 function layout(s, explode = 0) {
   const out = []; let cur = 0, neck = null;
   s.modules.forEach((m0, idx) => {
@@ -1885,6 +1893,7 @@ function layout(s, explode = 0) {
     let y0 = 0;
     for (let r = 0; r < nRep; r++) {
       y0 = r === 0 && onNeck ? neck.y0 + neck.m.ringH + m.gap : cur + (r === 0 ? m.gap : m.repGap);
+      if (r === 0 && vestsValve(s, idx)) { const v = out.findLast(o => o.idx === idx - 1); if (v) y0 = v.y0 + m.gap; }
       // Gargalo sobre ombro arredondado: desce com o fechamento até a borda dele
       // assentar no ombro (senão sobra um vão com o gargalo à mostra).
       const up = s.modules[idx + 1];
@@ -2562,7 +2571,7 @@ function detailShow() {
       } else if (frames) {
         // sempre parte da tampa fechada (etapa 0), mesmo que o modelo esteja salvo aberto
         const fi = Math.round(k * (frames.length - 1)); openMeshes.forEach(o => { o.visible = false; }); frames.forEach((g, j) => { g.visible = j === fi; });
-      } else if (isPump) { // pump: fica no lugar (não puxa o pescante para fora); a tomada é o close
+      } else if (isPump && !vestsValve(S, topI)) { // pump: fica no lugar (não puxa o pescante para fora); a tomada é o close
       } else topMeshes.forEach(o => { o.position.set(0, topLift * k, 0); o.rotation.y = -1.6 * k; });
     },
     cleanup() {
@@ -3329,7 +3338,15 @@ function buildInto(product, S, explodeAmt = 0) {
     if (m0.hidden || (m0.kind === 'gargalo' && L[i - 1]?.m.hidden && L[i - 1].idx === idx - 1)) return;
     const hasLogo = S.logos?.some(L => L.uid === m.uid);
     const under = m0.kind === 'gargalo' && L[i - 1]?.m.vol && L[i - 1].m.kind === 'giro' ? { m: L[i - 1].m, y0: L[i - 1].y0 } : null;
-    const g = moduleGeo(m, y0, { logoQuality: hasLogo, body: under }); if (!g) return;
+    let g = moduleGeo(m, y0, { logoQuality: hasLogo, body: under }); if (!g) return;
+    if (vestsValve(S, idx) && L[i - 1]?.idx === idx - 1) { // cavidade no tamanho da válvula (folga de 0,5 mm)
+      const vg = sprayGeo(L[i - 1].m, L[i - 1].y0, { lo: true }); vg.computeBoundingBox(); const vb = vg.boundingBox;
+      const vr = Math.max(Math.abs(vb.min.x), Math.abs(vb.max.x), Math.abs(vb.min.z), Math.abs(vb.max.z)) + 0.5;
+      const cut = cyl(vr, y0 - 1, Math.max(1, vb.max.y - L[i - 1].y0 + 1.5)); // altura da válvula (vale também explodido) if (m.ox) cut.translate(m.ox, 0, 0);
+      const [outer, inner] = cutHole(g, cut); vg.dispose();
+      const ni = x => { const y = x.index ? x.toNonIndexed() : x; for (const k in y.attributes) if (k !== 'position' && k !== 'normal') y.deleteAttribute(k); return y; };
+      if (outer !== g) g = mergeGeometries([ni(outer), ni(inner)]) || g;
+    }
     // Gargalo é parte do frasco: sempre a cor e o acabamento do corpo de baixo.
     const ms = m0.kind === 'gargalo' && L[i - 1]?.m.vol ? L[i - 1].m : m;
     const mesh = new THREE.Mesh(g, material(ms.own ? ms.color : S.color, ms.own ? ms.finish : S.finish));
@@ -3627,6 +3644,7 @@ const MF = [
     notK(['gargalo', 'spray'], ['W', 'Largura (frente)', 4, 200, 0.5, 'mm']),
     notK(['gargalo', 'spray'], ['D', 'Profundidade (lado)', 4, 200, 0.5, 'mm']),
     GP(['roundLock', 'Esfera: manter redonda', 'check', 0, 0, 0, isSphereCap]),
+    ['veste', 'Tampa da válvula (desce e veste o spray de baixo)', 'check', 0, 0, 0, m => vestsValve({ modules: S.modules.map(x => (x === m ? { ...x, veste: true } : x)) }, S.modules.indexOf(m))],
     GP(['sphereR', 'Raio da esfera', 0, 150, 0.5, 'mm', isSphereCap]),
     N(['neckStd', 'Padrão do acabamento (aprox.)', 'select', [...Object.keys(NECKS).map(k => [k, k]), ['livre', 'Livre']]]),
     N(['W', 'Diâmetro da rosca (T)', 8, 120, 0.1, 'mm']),
@@ -4185,7 +4203,7 @@ function renderAll() { renderStack(); renderEditor(); renderGlobal(); renderPres
 const CATS = [
   ['Corpo', ['reto', 'boston', 'quadrado', 'capsula', 'perfumeOval', 'plano', 'arco', 'cone', 'placa', 'bisnaga', ...DRAFT_KEYS.corpo]],
   ['Tampa', ['esfera', 'esferaBisnaga', 'nuvem', 'taca', 'domo', 'seixo', 'flip', 'flipRedondo', 'flipAba', 'disctop', 'sobretampa', 'tampaBisnaga', 'tampaSextavada', 'disco']],
-  ['Válvula', ['pump', 'pumpFrisos', 'locao', 'espuma', 'spray', 'contaGotas', 'pushPull', 'pushSport', 'bicoDosador', 'bicoConico', 'lamina', 'pumpOnda', 'gatilho', 'pumpBisnaga']],
+  ['Válvula', ['pump', 'pumpFrisos', 'locao', 'espuma', 'spray', 'sprayClassico', 'contaGotas', 'pushPull', 'pushSport', 'bicoDosador', 'bicoConico', 'lamina', 'pumpOnda', 'gatilho', 'pumpBisnaga']],
   ['Peça de encaixe', ['gargalo', 'colar', 'barril', 'flare', 'anel', 'tigela', 'bola', 'sextavado', 'canelado']],
 ];
 CATS.forEach(([label, keys]) => {
