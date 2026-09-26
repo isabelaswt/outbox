@@ -210,6 +210,17 @@ canvas{display:block;width:100%;height:100%;touch-action:none}
   </details>
 
   <details open>
+    <summary>Apresentação</summary>
+    <div class="tip">Cenário, luz e vídeo girando para mostrar o produto. O cenário se ajusta ao tamanho do produto (e dos que estão ao lado).</div>
+    <div id="sceneFields"></div>
+    <div class="row">
+      <select id="spinSec"><option value="6">6 s</option><option value="10" selected>10 s</option><option value="15">15 s</option></select>
+      <button class="btn pri" id="spinBtn">Gravar vídeo 360°</button>
+    </div>
+    <div class="row"><button class="btn" id="fullBtn">Tela cheia</button></div>
+  </details>
+
+  <details open>
     <summary>Exportar</summary>
     <h3>Imagem</h3>
     <div class="row">
@@ -265,6 +276,7 @@ canvas{display:block;width:100%;height:100%;touch-action:none}
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { RGBELoader } from 'three/addons/loaders/RGBELoader.js';
 import { GLTFExporter } from 'three/addons/exporters/GLTFExporter.js';
 import { STLExporter } from 'three/addons/exporters/STLExporter.js';
@@ -407,7 +419,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-25.revolve-suave';
+const BUILD = '2026-09-25.apresentacao';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -1883,6 +1895,7 @@ refMesh.visible = false; scene.add(refMesh);
 
 const product = new THREE.Group(); scene.add(product);
 const sideRoot = new THREE.Group(); scene.add(sideRoot); // produtos ao lado (fileira)
+const stage = new THREE.Group(); scene.add(stage); // cenário da apresentação
 
 const persp = new THREE.PerspectiveCamera(28, 1, 1, 20000);
 const ortho = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 20000);
@@ -1952,11 +1965,102 @@ function material(color, finish) {
   return m;
 }
 
+// ───────────────────────── apresentação ─────────────────────────
+// Cenário montado em volta do que está na cena (produto + os ao lado).
+const SCENE0 = { cena: 'nenhum', cenaCor: '#e6e0d6', cenaH: 40, luz: 'padrao' };
+const sceneOf = () => ({ ...SCENE0, ...(S.scene || {}) });
+function buildStage() {
+  stage.children.slice().forEach(o => { o.geometry?.dispose(); stage.remove(o); });
+  const sc = sceneOf(); ground.visible = true; ground.position.y = -0.05;
+  if (sc.cena === 'nenhum') return;
+  const bb = new THREE.Box3().setFromObject(product).union(new THREE.Box3().setFromObject(sideRoot));
+  if (bb.isEmpty()) return;
+  const cx = (bb.min.x + bb.max.x) / 2, cz = (bb.min.z + bb.max.z) / 2, w = bb.max.x - bb.min.x, d = bb.max.z - bb.min.z, H = bb.max.y;
+  const mat = new THREE.MeshStandardMaterial({ color: sc.cenaCor, roughness: 0.92, metalness: 0 });
+  const add = (g, x, y, z) => { const o = new THREE.Mesh(g, mat); o.position.set(x, y, z); o.castShadow = true; o.receiveShadow = true; stage.add(o); return o; };
+  const h = sc.cenaH, pad = Math.max(16, Math.max(w, d) * 0.22);
+  if (sc.cena === 'pedestal') {
+    const r = Math.hypot(w, d) / 2 + pad * 0.6, e = Math.min(2.5, h / 4), pts = [[0, -h], [r, -h], [r, -e]];
+    for (let i = 1; i <= 8; i++) { const a = i / 8 * Math.PI / 2; pts.push([r - e + e * Math.cos(a), -e + e * Math.sin(a)]); }
+    pts.push([0, 0]);
+    add(new THREE.LatheGeometry(pts.map(([x, y]) => new THREE.Vector2(x, y)), 160), cx, 0, cz);
+    ground.position.y = -h - 0.05;
+  } else if (sc.cena === 'bloco' || sc.cena === 'degraus') {
+    const BW = w + 2 * pad, BD = d + 2 * pad;
+    add(new RoundedBoxGeometry(BW, h, BD, 4, Math.min(3, h / 4)), cx, -h / 2, cz);
+    if (sc.cena === 'degraus') { // degrau mais alto atrás, como vitrine
+      const bh = h + H * 0.45;
+      add(new RoundedBoxGeometry(BW, bh, BD * 0.7, 4, 3), cx + BW * 0.22, -h + bh / 2, cz - BD * 0.85);
+    }
+    ground.position.y = -h - 0.05;
+  } else if (sc.cena === 'arco') { // painel em arco atrás
+    const AW = Math.max(w + 2 * pad, H * 0.7), AH = H * 1.35, r = AW / 2, sh = new THREE.Shape();
+    sh.moveTo(-r, 0); sh.lineTo(r, 0); sh.lineTo(r, AH - r); sh.absarc(0, AH - r, r, 0, Math.PI, false); sh.lineTo(-r, 0);
+    const g = new THREE.ExtrudeGeometry(sh, { depth: 14, bevelEnabled: true, bevelThickness: 1.5, bevelSize: 1.5, bevelSegments: 3, curveSegments: 64 });
+    add(g, cx, 0, bb.min.z - pad - 16);
+  } else if (sc.cena === 'infinito') { // fundo infinito: chão que sobe em curva até a parede
+    const Wd = Math.max(1600, w * 6), zb = bb.min.z - pad * 2 - 60, R = 180, pos = [], idx = [], prof = [];
+    for (let z = 900; z > zb; z -= 20) prof.push([z, 0]);
+    for (let i = 0; i <= 24; i++) { const a = i / 24 * Math.PI / 2; prof.push([zb - R * Math.sin(a), R - R * Math.cos(a)]); }
+    for (let y = R + 20; y <= 1400; y += 40) prof.push([zb - R, y]);
+    prof.forEach(([z, y]) => { pos.push(cx - Wd / 2, y - 0.05, z, cx + Wd / 2, y - 0.05, z); });
+    for (let i = 0; i < prof.length - 1; i++) { const a = i * 2; idx.push(a, a + 1, a + 2, a + 1, a + 3, a + 2); }
+    const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setIndex(idx); g.computeVertexNormals();
+    const o = add(g, 0, 0, 0); o.castShadow = false; o.material = mat.clone(); o.material.side = THREE.DoubleSide;
+    ground.visible = false;
+  }
+}
+function applySceneLight() {
+  const l = sceneOf().luz;
+  if (l === 'padrao') setLighting(baseLight); else applyLightingMode(l);
+}
+function renderScene() {
+  const f = $('#sceneFields'); if (!f) return; f.innerHTML = '';
+  S.scene = sceneOf();
+  const ch = (k) => { if (k === 'luz') applySceneLight(); buildStage(); if (k === 'cena') { renderScene(); fit(); } store.set('shape.autosave', S); req(); };
+  field(f, S.scene, ['cena', 'Cenário', 'select', [['nenhum', 'Nenhum (só a sombra)'], ['pedestal', 'Pedestal redondo'], ['bloco', 'Bloco'],
+    ['degraus', 'Degraus (vitrine)'], ['arco', 'Arco ao fundo'], ['infinito', 'Fundo infinito (estúdio)']]], ch);
+  if (S.scene.cena !== 'nenhum') field(f, S.scene, ['cenaCor', 'Cor do cenário', 'color'], ch);
+  if (['pedestal', 'bloco', 'degraus'].includes(S.scene.cena)) field(f, S.scene, ['cenaH', 'Altura do pedestal', 5, 150, 1, 'mm'], ch);
+  field(f, S.scene, ['luz', 'Luz', 'select', [['padrao', 'Padrão (leitura do volume)'], ['soft', 'Suave'], ['contrast', 'Contraste'],
+    ['sol', 'Sol (sombra longa)'], ['drama', 'Dramática']]], ch);
+  field(f, S, ['bg', 'Fundo da cena', 'color'], queueBuild);
+}
+// Vídeo 360°: a câmera dá uma volta completa em torno do alvo e o canvas é gravado.
+let spinning = false;
+async function recordSpin(sec) {
+  if (spinning || !window.MediaRecorder) { if (!window.MediaRecorder) toast('Este navegador não grava vídeo'); return; }
+  spinning = true; const btn = $('#spinBtn'); btn.disabled = true; btn.textContent = 'Gravando…';
+  const keep = { grid: grid.visible, ref: refMesh.visible, pos: cam.position.clone() };
+  grid.visible = false; refMesh.visible = false; controls.enabled = false;
+  const mime = ['video/mp4;codecs=avc1', 'video/mp4', 'video/webm;codecs=vp9', 'video/webm'].find(t => MediaRecorder.isTypeSupported(t));
+  const rec = new MediaRecorder(canvas.captureStream(60), { mimeType: mime, videoBitsPerSecond: 16e6 }), chunks = [];
+  rec.ondataavailable = e => e.data.size && chunks.push(e.data);
+  const done = new Promise(r => { rec.onstop = r; });
+  const T = controls.target.clone(), off = cam.position.clone().sub(T), R = Math.hypot(off.x, off.z), a0 = Math.atan2(off.z, off.x);
+  rec.start();
+  await new Promise(res => {
+    const t0 = performance.now();
+    const step = now => {
+      const f = Math.min(1, (now - t0) / (sec * 1000)), a = a0 + f * Math.PI * 2;
+      cam.position.set(T.x + R * Math.cos(a), T.y + off.y, T.z + R * Math.sin(a)); cam.lookAt(T);
+      renderer.render(scene, cam);
+      f < 1 ? requestAnimationFrame(step) : res();
+    };
+    requestAnimationFrame(step);
+  });
+  rec.stop(); await done;
+  cam.position.copy(keep.pos); cam.lookAt(T); grid.visible = keep.grid; refMesh.visible = keep.ref; controls.enabled = true; controls.update(); req();
+  download(new Blob(chunks, { type: mime }), fname(mime.includes('mp4') ? 'mp4' : 'webm'));
+  btn.disabled = false; btn.textContent = 'Gravar vídeo 360°'; spinning = false;
+}
+
 function build() {
   holeMat.color.set(S.color).multiplyScalar(0.55);
   buildInto(product, S, explode ? 18 : 0);
   applyLabelsTo(product, S);
   buildLineup();
+  buildStage();
   record();
   scheduleLogos();
   scene.background = new THREE.Color(S.bg);
@@ -2569,7 +2673,12 @@ function buildInto(product, S, explodeAmt = 0) {
 }
 
 function bounds() { return new THREE.Box3().setFromObject(product); }
-function boundsAll() { const b = bounds(); sideRoot.children.forEach(g => b.union(new THREE.Box3().setFromObject(g))); return b; }
+function boundsAll() {
+  const b = bounds(); sideRoot.children.forEach(g => b.union(new THREE.Box3().setFromObject(g)));
+  // Pedestal, bloco, degraus e arco entram no enquadramento (o fundo infinito não).
+  if (S.scene?.cena && S.scene.cena !== 'infinito') stage.children.forEach(o => b.union(new THREE.Box3().setFromObject(o)));
+  return b;
+}
 
 // ───────────────────────── lado a lado ─────────────────────────
 // O produto em edição fica na origem; os outros entram à esquerda/direita na
@@ -3330,11 +3439,10 @@ function renderGlobal() {
   const lf = $('#lookFields'); lf.innerHTML = '';
   field(lf, S, ['color', 'Cor geral', 'color'], () => { renderStack(); queueBuild(); });
   field(lf, S, ['finish', 'Acabamento geral', 'finish'], queueBuild);
-  field(lf, S, ['bg', 'Fundo da cena', 'color'], queueBuild);
   $('#projName').value = S.name;
 }
 
-function renderAll() { renderStack(); renderEditor(); renderGlobal(); renderPresets(); renderLogos(); renderLineup(); }
+function renderAll() { renderStack(); renderEditor(); renderGlobal(); renderPresets(); renderLogos(); renderLineup(); renderScene(); applySceneLight(); }
 
 // Biblioteca de módulos
 // Corpo, tampa e peça de encaixe ficam em listas separadas.
@@ -3557,7 +3665,11 @@ function applyLightingMode(mode) {
   const boost = envStrength(HDR.strength);
   scene.environment = env;
   setEnvRotation(HDR.rot);
-  if (mode === 'soft') {
+  if (mode === 'sol') { // sol baixo: sombra longa e marcada, como foto de luz natural
+    scene.environmentIntensity = 0.55 * boost; hemi.intensity = 0.2; sun.intensity = 3.4; sun.position.set(-460, 260, 220);
+  } else if (mode === 'drama') { // fundo escuro de luz: lateral forte e contraluz
+    scene.environmentIntensity = 0.28 * boost; hemi.intensity = 0.06; sun.intensity = 3; sun.position.set(-380, 300, -40);
+  } else if (mode === 'soft') {
     scene.environmentIntensity = 1.05 * boost; hemi.intensity = 0.55; sun.intensity = 0.85; sun.position.set(140, 360, 280);
   } else if (mode === 'contrast') {
     scene.environmentIntensity = 1.15 * boost; hemi.intensity = 0.18; sun.intensity = 2.1; sun.position.set(-180, 460, 220);
@@ -3594,14 +3706,15 @@ $('#dlPng').onclick = () => {
   const res = +$('#pngRes').value, size = renderer.getSize(new THREE.Vector2()), pr = renderer.getPixelRatio();
   const aspect = size.x / size.y;
   const w = aspect >= 1 ? res : Math.round(res * aspect), h = aspect >= 1 ? Math.round(res / aspect) : res;
-  const keep = { grid: grid.visible, ref: refMesh.visible, bg: scene.background, ground: ground.visible, light: applyPngLighting($('#pngLight').value) };
+  const sl = sceneOf().luz;
+  const keep = { grid: grid.visible, ref: refMesh.visible, bg: scene.background, ground: ground.visible, light: applyPngLighting(sl !== 'padrao' ? sl : $('#pngLight').value) };
   grid.visible = false; refMesh.visible = false;
   if ($('#pngTransp').checked) scene.background = null;
   ground.visible = $('#pngShadow').checked;
   renderer.setPixelRatio(1); renderer.setSize(w, h, false);
   renderer.render(scene, cam);
   const data = renderer.domElement.toDataURL('image/png');
-  grid.visible = keep.grid; refMesh.visible = keep.ref; scene.background = keep.bg; ground.visible = keep.ground; setLighting(keep.light);
+  grid.visible = keep.grid; refMesh.visible = keep.ref; scene.background = keep.bg; ground.visible = keep.ground; setLighting(keep.light); applySceneLight();
   renderer.setPixelRatio(pr); renderer.setSize(size.x, size.y, false); req();
   fetch(data).then(r => r.blob()).then(b => download(b, fname('png')));
 };
@@ -3616,12 +3729,14 @@ $('#dlGlb').onclick = () => {
   new GLTFExporter().parse(exportRoot(0.001), buf => download(new Blob([buf], { type: 'model/gltf-binary' }), fname('glb')),
     err => toast('Erro ao gerar GLB: ' + err), { binary: true });
 };
+$('#spinBtn').onclick = () => recordSpin(+$('#spinSec').value || 10);
+$('#fullBtn').onclick = () => { document.fullscreenElement ? document.exitFullscreen() : view.requestFullscreen?.(); setTimeout(() => window.dispatchEvent(new Event('resize')), 200); };
 $('#dlStl').onclick = () => download(new Blob([new STLExporter().parse(exportRoot(1), { binary: true })], { type: 'model/stl' }), fname('stl'));
 $('#dlObj').onclick = () => download(new Blob([new OBJExporter().parse(exportRoot(1))], { type: 'text/plain' }), fname('obj'));
 
 // ───────────────────────── início ─────────────────────────
 // Acesso para inspeção no console do navegador.
-window.OUTBOX = { get S() { return S; }, get swapScroll() { return swapScroll; }, product, layout };
+window.OUTBOX = { get S() { return S; }, get swapScroll() { return swapScroll; }, product, layout, scene, sun, stage };
 
 buildDraftPresets();
 resize();
