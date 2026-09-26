@@ -418,7 +418,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-26.camera-login';
+const BUILD = '2026-09-26.luz-janela-recorte';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -1979,6 +1979,22 @@ function placeAreaLights() {
   }
 }
 function placeAreaCore(c, R) {
+  if (areaMode === 'janela') { // janela grande ao lado: degradê longo de um lado ao outro
+    areaKey.width = R * 1.4; areaKey.height = R * 2.2;
+    areaKey.position.set(c.x - R * 1.5, c.y + R * 0.35, c.z + R * 0.35); areaKey.lookAt(c.x, c.y, c.z);
+    areaFill.width = R * 0.9; areaFill.height = R * 1.4;
+    areaFill.position.set(c.x + R * 1.2, c.y, c.z + R * 0.9); areaFill.lookAt(c);
+    areaKey.intensity = areaOn * 10; areaFill.intensity = areaOn * 0.5;
+    return;
+  }
+  if (areaMode === 'recorte') { // contraluz: duas faixas atrás acendem os contornos
+    areaKey.width = R * 0.3; areaKey.height = R * 2.2;
+    areaKey.position.set(c.x - R * 0.95, c.y + R * 0.1, c.z - R * 0.75); areaKey.lookAt(c.x, c.y, c.z);
+    areaFill.width = R * 0.3; areaFill.height = R * 2.2;
+    areaFill.position.set(c.x + R * 0.95, c.y + R * 0.1, c.z - R * 0.75); areaFill.lookAt(c);
+    areaKey.intensity = areaOn * 16; areaFill.intensity = areaOn * 12;
+    return;
+  }
   if (areaMode === 'faixa') { // faixa alta e estreita na frente (à esquerda) + faixa fraca à direita
     areaKey.width = R * 0.28; areaKey.height = R * 2.2;
     areaKey.position.set(c.x - R * 0.35, c.y + R * 0.15, c.z + R * 1.05); areaKey.lookAt(c.x, c.y, c.z);
@@ -2179,10 +2195,15 @@ function renderScene() {
   if (['pedestal', 'bloco', 'degraus'].includes(S.scene.cena)) field(f, S.scene, ['cenaH', 'Altura do pedestal', 5, 150, 1, 'mm'], ch);
   field(f, S.scene, ['luz', 'Luz (vale para tela, imagem e vídeo)', 'select', [['studio', 'Estúdio claro (padrão)'], ['padrao', 'Volume (mais contraste de lado)'],
     ['soft', 'Suave'], ['contrast', 'Contraste'], ['sol', 'Sol (sombra longa)'], ['drama', 'Dramática'], ['faixa', 'Faixas de estúdio (reflexo vertical)'],
+    ['janela', 'Janela lateral (degradê longo)'], ['recorte', 'Recorte / contraluz (contornos acesos)'],
     ...(HDR.env ? [['hdr', `HDR carregado (${HDR.name})`]] : [])]], ch);
   field(f, S.scene, ['luzRot', 'Girar a luz (o estúdio todo em volta do produto)', -180, 180, 1, '°'], ch);
   field(f, S.scene, ['luzInt', 'Intensidade da luz', 20, 250, 1, '%'], ch);
   field(f, S.scene, ['luzCon', 'Contraste da luz (− uniforme, + mais volume)', 0, 100, 1, ''], ch);
+  const rb = document.createElement('div'); rb.className = 'row';
+  rb.innerHTML = '<button class="btn">Voltar a luz ao padrão</button>';
+  rb.querySelector('button').onclick = () => { Object.assign(S.scene, { luzRot: 0, luzInt: 100, luzCon: 50 }); renderScene(); applySceneLight(); buildStage(); store.set('shape.autosave', S); req(); };
+  f.appendChild(rb);
   const hb = document.createElement('div'); hb.className = 'row';
   hb.innerHTML = `<button class="btn">${HDR.env ? 'Trocar HDR' : 'Carregar HDR (luz de foto)'}</button>`;
   hb.querySelector('button').onclick = () => $('#hdrFile').click(); f.appendChild(hb);
@@ -4017,7 +4038,11 @@ function applyLightingMode(mode) {
   const boost = envStrength(sceneOf().luzInt);
   scene.environment = env;
   setEnvRotation(sceneOf().luzRot || 0);
-  if (mode === 'faixa') { // faixas verticais de estúdio: reflexo alto na frente e laterais escuras
+  if (mode === 'janela') {
+    scene.environment = refEnv; scene.environmentIntensity = 0.42 * boost; hemi.intensity = 0.05; sun.intensity = 0.9; sun.position.set(-520, 330, 120);
+  } else if (mode === 'recorte') {
+    scene.environment = stripEnv; scene.environmentIntensity = 0.35 * boost; hemi.intensity = 0.04; sun.intensity = 0.35; sun.position.set(40, 560, -220);
+  } else if (mode === 'faixa') { // faixas verticais de estúdio: reflexo alto na frente e laterais escuras
     scene.environment = stripEnv; scene.environmentIntensity = 0.75 * boost; hemi.intensity = 0.04; sun.intensity = 0.45; sun.position.set(-60, 520, 260);
   } else if (mode === 'sol') { // sol baixo: sombra longa e marcada, como foto de luz natural
     scene.environmentIntensity = 0.85 * boost; hemi.intensity = 0.2; sun.intensity = 2.4; sun.position.set(-460, 260, 220);
@@ -4032,7 +4057,8 @@ function applyLightingMode(mode) {
   } else { // estúdio claro (padrão): caixa de luz de área + ambiente de estúdio
     scene.environment = refEnv; scene.environmentIntensity = 0.5 * boost; hemi.intensity = 0.08; sun.intensity = 0.5; sun.position.set(220, 520, 260);
   }
-  areaOn = mode === 'studio' || mode === 'faixa' ? 1 : 0; areaMode = mode === 'faixa' ? 'faixa' : 'studio'; placeAreaLights();
+  areaOn = ['studio', 'faixa', 'janela', 'recorte'].includes(mode) ? 1 : 0;
+  areaMode = ['faixa', 'janela', 'recorte'].includes(mode) ? mode : 'studio'; placeAreaLights();
 }
 function applyPngLighting(mode) {
   const keep = snapshotLighting();
