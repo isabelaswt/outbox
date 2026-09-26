@@ -419,7 +419,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-25.estudio';
+const BUILD = '2026-09-25.estudio-preenchimento';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -1869,7 +1869,7 @@ const pmrem = new THREE.PMREMGenerator(renderer);
 // dá o degradê e os reflexos longos que desenham o volume da embalagem.
 function studioScene() {
   const sc = new THREE.Scene(), box = new THREE.BoxGeometry(1, 1, 1);
-  const room = new THREE.Mesh(box, new THREE.MeshBasicMaterial({ color: new THREE.Color('#3b3936'), side: THREE.BackSide }));
+  const room = new THREE.Mesh(box, new THREE.MeshBasicMaterial({ color: new THREE.Color('#4a4743'), side: THREE.BackSide }));
   room.scale.set(30, 16, 30); room.position.y = 5; sc.add(room);
   const floor = new THREE.Mesh(new THREE.PlaneGeometry(30, 30), new THREE.MeshBasicMaterial({ color: new THREE.Color('#8a8276') }));
   floor.rotation.x = -Math.PI / 2; floor.position.y = -2.9; sc.add(floor);
@@ -1878,7 +1878,8 @@ function studioScene() {
     m.position.set(...pos); m.lookAt(...look); sc.add(m);
   };
   soft(7, 9, 18, [-10, 4, 2]);              // principal (esquerda, frente)
-  soft(6, 6, 1.6, [8, 2, 7]);             // preenchimento (direita)
+  soft(8, 7, 3, [9, 2, 6]);            // preenchimento (direita)
+  soft(8, 4, 0.9, [0, 1, 11]);           // rebatedor de frente (tira o marrom do lado da sombra)             // preenchimento (direita)
   soft(9, 2.6, 9, [0, 10, 0], [0, 0, 0]); // faixa de topo
   soft(1.4, 9, 7, [7, 3, -7], [0, 1, 0], '#f2f6ff');  // recorte frio atrás à direita
   soft(1.4, 9, 4, [-7, 3, -7], [0, 1, 0]);            // recorte atrás à esquerda
@@ -3706,9 +3707,9 @@ function applyLightingMode(mode) {
   scene.environment = env;
   setEnvRotation(HDR.rot);
   if (mode === 'sol') { // sol baixo: sombra longa e marcada, como foto de luz natural
-    scene.environmentIntensity = 0.55 * boost; hemi.intensity = 0.2; sun.intensity = 3.4; sun.position.set(-460, 260, 220);
+    scene.environmentIntensity = 0.85 * boost; hemi.intensity = 0.2; sun.intensity = 2.4; sun.position.set(-460, 260, 220);
   } else if (mode === 'drama') { // fundo escuro de luz: lateral forte e contraluz
-    scene.environmentIntensity = 0.28 * boost; hemi.intensity = 0.06; sun.intensity = 3; sun.position.set(-380, 300, -40);
+    scene.environmentIntensity = 0.5 * boost; hemi.intensity = 0.06; sun.intensity = 2.6; sun.position.set(-380, 300, -40);
   } else if (mode === 'soft') {
     scene.environmentIntensity = 1.05 * boost; hemi.intensity = 0.55; sun.intensity = 0.85; sun.position.set(140, 360, 280);
   } else if (mode === 'contrast') {
