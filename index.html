@@ -419,7 +419,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-26.vertical-tela';
+const BUILD = '2026-09-26.takes-giro';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -2403,13 +2403,16 @@ function detailShow() {
   // Tudo orientado pela frente da marca (lado do logo/rótulo), não pelo ângulo da câmera.
   const A = mark ? relAng : baseAng;
   const shots = [
-    { d: 3, T0: C, T1: C, P0: pose(C, A - 0.62, -0.02, distHero * 1.18), P1: pose(C, A - 0.48, 0.02, distHero * 0.98), fov: 26 },
+    // abertura: câmera parada em 3/4, o produto gira no próprio eixo (sem aproximar)
+    { d: 3, T0: C, T1: C, P0: pose(C, A - 0.5, 0.02, distHero), P1: pose(C, A - 0.5, 0.02, distHero), fov: 26, turn: [-0.75, 0.15] },
     { d: 3, T0: relT, T1: relT, P0: pose(relT, A + 0.3, 0.04, fitDist(relR * 1.6, 18)), P1: pose(relT, A - 0.3, 0.04, fitDist(relR * 1.6, 18)), fov: 18 },
     // deitado em diagonal (topo à direita), bem perto, com a malha virando acabamento da base ao topo
     { d: 6, T0: C, T1: C, P0: pose(C, A - 0.15, -0.1, distTilt * 1.08), P1: pose(C, A + 0.12, -0.06, distTilt), fov: 24, tilt: true, wire: true },
-    { d: 4, T0: capAim, T1: capAim, P0: pose(capAim, A + 0.35, 0.45, fitDist(capFit * 1.1, 22)), P1: pose(capAim, A + 0.6, 0.5, fitDist(capFit, 22)), fov: 22, cap: true },
-    { d: 3, T0: C, T1: C, P0: pose(C, A, 0.06, dist0 * 1.02), P1: pose(C, A, 0.06, dist0 * 1.02), fov: 28, turn: [0.7, -0.7] },
-    { d: 3, T0: C, T1: C, P0: pose(C, A - 0.28, 0.1, dist0 * 1.06), P1: pose(C, A - 0.28, 0.1, dist0 * 0.99), fov: 28, hold: 0.35 },
+    { d: 5.5, T0: capAim, T1: capAim, P0: pose(capAim, A + 0.35, 0.45, fitDist(capFit * 1.1, 22)), P1: pose(capAim, A + 0.6, 0.5, fitDist(capFit, 22)), fov: 22, cap: true },
+    // depois da tampa: nada de frente de novo — plongée (de cima, ~35°), a câmera contorna devagar
+    { d: 3, T0: C, T1: C, P0: pose(C, A + 0.55, 0.62, dist0 * 1.02), P1: pose(C, A + 1.05, 0.58, dist0 * 1.02), fov: 28 },
+    // final: contra-plongée (de baixo), produto imponente, quase parado
+    { d: 3, T0: C, T1: C, P0: pose(C, A - 0.55, -0.3, dist0 * 1.08), P1: pose(C, A - 0.45, -0.26, dist0 * 1.02), fov: 28, hold: 0.35 },
   ];
   const total = shots.reduce((a, x) => a + x.d, 0);
   const ease = x => x * x * (3 - 2 * x);
@@ -2481,7 +2484,7 @@ function detailShow() {
       }
       setClip(!!sh.wire);
       // tampa: abre suave na tomada 3 e fica aberta; nas outras, fechada
-      const k = sh.cap ? ease(clamp((u - 0.2) / 0.45, 0, 1)) : 0;
+      const k = sh.cap ? smoother(clamp((u - 0.1) / 0.75, 0, 1)) : 0; // abre devagar, quase a tomada toda
       if (flipRig) {
         openMeshes.forEach(o => { o.visible = false; }); flipRig.rig.visible = true;
         flipRig.pivot.rotation.x = flipRig.sign * k * 110 * Math.PI / 180;
