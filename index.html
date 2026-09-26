@@ -418,7 +418,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-26.fosco-highlight';
+const BUILD = '2026-09-26.luz-salva-igual';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -2219,7 +2219,9 @@ function renderScene() {
   S.scene = sceneOf();
   // A luz padrão passou a ser a clara (a que antes só saía na exportação).
   if (S.scene.luzV !== 2) { if (S.scene.luz === 'padrao') S.scene.luz = 'studio'; S.scene.luzV = 2; }
-  const ch = (k) => { if (k === 'luz') applySceneLight(); buildStage(); if (k === 'cena') { renderScene(); fit(); } store.set('shape.autosave', S); req(); };
+  // Qualquer ajuste de luz recalcula tudo (ambiente, sol/sombra e caixas): o que se vê
+  // mexendo é exatamente o que é salvo e reaplicado depois.
+  const ch = (k) => { if (['luz', 'luzRot', 'luzInt', 'luzCon'].includes(k)) applySceneLight(); buildStage(); if (k === 'cena') { renderScene(); fit(); } store.set('shape.autosave', S); req(); };
   field(f, S.scene, ['cena', 'Cenário', 'select', [['nenhum', 'Nenhum (só a sombra)'], ['pedestal', 'Pedestal redondo'], ['bloco', 'Bloco'],
     ['degraus', 'Degraus (vitrine)'], ['arco', 'Arco ao fundo'], ['infinito', 'Fundo infinito (estúdio)']]], ch);
   if (S.scene.cena !== 'nenhum') field(f, S.scene, ['cenaCor', 'Cor do cenário', 'color'], ch);
