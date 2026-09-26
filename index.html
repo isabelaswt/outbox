@@ -396,7 +396,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-25.gomos';
+const BUILD = '2026-09-25.aba-gomos';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -2629,12 +2629,15 @@ const MF = [
     notK(['spray'], ['h', 'Altura', 1, 300, 0.5, 'mm']),
     notK(['gargalo', 'spray'], ['W', 'Largura (frente)', 4, 200, 0.5, 'mm']),
     notK(['gargalo', 'spray'], ['D', 'Profundidade (lado)', 4, 200, 0.5, 'mm']),
-    G(['lobes', 'Gomos no contorno (0 = sem)', 0, 32, 1, '']),
-    G(['lobeD', 'Gomos: profundidade do vale', 0.2, 20, 0.1, 'mm', m => m.lobes >= 3]),
     GP(['roundLock', 'Esfera: manter redonda', 'check', 0, 0, 0, isSphereCap]),
     GP(['sphereR', 'Raio da esfera', 0, 150, 0.5, 'mm', isSphereCap]),
     N(['neckStd', 'Padrão do acabamento (aprox.)', 'select', [...Object.keys(NECKS).map(k => [k, k]), ['livre', 'Livre']]]),
     N(['W', 'Diâmetro da rosca (T)', 8, 120, 0.1, 'mm']),
+  ]],
+  // Gomos: contorno em lóbulos (nuvem, canelado), em grupo próprio.
+  ['Gomos', [
+    G(['lobes', 'Quantidade de gomos (0 = sem)', 0, 32, 1, '']),
+    G(['lobeD', 'Profundidade do vale', 0.2, 20, 0.1, 'mm', m => m.lobes >= 3]),
   ]],
   // Repetição tem grupo próprio: empilha cópias da peça (ondas, anéis).
   ['Repetição', [
@@ -2852,7 +2855,7 @@ function renderEditor() {
     const ribsHere = title === 'Frisos' && (m.kind === 'giro' || m.kind === 'perfil');
     if (!ribsHere && !defs.some(d => !d[6] || d[6](m))) continue;
     // Grupo recolhível; lembra quais ficaram abertos.
-    const grp = document.createElement('details'); grp.className = 'grp'; grp.open = !!openG[title];
+    const grp = document.createElement('details'); grp.className = 'grp'; grp.open = !!openG[title] || (title === 'Gomos' && m.lobes >= 3);
     grp.innerHTML = `<summary>${title}</summary>`;
     grp.addEventListener('toggle', () => { const o = store.get('shape.openGroups', { Medidas: true, Formato: true }); o[title] = grp.open; store.set('shape.openGroups', o); });
     ed.appendChild(grp);
