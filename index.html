@@ -392,7 +392,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-25.plano-retangular';
+const BUILD = '2026-09-25.plano-flip-redonda';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -532,6 +532,10 @@ const PRESETS = {
     M('plano', { W: 60, D: 38, n: 10, h: 112, rBot: 12, rTop: 10 }), NECK('24/410'),
     M('flip', { name: 'Tampa retangular com entalhe', W: 58, D: 36, n: 6, h: 22, rBot: 1, rTop: 2.5, groove: 5,
       notch: true, notchW: 12, notchH: 3.5, notchD: 1, notchP: 4 })] },
+  'Plano + flip redonda': { color: BEIGE, finish: 'fosco', modules: [
+    M('plano', { name: 'Corpo plano largo', W: 78, D: 44, n: 4, h: 94, rBot: 15, rTop: 13 }), NECK('24/410'),
+    M('flip', { name: 'Flip-top redonda', W: 40, D: 40, n: 2, h: 22, rBot: 0.6, rTop: 2, groove: 14,
+      notch: true, notchUp: true, notchW: 10, notchH: 3.5, notchD: 0.8, notchP: 8 })] },
   'Cápsula dividida': { color: BEIGE, finish: 'fosco', modules: [
     M('capsula', { W: 44, D: 44, h: 96, rBot: 22, rTop: 2 }), NECK('24/410'),
     M('domo', { name: 'Tampa cápsula', W: 44, D: 44, h: 38, rBot: 1.5, rTop: 22, groove: 12, notch: true, notchW: 14, notchH: 5, notchD: 1.4, notchP: 2 })] },
