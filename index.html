@@ -418,7 +418,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-26.video-tomadas';
+const BUILD = '2026-09-26.autosave-copia';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -3983,26 +3983,31 @@ $('#savePreset').onclick = async () => {
     cloud[name] = structuredClone(S);
   } else { const sv = saved(); sv[name] = structuredClone(S); store.set('shape.presets', sv); }
   galleryKey = ''; renderPresets(); toast(`Salvo: ${name}`); // miniatura do salvo é refeita
-  saveStatus(`Salvo às ${hhmm()}. Daqui em diante salva sozinho a cada minuto.`);
+  saveStatus(`Salvo às ${hhmm()}. A cada 5 min, uma cópia de segurança vai para "${name} (autosave)".`);
 };
-// Salvamento automático: modelo que já foi salvo (mesmo nome na biblioteca) é
-// regravado a cada minuto quando mudou. Modelo novo só entra ao clicar Salvar.
+// Salvamento automático: a cada 5 min, se mudou, grava numa CÓPIA separada
+// "Nome (autosave)" — nunca sobrescreve o modelo salvo com "Salvar". Uma cópia por
+// modelo (sempre o estado mais recente), para não encher a biblioteca.
 const hhmm = () => new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 const saveStatus = t => { const el = $('#saveStatus'); if (el) el.textContent = t; };
 let autoBusy = false;
+let lastAuto = '';
+const AUTO_TAG = ' (autosave)';
 async function autoSave() {
   if (autoBusy || spinning) return;
-  const name = (S.name || '').trim(), sv = saved();
-  if (!name || !sv[name] || JSON.stringify(sv[name]) === JSON.stringify(S)) return;
+  const base = (S.name || '').trim().replace(/ \(autosave\)$/, '') || 'Sem nome', slot = base + AUTO_TAG, sv = saved();
+  const data = { ...structuredClone(S), name: slot }, js = JSON.stringify(data);
+  if (js === lastAuto || (sv[base] && JSON.stringify({ ...sv[base], name: slot }) === js)) return; // nada mudou
   autoBusy = true;
   try {
-    if (cloud) { await api('models.php?a=save', { name, data: S }); cloud[name] = structuredClone(S); }
-    else { sv[name] = structuredClone(S); store.set('shape.presets', sv); }
-    saveStatus(`Salvo automaticamente às ${hhmm()}.`);
-  } catch (e) { saveStatus(e.status === 401 ? 'Salvamento automático parou: sua sessão expirou, entre de novo.' : 'Salvamento automático falhou; clique em Salvar.'); }
+    if (cloud) { await api('models.php?a=save', { name: slot, data }); cloud[slot] = data; }
+    else { sv[slot] = data; store.set('shape.presets', sv); }
+    lastAuto = js; galleryKey = ''; renderPresets();
+    saveStatus(`Autosave às ${hhmm()} em "${slot}" (o salvo original não foi alterado).`);
+  } catch (e) { saveStatus(e.status === 401 ? 'Autosave parou: sua sessão expirou, entre de novo.' : 'Autosave falhou; clique em Salvar.'); }
   finally { autoBusy = false; }
 }
-setInterval(autoSave, 60000);
+setInterval(autoSave, 5 * 60000);
 window.addEventListener('beforeunload', () => { autoSave(); });
 $('#delPreset').onclick = async () => {
   const sv = saved(); if (!sv[S.name]) return toast('Esse nome não está entre os salvos');
