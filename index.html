@@ -419,7 +419,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-26.pescante-corpos';
+const BUILD = '2026-09-26.logo-sem-pisca';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -1859,7 +1859,10 @@ function volumes(s) {
 
 // ───────────────────────── cena ─────────────────────────
 const canvas = $('#c'), view = $('#view');
-const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, preserveDrawingBuffer: true, alpha: true });
+// Profundidade logarítmica: o relevo do logo e o rótulo ficam a décimos de mm da
+// superfície; com a faixa de 1 mm a 20 m da câmera, a profundidade comum não
+// separa os dois e eles "brigavam" (pisca no vídeo girando, metal sumindo).
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, preserveDrawingBuffer: true, alpha: true, logarithmicDepthBuffer: true });
 renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
 renderer.toneMapping = THREE.NeutralToneMapping;
 renderer.shadowMap.enabled = true;
@@ -1986,7 +1989,7 @@ function material(color, finish) {
   if (finish === 'vidro') { m.roughness = 0.05; m.transmission = 1; m.thickness = 4; m.ior = 1.5; m.depthWrite = false; }
   // Vidro fosco (jateado): transmite a luz mas embaça o que está dentro e atrás.
   if (finish === 'vidroFosco') { m.roughness = 0.42; m.transmission = 1; m.thickness = 5; m.ior = 1.5; m.depthWrite = false; m.sheen = 0.2; m.sheenRoughness = 0.9; m.sheenColor = new THREE.Color('#ffffff'); }
-  if (finish === 'metal') { m.metalness = 1; m.roughness = 0.24; }
+  if (finish === 'metal') { m.metalness = 1; m.roughness = 0.3; } // um pouco menos espelhado: sem brilho piscando nas quinas
   matCache.set(key, m);
   return m;
 }
