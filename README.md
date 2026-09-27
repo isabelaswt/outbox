@@ -69,6 +69,9 @@ Teste local com PHP: `php -S 127.0.0.1:8767 -t .` e um `api/config.php` apontand
 - Conteudo do corpo alem do liquido: capsulas (duas cores), comprimidos, gomas, perolas/esferas e sais/granulado, com tamanho, nivel e cores.
 - Tampa gloss com aplicador (haste + ponta de feltro curva, com comprimento, largura, curva e cor) e modelo `Gloss labial`.
 - Modelo `Stick com sobretampa`: base opaca, bastao do produto e sobretampa translucida ate a base.
+- Acabamento `PET semi-fosco (translucido)`; espessura da parede muda o visual de vidros/PET.
+- Rotulo vai na peca selecionada (corpo ou tampa).
+- Galeria de modelos com abas: Tampas, Pump e spray, Conta-gotas e gloss, Bisnagas, Sticks, Draft e Salvos.
 - Rotulo: a arte vai por cima da cor do papel (a cor aparece onde a imagem e transparente, sem tingir a arte).
 
 ## Proximos cuidados
