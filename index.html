@@ -449,7 +449,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-27.jateado-cor';
+const BUILD = '2026-09-27.luz-premium2';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -2039,6 +2039,28 @@ function productScene() {
   return sc;
 }
 const productEnv = pmrem.fromScene(productScene(), 0.03).texture;
+// Premium (foto de perfume/vidro): sala quase preta — o vidro reflete escuro e as
+// bordas ganham definição —, duas faixas altas e estreitas um pouco atrás (as linhas
+// brilhantes do contorno), uma caixa macia no alto à esquerda (luz principal) e uma
+// faixa de topo para ombro e tampa. Contraste de verdade: pretos e brancos no vidro.
+function premiumScene() {
+  const sc = new THREE.Scene();
+  const room = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshBasicMaterial({ color: new THREE.Color('#0c0c0e'), side: THREE.BackSide }));
+  room.scale.set(30, 18, 30); room.position.y = 5; sc.add(room);
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(30, 30), new THREE.MeshBasicMaterial({ color: new THREE.Color('#2a2a2c') }));
+  floor.rotation.x = -Math.PI / 2; floor.position.y = -2.9; sc.add(floor);
+  const soft = (w, h, k, pos, look = [0, 1, 0], tint = '#ffffff') => {
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ color: new THREE.Color(tint).multiplyScalar(k), side: THREE.DoubleSide }));
+    m.position.set(...pos); m.lookAt(...look); sc.add(m);
+  };
+  soft(1.1, 16, 14, [-6.5, 3, -2.5]);                 // faixa de contorno à esquerda (um pouco atrás)
+  soft(1.1, 16, 14, [6.5, 3, -2.5]);                  // faixa de contorno à direita
+  soft(7, 8, 6, [-7, 7, 7]);                          // principal macia, alto à esquerda
+  soft(10, 2.2, 7, [0, 11, 0.5], [0, 0, 0]);          // topo: ombro e tampa
+  soft(2.2, 12, 1.4, [3, 3, 10]);                     // reflexo vertical fino na frente (vida no vidro)
+  return sc;
+}
+const premiumEnv = pmrem.fromScene(premiumScene(), 0.01).texture;
 scene.environment = roomEnv;
 // Luz padrão pensada para ler volume: ambiente baixo, luz principal lateral
 // forte e um contraluz frio do outro lado para recortar a silhueta.
@@ -2432,7 +2454,7 @@ function renderScene() {
     ['degraus', 'Degraus (vitrine)'], ['arco', 'Arco ao fundo'], ['infinito', 'Fundo infinito (estúdio)']]], ch);
   if (S.scene.cena !== 'nenhum') field(f, S.scene, ['cenaCor', 'Cor do cenário', 'color'], ch);
   if (['pedestal', 'bloco', 'degraus'].includes(S.scene.cena)) field(f, S.scene, ['cenaH', 'Altura do pedestal', 5, 150, 1, 'mm'], ch);
-  field(f, S.scene, ['luz', 'Luz (vale para tela, imagem e vídeo)', 'select', [['studio', 'Estúdio claro (padrão)'], ['produto', 'Produto (e-commerce, faixa macia)'], ['padrao', 'Volume (mais contraste de lado)'],
+  field(f, S.scene, ['luz', 'Luz (vale para tela, imagem e vídeo)', 'select', [['studio', 'Estúdio claro (padrão)'], ['premium', 'Premium (vidro e perfume, contraste)'], ['produto', 'Produto (e-commerce, faixa macia)'], ['padrao', 'Volume (mais contraste de lado)'],
     ['soft', 'Suave'], ['contrast', 'Contraste'], ['sol', 'Sol (sombra longa)'], ['drama', 'Dramática'], ['faixa', 'Faixas de estúdio (reflexo vertical)'],
     ['janela', 'Janela lateral (degradê longo)'], ['recorte', 'Recorte / contraluz (contornos acesos)'],
     ...(HDR.env ? [['hdr', `HDR carregado (${HDR.name})`]] : [])]], ch);
@@ -3384,7 +3406,7 @@ function liquidMeshes(m, y0, levelAbs, lift = S.wall) {
   // foto real: cor luminosa e borda do nível suave); por cima, ele saía nítido.
   // Líquido transparente dentro de vidro/PET: visto através da embalagem, luminoso
   // (a luz atravessa o líquido), como sérum/tônico em frasco transparente.
-  const opts = frost ? { roughness: 0.45, clearcoat: 0, emissive: new THREE.Color(m.liqColor).multiplyScalar(0.6) } // a luz atravessa o líquido: cor viva
+  const opts = frost ? { roughness: 0.45, clearcoat: 0, emissive: new THREE.Color(m.liqColor).multiplyScalar(0.18) } // pouco brilho próprio: a luz da cena desenha o volume (brilho alto deixava tudo chapado)
     : clear && glass ? { roughness: 0.3, clearcoat: 0, specularIntensity: 0.1, emissive: new THREE.Color(m.liqColor).multiplyScalar(0.55 * (1 - clamp(m.liqClear, 0, 95) / 190)) }
     : clear ? { transparent: true, opacity: 1 - clamp(m.liqClear, 0, 95) / 100, depthWrite: false, roughness: 0.05, clearcoat: 1 } : {};
   const inGlass = glass && !frost && !clear ? { roughness: 0.35, clearcoat: 0, specularIntensity: 0.15 } : {}; // dentro do vidro quem reflete é o vidro
@@ -3393,7 +3415,7 @@ function liquidMeshes(m, y0, levelAbs, lift = S.wall) {
   const mat = new THREE.MeshPhysicalMaterial({ color: lc, roughness: 0.12, clearcoat: 0.6, clippingPlanes: clip, ...opts, ...inGlass });
   // Líquido transparente em vidro/PET funciona como lente: miolo claro onde a luz
   // atravessa, bordas mais escuras e saturadas (sem isso parecia um bloco chapado).
-  if (clear && glass && !frost) {
+  if (clear && glass) {
     // + faixa clara logo abaixo da superfície (o nível visto por baixo espelha a luz)
     // e a cor aprofundando para o fundo (mais líquido no caminho da luz).
     const lv = level.toFixed(2), span = Math.max(1, level - b.min.y).toFixed(2);
@@ -4645,6 +4667,8 @@ function applyLightingMode(mode) {
     scene.environmentIntensity = 0.5 * boost; hemi.intensity = 0.06; sun.intensity = 2.6; sun.position.set(-380, 300, -40);
   } else if (mode === 'soft') {
     scene.environmentIntensity = 1.05 * boost; hemi.intensity = 0.55; sun.intensity = 0.85; sun.position.set(140, 360, 280);
+  } else if (mode === 'premium') { // vidro/perfume: ambiente escuro com faixas; sol pouco, só para a sombra
+    scene.environment = premiumEnv; scene.environmentIntensity = 0.95 * boost; hemi.intensity = 0.03; sun.intensity = 0.7; sun.position.set(-240, 520, 200);
   } else if (mode === 'contrast') {
     scene.environmentIntensity = 1.15 * boost; hemi.intensity = 0.18; sun.intensity = 2.1; sun.position.set(-180, 460, 220);
   } else if (mode === 'hdr' && HDR.env) {
