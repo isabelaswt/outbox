@@ -332,7 +332,7 @@ const store = {
 // ───────────────────────── módulos ─────────────────────────
 const BASE = {
   name: 'Módulo', W: 50, D: 50, n: 2, sides: 0, sideR: 0.1, h: 40, taper: 100, bulge: 0, bulgePos: 50,
-  rBot: 2, rTop: 2, rBotW: 0, rTopW: 0, gap: 0, rep: 1, repGap: 0, veste: true,
+  rBot: 2, rTop: 2, rBotW: 0, rTopW: 0, gap: 0, rep: 1, repGap: 0, veste: true, fundo: 6,
   groove: 0, grooveD: 0.6,
   notch: false, notchLock: true, notchY: 12, notchW: 20, notchH: 8, notchD: 2, notchP: 2,
   ridges: 0, ridgeD: 0.6, lobes: 0, lobeD: 3,
@@ -449,7 +449,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-27.boca-vidro';
+const BUILD = '2026-09-27.vidro-oco';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -1932,7 +1932,7 @@ function volumes(s) {
   for (const { m, y0 } of layout(s)) {
     if (!m.vol) continue;
     const ge = moduleGeo(m, y0, { lo: true }); if (ge) { ext += signedVolume(ge); ge.dispose(); }
-    const lift = first ? s.wall : 0;
+    const glassF = isGlass(m.own ? m.finish : s.finish), lift = first ? (glassF ? Math.max(s.wall, m.fundo ?? 6) : s.wall) : 0; // vidro: fundo grosso
     const gi = moduleGeo(m, y0, { inset: s.wall, lift, lo: true }); if (gi) { cap += signedVolume(gi); gi.dispose(); }
     first = false;
   }
@@ -2185,6 +2185,16 @@ const pipetteFrostMat = glassTubeMat(0.02, 0.22);
 // (só o contorno aparece); atrás de vidro fosco, mais apagado ainda.
 const plastMat = glassTubeMat(0.04, 0.4);
 const plastFrostMat = glassTubeMat(0.01, 0.06);
+// Parede de dentro do frasco de vidro: some de frente e aparece de lado (fresnel),
+// na cor do vidro, um pouco mais escura.
+const cavityMats = new Map();
+function cavityMat(color) {
+  if (!cavityMats.has(color)) {
+    const g = glassTubeMat(0.015, 0.42); g.color = new THREE.Color(color).multiplyScalar(0.55); g.customProgramCacheKey = () => 'cavidade';
+    cavityMats.set(color, g);
+  }
+  return cavityMats.get(color);
+}
 // Grão fino na superfície (plástico e vidro jateado): micro-relevo que quebra o
 // brilho e a cor de leve, como a textura real do molde. Preso ao objeto (não
 // escorrega girando) e some sozinho quando fica menor que um pixel (sem cintilar).
@@ -2211,8 +2221,14 @@ function addGrain(m, amt, cell = 0.18) {
   };
   m.customProgramCacheKey = () => (prevKey ? prevKey() : '') + `|grao${amt}_${cell}`;
 }
-function material(color, finish) {
-  const key = color + finish;
+// Faixa do fundo grosso (vidro): abaixo de band.y o vidro é mais denso na cor.
+// vObjY = altura no espaço da peça (acompanha o frasco inclinado no vídeo).
+const bandVert = sh => { sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying float vObjY;').replace('#include <begin_vertex>', '#include <begin_vertex>\nvObjY = position.y;');
+  sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying float vObjY;'); };
+const bandF = y => `(1.0 - smoothstep(${(y - 0.9).toFixed(2)}, ${(y + 0.9).toFixed(2)}, vObjY))`;
+function material(color, finish, band = null) {
+  if (band && !isGlass(finish)) band = null;
+  const key = color + finish + (band ? '|b' + band.y.toFixed(1) : '');
   if (matCache.has(key)) return matCache.get(key);
   const m = new THREE.MeshPhysicalMaterial({ color, roughness: 0.5, metalness: 0 });
   // Fosco de verdade não é chapado: o contorno acende de leve (sheen) e uma camada
@@ -2225,7 +2241,14 @@ function material(color, finish) {
   if (finish === 'perolado') { m.roughness = 0.3; m.iridescence = 0.7; m.iridescenceIOR = 1.4; m.clearcoat = 0.4; }
   // Vidro não grava profundidade: o que é translúcido dentro dele (pipeta) aparece,
   // e as peças opacas da frente continuam cobrindo.
-  if (finish === 'vidro') { m.roughness = 0.05; m.transmission = 1; m.thickness = 4; m.ior = 1.5; m.depthWrite = false; }
+  if (finish === 'vidro') { m.roughness = 0.05; m.transmission = 1; m.thickness = 4; m.ior = 1.5; m.depthWrite = false;
+    if (band) {
+      m.onBeforeCompile = sh => { bandVert(sh);
+        sh.fragmentShader = sh.fragmentShader.replace('#include <transmission_fragment>', THREE.ShaderChunk.transmission_fragment
+          .replace('totalDiffuse = mix( totalDiffuse, transmitted.rgb, material.transmission );',
+            `transmitted.rgb *= mix(vec3(1.0), pow(max(material.diffuseColor, vec3(0.02)), vec3(1.7)), ${bandF(band.y)});\n\ttotalDiffuse = mix( totalDiffuse, transmitted.rgb, material.transmission );`)); };
+      m.customProgramCacheKey = () => 'vidroFundo' + band.y.toFixed(1);
+    } }
   // Vidro fosco (jateado): transmite a luz mas embaça o que está dentro e atrás.
   // Contraste: parte da luz é espalhada pelo jateado (o vidro ganha o degradê do
   // estúdio), a cor fica mais densa com a espessura e o contorno pega um brilho
@@ -2246,6 +2269,7 @@ function material(color, finish) {
     // brilho macio porém definido nos gomos e ombros (dá o impacto; sem ele o vidro ficava chapado)
     m.clearcoat = 0.18; m.clearcoatRoughness = 0.42; // jateado: brilho presente mas espalhado, sem cara de verniz
     m.onBeforeCompile = sh => {
+      if (band) bandVert(sh);
       sh.fragmentShader = sh.fragmentShader.replace('#include <transmission_fragment>', THREE.ShaderChunk.transmission_fragment
         // refração com a espessura do centro (desvio pequeno: na borda o desvio grande
         // ia buscar o fundo claro fora do frasco e fazia um tracejado no contorno);
@@ -2253,11 +2277,11 @@ function material(color, finish) {
         .replace('material.thickness = thickness;', `float frEdge = pow(1.0 - abs(dot(normalize(vViewPosition), normal)), 1.1);
 \tmaterial.thickness = thickness * 0.35;`)
         .replace('totalDiffuse = mix( totalDiffuse, transmitted.rgb, material.transmission );',
-          `transmitted.rgb *= pow(max(attenuationColor, vec3(0.001)), vec3(thickness * (0.15 + 12.0 * frEdge) / attenuationDistance)); // miolo luminoso, borda funda: tons bem contrastados
+          `transmitted.rgb *= pow(max(attenuationColor, vec3(0.001)), vec3(thickness * (0.15 + 12.0 * frEdge${band ? ' + 1.6 * ' + bandF(band.y) : ''}) / attenuationDistance)); // miolo luminoso, borda funda: tons bem contrastados
 \ttotalDiffuse = mix( totalDiffuse, transmitted.rgb, material.transmission );`)
         + '\n#if defined(USE_TRANSMISSION) && defined(USE_ENVMAP)\n totalDiffuse += material.diffuseColor * attenuationColor * getIBLIrradiance(-normal) * 1.1 * pow(1.0 - frEdge, 1.5);\n#endif'); // só com transmissão (o PNG transparente desliga ela por um instante)
     };
-    m.customProgramCacheKey = () => 'jateado8'; }
+    m.customProgramCacheKey = () => 'jateado8' + (band ? 'b' + band.y.toFixed(1) : ''); }
   if (finish === 'metal') { m.metalness = 1; m.roughness = 0.3; } // um pouco menos espelhado: sem brilho piscando nas quinas
   const grain = { fosco: 1, acetinado: 0.8, perolado: 0.6, vidroFosco: 1 }[finish];
   if (grain) addGrain(m, grain);
@@ -2444,7 +2468,7 @@ function detailShow() {
   // Tampa: tudo acima do gargalo (ou a peça de cima, se não houver gargalo).
   const neckI = S.modules.findIndex(m => m.kind === 'gargalo'), last = S.modules.length - 1;
   const capIdx = S.modules.map((m, i) => i).filter(i => (neckI >= 0 ? i > neckI : i === last && !S.modules[i].vol) && !S.modules[i].hidden);
-  const internal = o => /pescante|bomba|carcaca/.test(o.name);
+  const internal = o => /pescante|bomba|carcaca|cavidade/.test(o.name);
   const capMeshes = product.children.filter(o => capIdx.includes(o.userData.idx));
   const capBox = new THREE.Box3(); capMeshes.filter(o => !internal(o)).forEach(o => capBox.expandByObject(o));
   const isPump = capIdx.some(i => S.modules[i].kind === 'spray');
@@ -3283,8 +3307,8 @@ function levelCap(geo, y) {
 }
 // levelAbs: altura do líquido já calculada para o frasco inteiro (corpo com
 // repetições é um frasco só: as cópias de baixo enchem, a do nível fica parcial).
-function liquidMeshes(m, y0, levelAbs) {
-  const inner = moduleGeo(m, y0, { inset: S.wall + 0.3, lift: S.wall, lo: false }); if (!inner) return [];
+function liquidMeshes(m, y0, levelAbs, lift = S.wall) {
+  const inner = moduleGeo(m, y0, { inset: S.wall + 0.3, lift, lo: false }); if (!inner) return [];
   inner.computeBoundingBox();
   const b = inner.boundingBox, level = levelAbs ?? b.min.y + (b.max.y - b.min.y) * clamp(m.liqLevel, 0, 100) / 100;
   if (level <= b.min.y + 0.05) { inner.dispose(); return []; } // cópia acima do nível: vazia
@@ -3384,7 +3408,15 @@ function buildInto(product, S, explodeAmt = 0) {
 
     // Gargalo é parte do frasco: sempre a cor e o acabamento do corpo de baixo.
     const ms = m0.kind === 'gargalo' && L[i - 1]?.m.vol ? L[i - 1].m : m;
-    const mesh = new THREE.Mesh(g, material(ms.own ? ms.color : S.color, ms.own ? ms.finish : S.finish));
+    const finM = ms.own ? ms.finish : S.finish, colM = ms.own ? ms.color : S.color;
+    const firstBody = m0.vol && Math.abs(yl - floor) < 0.01, fundo = Math.max(S.wall, m0.fundo ?? 6);
+    const mesh = new THREE.Mesh(g, material(colM, finM, firstBody && isGlass(finM) ? { y: y0 + fundo } : null));
+    // Vidro transparente: a cavidade (parede de dentro) aparece nas bordas, como a
+    // espessura do vidro vista de lado, e o fundo grosso ganha a sua linha.
+    if (m0.vol && finM === 'vidro' && !m0.hidden) {
+      const ig = moduleGeo(m, y0, { inset: S.wall, lift: firstBody ? fundo : S.wall, lo: false });
+      if (ig) { const cm = new THREE.Mesh(ig, cavityMat(colM)); cm.name = 'cavidade'; cm.userData.idx = idx; cm.renderOrder = 4; product.add(cm); }
+    }
     mesh.castShadow = true; mesh.receiveShadow = true;
     mesh.userData.idx = idx;
     // Cada repetição é alvo de logo, com o número da cópia (0 = a primeira).
@@ -3420,9 +3452,10 @@ function buildInto(product, S, explodeAmt = 0) {
     }
     // Líquido dentro do corpo, até o nível escolhido.
     if (m0.vol && m0.liq) {
-      const cps = L.filter(e => e.idx === idx), lo = cps[0].y0 + S.wall, top = cps[cps.length - 1].y0 + m0.h;
+      const cps = L.filter(e => e.idx === idx), gl = isGlass(m0.own ? m0.finish : S.finish) && Math.abs(cps[0].y0 - floor) < 0.01;
+      const f0 = gl ? Math.max(S.wall, m0.fundo ?? 6) : S.wall, lo = cps[0].y0 + f0, top = cps[cps.length - 1].y0 + m0.h;
       const level = lo + (top - lo) * clamp(m0.liqLevel, 0, 100) / 100;
-      liquidMeshes(m0, y0, level).forEach(o => { o.userData.idx = idx; product.add(o); });
+      liquidMeshes(m0, y0, level, Math.abs(y0 - cps[0].y0) < 0.01 ? f0 : S.wall).forEach(o => { o.userData.idx = idx; product.add(o); });
     }
     // Pescante do próprio corpo: do topo do gargalo (ou do corpo) até o fundo.
     if (m0.vol && m0.kind !== 'bisnaga' && m0.bpesc && !valvePesc && !tubeBody && isFinite(floor)
@@ -3685,6 +3718,7 @@ const MF = [
     notK(['gargalo', 'spray'], ['W', 'Largura (frente)', 4, 200, 0.5, 'mm']),
     notK(['gargalo', 'spray'], ['D', 'Profundidade (lado)', 4, 200, 0.5, 'mm']),
     GP(['roundLock', 'Esfera: manter redonda', 'check', 0, 0, 0, isSphereCap]),
+    ['fundo', 'Espessura do fundo (vidro)', 1, 25, 0.5, 'mm', m => m.vol && isGlass(m.own ? m.finish : S.finish)],
     ['veste', 'Tampa da válvula (desce e veste o spray de baixo)', 'check', 0, 0, 0, m => vestsValve({ modules: S.modules.map(x => (x === m ? { ...x, veste: true } : x)) }, S.modules.indexOf(m))],
     GP(['sphereR', 'Raio da esfera', 0, 150, 0.5, 'mm', isSphereCap]),
     N(['neckStd', 'Padrão do acabamento (aprox.)', 'select', [...Object.keys(NECKS).map(k => [k, k]), ['livre', 'Livre']]]),
@@ -4798,7 +4832,7 @@ $('#varBtn').onclick = () => {
 };
 $('#genDice').onclick = () => { $('#genSeed').value = Math.floor(Math.random() * 99999) + 1; runGen(); };
 
-window.OUTBOX = { get S() { return S; }, get swapScroll() { return swapScroll; }, product, layout, scene, sun, stage, ground, renderer, areaKey, areaFill, hemi, detailShow, applyLogos, build, render: () => renderFrame(), get cam() { return cam; } };
+window.OUTBOX = { moduleGeo, get S() { return S; }, get swapScroll() { return swapScroll; }, product, layout, scene, sun, stage, ground, renderer, areaKey, areaFill, hemi, detailShow, applyLogos, build, render: () => renderFrame(), get cam() { return cam; } };
 
 buildDraftPresets();
 resize();
