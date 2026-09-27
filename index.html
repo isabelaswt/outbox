@@ -449,7 +449,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-27.pet-liquido';
+const BUILD = '2026-09-27.liquido-real';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -3343,6 +3343,24 @@ function liquidMeshes(m, y0, levelAbs, lift = S.wall) {
   // líquido transparente em vidro/PET: quanto mais transparente, mais clara a cor (menos corpo de líquido)
   const lc = clear && glass && !frost ? new THREE.Color(m.liqColor).lerp(new THREE.Color('#ffffff'), clamp(m.liqClear, 0, 95) / 100 * 0.6) : new THREE.Color(m.liqColor);
   const mat = new THREE.MeshPhysicalMaterial({ color: lc, roughness: 0.12, clearcoat: 0.6, clippingPlanes: clip, ...opts, ...inGlass });
+  // Líquido transparente em vidro/PET funciona como lente: miolo claro onde a luz
+  // atravessa, bordas mais escuras e saturadas (sem isso parecia um bloco chapado).
+  if (clear && glass && !frost) {
+    // + faixa clara logo abaixo da superfície (o nível visto por baixo espelha a luz)
+    // e a cor aprofundando para o fundo (mais líquido no caminho da luz).
+    const lv = level.toFixed(2), span = Math.max(1, level - b.min.y).toFixed(2);
+    mat.onBeforeCompile = sh => {
+      sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying float vLiqY;').replace('#include <begin_vertex>', '#include <begin_vertex>\nvLiqY = position.y;');
+      sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying float vLiqY;').replace('#include <opaque_fragment>',
+      `float lensN = smoothstep(0.08, 0.95, abs(dot(normalize(vViewPosition), normal)));
+       outgoingLight = mix(outgoingLight * diffuseColor.rgb * 0.95, outgoingLight * 1.18, lensN);
+       float dTop = max(${lv} - vLiqY, 0.0), deep = clamp(dTop / ${span}, 0.0, 1.0);
+       outgoingLight *= mix(1.12, 0.72, deep);
+       float menisco = exp(-dTop / 2.2);
+       outgoingLight += (diffuseColor.rgb * 0.45 + vec3(0.22)) * menisco;
+       #include <opaque_fragment>`); };
+    mat.customProgramCacheKey = () => 'liqLente' + lv + '_' + span;
+  }
   const out = [new THREE.Mesh(inner, mat)];
   const cap = level < b.max.y - 0.05 ? levelCap(inner, level - 0.01) : null;
   if (cap) out.push(new THREE.Mesh(cap, new THREE.MeshPhysicalMaterial({ color: lc, roughness: 0.08, clearcoat: 0.8, ...opts, ...inGlass })));
