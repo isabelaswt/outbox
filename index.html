@@ -186,13 +186,14 @@ canvas{display:block;width:100%;height:100%;touch-action:none}
   </details>
 
   <details open>
-    <summary>Logotipo em relevo</summary>
+    <summary>Logotipo e rótulo</summary>
     <div class="tip">Carregue o logo em <b>SVG</b> (vetor com preenchimento) e clique no shape onde ele vai ficar. Relevo positivo sai para fora; negativo cava para dentro.</div>
     <div class="row">
       <button class="btn" id="logoBtn">Carregar logo (SVG)</button>
       <input type="file" id="logoFile" accept=".svg,image/svg+xml" class="hidden">
     </div>
     <div id="logoList"></div>
+    <div id="labelBox"></div>
   </details>
 
   <details>
@@ -449,7 +450,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-27.baixo-relevo-vidro';
+const BUILD = '2026-09-27.faca-rotulo-luz';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -2651,7 +2652,12 @@ function detailShow() {
     { d: 6, T0: C, T1: C, P0: pose(C, A - 0.15, -0.1, distTilt * 1.08), P1: pose(C, A + 0.12, -0.06, distTilt), fov: 24, tilt: true, wire: true },
     // fecho: de frente, em vista ortográfica (sem perspectiva), um giro inteiro no próprio eixo
     { d: 7.5, T0: CR, T1: CR, P0: pose(CR, A, 0, 3000), P1: pose(CR, A, 0, 3000), fov: 28, ortho: true, turn: [-Math.PI * 2, 0], land: true },
+    // final: produto parado em 3/4 e a luz dá uma volta inteira em volta dele
+    // (como o "girar a luz"), com arranque e pouso suaves
+    { d: 6.5, T0: CR, T1: CR, P0: pose(CR, A - 0.4, 0.05, distHero * 1.02), P1: pose(CR, A - 0.4, 0.05, distHero * 0.97), fov: 26, lightSpin: true },
   ];
+  const rot0 = sceneOf().luzRot || 0; let rotNow = rot0;
+  const setLightRot = v => { if (Math.abs(v - rotNow) < 1e-3) return; rotNow = v; S.scene = S.scene || {}; S.scene.luzRot = v; applySceneLight(); };
   const total = shots.reduce((a, x) => a + x.d, 0);
   const ease = x => x * x * (3 - 2 * x);
   // Inclinação em torno do centro do produto (topo para a direita de quem olha a marca).
@@ -2726,6 +2732,7 @@ function detailShow() {
         revP.value.set(ax.x, ax.y, ax.z, -ax.dot(P)); // distância com sinal: + acima da faixa
       }
       setClip(!!sh.wire);
+      setLightRot(sh.lightSpin ? rot0 + 360 * land(u) : rot0);
       // tampa: abre suave na tomada 3 e fica aberta; nas outras, fechada
       const k = sh.cap ? smoother(clamp((u - 0.1) / 0.75, 0, 1)) : 0; // abre devagar, quase a tomada toda
       if (flipRig) {
@@ -2738,6 +2745,7 @@ function detailShow() {
       } else topMeshes.forEach(o => { o.position.set(0, topLift * k, 0); o.rotation.y = -1.6 * k; });
     },
     cleanup() {
+      setLightRot(rot0);
       cam = persp; persp.fov = fov0; persp.updateProjectionMatrix(); setClip(false);
       product.remove(wire); wire.traverse(o => o.geometry?.dispose()); [wireMat, maskMat, depthMat, mixMat, texA, texB, maskRT].forEach(x => x?.dispose());
       product.position.set(0, 0, 0); product.quaternion.identity();
@@ -3184,6 +3192,8 @@ function labelMaterial(m, img) {
   mt.depthWrite = true; mt.transmission = 0;
   labMats.set(key, mt); return mt;
 }
+// Medidas reais de cada rótulo (mm, medidas na superfície), para baixar a faca.
+const labDims = new Map();
 function applyLabelsTo(group, st) {
   const mods = new Map(st.modules.map(m => [m.uid, m]));
   const px = group.position.x; group.position.x = 0; group.updateMatrixWorld(true);
@@ -3208,6 +3218,11 @@ function applyLabelsTo(group, st) {
       }
       const total = acc[NA - 1] + pts[0].distanceTo(pts[NA - 1]);
       rows.push({ pts, acc, total });
+    }
+    if (group === product) {
+      const tots = rows.map(R => R.total), mid = rows[NR >> 1].total;
+      const w = t => m.labType === 'envolve' ? t : Math.min(m.labW, t * 0.49);
+      labDims.set(m.uid, { W: w(mid), H, Wtop: w(tots[NR]), Wbot: w(tots[0]) });
     }
     // Ponto no arco s (cíclico) de uma linha.
     const at = (R, sArc) => {
@@ -3236,8 +3251,8 @@ function applyLabelsTo(group, st) {
     if (m.labType === 'envolve') patch((R, u) => (1 - u) * R.total, 256, m.labImg);
     else {
       const half = R => Math.min(m.labW, R.total * 0.49) / 2;
-      patch((R, u) => R.total / 2 + half(R) * (1 - 2 * u), 96, m.labImg);   // frente (+z)
-      patch((R, u) => half(R) * (1 - 2 * u), 96, m.labImgB);                 // verso (−z)
+      if (m.labFront !== false) patch((R, u) => R.total / 2 + half(R) * (1 - 2 * u), 96, m.labImg);   // frente (+z)
+      if (m.labBack !== false) patch((R, u) => half(R) * (1 - 2 * u), 96, m.labImgB);                 // verso (−z)
     }
   }
   group.position.x = px; group.updateMatrixWorld(true);
@@ -4021,6 +4036,8 @@ const MF = [
     ['labType', 'Rótulo', 'select', [['nenhum', 'Sem rótulo'], ['envolve', 'Envolve o produto todo'], ['frenteVerso', 'Adesivo frente e verso']], 0, 0, m => m.vol],
     ['labH', 'Altura do rótulo', 5, 300, 0.5, 'mm', m => m.vol && m.labType && m.labType !== 'nenhum'],
     ['labY', 'Posição (centro, % da altura do corpo)', 0, 100, 1, '%', m => m.vol && m.labType && m.labType !== 'nenhum'],
+    ['labFront', 'Adesivo na frente', 'check', 0, 0, 0, m => m.vol && m.labType === 'frenteVerso'],
+    ['labBack', 'Adesivo no verso', 'check', 0, 0, 0, m => m.vol && m.labType === 'frenteVerso'],
     ['labW', 'Largura de cada adesivo', 5, 300, 0.5, 'mm', m => m.vol && m.labType === 'frenteVerso'],
     ['labColor', 'Cor do papel', 'color', 0, 0, 0, m => m.vol && m.labType && m.labType !== 'nenhum'],
     ['labFinish', 'Acabamento do rótulo', 'finish', 0, 0, 0, m => m.vol && m.labType && m.labType !== 'nenhum'],
@@ -4133,6 +4150,7 @@ function renderEditor() {
   const els = {}; let sidesPrev = m.sides | 0;
   const syncFacet = () => { const poly = (m.sides | 0) >= 3; els.n?.classList.toggle('off', poly); els.sideR?.classList.toggle('off', !poly); };
   for (const [title, defs] of MF) {
+    if (title === 'Rótulo') continue; // fica no painel do logotipo (renderLabelBox)
     const ribsHere = title === 'Frisos' && (m.kind === 'giro' || m.kind === 'perfil');
     if (!ribsHere && !defs.some(d => !d[6] || d[6](m))) continue;
     // Grupo recolhível; lembra quais ficaram abertos.
@@ -4176,11 +4194,52 @@ function renderEditor() {
       els[def[0]] = el;
     }
     if (ribsHere) renderRibs(grp, m);
-    if (title === 'Rótulo' && m.labType && m.labType !== 'nenhum') renderLabelArt(grp, m);
   }
   // Mola e pescante são da válvula (grupo "Mola e pescante" dela), não do corpo.
   syncFacet();
   if (isBody(m) && m.kind !== 'gargalo') { renderBodyNeck(ed, m); renderBodyLiquid(ed, m); }
+  renderLabelBox();
+}
+// Rótulo junto do logotipo: vale para o corpo selecionado (ou o primeiro corpo).
+function renderLabelBox() {
+  const box = $('#labelBox'); if (!box) return; box.innerHTML = '';
+  const cur = S.modules[sel], m = cur?.vol ? cur : S.modules.find(v => v.vol && v.kind !== 'gargalo');
+  if (!m) return;
+  const bodies = S.modules.filter(v => v.vol && v.kind !== 'gargalo');
+  const h = document.createElement('h3'); h.style.marginTop = '12px';
+  h.textContent = 'Rótulo' + (bodies.length > 1 ? ` — ${m.name}` : ''); box.appendChild(h);
+  const defs = MF.find(([t]) => t === 'Rótulo')[1];
+  if (m.labFront === undefined) m.labFront = true;
+  if (m.labBack === undefined) m.labBack = true;
+  for (const def of defs) {
+    const el = field(box, m, def, k => { if (['labType', 'labFront', 'labBack'].includes(k)) renderLabelBox(); renderStack(); queueBuild(); });
+    if (def[6] && !def[6](m)) el.classList.add('hidden');
+  }
+  if (m.labType && m.labType !== 'nenhum') {
+    renderLabelArt(box, m);
+    const b = document.createElement('button'); b.className = 'btn'; b.textContent = 'Baixar faca do rótulo (SVG, em mm)';
+    b.onclick = () => downloadDieline(m); box.appendChild(b);
+  }
+}
+// Faca do rótulo: prancheta no tamanho exato do corte (mm), com margem de
+// segurança de 3 mm. A arte feita nessa prancheta entra sem esticar.
+function downloadDieline(m) {
+  const d = labDims.get(m.uid); if (!d) { toast('Monte o rótulo primeiro'); return; }
+  const W = r1(d.W), H = r1(d.H), sm = 3, f = v => +v.toFixed(2);
+  const cone = Math.abs(d.Wtop - d.Wbot) > 1;
+  const nome = m.labType === 'envolve' ? 'envolve' : 'adesivo';
+  const lines = [m.labType === 'envolve' ? 'Rótulo envolvente' : m.labFront !== false && m.labBack !== false ? 'Adesivo (frente e verso)' : 'Adesivo',
+    `${W} × ${H} mm`].concat(cone ? [`topo ${r1(d.Wtop)} · base ${r1(d.Wbot)} mm`] : []);
+  const fs = f(Math.min(4, H / 10, W / (Math.max(...lines.map(l => l.length)) * 0.6)));
+  const txt = lines.map((l, i) => `<tspan x="${f(W / 2)}" dy="${i ? fs * 1.3 : 0}">${l}</tspan>`).join('');
+  const svg = `<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="${f(W)}mm" height="${f(H)}mm" viewBox="0 0 ${f(W)} ${f(H)}">
+  <title>Faca do rótulo ${W} x ${H} mm</title>
+  <g id="corte"><rect x="0" y="0" width="${f(W)}" height="${f(H)}" fill="none" stroke="#ff00ff" stroke-width="0.25"/></g>
+  <g id="seguranca"><rect x="${sm}" y="${sm}" width="${f(W - 2 * sm)}" height="${f(H - 2 * sm)}" fill="none" stroke="#00a0ff" stroke-width="0.2" stroke-dasharray="1.5 1"/></g>
+  <g id="info" font-family="Helvetica, Arial, sans-serif" fill="#888"><text x="${f(W / 2)}" y="${f(H / 2 - (lines.length - 1) * fs * 0.65)}" font-size="${fs}" text-anchor="middle">${txt}</text></g>
+</svg>`;
+  download(new Blob([svg], { type: 'image/svg+xml' }), `faca_rotulo_${nome}_${W}x${H}mm.svg`);
 }
 // Arte do rótulo: imagem (PNG/JPG/SVG) reduzida e guardada no próprio corpo.
 function renderLabelArt(grp, m) {
@@ -4201,15 +4260,15 @@ function renderLabelArt(grp, m) {
         const cv = document.createElement('canvas'); cv.width = Math.round((img.naturalWidth || 1024) * sc); cv.height = Math.round((img.naturalHeight || 1024) * sc);
         cv.getContext('2d').drawImage(img, 0, 0, cv.width, cv.height);
         m[k] = f.type === 'image/jpeg' ? cv.toDataURL('image/jpeg', 0.9) : cv.toDataURL('image/png');
-        renderEditorKeepScroll(); queueBuild();
+        renderLabelBox(); queueBuild();
       };
       inp.click();
     };
-    if (rm) rm.onclick = () => { m[k] = ''; renderEditorKeepScroll(); queueBuild(); };
+    if (rm) rm.onclick = () => { m[k] = ''; renderLabelBox(); queueBuild(); };
     grp.appendChild(row);
   }
   const tip = document.createElement('div'); tip.className = 'tip';
-  tip.textContent = 'A arte estica para a altura e a largura do rótulo; use uma imagem na mesma proporção.';
+  tip.textContent = 'A arte estica para a altura e a largura do rótulo: baixe a faca abaixo e faça a arte nessa prancheta para subir na proporção certa.';
   grp.appendChild(tip);
 }
 // Maior padrão de gargalo que cabe no topo do corpo (anel incluído).
