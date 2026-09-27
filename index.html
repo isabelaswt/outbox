@@ -455,7 +455,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-27.transparencia-conteudo';
+const BUILD = '2026-09-27.rotulo-bisnaga';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -3337,15 +3337,32 @@ function applyLabelsTo(group, st) {
     // Anel de amostras por altura: começa atrás (−z) e dá a volta; arco acumulado.
     const rows = [];
     for (let r = 0; r <= NR; r++) {
-      const yy = yc - H / 2 + H * r / NR, pts = [], acc = [0];
-      for (let j = 0; j < NA; j++) {
-        const th = -Math.PI / 2 + j / NA * TAU, d = new V(Math.cos(th), 0, Math.sin(th));
+      const yy = yc - H / 2 + H * r / NR, acc = [0];
+      const hitAt = (th, prev) => {
+        const d = new V(Math.cos(th), 0, Math.sin(th));
         rc.set(new V(cx + d.x * 600, yy, d.z * 600), d.clone().negate());
         const h = rc.intersectObject(o)[0];
-        pts.push(h ? h.point.clone().addScaledVector(d, off) : (pts[j - 1]?.clone() || new V(cx, yy, 0)));
-        if (j) acc.push(acc[j - 1] + pts[j].distanceTo(pts[j - 1]));
+        // afasta pela normal da superfície (pelo raio, nas partes achatadas — solda da
+        // bisnaga — o rótulo afundava no corpo e as quinas apareciam)
+        const nrm = h?.face ? h.face.normal.clone().transformDirection(o.matrixWorld) : d;
+        if (nrm.dot(d) < 0) nrm.negate();
+        return h ? h.point.clone().addScaledVector(nrm, off) : (prev?.clone() || new V(cx, yy, 0));
+      };
+      let ring = [];
+      for (let j = 0; j < NA; j++) { const th = -Math.PI / 2 + j / NA * TAU; ring.push({ th, p: hitAt(th, ring[j - 1]?.p) }); }
+      // onde dois pontos seguidos ficam longe (quina de peça achatada), mede no meio também
+      for (let pass = 0; pass < 4; pass++) {
+        const nx = []; let added = 0;
+        for (let j = 0; j < ring.length; j++) {
+          const A = ring[j], B = ring[(j + 1) % ring.length], thB = j + 1 < ring.length ? B.th : B.th + TAU;
+          nx.push(A);
+          if (A.p.distanceTo(B.p) > 0.7 && ring.length + added < NA * 4) { const th = (A.th + thB) / 2; nx.push({ th, p: hitAt(th, A.p) }); added++; }
+        }
+        ring = nx; if (!added) break;
       }
-      const total = acc[NA - 1] + pts[0].distanceTo(pts[NA - 1]);
+      const pts = ring.map(q => q.p), NP = pts.length;
+      for (let j = 1; j < NP; j++) acc.push(acc[j - 1] + pts[j].distanceTo(pts[j - 1]));
+      const total = acc[NP - 1] + pts[0].distanceTo(pts[NP - 1]);
       rows.push({ pts, acc, total });
     }
     if (group === product) {
@@ -3356,7 +3373,7 @@ function applyLabelsTo(group, st) {
     // Ponto no arco s (cíclico) de uma linha.
     const at = (R, sArc) => {
       let q = ((sArc % R.total) + R.total) % R.total;
-      let lo = 0, hi = NA; const A = i => (i === NA ? R.total : R.acc[i]), P = i => R.pts[i % NA];
+      const n = R.pts.length; let lo = 0, hi = n; const A = i => (i === n ? R.total : R.acc[i]), P = i => R.pts[i % n];
       while (hi - lo > 1) { const mid = (lo + hi) >> 1; A(mid) <= q ? lo = mid : hi = mid; }
       const f = (q - A(lo)) / Math.max(A(hi) - A(lo), 1e-6);
       return P(lo).clone().lerp(P(hi), f);
