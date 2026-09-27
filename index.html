@@ -1154,10 +1154,14 @@ function neckGeo(m, y0, { lo = false, body = null } = {}) {
   for (let y = rh + 0.2; y < h - 0.8; y += step) prof.push([y, E]);
   // Boca aberta: borda com a espessura da parede e o furo descendo (o fundo escuro
   // é uma peça à parte, abaixo) — o gargalo não é mais um cilindro fechado.
-  const rIn = Math.min(neckBore(m), E - 1.2), mouth = !lo;
+  const rIn = Math.min(neckBore(m), E - 1.2), mouth = !lo && !glassB;
   prof.push([h - 0.8, E], [h - 0.3, E - 0.25], [h, E - 0.8]);
   if (mouth) prof.push([h + 0.001, rIn + 0.35], [h + 0.002, rIn + 0.35]);
   const rings = prof.filter((q, i, a) => i === 0 || q[0] > a[i - 1][0]).map(([ly, a, b]) => ({ y: y0 + ly, ly, a, b: b ?? a, n: 2 }));
+  if (!lo && glassB) { // vidro/PET: a boca é um tubo aberto até dentro do frasco (sem fundo falso)
+    rings.push({ y: y0 + h + 0.001, ly: h + 0.001, a: rIn + 0.35, b: rIn + 0.35, n: 2 });
+    [[h - 0.25, rIn], [-deep + 0.2, rIn]].forEach(([ly, r]) => rings.push({ y: y0 + ly, ly, a: r, b: r, n: 2, noDisp: true }));
+  }
   if (mouth) { // parede de dentro da boca, descendo (anéis em ordem decrescente de altura)
     const d = Math.min(h - rh - 1, 9);
     [[h - 0.25, rIn], [h - d, rIn], [h - d, rIn * 0.5]].forEach(([ly, r]) => rings.push({ y: y0 + ly, ly, a: r, b: r, n: 2, noDisp: true }));
@@ -1968,8 +1972,11 @@ function layout(s, explode = 0) {
       if (r === 0 && vestsValve(s, idx)) { const v = out.findLast(o => o.idx === idx - 1); if (v) y0 = v.y0 + m.gap; }
       // Gargalo sobre ombro arredondado: desce com o fechamento até a borda dele
       // assentar no ombro (senão sobra um vão com o gargalo à mostra).
-      const up = s.modules[idx + 1];
-      if (r === 0 && m0.kind === 'gargalo' && s.modules[idx - 1]?.vol && up && up.kind !== 'gargalo')
+      // Em vidro/PET o gargalo fica no topo (afundado, aparecia dentro do frasco): a saia
+      // do fechamento é que desce até o ombro. Fechamento oculto também não puxa o gargalo.
+      const up = s.modules[idx + 1], bodyB = s.modules[idx - 1];
+      if (r === 0 && m0.kind === 'gargalo' && bodyB?.vol && up && up.kind !== 'gargalo' && !up.hidden
+        && !isGlass(bodyB.own ? bodyB.finish : s.finish))
         y0 -= shoulderDrop(openForNeck(s.modules[idx - 1], m0), Math.max(0, Math.min(up.W, up.D) / 2 - (up.kind === 'spray' ? 0.6 : Math.min(up.rBot || 0, Math.min(up.W, up.D) / 2))) + 0.3);
       const ex = m0.kind === 'gargalo' && s.modules[idx - 1]?.vol ? idx - 1 : idx; // gargalo explode junto do corpo
       out.push({ m: r === nRep - 1 ? mOpen : m, idx, y0: y0 + ex * explode }); cur = y0 + m.h - Math.max(0, m.cutTop || 0); // só a última cópia abre para o gargalo
