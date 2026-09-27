@@ -846,12 +846,12 @@ function buildDraftPresets() {
   }
 }
 
-const FINISHES = [['fosco', 'Fosco'], ['acetinado', 'Acetinado'], ['brilho', 'Brilho'], ['perolado', 'Perolado'], ['vidro', 'Transparente / vidro'], ['pet', 'Plástico transparente (PET)'], ['vidroSemi', 'Vidro semi-jateado (acetinado)'], ['vidroFosco', 'Vidro fosco (jateado)'], ['metal', 'Metalizado']];
+const FINISHES = [['fosco', 'Fosco'], ['acetinado', 'Acetinado'], ['brilho', 'Brilho'], ['perolado', 'Perolado'], ['vidro', 'Transparente / vidro'], ['pet', 'Plástico transparente (PET)'], ['vidroSemi', 'Vidro semi-jateado (acetinado)'], ['vidroFosco', 'Vidro fosco (jateado)'], ['petFosco', 'PET fosco (jateado)'], ['metal', 'Metalizado']];
 // Semi-jateado: meio do caminho entre o vidro transparente e o jateado (mesmo
 // tratamento do jateado, com o embaçado e o véu mais leves).
-const isFrost = f => f === 'vidroFosco' || f === 'vidroSemi';
+const isFrost = f => f === 'vidroFosco' || f === 'vidroSemi' || f === 'petFosco';
 const isGlass = f => f === 'vidro' || isFrost(f) || f === 'pet';
-const thickBase = f => f === 'vidro' || isFrost(f); // fundo grosso: só vidro (PET é fino)
+const thickBase = f => f === 'vidro' || f === 'vidroFosco' || f === 'vidroSemi'; // fundo grosso: só vidro (PET é fino)
 
 const typeKey = m => m?.type || Object.keys(LIB).find(k => LIB[k].name === m?.name);
 const isSphereCap = m => ['esfera', 'esferaBisnaga'].includes(typeKey(m));
@@ -2408,10 +2408,12 @@ function material(color, finish, band = null) {
   // desfoque do que está atrás, o brilho espalhado e o grão). Bordas e fundo ficam
   // mais escuros só em luminosidade, sem desviar o tom (a absorção por potência
   // puxava laranja para vermelho/rosa).
-  if (isFrost(finish)) { const semi = finish === 'vidroSemi'; // semi: menos embaçado, brilho mais definido
-    m.roughness = semi ? 0.12 : 0.42; m.transmission = semi ? 1 : 0.9; m.thickness = 6; m.ior = 1.5; m.depthWrite = !semi; // semi: as peças de dentro aparecem apagadas
-    m.sheen = semi ? 0.08 : 0.15; m.sheenRoughness = 0.45; m.sheenColor = new THREE.Color(color).lerp(new THREE.Color('#ffffff'), 0.5); m.specularIntensity = 1;
-    m.clearcoat = semi ? 0.4 : 0.18; m.clearcoatRoughness = semi ? 0.22 : 0.42; // brilho presente mas espalhado, sem cara de verniz
+  // PET fosco: plástico leitoso de parede fina — embaça como o jateado, mas sem a
+  // borda densa do vidro grosso e com brilho quase nenhum.
+  if (isFrost(finish)) { const semi = finish === 'vidroSemi', pf = finish === 'petFosco'; // semi: menos embaçado, brilho mais definido
+    m.roughness = semi ? 0.12 : pf ? 0.5 : 0.42; m.transmission = semi ? 1 : pf ? 0.88 : 0.9; m.thickness = pf ? 1.5 : 6; m.ior = pf ? 1.45 : 1.5; m.depthWrite = !semi; // semi: as peças de dentro aparecem apagadas
+    m.sheen = semi ? 0.08 : pf ? 0.22 : 0.15; m.sheenRoughness = 0.45; m.sheenColor = new THREE.Color(color).lerp(new THREE.Color('#ffffff'), 0.5); m.specularIntensity = 1;
+    m.clearcoat = semi ? 0.4 : pf ? 0.06 : 0.18; m.clearcoatRoughness = semi ? 0.22 : pf ? 0.6 : 0.42; // brilho presente mas espalhado, sem cara de verniz
     m.onBeforeCompile = sh => {
       if (band) bandVert(sh);
       sh.fragmentShader = sh.fragmentShader.replace('#include <transmission_fragment>', THREE.ShaderChunk.transmission_fragment
@@ -2419,13 +2421,13 @@ function material(color, finish, band = null) {
         .replace('material.thickness = thickness;', `float frEdge = pow(1.0 - abs(dot(normalize(vViewPosition), normal)), 1.1);
 \tmaterial.thickness = thickness * 0.35;`)
         .replace('totalDiffuse = mix( totalDiffuse, transmitted.rgb, material.transmission );',
-          `transmitted.rgb *= mix(1.0, ${semi ? '0.45' : '0.38'}, clamp(frEdge * 1.3, 0.0, 1.0))${band ? ' * mix(1.0, 0.62, ' + bandF(band.y) + ')' : ''}; // borda e fundo mais densos, mesmo tom
+          `transmitted.rgb *= mix(1.0, ${semi ? '0.45' : pf ? '0.8' : '0.38'}, clamp(frEdge * 1.3, 0.0, 1.0))${band ? ' * mix(1.0, 0.62, ' + bandF(band.y) + ')' : ''}; // borda e fundo mais densos, mesmo tom
 \ttotalDiffuse = mix( totalDiffuse, transmitted.rgb, material.transmission );`)
         + '\n#if defined(USE_TRANSMISSION) && defined(USE_ENVMAP)\n totalDiffuse += material.diffuseColor * (transmitted.rgb / max(max(transmitted.r, max(transmitted.g, transmitted.b)), 0.05)) * getIBLIrradiance(-normal) * ' + (semi ? '0.45' : '0.8') + ' * pow(1.0 - frEdge, 1.5); // luz de trás acende o miolo, na cor do que está atrás\n#endif'); // só com transmissão (o PNG transparente desliga ela por um instante)
     };
-    m.customProgramCacheKey = () => (semi ? 'semi1' : 'jateado10') + (band ? 'b' + band.y.toFixed(1) : ''); }
+    m.customProgramCacheKey = () => (semi ? 'semi1' : pf ? 'petf1' : 'jateado10') + (band ? 'b' + band.y.toFixed(1) : ''); }
   if (finish === 'metal') { m.metalness = 1; m.roughness = 0.3; } // um pouco menos espelhado: sem brilho piscando nas quinas
-  const grain = { fosco: 1, acetinado: 0.8, perolado: 0.6, vidroFosco: 1, vidroSemi: 0.5 }[finish];
+  const grain = { fosco: 1, acetinado: 0.8, perolado: 0.6, vidroFosco: 1, vidroSemi: 0.5, petFosco: 0.8 }[finish];
   if (grain) addGrain(m, grain);
   matCache.set(key, m);
   return m;
