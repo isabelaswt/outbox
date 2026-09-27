@@ -255,7 +255,7 @@ canvas{display:block;width:100%;height:100%;touch-action:none}
     <summary>Gerador</summary>
     <div class="gen-l">A partir do projeto aberto</div>
     <div class="tip" style="margin-top:2px">Variações do que está na tela: mesmas peças, cores e logos, com proporções, curvas e tampa mudando. Mantém o volume.</div>
-    <div class="chips" id="varAmt"><span class="chip" data-v="0.35">Sutil</span><span class="chip on" data-v="0.7">Média</span><span class="chip" data-v="1.2">Ousada</span></div>
+    <div class="chips" id="varAmt"><span class="chip" data-v="0.35">Sutil</span><span class="chip on" data-v="0.7">Média</span><span class="chip" data-v="2.2">Ousada</span></div>
     <div class="row"><button class="btn pri" id="varBtn" style="flex:1">Gerar variações deste projeto</button></div>
     <div class="gen-l" style="margin-top:12px">Do zero</div>
     <div class="tip" style="margin-top:2px">Clique nas características e gere opções. Nada marcado num grupo = qualquer uma. A mesma seed repete a mesma leva; o dado sorteia outra.</div>
@@ -449,7 +449,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-27.png-4096';
+const BUILD = '2026-09-27.ousada';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -4873,9 +4873,35 @@ $('#genBtn').onclick = runGen;
 // com medidas, curvas, gomos e tampa variando; o corpo volta ao volume original.
 document.querySelectorAll('#varAmt .chip').forEach(c => c.onclick = () => { document.querySelectorAll('#varAmt .chip').forEach(x => x.classList.toggle('on', x === c)); });
 function varyOne(seed, base, amt) {
-  const rnd = genRng(seed), R = (a, b) => a + (b - a) * rnd(), f = k => 1 + (rnd() * 2 - 1) * k * amt;
+  const rnd = genRng(seed), R = (a, b) => a + (b - a) * rnd(), f = k => Math.max(0.45, 1 + (rnd() * 2 - 1) * k * amt);
   const st = structuredClone(base); st.side = []; delete st.name;
   const want = volumes(normalize(structuredClone(base))).cap;
+  // Ousada: além das medidas, muda a estrutura — corpo facetado, com gomos, cintura
+  // ou repetido; tampa trocada por outra forma; às vezes um pescoço escultural.
+  if (amt >= 1.5) {
+    const bi = st.modules.findIndex(m => m.vol && !m.hidden), body = st.modules[bi];
+    if (body && body.kind === 'giro') {
+      const bw = Math.min(body.W, body.D), p = rnd();
+      if (p < 0.25 && !(body.sides >= 3) && !(body.lobes >= 3)) { body.sides = [4, 5, 6, 8][Math.floor(rnd() * 4)]; body.sideR = r1(R(0.1, 0.5)); }
+      else if (p < 0.5 && !(body.lobes >= 3) && !(body.sides >= 3)) { body.lobes = Math.round(R(6, 16)); body.lobeD = r1(bw * R(0.03, 0.06)); } // gomos só em seção redonda/oval (facetado + gomos quebra a peça)
+      if (rnd() < 0.45) { body.bulge = r1(bw * (rnd() < 0.5 ? -1 : 1) * R(0.08, 0.16)); body.bulgePos = r1(R(30, 70)); }
+      if (rnd() < 0.35) body.taper = r1(R(62, 135));
+      if (rnd() < 0.2 && (body.rep || 1) === 1) { const n = Math.round(R(2, 3)); body.rep = n; body.h = body.h / n; const rr = Math.min(bw, body.h) * R(0.2, 0.35); body.rBot = rr; body.rTop = rr; }
+    }
+    // tampa escultural (peça de cima, fora de válvula) trocada por outra forma
+    const ti = st.modules.length - 1, top = st.modules[ti];
+    if (top && !top.vol && top.kind !== 'spray' && top.kind !== 'gargalo' && !top.topType?.match(/flip|disc/) && rnd() < 0.6) {
+      const t = ['tigela', 'bola', 'nuvem', 'taca', 'sextavado', 'canelado', 'barril', 'cubo'][Math.floor(rnd() * 8)], L = LIB[t], w = Math.max(top.W, top.D) * R(0.8, 1.35), k = w / L.W;
+      st.modules[ti] = { ...top, ...L, type: t, name: L.name, W: w, D: (L.D || L.W) * k, h: L.h * k * R(0.8, 1.4), rBot: (L.rBot || 0) * k, rTop: (L.rTop || 0) * k,
+        lobes: L.lobes || 0, lobeD: (L.lobeD || 0) * k, sides: L.sides || 0, sideR: L.sideR ?? 0.1, taper: L.taper || 100, bulge: (L.bulge || 0) * k, uid: top.uid, own: top.own, color: top.color, finish: top.finish };
+    }
+    // pescoço escultural entre o gargalo e a tampa
+    const ni = st.modules.findIndex(m => m.kind === 'gargalo'), up = st.modules[ni + 1];
+    if (ni >= 0 && up && up.kind !== 'spray' && !up.vol && rnd() < 0.35) {
+      const nw = NECKS[st.modules[ni].neckStd]?.W || st.modules[ni].W, cw = Math.max(nw + 10, Math.max(up.W, up.D) * R(0.7, 1)), h = cw * R(0.2, 0.3);
+      st.modules.splice(ni + 1, 0, M('anel', { name: 'Pescoço de anéis', W: cw, D: cw, h, rBot: h / 2, rTop: h / 2, rep: Math.round(R(2, 4)), own: up.own, color: up.color, finish: up.finish }));
+    }
+  }
   st.modules.forEach(m => {
     if (m.hidden || m.kind === 'gargalo' || m.kind === 'spray') return;
     const round = Math.abs(m.W - m.D) < 0.5;
