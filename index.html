@@ -444,7 +444,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-26.jateado-impacto';
+const BUILD = '2026-09-26.jateado-fosco';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -2221,12 +2221,12 @@ function material(color, finish) {
   // Grava profundidade: sem isso a parede interna do frasco oco aparecia por cima da
   // de fora em pedaços (escadinha/tracejado nos vales dos gomos). No jateado o que
   // está dentro já quase não aparece, então não se perde nada.
-  if (finish === 'vidroFosco') { m.roughness = 0.28; m.transmission = 0.9; m.thickness = 6; m.ior = 1.5; m.depthWrite = true;
+  if (finish === 'vidroFosco') { m.roughness = 0.42; m.transmission = 0.9; m.thickness = 6; m.ior = 1.5; m.depthWrite = true;
     m.color.lerp(new THREE.Color('#ffffff'), 0.6); // véu do jateado (com um pouco da cor, senão lava para cinza)
     m.attenuationColor = new THREE.Color(color); m.attenuationDistance = 5;
     m.sheen = 0.15; m.sheenRoughness = 0.45; m.sheenColor = new THREE.Color(color).lerp(new THREE.Color('#ffffff'), 0.5); m.specularIntensity = 1;
     // brilho macio porém definido nos gomos e ombros (dá o impacto; sem ele o vidro ficava chapado)
-    m.clearcoat = 0.45; m.clearcoatRoughness = 0.14;
+    m.clearcoat = 0.18; m.clearcoatRoughness = 0.42; // jateado: brilho presente mas espalhado, sem cara de verniz
     m.onBeforeCompile = sh => {
       sh.fragmentShader = sh.fragmentShader.replace('#include <transmission_fragment>', THREE.ShaderChunk.transmission_fragment
         // refração com a espessura do centro (desvio pequeno: na borda o desvio grande
@@ -2239,7 +2239,7 @@ function material(color, finish) {
 \ttotalDiffuse = mix( totalDiffuse, transmitted.rgb, material.transmission );`)
         + '\n#ifdef USE_ENVMAP\n totalDiffuse += material.diffuseColor * attenuationColor * getIBLIrradiance(-normal) * 0.45 * (1.0 - frEdge);\n#endif');
     };
-    m.customProgramCacheKey = () => 'jateado6'; }
+    m.customProgramCacheKey = () => 'jateado7'; }
   if (finish === 'metal') { m.metalness = 1; m.roughness = 0.3; } // um pouco menos espelhado: sem brilho piscando nas quinas
   const grain = { fosco: 1, acetinado: 0.8, perolado: 0.6, vidroFosco: 1 }[finish];
   if (grain) addGrain(m, grain);
