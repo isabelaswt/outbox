@@ -453,7 +453,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-27.gloss-stick';
+const BUILD = '2026-09-27.goma-gota';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -3525,8 +3525,14 @@ const FILL_SOLIDS = {
     geo: s => { const r = s / 2, t = s * 0.34, e = t * 0.45, pts = [[0, -t / 2]];
       for (let i = 0; i <= 8; i++) { const a = -Math.PI / 2 + i / 8 * Math.PI; pts.push([r - e + e * Math.cos(a), t / 2 * Math.sin(a) * 1.0]); }
       pts.push([0, t / 2]); const g = new THREE.LatheGeometry(pts.map(([x, y]) => new THREE.Vector2(x, y)), 32); return g; } },
-  gomas:       { name: 'Gomas (gummies)', step: 0.78, fit: 0.5, rough: 0.35, coat: 0.6, mix: true,
-    geo: s => { const g = new THREE.SphereGeometry(s / 2, 24, 16); g.scale(1, 0.72, 0.88); return g; } },
+  // Goma em gota (gumdrop): fundo reto de quina arredondada, lateral quase reta e
+  // topo em domo; açucarada, fosca e com a luz passando de leve (brilho próprio).
+  gomas:       { name: 'Gomas (gummies)', step: 0.8, fit: 0.5, rough: 0.6, coat: 0, mix: true, sheen: 0.35, glow: 0.08,
+    geo: s => { const R = s / 2, H = s * 0.92, e = R * 0.22, rs = R * 0.93, yd = H * 0.45, pts = [[0, 0], [R - e, 0]];
+      for (let i = 1; i <= 6; i++) { const a = i / 6 * Math.PI / 2; pts.push([R - e + e * Math.sin(a), e - e * Math.cos(a)]); }
+      pts.push([rs, yd]);
+      for (let i = 1; i <= 14; i++) { const a = i / 14 * Math.PI / 2; pts.push([rs * Math.cos(a), yd + (H - yd) * Math.sin(a)]); }
+      const g = new THREE.LatheGeometry(pts.map(([x, y]) => new THREE.Vector2(Math.max(0, x), y)), 32); g.translate(0, -H / 2, 0); return g; } },
   perolas:     { name: 'Pérolas / esferas', step: 0.97, fit: 0.5, rough: 0.18, coat: 1, mix: true,
     geo: s => new THREE.SphereGeometry(s / 2, 24, 16) },
   sais:        { name: 'Sais de banho / granulado', step: 0.72, fit: 0.5, rough: 0.6, coat: 0, mix: true, irregular: true,
@@ -3562,7 +3568,9 @@ function solidFill(m, y0, levelAbs, lift) {
   probe.material.dispose();
   const geo = T.geo(s); geo.deleteAttribute('uv');
   const c1 = new THREE.Color(m.liqColor), c2 = new THREE.Color(m.liqColor2 || '#ffffff');
-  const mat = new THREE.MeshPhysicalMaterial({ color: '#ffffff', roughness: T.rough, clearcoat: T.coat, clearcoatRoughness: 0.2 });
+  const mat = new THREE.MeshPhysicalMaterial({ color: '#ffffff', roughness: T.rough, clearcoat: T.coat, clearcoatRoughness: 0.2,
+    ...(T.sheen ? { sheen: T.sheen, sheenRoughness: 0.4, sheenColor: c1.clone().lerp(new THREE.Color('#ffffff'), 0.2) } : {}),
+    ...(T.glow ? { emissive: c1.clone().multiplyScalar(T.glow) } : {}) });
   if (T.two) { // cápsula: cada metade numa cor, com a divisa reta no meio
     const cv = `vec3(${c1.r.toFixed(3)}, ${c1.g.toFixed(3)}, ${c1.b.toFixed(3)})`, cw = `vec3(${c2.r.toFixed(3)}, ${c2.g.toFixed(3)}, ${c2.b.toFixed(3)})`;
     mat.onBeforeCompile = sh => {
