@@ -455,7 +455,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-27.arrastar-abas';
+const BUILD = '2026-09-27.abas-equipe';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -4823,8 +4823,9 @@ let galleryKey = '';
 // Abas da galeria: grupo de cada modelo pelo tipo de fechamento (os salvos têm a aba deles).
 const GAL_TABS = ['Todos', 'Frascos', 'Potes', 'Perfumes', 'Pump e gatilho', 'Conta-gotas e gloss', 'Bisnagas', 'Sticks', 'Salvos'];
 function galGroup(st, name, kind) {
-  // aba escolhida arrastando o card: gravada no modelo salvo, ou neste navegador para os modelos base
-  const pick = kind === 'b' ? store.get('shape.galAba', {})[name] : st.aba;
+  // aba escolhida arrastando o card: gravada no modelo salvo; nos modelos base, a da
+  // equipe (servidor, vale para todos) ou, sem login, a deste navegador
+  const pick = kind === 'b' ? baseAbas()[name] : st.aba;
   if (pick && GAL_TABS.includes(pick) && !['Todos', 'Salvos'].includes(pick)) return pick;
   const ms = st.modules || [], sp = ms.filter(m => m.kind === 'spray').map(m => m.sprayType ?? LIB[m.type]?.sprayType);
   if (ms.some(m => m.kind === 'bisnaga') || sp.some(t => ['tubo', 'sextavada'].includes(t))) return 'Bisnagas';
@@ -4837,6 +4838,8 @@ function galGroup(st, name, kind) {
   if (/pote/i.test(name) || (vols.length && bh <= bw * 0.8)) return 'Potes';
   return 'Frascos';
 }
+let teamAba = null; // abas dos modelos base definidas pela equipe (com login)
+const baseAbas = () => (cloud && teamAba ? teamAba : store.get('shape.galAba', {}));
 let galTab = store.get('shape.galTab', 'Todos'); if (!GAL_TABS.includes(galTab)) galTab = 'Todos'; // aba que deixou de existir
 function renderPresets() {
   const sv = saved(), gal = $('#gallery'), keepTop = gal.scrollTop;
@@ -4852,7 +4855,10 @@ function renderPresets() {
       const t = e.target.closest('.chip')?.dataset.tab; let d; try { d = JSON.parse(e.dataTransfer.getData('text/x-outbox-card')); } catch { return; }
       if (!t || !d?.name) return;
       const auto = ['Todos', 'Salvos'].includes(t);
-      if (d.kind === 'b') { const o = store.get('shape.galAba', {}); if (auto) delete o[d.name]; else o[d.name] = t; store.set('shape.galAba', o); }
+      if (d.kind === 'b' && cloud) { // vale para a equipe toda
+        try { teamAba = (await api('settings.php?a=setEntry', { k: 'galAba', name: d.name, value: auto ? '' : t })).value; }
+        catch { return toast('Não consegui mudar a aba para a equipe'); }
+      } else if (d.kind === 'b') { const o = store.get('shape.galAba', {}); if (auto) delete o[d.name]; else o[d.name] = t; store.set('shape.galAba', o); }
       else {
         const sv = saved(), st = sv[d.name]; if (!st) return;
         if (auto) delete st.aba; else st.aba = t;
@@ -4864,7 +4870,7 @@ function renderPresets() {
     };
   }
   tabs?.querySelectorAll('.chip').forEach(c => c.classList.toggle('on', c.dataset.tab === galTab));
-  const key = galTab + '#' + Object.keys(PRESETS).join('|') + '#' + Object.keys(sv).join('|') + '#' + JSON.stringify(store.get('shape.galAba', {})) + Object.values(sv).map(v => v.aba || '').join('|');
+  const key = galTab + '#' + Object.keys(PRESETS).join('|') + '#' + Object.keys(sv).join('|') + '#' + JSON.stringify(baseAbas()) + Object.values(sv).map(v => v.aba || '').join('|');
   if (key === galleryKey && gal.children.length) {
     gal.querySelectorAll('.card').forEach(c => c.classList.toggle('on', c.title === S.name));
     return;
@@ -5485,6 +5491,7 @@ async function signedIn(user) {
   }
   try { cloud = Object.fromEntries((await api('models.php?a=list')).models.map(x => [x.name, x.data])); }
   catch { toast('Não consegui carregar seus modelos'); }
+  try { teamAba = (await api('settings.php?a=get&k=galAba')).value || {}; } catch { teamAba = null; } // abas da equipe
   galleryKey = ''; renderPresets();
   if (user.is_admin) { $('#teamBox').classList.remove('hidden'); renderTeam(); }
 }

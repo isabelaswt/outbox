@@ -30,3 +30,10 @@ CREATE TABLE IF NOT EXISTS login_fails (
   n INT NOT NULL,
   last_at DATETIME NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Configurações da equipe (ex.: aba de cada modelo base na galeria).
+CREATE TABLE IF NOT EXISTS team_settings (
+  k VARCHAR(64) PRIMARY KEY,
+  v MEDIUMTEXT NOT NULL,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
