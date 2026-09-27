@@ -449,7 +449,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-27.exporta-oco';
+const BUILD = '2026-09-27.oleo-grao';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -2207,7 +2207,7 @@ float gNoise(vec3 x) { vec3 i = floor(x), f = fract(x); f = f * f * (3.0 - 2.0 *
 // duas camadas giradas entre si: sem a grade quadriculada do ruído simples
 const mat3 gRot = mat3(0.00, 0.80, 0.60, -0.80, 0.36, -0.48, -0.60, -0.48, 0.64);
 float gGrain(vec3 q) { return 0.55 * gNoise(q) + 0.3 * gNoise(gRot * q * 2.03 + 3.1) + 0.15 * gNoise(gRot * gRot * q * 4.01 + 7.7); }`;
-function addGrain(m, amt, cell = 0.18) {
+function addGrain(m, amt, cell = 0.13) {
   const prev = m.onBeforeCompile, prevKey = m.customProgramCacheKey?.bind(m);
   m.onBeforeCompile = (sh, r) => {
     prev?.call(m, sh, r);
@@ -2215,9 +2215,9 @@ function addGrain(m, amt, cell = 0.18) {
       .replace('#include <begin_vertex>', '#include <begin_vertex>\nvGrainP = position;');
     const q = `vec3 gq = vGrainP / ${cell.toFixed(3)}; float gk = ${amt.toFixed(2)} * clamp(${cell.toFixed(3)} / (length(fwidth(vGrainP)) * 1.6) - 0.4, 0.0, 1.0);`;
     sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\n' + GRAIN_GLSL)
-      .replace('#include <color_fragment>', `#include <color_fragment>\n${q}\ndiffuseColor.rgb *= 1.0 + (gGrain(gq * 0.9 + 9.0) - 0.5) * 0.025 * gk;`)
-      .replace('#include <roughnessmap_fragment>', '#include <roughnessmap_fragment>\nroughnessFactor = clamp(roughnessFactor * (1.0 + (gGrain(gq * 1.7 + 5.0) - 0.5) * 0.18 * gk), 0.04, 1.0);')
-      .replace('#include <normal_fragment_maps>', '#include <normal_fragment_maps>\nnormal = normalize(normal + (vec3(gGrain(gq), gGrain(gq + 17.1), gGrain(gq + 31.7)) - 0.5) * 0.11 * gk);');
+      .replace('#include <color_fragment>', `#include <color_fragment>\n${q}`) // sem variar a cor (sujava a peça): só relevo
+      .replace('#include <roughnessmap_fragment>', '#include <roughnessmap_fragment>\nroughnessFactor = clamp(roughnessFactor * (1.0 + (gGrain(gq * 1.7 + 5.0) - 0.5) * 0.08 * gk), 0.04, 1.0);')
+      .replace('#include <normal_fragment_maps>', '#include <normal_fragment_maps>\nnormal = normalize(normal + (vec3(gGrain(gq), gGrain(gq + 17.1), gGrain(gq + 31.7)) - 0.5) * 0.07 * gk);');
   };
   m.customProgramCacheKey = () => (prevKey ? prevKey() : '') + `|grao${amt}_${cell}`;
 }
@@ -2279,7 +2279,7 @@ function material(color, finish, band = null) {
         .replace('totalDiffuse = mix( totalDiffuse, transmitted.rgb, material.transmission );',
           `transmitted.rgb *= pow(max(attenuationColor, vec3(0.001)), vec3(thickness * (0.15 + 12.0 * frEdge${band ? ' + 1.6 * ' + bandF(band.y) : ''}) / attenuationDistance)); // miolo luminoso, borda funda: tons bem contrastados
 \ttotalDiffuse = mix( totalDiffuse, transmitted.rgb, material.transmission );`)
-        + '\n#if defined(USE_TRANSMISSION) && defined(USE_ENVMAP)\n totalDiffuse += material.diffuseColor * attenuationColor * getIBLIrradiance(-normal) * 1.1 * pow(1.0 - frEdge, 1.5);\n#endif'); // só com transmissão (o PNG transparente desliga ela por um instante)
+        + '\n#if defined(USE_TRANSMISSION) && defined(USE_ENVMAP)\n totalDiffuse += material.diffuseColor * attenuationColor * (transmitted.rgb / max(max(transmitted.r, max(transmitted.g, transmitted.b)), 0.05)) * getIBLIrradiance(-normal) * 1.1 * pow(1.0 - frEdge, 1.5); // tinge com o que está atrás (o líquido)\n#endif'); // só com transmissão (o PNG transparente desliga ela por um instante)
     };
     m.customProgramCacheKey = () => 'jateado8' + (band ? 'b' + band.y.toFixed(1) : ''); }
   if (finish === 'metal') { m.metalness = 1; m.roughness = 0.3; } // um pouco menos espelhado: sem brilho piscando nas quinas
@@ -3318,12 +3318,15 @@ function liquidMeshes(m, y0, levelAbs, lift = S.wall) {
   // o que é opaco, é desenhado por cima do frasco, e só quando o frasco é transparente.
   const clear = m.liqType === 'transparente', glass = isGlass(m.own ? m.finish : S.finish);
   const frost = (m.own ? m.finish : S.finish) === 'vidroFosco';
-  const opts = clear ? { transparent: true, opacity: (1 - clamp(m.liqClear, 0, 95) / 100) * (frost ? 0.55 : 1), depthWrite: false, depthTest: !glass, roughness: frost ? 0.5 : 0.05, clearcoat: frost ? 0 : 1 } : {};
+  // Atrás de vidro jateado o líquido entra na imagem que o vidro desfoca (como na
+  // foto real: cor luminosa e borda do nível suave); por cima, ele saía nítido.
+  const opts = frost ? { roughness: 0.45, clearcoat: 0, emissive: new THREE.Color(m.liqColor).multiplyScalar(0.6) } // a luz atravessa o líquido: cor viva
+    : clear ? { transparent: true, opacity: 1 - clamp(m.liqClear, 0, 95) / 100, depthWrite: false, depthTest: !glass, roughness: 0.05, clearcoat: 1 } : {};
   const mat = new THREE.MeshPhysicalMaterial({ color: m.liqColor, roughness: 0.12, clearcoat: 0.6, clippingPlanes: clip, ...opts });
   const out = [new THREE.Mesh(inner, mat)];
   const cap = level < b.max.y - 0.05 ? levelCap(inner, level - 0.01) : null;
   if (cap) out.push(new THREE.Mesh(cap, new THREE.MeshPhysicalMaterial({ color: m.liqColor, roughness: 0.08, clearcoat: 0.8, ...opts })));
-  out.forEach(o => { o.userData.liquid = true; o.name = 'liquido'; if (clear && glass) o.renderOrder = 15; });
+  out.forEach(o => { o.userData.liquid = true; o.name = 'liquido'; if (clear && glass && !frost) o.renderOrder = 15; });
   return out;
 }
 
