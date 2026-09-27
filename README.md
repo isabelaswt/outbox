@@ -67,6 +67,8 @@ Teste local com PHP: `php -S 127.0.0.1:8767 -t .` e um `api/config.php` apontand
 - Acabamento `PET fosco (jateado)`: plastico leitoso de parede fina.
 - Gargalo em vidro/PET fica no topo do corpo e a boca abre para dentro (sem fundo falso).
 - Conteudo do corpo alem do liquido: capsulas (duas cores), comprimidos, gomas, perolas/esferas e sais/granulado, com tamanho, nivel e cores.
+- Tampa gloss com aplicador (haste + ponta de feltro curva, com comprimento, largura, curva e cor) e modelo `Gloss labial`.
+- Modelo `Stick com sobretampa`: base opaca, bastao do produto e sobretampa translucida ate a base.
 - Rotulo: a arte vai por cima da cor do papel (a cor aparece onde a imagem e transparente, sem tingir a arte).
 
 ## Proximos cuidados

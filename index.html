@@ -406,6 +406,9 @@ const LIB = {
              own: true, color: '#e8dcc6', finish: 'fosco' },
   espuma:  { name: 'Pump espuma / foam', kind: 'spray', sprayType: 'foam', W: 43, D: 43, h: 16, collarR: 1.2, ridges: 0,
              actW: 15, actH: 24, nozzleL: 2.6, stemD: 15, stemH: 4, houseD: 16, springL: 26 },
+  // Gloss: tampa alta que é o próprio cabo do aplicador (haste + ponta de feltro).
+  tampaGloss: { name: 'Tampa gloss (aplicador)', kind: 'spray', sprayType: 'gloss', W: 17, D: 17, h: 34, collarR: 1.5, ridges: 0,
+             mola: false, pesc: true, pescD: 3, pescGap: 3, tipL: 13, tipW: 6.5, tipCurve: 1.6, tipColor: '#e8a3ac' },
   contaGotas: { name: 'Conta-gotas', kind: 'spray', sprayType: 'gotas', W: 22, D: 22, h: 13, ridges: 48, actW: 15, actH: 24,
              mola: false, pescD: 6.5, pescGap: 12 },
   pushPull: { name: 'Tampa push-pull', kind: 'spray', sprayType: 'pushpull', W: 31, D: 31, h: 15, collarR: 0.8, ridges: 64, ridgeD: 0.32,
@@ -450,7 +453,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-27.recheio-petfosco';
+const BUILD = '2026-09-27.gloss-stick';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -736,6 +739,18 @@ const PRESETS = {
       orifD: 2.8, discD: 25.2, discDip: 2.8, sealH: 4.9 })] },
   'Boston com pump': { color: BEIGE, finish: 'fosco', modules: [
     M('boston'), NECK('24/410', { embed: 12 }), M('locao')] },
+  // Referência gloss labial: tubo de vidro grosso, rosca curta, tampa alta com aplicador.
+  'Gloss labial': { color: '#f4f2ef', finish: 'vidro', modules: [
+    M('reto', { name: 'Tubo gloss', W: 17, D: 17, h: 64, rBot: 2, rTop: 1.2, liq: true, liqType: 'cremoso', liqLevel: 90, liqColor: '#e58f9c', bpesc: false }),
+    M('gargalo', { neckStd: 'livre', W: 12, D: 12, h: 8, pitch: 2, turns: 2, ringH: 0.3, ringW: 0 }),
+    M('tampaGloss', { own: true, color: '#e9a4c6', finish: 'brilho' })] },
+  // Referência stick (protetor/desodorante): base opaca, bastão do produto e
+  // sobretampa translúcida que desce até a base.
+  'Stick com sobretampa': { color: '#ee7d1f', finish: 'acetinado', modules: [
+    M('plano', { name: 'Base do stick', W: 42, D: 30, n: 3.4, h: 20, rBot: 2.5, rTop: 0.8 }),
+    M('plano', { name: 'Bastão (produto)', W: 36, D: 24, n: 3.4, h: 62, rBot: 0.5, rTop: 5, vol: false, own: true, color: '#f28a24', finish: 'acetinado' }),
+    M('flip', { name: 'Sobretampa translúcida', W: 42, D: 30, n: 3.4, h: 66, rBot: 0.4, rTop: 1.8, groove: 0, topType: 'nenhum', gap: -62,
+      own: true, color: '#f6a431', finish: 'pet' })] },
   'Conta-gotas âmbar': { color: BEIGE, finish: 'fosco', modules: [
     M('boston', { W: 34, D: 34, h: 62, rTop: 13, rBot: 3 }), NECK('18/410', { embed: 8 }),
     M('contaGotas', { W: 21, D: 21 })] },
@@ -1399,6 +1414,9 @@ function sprayGeo(m, y0, { lo = false } = {}) {
     oh.scale(Math.min(ro, (tp.hTop + tp.hBot) * 0.3), 1, Math.min(ro * 1.4, tp.hz * 0.5));
     oh.rotateZ(-Math.PI / 2); oh.translate(tp.x - 2.5, tp.y + (tp.hTop - tp.hBot) / 2, 0);
     const [bgC, cav] = cutHole(bg, oh); head.push(bgC); holes.push(cav);
+  } else if (m.sprayType === 'gloss') {
+    // Gloss: a tampa alta é tudo; por dentro, o encaixe da haste (escondido).
+    head.push(cyl(Math.max(1, m.W / 2 - 1.2), top - 2, 1.2, 0, 0, lo));
   } else if (m.sprayType === 'gotas') {
     // Conta-gotas: bulbo de borracha com topo em domo.
     head.push(ring(m.actW, m.actH, top - 0.5, { rBot: 1.5, rTop: m.actW / 2, bulge: -6, bulgePos: 30 }));
@@ -1626,6 +1644,18 @@ function pescanteGeo(m, yBot, yTop) {
   const len = yTop - yBot; if (len < 5) return null;
   const rings = [], cxAt = y => { const t = (y - yBot) / len; return m.ox + m.pescCurve * (1 - t) * (1 - t) + m.pescWave * Math.sin(TAU * t); };
   const push = (y, r) => { if (!rings.length || y > rings[rings.length - 1].y + 1e-4) rings.push({ y, ly: y, a: r, b: r, n: 2, cx: cxAt(y) }); };
+  if (m.sprayType === 'gloss') {
+    // Aplicador de gloss: haste fina e ponta achatada (pé de corça) levemente curva,
+    // de fundo arredondado. A ponta vai à parte (outro material) em userData.tip.
+    const R = m.pescD / 2, L = clamp(m.tipL, 3, len - 2), wa = Math.max(R, m.tipW / 2), wb = Math.max(0.8, Math.min(wa * 0.55, R * 1.35));
+    const tip = [], tpush = (y, a, b, t) => tip.push({ y, ly: y, a, b, n: 2, cx: m.ox + m.tipCurve * (1 - t) * (1 - t) });
+    for (let i = 0; i <= 8; i++) { const u = i / 8, k = Math.sin(u * Math.PI / 2); tpush(yBot + wb * (1 - Math.cos(u * Math.PI / 2)), Math.max(0.3, wa * k), Math.max(0.3, wb * k), 0); }
+    for (let i = 1; i <= 16; i++) { const u = i / 16, y = yBot + wb + (L - wb) * u, taper = 1 - 0.55 * u * u;
+      tpush(y, R + (wa - R) * taper, R + (wb - R) * taper, u); }
+    for (let i = 0; i <= 30; i++) push(yBot + L - 0.5 + (len - L + 0.5) * i / 30, R);
+    const g = loft(rings, 24); g.userData.tip = loft(tip, 32);
+    return g;
+  }
   if (m.sprayType === 'gotas') {
     // Pipeta de conta-gotas (como a de vidro real): tubo reto, estreitamento curto e
     // suave, ponta fina curta e uma bolinha arredondada na ponta.
@@ -3726,7 +3756,7 @@ function buildInto(product, S, explodeAmt = 0) {
       // Comprimento medido montado; na vista explodida desce junto com a válvula.
       const add = (geo, name) => { const pm = new THREE.Mesh(geo, innerMat); pm.userData.idx = idx; pm.name = `${String(idx + 1).padStart(2, '0')}_${name}`; product.add(pm); };
       let yTop = y0 + m.h * 0.6;
-      if (m.mola && m.sprayType !== 'gotas') { // conta-gotas não tem mola
+      if (m.mola && !isWand(m)) { // conta-gotas não tem mola
         const mech = pumpMechGeo(m, yTop, y0); mech.parts.forEach(g => add(g, 'bomba')); yTop = mech.yEnd;
         if (mech.sleeve) {
           // Transparente só se o frasco for de vidro: por cima de tudo, como
@@ -3737,7 +3767,14 @@ function buildInto(product, S, explodeAmt = 0) {
       }
       const len = yTop - (y0 - base[i].y0) - (floor + S.wall + m.pescGap);
       const pg = pescanteGeo(m, yTop - len, yTop);
-      if (pg && m.sprayType === 'gotas') {
+      if (pg && m.sprayType === 'gloss') {
+        // Gloss: haste de plástico branco e ponta de feltro na cor do produto (opacas:
+        // aparecem pelo vidro; em frasco opaco só no Explodir).
+        const rod = new THREE.Mesh(pg, new THREE.MeshPhysicalMaterial({ color: '#f3f1ec', roughness: 0.3, clearcoat: 0.4 }));
+        const tipC = m.tipColor || (base.find(e => e.m.vol && e.m.liq)?.m.liqColor) || '#e8a3ac';
+        const tp = new THREE.Mesh(pg.userData.tip, new THREE.MeshPhysicalMaterial({ color: tipC, roughness: 0.75, sheen: 0.6, sheenRoughness: 0.5, sheenColor: new THREE.Color(tipC).lerp(new THREE.Color('#ffffff'), 0.4) }));
+        [[rod, 'haste'], [tp, 'aplicador']].forEach(([o, n]) => { o.userData.idx = idx; o.userData.liquid = true; o.name = `${String(idx + 1).padStart(2, '0')}_${n}`; product.add(o); });
+      } else if (pg && m.sprayType === 'gotas') {
         // Conta-gotas: a pipeta é sempre de vidro (o resto do acabamento é livre).
         // Num frasco opaco ela fica escondida; no Explodir ou no frasco transparente aparece.
         const frost = base.some(e => e.m.vol && isFrost(e.m.own ? e.m.finish : S.finish));
@@ -4005,12 +4042,13 @@ const padDef = d => { const a = [...d]; if (a[2] === 'select' && typeof a[4] ===
 const only = (kind, d) => { const a = padDef(d); const prev = a[6]; a[6] = m => m.kind === kind && (!prev || prev(m)); return a; };
 const GP = d => { const a = padDef(d); const prev = a[6]; a[6] = m => (m.kind === 'giro' || m.kind === 'perfil') && (!prev || prev(m)); return a; };
 const isBody = m => m.vol || categoryOf(m)?.[0] === 'Corpo';
-const valveHasPesc = () => S.modules.some(v => v.kind === 'spray' && v.pesc && v.sprayType !== 'gotas');
+const valveHasPesc = () => S.modules.some(v => v.kind === 'spray' && v.pesc && !isWand(v));
 const GT = d => { const a = padDef(d), prev = a[6]; a[6] = m => (m.kind === 'giro' || m.kind === 'perfil') && !isBody(m) && (!prev || prev(m)); return a; };
 const G = d => only('giro', d), P = d => only('placa', d), B = d => only('bisnaga', d), N = d => only('gargalo', d);
 const notK = (kinds, d) => { const a = padDef(d); a[6] = m => !kinds.includes(m.kind); return a; };
 const K = d => only('spray', d), isType = t => m => m.sprayType === t;
-const pescName = m => (m.sprayType === 'gotas' ? 'Conta-gotas' : 'Pescante'); // no conta-gotas o tubo é o próprio conta-gotas
+const isWand = m => m.sprayType === 'gotas' || m.sprayType === 'gloss'; // tubo da própria tampa, não pescante
+const pescName = m => (m.sprayType === 'gotas' ? 'Conta-gotas' : m.sprayType === 'gloss' ? 'Aplicador' : 'Pescante'); // no conta-gotas o tubo é o próprio conta-gotas
 const GB = d => { const a = padDef(d); const prev = a[6]; a[6] = m => ['giro', 'bisnaga', 'perfil'].includes(m.kind) && (!prev || prev(m)); return a; };
 // Grupos do editor. Cada peça mostra só os grupos que valem para ela; o nome
 // do grupo dá o contexto, então os rótulos ficam curtos.
@@ -4110,12 +4148,16 @@ const MF = [
     K(['dir', 'Direção (giro)', -180, 180, 1, '°']),
   ]],
   ['Mola e pescante', [
-    K(['mola', 'Bomba com mola (visível no frasco transparente)', 'check', 0, 0, 0, m => m.sprayType !== 'gotas']),
-    K(['houseD', 'Mola: diâmetro', 4, 20, 0.5, 'mm', m => m.mola && m.sprayType !== 'gotas']),
-    K(['springL', 'Mola: comprimento', 5, 60, 0.5, 'mm', m => m.mola && m.sprayType !== 'gotas']),
-    K(['coils', 'Mola: voltas', 3, 30, 1, '', m => m.mola && m.sprayType !== 'gotas']),
-    K(['sleeve', 'Carcaça da mola', 'select', [['transparente', 'Transparente (mostra a mola)'], ['fechada', 'Fechada'], ['nenhuma', 'Sem carcaça']], m => m.mola && m.sprayType !== 'gotas']),
-    K(['pesc', m => m.sprayType === 'gotas' ? 'Conta-gotas (tubo de vidro até perto do fundo)' : 'Pescante (tubo até o fundo)', 'check']),
+    K(['mola', 'Bomba com mola (visível no frasco transparente)', 'check', 0, 0, 0, m => !isWand(m)]),
+    K(['houseD', 'Mola: diâmetro', 4, 20, 0.5, 'mm', m => m.mola && !isWand(m)]),
+    K(['springL', 'Mola: comprimento', 5, 60, 0.5, 'mm', m => m.mola && !isWand(m)]),
+    K(['coils', 'Mola: voltas', 3, 30, 1, '', m => m.mola && !isWand(m)]),
+    K(['sleeve', 'Carcaça da mola', 'select', [['transparente', 'Transparente (mostra a mola)'], ['fechada', 'Fechada'], ['nenhuma', 'Sem carcaça']], m => m.mola && !isWand(m)]),
+    K(['pesc', m => m.sprayType === 'gotas' ? 'Conta-gotas (tubo de vidro até perto do fundo)' : m.sprayType === 'gloss' ? 'Aplicador (haste até perto do fundo)' : 'Pescante (tubo até o fundo)', 'check']),
+    K(['tipL', 'Aplicador: comprimento da ponta', 4, 30, 0.5, 'mm', m => m.pesc && m.sprayType === 'gloss']),
+    K(['tipW', 'Aplicador: largura da ponta', 3, 14, 0.1, 'mm', m => m.pesc && m.sprayType === 'gloss']),
+    K(['tipCurve', 'Aplicador: curva da ponta', -4, 4, 0.1, 'mm', m => m.pesc && m.sprayType === 'gloss']),
+    K(['tipColor', 'Aplicador: cor da ponta', 'color', 0, 0, 0, m => m.pesc && m.sprayType === 'gloss']),
     K(['pipTip', 'Ponta do conta-gotas', 'select', [['bolinha', 'Com bolinha'], ['afunilada', 'Afunilada']], m => m.pesc && m.sprayType === 'gotas']),
     K(['pescD', m => `${pescName(m)}: diâmetro`, 2, 10, 0.1, 'mm', m => m.pesc]),
     K(['pescGap', m => `${pescName(m)}: folga do fundo`, 0, 20, 0.5, 'mm', m => m.pesc]),
@@ -4164,7 +4206,7 @@ const MF = [
   ]],
   // Pescante do corpo (tampas sem pescante próprio); bisnaga não tem.
   ['Pescante', [
-    ['bpesc', 'Pescante até o fundo', 'check', 0, 0, 0, m => m.vol && m.kind !== 'bisnaga' && !S.modules.some(v => v.sprayType === 'gotas' && v.pesc)], // com conta-gotas, o tubo é dele
+    ['bpesc', 'Pescante até o fundo', 'check', 0, 0, 0, m => m.vol && m.kind !== 'bisnaga' && !S.modules.some(v => isWand(v) && v.pesc)], // com conta-gotas, o tubo é dele
     ['bpescD', 'Diâmetro', 2, 10, 0.1, 'mm', m => m.vol && m.kind !== 'bisnaga' && (m.bpesc || valveHasPesc())],
     ['bpescGap', 'Folga do fundo', 0, 20, 0.5, 'mm', m => m.vol && m.kind !== 'bisnaga' && (m.bpesc || valveHasPesc())],
     ['bpescCurve', 'Curva no pé (− esquerda)', -40, 40, 0.5, 'mm', m => m.vol && m.kind !== 'bisnaga' && (m.bpesc || valveHasPesc())],
@@ -4300,9 +4342,9 @@ function renderEditor() {
         // Um pescante só por frasco: os controles do corpo e os da válvula mexem no
         // mesmo (antes, com válvula de pescante próprio, os do corpo não faziam nada).
         const PESC = { bpescD: 'pescD', bpescGap: 'pescGap', bpescCurve: 'pescCurve', bpescWave: 'pescWave' };
-        if (PESC[k] && m.vol) S.modules.filter(v => v.kind === 'spray' && v.pesc && v.sprayType !== 'gotas').forEach(v => { v[PESC[k]] = m[k]; });
+        if (PESC[k] && m.vol) S.modules.filter(v => v.kind === 'spray' && v.pesc && !isWand(v)).forEach(v => { v[PESC[k]] = m[k]; });
         const bk = Object.keys(PESC).find(q => PESC[q] === k);
-        if (bk && m.kind === 'spray' && m.sprayType !== 'gotas') S.modules.filter(v => v.vol).forEach(v => { v[bk] = m[k]; });
+        if (bk && m.kind === 'spray' && !isWand(m)) S.modules.filter(v => v.vol).forEach(v => { v[bk] = m[k]; });
         if (isSphereCap(m)) {
           if (k === 'sphereR') m.roundLock = false;
           syncSphereRadius(m, k === 'roundLock' && m.roundLock || ['W', 'D', 'h'].includes(k) && m.roundLock);
@@ -4635,7 +4677,7 @@ function renderAll() { renderStack(); renderEditor(); renderGlobal(); renderPres
 const CATS = [
   ['Corpo', ['reto', 'boston', 'quadrado', 'capsula', 'perfumeOval', 'plano', 'arco', 'cone', 'placa', 'bisnaga', ...DRAFT_KEYS.corpo]],
   ['Tampa', ['esfera', 'esferaBisnaga', 'nuvem', 'taca', 'domo', 'seixo', 'flip', 'flipRedondo', 'flipAba', 'disctop', 'sobretampa', 'tampaBisnaga', 'tampaSextavada', 'disco']],
-  ['Válvula', ['pump', 'pumpFrisos', 'locao', 'espuma', 'spray', 'sprayClassico', 'contaGotas', 'pushPull', 'pushSport', 'bicoDosador', 'bicoConico', 'lamina', 'pumpOnda', 'gatilho', 'pumpBisnaga']],
+  ['Válvula', ['pump', 'pumpFrisos', 'locao', 'espuma', 'spray', 'sprayClassico', 'contaGotas', 'tampaGloss', 'pushPull', 'pushSport', 'bicoDosador', 'bicoConico', 'lamina', 'pumpOnda', 'gatilho', 'pumpBisnaga']],
   ['Peça de encaixe', ['gargalo', 'colar', 'barril', 'flare', 'anel', 'tigela', 'bola', 'sextavado', 'canelado']],
 ];
 CATS.forEach(([label, keys]) => {
