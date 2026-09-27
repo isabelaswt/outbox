@@ -3280,6 +3280,8 @@ function labelMaterial(m, img) {
   mt.depthWrite = true; mt.transmission = 0;
   labMats.set(key, mt); return mt;
 }
+// Rótulo vai em corpo ou tampa (qualquer peça com superfície própria), não em gargalo nem válvula.
+const canLabel = m => !!m && m.kind !== 'gargalo' && m.kind !== 'spray';
 // Medidas reais de cada rótulo (mm, medidas na superfície), para baixar a faca.
 const labDims = new Map();
 function applyLabelsTo(group, st) {
@@ -3288,7 +3290,7 @@ function applyLabelsTo(group, st) {
   const rc = new THREE.Raycaster(), V = THREE.Vector3; rc.firstHitOnly = true;
   for (const o of group.children.filter(o => o.userData.main && !(o.userData.rep > 0))) {
     const m = mods.get(o.userData.uid);
-    if (!m || !m.vol || !m.labType || m.labType === 'nenhum') continue;
+    if (!m || !canLabel(m) || !m.labType || m.labType === 'nenhum') continue;
     if (!o.geometry.boundsTree) o.geometry.computeBoundsTree();
     const bb = new THREE.Box3().setFromObject(o), BH = bb.max.y - bb.min.y;
     const H = clamp(m.labH, 2, BH - 0.4), yc = clamp(bb.min.y + BH * m.labY / 100, bb.min.y + H / 2 + 0.2, bb.max.y - H / 2 - 0.2);
@@ -4213,14 +4215,14 @@ const MF = [
   ]],
   // Rótulo do corpo: envolve tudo ou adesivo frente e verso (arte opcional).
   ['Rótulo', [
-    ['labType', 'Rótulo', 'select', [['nenhum', 'Sem rótulo'], ['envolve', 'Envolve o produto todo'], ['frenteVerso', 'Adesivo frente e verso']], 0, 0, m => m.vol],
-    ['labH', 'Altura do rótulo', 5, 300, 0.5, 'mm', m => m.vol && m.labType && m.labType !== 'nenhum'],
-    ['labY', 'Posição (centro, % da altura do corpo)', 0, 100, 1, '%', m => m.vol && m.labType && m.labType !== 'nenhum'],
-    ['labFront', 'Adesivo na frente', 'check', 0, 0, 0, m => m.vol && m.labType === 'frenteVerso'],
-    ['labBack', 'Adesivo no verso', 'check', 0, 0, 0, m => m.vol && m.labType === 'frenteVerso'],
-    ['labW', 'Largura de cada adesivo', 5, 300, 0.5, 'mm', m => m.vol && m.labType === 'frenteVerso'],
-    ['labColor', 'Cor do papel', 'color', 0, 0, 0, m => m.vol && m.labType && m.labType !== 'nenhum'],
-    ['labFinish', 'Acabamento do rótulo', 'finish', 0, 0, 0, m => m.vol && m.labType && m.labType !== 'nenhum'],
+    ['labType', 'Rótulo', 'select', [['nenhum', 'Sem rótulo'], ['envolve', 'Envolve o produto todo'], ['frenteVerso', 'Adesivo frente e verso']], 0, 0, m => canLabel(m)],
+    ['labH', 'Altura do rótulo', 5, 300, 0.5, 'mm', m => canLabel(m) && m.labType && m.labType !== 'nenhum'],
+    ['labY', 'Posição (centro, % da altura da peça)', 0, 100, 1, '%', m => canLabel(m) && m.labType && m.labType !== 'nenhum'],
+    ['labFront', 'Adesivo na frente', 'check', 0, 0, 0, m => canLabel(m) && m.labType === 'frenteVerso'],
+    ['labBack', 'Adesivo no verso', 'check', 0, 0, 0, m => canLabel(m) && m.labType === 'frenteVerso'],
+    ['labW', 'Largura de cada adesivo', 5, 300, 0.5, 'mm', m => canLabel(m) && m.labType === 'frenteVerso'],
+    ['labColor', 'Cor do papel', 'color', 0, 0, 0, m => canLabel(m) && m.labType && m.labType !== 'nenhum'],
+    ['labFinish', 'Acabamento do rótulo', 'finish', 0, 0, 0, m => canLabel(m) && m.labType && m.labType !== 'nenhum'],
   ]],
   // Pescante do corpo (tampas sem pescante próprio); bisnaga não tem.
   ['Pescante', [
@@ -4380,12 +4382,13 @@ function renderEditor() {
   if (isBody(m) && m.kind !== 'gargalo') { renderBodyNeck(ed, m); renderBodyLiquid(ed, m); }
   renderLabelBox();
 }
-// Rótulo junto do logotipo: vale para o corpo selecionado (ou o primeiro corpo).
+// Rótulo junto do logotipo: vale para a peça selecionada (corpo ou tampa); sem
+// peça que aceite rótulo selecionada, vai para o primeiro corpo.
 function renderLabelBox() {
   const box = $('#labelBox'); if (!box) return; box.innerHTML = '';
-  const cur = S.modules[sel], m = cur?.vol ? cur : S.modules.find(v => v.vol && v.kind !== 'gargalo');
+  const cur = S.modules[sel], m = canLabel(cur) ? cur : S.modules.find(v => v.vol && canLabel(v));
   if (!m) return;
-  const bodies = S.modules.filter(v => v.vol && v.kind !== 'gargalo');
+  const bodies = S.modules.filter(v => canLabel(v) && (v.vol || v.labType && v.labType !== 'nenhum' || v === m));
   const h = document.createElement('h3'); h.style.marginTop = '12px';
   h.textContent = 'Rótulo' + (bodies.length > 1 ? ` — ${m.name}` : ''); box.appendChild(h);
   const defs = MF.find(([t]) => t === 'Rótulo')[1];
