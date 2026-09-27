@@ -82,6 +82,7 @@ select,input[type=text]{font:inherit;font-size:12px;border:1px solid var(--line)
 .chip{border:1px solid var(--line);border-radius:999px;padding:3px 9px;font-size:11px;cursor:pointer;background:var(--soft);color:#444;user-select:none}
 .chip:hover{border-color:#bdb8b0}
 .chip.on{background:var(--ink);border-color:var(--ink);color:#fff}
+.chip.drop{border-color:var(--ink);box-shadow:0 0 0 2px var(--ink) inset}
 .gen-l{font-size:10.5px;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);font-weight:600;margin-top:6px}
 .card .ph{width:100%;aspect-ratio:9/11;display:block;object-fit:contain;border-radius:6px;background:linear-gradient(180deg,#fff,#f1efeb)}
 .edit{background:var(--soft);border-radius:10px;padding:4px 10px 8px;margin-top:6px}
@@ -454,7 +455,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-27.abas-potes-perfumes';
+const BUILD = '2026-09-27.arrastar-abas';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -885,6 +886,7 @@ function syncSphereRadius(m, auto = false) {
   m.rBotW = m.rTopW = 0;
 }
 
+store.set('shape.openGroups', {}); // ao abrir o app, grupos de controles fechados
 let S = normalize(store.get('shape.autosave', null) || { name: 'Cápsula + esfera', wall: 1.2, bg: '#f1f0ed', ...structuredClone(PRESETS['Cápsula + esfera']) });
 let sel = 0;
 function normalize(s) {
@@ -4382,7 +4384,7 @@ function renderEditor() {
       (deep ? '' : `<br>⚠ Baixa demais: a rosca aparece acima da tampa.`);
     ed.appendChild(tip);
   }
-  const openG = store.get('shape.openGroups', { Medidas: true, Formato: true });
+  const openG = store.get('shape.openGroups', {});
   // Seção redonda/oval (n) x polígono (lados + cantos): os dois controles ficam
   // no lugar; o que não vale agora fica esmaecido (o painel não pula ao arrastar).
   const els = {}; let sidesPrev = m.sides | 0;
@@ -4394,7 +4396,7 @@ function renderEditor() {
     // Grupo recolhível; lembra quais ficaram abertos.
     const grp = document.createElement('details'); grp.className = 'grp'; grp.open = !!openG[title] || (title === 'Gomos' && m.lobes >= 3);
     grp.innerHTML = `<summary>${title}</summary>`;
-    grp.addEventListener('toggle', () => { const o = store.get('shape.openGroups', { Medidas: true, Formato: true }); o[title] = grp.open; store.set('shape.openGroups', o); });
+    grp.addEventListener('toggle', () => { const o = store.get('shape.openGroups', {}); o[title] = grp.open; store.set('shape.openGroups', o); });
     ed.appendChild(grp);
     if (title === 'Arredondamento' && m.kind === 'placa') {
       const b = document.createElement('button'); b.className = 'btn'; b.textContent = 'Espelhar ←→';
@@ -4550,10 +4552,10 @@ function refitAfterBodySwap(bi) {
 }
 // Gargalo do corpo: liga/desliga e edita padrão, rosca e anel sem sair do corpo.
 function renderBodyNeck(ed, m) {
-  const openG = store.get('shape.openGroups', { Medidas: true, Formato: true });
+  const openG = store.get('shape.openGroups', {});
   const grp = document.createElement('details'); grp.className = 'grp'; grp.open = !!openG.Gargalo;
   grp.innerHTML = '<summary>Gargalo</summary>';
-  grp.addEventListener('toggle', () => { const o = store.get('shape.openGroups', { Medidas: true, Formato: true }); o.Gargalo = grp.open; store.set('shape.openGroups', o); });
+  grp.addEventListener('toggle', () => { const o = store.get('shape.openGroups', {}); o.Gargalo = grp.open; store.set('shape.openGroups', o); });
   const medidas = [...ed.querySelectorAll('.grp')].find(g => g.querySelector('summary').textContent === 'Medidas');
   medidas ? medidas.after(grp) : ed.appendChild(grp);
   const bt = builtInThread(m);
@@ -4603,10 +4605,10 @@ function renderBodyNeck(ed, m) {
 }
 // Líquido no corpo: liga, nível e cor.
 function renderBodyLiquid(ed, m) {
-  const openG = store.get('shape.openGroups', { Medidas: true, Formato: true });
+  const openG = store.get('shape.openGroups', {});
   const grp = document.createElement('details'); grp.className = 'grp'; grp.open = !!openG['Conteúdo'];
   grp.innerHTML = '<summary>Conteúdo</summary>'; // líquido ou recheio sólido
-  grp.addEventListener('toggle', () => { const o = store.get('shape.openGroups', { Medidas: true, Formato: true }); o['Conteúdo'] = grp.open; store.set('shape.openGroups', o); });
+  grp.addEventListener('toggle', () => { const o = store.get('shape.openGroups', {}); o['Conteúdo'] = grp.open; store.set('shape.openGroups', o); });
   const before = [...ed.querySelectorAll('.grp')].find(g => ['Encaixe', 'Cor'].includes(g.querySelector('summary').textContent));
   before ? ed.insertBefore(grp, before) : ed.appendChild(grp);
   const ch = (k, structural) => {
@@ -4820,7 +4822,10 @@ function queueThumb(img, st) {
 let galleryKey = '';
 // Abas da galeria: grupo de cada modelo pelo tipo de fechamento (os salvos têm a aba deles).
 const GAL_TABS = ['Todos', 'Frascos', 'Potes', 'Perfumes', 'Pump e gatilho', 'Conta-gotas e gloss', 'Bisnagas', 'Sticks', 'Salvos'];
-function galGroup(st, name) {
+function galGroup(st, name, kind) {
+  // aba escolhida arrastando o card: gravada no modelo salvo, ou neste navegador para os modelos base
+  const pick = kind === 'b' ? store.get('shape.galAba', {})[name] : st.aba;
+  if (pick && GAL_TABS.includes(pick) && !['Todos', 'Salvos'].includes(pick)) return pick;
   const ms = st.modules || [], sp = ms.filter(m => m.kind === 'spray').map(m => m.sprayType ?? LIB[m.type]?.sprayType);
   if (ms.some(m => m.kind === 'bisnaga') || sp.some(t => ['tubo', 'sextavada'].includes(t))) return 'Bisnagas';
   if (/stick|bastão/i.test(name)) return 'Sticks';
@@ -4839,9 +4844,27 @@ function renderPresets() {
   if (tabs && !tabs.children.length) {
     tabs.innerHTML = GAL_TABS.map(t => `<span class="chip" data-tab="${t}">${t === 'Salvos' && cloud ? 'Meus modelos' : t}</span>`).join('');
     tabs.onclick = e => { const t = e.target.closest('.chip')?.dataset.tab; if (!t) return; galTab = t; store.set('shape.galTab', t); galleryKey = ''; gal.scrollTop = 0; renderPresets(); };
+    // arrastar um card para uma aba muda a aba dele ("Todos" ou "Salvos" voltam ao automático)
+    tabs.ondragover = e => { const c = e.target.closest('.chip'); if (!c) return; e.preventDefault(); tabs.querySelectorAll('.chip').forEach(x => x.classList.toggle('drop', x === c)); };
+    tabs.ondragleave = e => { if (!tabs.contains(e.relatedTarget)) tabs.querySelectorAll('.chip').forEach(x => x.classList.remove('drop')); };
+    tabs.ondrop = async e => {
+      e.preventDefault(); tabs.querySelectorAll('.chip').forEach(x => x.classList.remove('drop'));
+      const t = e.target.closest('.chip')?.dataset.tab; let d; try { d = JSON.parse(e.dataTransfer.getData('text/x-outbox-card')); } catch { return; }
+      if (!t || !d?.name) return;
+      const auto = ['Todos', 'Salvos'].includes(t);
+      if (d.kind === 'b') { const o = store.get('shape.galAba', {}); if (auto) delete o[d.name]; else o[d.name] = t; store.set('shape.galAba', o); }
+      else {
+        const sv = saved(), st = sv[d.name]; if (!st) return;
+        if (auto) delete st.aba; else st.aba = t;
+        if (S.name === d.name) { if (auto) delete S.aba; else S.aba = t; store.set('shape.autosave', S); }
+        if (cloud) { try { await api('models.php?a=save', { name: d.name, data: st }); } catch { return toast('Não consegui mudar a aba'); } }
+        else store.set('shape.presets', sv);
+      }
+      toast(auto ? `${d.name}: aba automática` : `${d.name} → ${t}`); galleryKey = ''; renderPresets();
+    };
   }
   tabs?.querySelectorAll('.chip').forEach(c => c.classList.toggle('on', c.dataset.tab === galTab));
-  const key = galTab + '#' + Object.keys(PRESETS).join('|') + '#' + Object.keys(sv).join('|');
+  const key = galTab + '#' + Object.keys(PRESETS).join('|') + '#' + Object.keys(sv).join('|') + '#' + JSON.stringify(store.get('shape.galAba', {})) + Object.values(sv).map(v => v.aba || '').join('|');
   if (key === galleryKey && gal.children.length) {
     gal.querySelectorAll('.card').forEach(c => c.classList.toggle('on', c.title === S.name));
     return;
@@ -4857,14 +4880,16 @@ function renderPresets() {
       card.title = name;
       card.innerHTML = `<img class="ph" alt=""><div>${name}</div>`;
       card.onclick = () => { loadState(st, name); };
+      card.draggable = true; // arrastar para uma aba
+      card.ondragstart = e => { e.dataTransfer.setData('text/x-outbox-card', JSON.stringify({ name, kind })); e.dataTransfer.effectAllowed = 'move'; };
       gal.appendChild(card);
       queueThumb(card.querySelector('img'), st);
     }
   };
-  const inTab = ([n, st]) => galTab === 'Todos' || galGroup(st, n) === galTab;
-  if (galTab !== 'Salvos') section('Modelos base', Object.entries(PRESETS).filter(inTab), 'b');
+  const inTab = kind => ([n, st]) => galTab === 'Todos' || galGroup(st, n, kind) === galTab;
+  if (galTab !== 'Salvos') section('Modelos base', Object.entries(PRESETS).filter(inTab('b')), 'b');
   if (galTab === 'Todos' || galTab === 'Salvos') section(cloud ? 'Meus modelos' : 'Salvos', Object.entries(sv), 's');
-  else section(cloud ? 'Meus modelos' : 'Salvos', Object.entries(sv).filter(inTab), 's');
+  else section(cloud ? 'Meus modelos' : 'Salvos', Object.entries(sv).filter(inTab('s')), 's');
   if (!gal.children.length) gal.innerHTML = '<h4>Nada nesta aba ainda</h4>';
   gal.scrollTop = keepTop;
 
@@ -4874,6 +4899,7 @@ function loadState(s, name) {
   // lado a lado da tela ficava grudado em todo modelo aberto).
   S = normalize(structuredClone({ wall: S.wall, bg: S.bg, side: [], ...s }));
   if (name) S.name = name;
+  store.set('shape.openGroups', {}); // produto aberto: grupos de controles começam fechados
   sel = 0; renderAll(); build(); fit();
 }
 // Novo produto: começa do zero (modelo base, sem lado a lado, sem logos, sem nome,
@@ -4882,7 +4908,7 @@ $('#newProduct').onclick = () => {
   if (!confirm('Começar um produto novo do zero?\n\nO produto atual e o lado a lado saem da tela. O que já foi salvo continua na galeria.')) return;
   const base = PRESETS[Object.keys(PRESETS)[0]];
   S = normalize(structuredClone({ wall: S.wall, bg: S.bg, scene: S.scene, ...base, side: [], logos: [], name: '' }));
-  S.name = ''; sel = 0; lastAuto = '';
+  S.name = ''; sel = 0; lastAuto = ''; store.set('shape.openGroups', {});
   renderAll(); build(); fit(); saveStatus('');
   toast('Produto novo: monte e salve com um nome');
 };
