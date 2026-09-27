@@ -454,7 +454,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-27.video-fade';
+const BUILD = '2026-09-27.conteudo';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -4582,24 +4582,24 @@ function renderBodyNeck(ed, m) {
 // Líquido no corpo: liga, nível e cor.
 function renderBodyLiquid(ed, m) {
   const openG = store.get('shape.openGroups', { Medidas: true, Formato: true });
-  const grp = document.createElement('details'); grp.className = 'grp'; grp.open = !!openG['Líquido'];
-  grp.innerHTML = '<summary>Líquido</summary>'; // líquido ou recheio sólido
-  grp.addEventListener('toggle', () => { const o = store.get('shape.openGroups', { Medidas: true, Formato: true }); o['Líquido'] = grp.open; store.set('shape.openGroups', o); });
+  const grp = document.createElement('details'); grp.className = 'grp'; grp.open = !!openG['Conteúdo'];
+  grp.innerHTML = '<summary>Conteúdo</summary>'; // líquido ou recheio sólido
+  grp.addEventListener('toggle', () => { const o = store.get('shape.openGroups', { Medidas: true, Formato: true }); o['Conteúdo'] = grp.open; store.set('shape.openGroups', o); });
   const before = [...ed.querySelectorAll('.grp')].find(g => ['Encaixe', 'Cor'].includes(g.querySelector('summary').textContent));
   before ? ed.insertBefore(grp, before) : ed.appendChild(grp);
   const ch = (k, structural) => {
-    if (k === 'liq' && m.liq && !isGlass(m.own ? m.finish : S.finish)) toast('Para ver o líquido, deixe o corpo em Transparente / vidro (Aparência)');
+    if (k === 'liq' && m.liq && !isGlass(m.own ? m.finish : S.finish)) toast('Para ver o conteúdo, deixe o corpo em vidro ou PET (Aparência)');
     if (structural) renderEditorKeepScroll(); queueBuild();
   };
-  field(grp, m, ['liq', 'Conteúdo dentro (líquido ou sólidos)', 'check'], ch);
+  field(grp, m, ['liq', 'Conteúdo dentro', 'check'], ch);
   if (m.liq) {
-    field(grp, m, ['liqType', 'Tipo', 'select', [['cremoso', 'Líquido cremoso (hidratante, loção)'], ['transparente', 'Líquido transparente (gel, tônico, óleo)'],
+    field(grp, m, ['liqType', 'Tipo', 'select', [['cremoso', 'Cremoso (hidratante, loção)'], ['transparente', 'Transparente (gel, tônico, óleo)'],
       ...Object.entries(FILL_SOLIDS).map(([k, T]) => [k, T.name])]], (k) => ch(k, true));
     const solid = !!FILL_SOLIDS[m.liqType];
     if (m.liqType === 'transparente') field(grp, m, ['liqClear', 'Transparência', 0, 95, 1, '%'], ch);
     if (solid) field(grp, m, ['liqSize', 'Tamanho da peça', 1, 40, 0.5, 'mm'], ch);
     field(grp, m, ['liqLevel', 'Nível', 0, 100, 1, '%'], ch);
-    field(grp, m, ['liqColor', solid ? 'Cor' : 'Cor do líquido', 'color'], ch);
+    field(grp, m, ['liqColor', 'Cor do conteúdo', 'color'], ch);
     if (solid && m.liqType !== 'comprimidos') field(grp, m, ['liqColor2', m.liqType === 'pilulas' ? 'Cor da outra metade' : 'Segunda cor (mistura)', 'color'], ch);
   }
 }
