@@ -223,7 +223,7 @@ canvas{display:block;width:100%;height:100%;touch-action:none}
     <div class="tip">Cenário, luz e vídeo girando para mostrar o produto. O cenário se ajusta ao tamanho do produto (e dos que estão ao lado).</div>
     <div id="sceneFields"></div>
     <div class="row">
-      <select id="spinMode"><option value="360">Volta inteira (360°)</option><option value="balanco">Vai e volta (frente sempre à vista)</option><option value="detalhes">Artístico: detalhes (relevo de perto, tampa abrindo)</option><option value="arte">Inclinado 45° girando no ar</option></select>
+      <select id="spinMode"><option value="360">Volta inteira (360°)</option><option value="balanco">Vai e volta (frente sempre à vista)</option><option value="detalhes">Artístico: detalhes (~37 s, lento, com fades)</option><option value="arte">Inclinado 45° girando no ar</option></select>
       <select id="spinSec"><option value="6">6 s</option><option value="10" selected>10 s</option><option value="15">15 s</option><option value="20">20 s</option></select>
       <select id="spinFmt"><option value="tela">Formato da tela</option><option value="9x16" selected>Vertical 9:16</option><option value="1x1">Quadrado 1:1</option><option value="16x9">Horizontal 16:9</option></select>
     </div>
@@ -454,7 +454,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-27.abas-petsemi';
+const BUILD = '2026-09-27.video-fade';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -2719,12 +2719,12 @@ function detailShow() {
   relT.applyAxisAngle(Yax, off); const capAimR = capAim.clone().applyAxisAngle(Yax, off), CR = C.clone().applyAxisAngle(Yax, off);
   const shots = [
     // abertura: câmera parada em 3/4, o produto gira no próprio eixo (sem aproximar)
-    { d: 3, T0: CR, T1: CR, P0: pose(CR, A - 0.45, 0.02, distHero), P1: pose(CR, A - 0.45, 0.02, distHero), fov: 26, turn: [-0.75, 0.15] },
-    { d: 3, T0: relT, T1: relT, P0: pose(relT, A + 0.3, 0.04, fitDist(relR * 1.6, 18)), P1: pose(relT, A - 0.3, 0.04, fitDist(relR * 1.6, 18)), fov: 18 },
+    { d: 4.5, T0: CR, T1: CR, P0: pose(CR, A - 0.45, 0.02, distHero * 1.04), P1: pose(CR, A - 0.45, 0.02, distHero), fov: 26, turn: [-0.55, 0.1] },
+    { d: 4.5, T0: relT, T1: relT, P0: pose(relT, A + 0.2, 0.04, fitDist(relR * 1.6, 18)), P1: pose(relT, A - 0.2, 0.04, fitDist(relR * 1.6, 18)), fov: 18 },
     // tampa abrindo de frente, câmera quase na altura da tampa (bico e furo ficam discretos)
-    { d: 5.5, T0: capAimR, T1: capAimR, P0: pose(capAimR, A, 0.1, fitDist(capFit * 1.12, 22)), P1: pose(capAimR, A, 0.12, fitDist(capFit * 1.04, 22)), fov: 22, cap: true },
+    { d: 6, T0: capAimR, T1: capAimR, P0: pose(capAimR, A, 0.1, fitDist(capFit * 1.12, 22)), P1: pose(capAimR, A, 0.12, fitDist(capFit * 1.04, 22)), fov: 22, cap: true },
     // deitado em diagonal (topo à direita), bem perto, com a malha virando acabamento da base ao topo
-    { d: 6, T0: C, T1: C, P0: pose(C, A - 0.15, -0.1, distTilt * 1.08), P1: pose(C, A + 0.12, -0.06, distTilt), fov: 24, tilt: true, wire: true },
+    { d: 6.5, T0: C, T1: C, P0: pose(C, A - 0.15, -0.1, distTilt * 1.08), P1: pose(C, A + 0.12, -0.06, distTilt), fov: 24, tilt: true, wire: true },
     // fecho: de frente, em vista ortográfica (sem perspectiva), um giro inteiro no próprio eixo
     { d: 7.5, T0: CR, T1: CR, P0: pose(CR, A, 0, 3000), P1: pose(CR, A, 0, 3000), fov: 28, ortho: true, turn: [-Math.PI * 2, 0], land: true },
     // final: produto parado em 3/4 e a luz dá uma volta inteira em volta dele
@@ -2733,7 +2733,9 @@ function detailShow() {
   ];
   const rot0 = sceneOf().luzRot || 0; let rotNow = rot0;
   const setLightRot = v => { if (Math.abs(v - rotNow) < 1e-3) return; rotNow = v; S.scene = S.scene || {}; S.scene.luzRot = v; applySceneLight(); };
-  const total = shots.reduce((a, x) => a + x.d, 0);
+  // Fade cruzado: cada tomada continua o movimento por FADE s enquanto a próxima
+  // entra por cima (nada congela na troca); o vídeo tem a duração do roteiro.
+  const FADE = 1.4, total = shots.reduce((a, x) => a + x.d, 0) + FADE;
   const ease = x => x * x * (3 - 2 * x);
   // Inclinação em torno do centro do produto (topo para a direita de quem olha a marca).
   const Y = new V(0, 1, 0), fwdA = new V(-Math.cos(A), 0, -Math.sin(A));
@@ -2784,14 +2786,46 @@ function detailShow() {
     const U = mixMat.uniforms; U.tA.value = texA; U.tB.value = texB; U.tM.value = maskRT.texture; U.uRes.value.set(w, h);
     renderer.render(mixScene, mixCam);
   };
-  let clipping = false;
-  const setClip = on => { if (on === clipping) return; clipping = on; frameHook = on ? composite : null; };
   const half = sz.y * 0.62, smoother = x => x * x * x * (x * (x * 6 - 15) + 10);
   const land = x => smoother(Math.pow(x, 0.72)); // arranque macio, pouso longo e suave no fim
+  // Fade: o quadro da tomada que sai é guardado e desenhado por cima da que entra.
+  const renderShot = sh => { if (sh.wire) composite(); else renderer.render(scene, cam); };
+  let fadeTex = null;
+  const fadeMat = new THREE.ShaderMaterial({ depthTest: false, depthWrite: false, toneMapped: false, transparent: true,
+    uniforms: { tF: { value: null }, uA: { value: 1 }, uRes: { value: new THREE.Vector2() } },
+    vertexShader: 'void main() { gl_Position = vec4(position.xy, 0.0, 1.0); }',
+    fragmentShader: 'uniform sampler2D tF; uniform float uA; uniform vec2 uRes; void main() { gl_FragColor = vec4(texture2D(tF, gl_FragCoord.xy / uRes).rgb, uA); }' });
+  const fadeScene = new THREE.Scene(); fadeScene.add(new THREE.Mesh(new THREE.PlaneGeometry(2, 2), fadeMat));
+  const grabFade = () => {
+    const ds = renderer.getDrawingBufferSize(new THREE.Vector2());
+    if (!fadeTex || fadeTex.image.width !== ds.x || fadeTex.image.height !== ds.y) { fadeTex?.dispose(); fadeTex = new THREE.FramebufferTexture(ds.x, ds.y); }
+    renderer.copyFramebufferToTexture(fadeTex); fadeMat.uniforms.uRes.value.copy(ds);
+  };
+  const drawFade = alpha => {
+    fadeMat.uniforms.tF.value = fadeTex; fadeMat.uniforms.uA.value = alpha;
+    const ac = renderer.autoClear; renderer.autoClear = false; renderer.render(fadeScene, mixCam); renderer.autoClear = ac;
+  };
   return {
+    total,
     update(t) {
-      let a = clamp(t, 0, 1) * total, sh = shots[shots.length - 1], u = 1, si = shots.length - 1;
-      for (let i = 0; i < shots.length; i++) { if (a <= shots[i].d || i === shots.length - 1) { sh = shots[i]; si = i; u = clamp(a / shots[i].d, 0, 1); break; } a -= shots[i].d; }
+      // tomada atual e, na sobreposição, a anterior (que ainda se move por baixo do fade)
+      let a = clamp(t, 0, 1) * total, si = 0;
+      while (si < shots.length - 1 && a >= shots[si].d) { a -= shots[si].d; si++; }
+      const uOf = (i, local) => clamp(local / (shots[i].d + FADE), 0, 1);
+      const w = si > 0 && a < FADE ? smoother(a / FADE) : 1;
+      if (w >= 1) { applyShot(shots[si], uOf(si, a)); frameHook = shots[si].wire ? composite : null; return; }
+      const prev = shots[si - 1], pu = uOf(si - 1, prev.d + a), cu = uOf(si, a);
+      frameHook = () => {
+        applyShot(prev, pu); renderShot(prev); grabFade();
+        applyShot(shots[si], cu); renderShot(shots[si]); drawFade(1 - w);
+      };
+    },
+    cleanup() {
+      frameHook = null; fadeTex?.dispose(); fadeMat.dispose();
+      cleanupShots();
+    },
+  };
+  function applyShot(sh, u) {
       const m = sh.hold ? glide(Math.min(1, u / (1 - sh.hold))) : glide(u);
       if (sh.ortho && cam !== ortho) { // fecho ortográfico: enquadra a peça girando (a diagonal da base cabe)
         cam = ortho; const hh = Math.max(sz.y / 2, Math.hypot(sz.x, sz.z) / 2 / persp.aspect) * 1.2;
@@ -2806,7 +2840,6 @@ function detailShow() {
         const ax = Y.clone().applyQuaternion(product.quaternion), P = C.clone().addScaledVector(ax, -half - band + 2 * (half + band) * smoother(clamp((u - 0.06) / 0.88, 0, 1)));
         revP.value.set(ax.x, ax.y, ax.z, -ax.dot(P)); // distância com sinal: + acima da faixa
       }
-      setClip(!!sh.wire);
       setLightRot(sh.lightSpin ? rot0 + 360 * land(u) : rot0);
       // tampa: abre suave na tomada 3 e fica aberta; nas outras, fechada
       const k = sh.cap ? smoother(clamp((u - 0.1) / 0.75, 0, 1)) : 0; // abre devagar, quase a tomada toda
@@ -2818,18 +2851,17 @@ function detailShow() {
         const fi = Math.round(k * (frames.length - 1)); openMeshes.forEach(o => { o.visible = false; }); frames.forEach((g, j) => { g.visible = j === fi; });
       } else if (isPump && !vestsValve(S, topI)) { // pump: fica no lugar (não puxa o pescante para fora); a tomada é o close
       } else topMeshes.forEach(o => { o.position.set(0, topLift * k, 0); o.rotation.y = -1.6 * k; });
-    },
-    cleanup() {
+  }
+  function cleanupShots() {
       setLightRot(rot0);
-      cam = persp; persp.fov = fov0; persp.updateProjectionMatrix(); setClip(false);
+      cam = persp; persp.fov = fov0; persp.updateProjectionMatrix();
       product.remove(wire); wire.traverse(o => o.geometry?.dispose()); [wireMat, maskMat, depthMat, mixMat, texA, texB, maskRT].forEach(x => x?.dispose());
       product.position.set(0, 0, 0); product.quaternion.identity();
       frames?.forEach(g => { g.traverse(o => o.geometry?.dispose()); product.remove(g); });
       if (flipRig) { flipRig.rig.traverse(o => o.geometry?.dispose()); product.remove(flipRig.rig); }
       openMeshes.forEach(o => { o.visible = true; });
       capMeshes.forEach(o => { o.position.set(0, 0, 0); o.rotation.y = 0; }); topMeshes.forEach(o => { o.position.set(0, 0, 0); o.rotation.y = 0; });
-    },
-  };
+  }
 }
 // Vídeo quadro a quadro (WebCodecs): cada quadro é desenhado no tempo exato e vai
 // direto para o codificador — o vídeo sai fluido mesmo se a cena pesar (só demora
@@ -2911,6 +2943,7 @@ async function recordSpin(sec, mode = '360') {
   }
   if (mode === 'detalhes') { btn.textContent = 'Preparando…'; await new Promise(r => setTimeout(r, 40)); }
   const show = mode === 'detalhes' ? detailShow() : null;
+  if (show) sec = show.total; // o filme de detalhes tem o tempo do roteiro (lento, com fades)
   btn.textContent = 'Gravando…';
   // Estado da cena num instante f (0→1) do vídeo.
   const frameAt = f => {
@@ -4764,17 +4797,16 @@ function queueThumb(img, st) {
 // escolher um modelo apenas move o destaque, sem recarregar miniaturas.
 let galleryKey = '';
 // Abas da galeria: grupo de cada modelo pelo tipo de fechamento (os salvos têm a aba deles).
-const GAL_TABS = ['Todos', 'Tampas', 'Pump e spray', 'Conta-gotas e gloss', 'Bisnagas', 'Sticks', 'Draft', 'Salvos'];
+const GAL_TABS = ['Todos', 'Tampas', 'Pump e spray', 'Conta-gotas e gloss', 'Bisnagas', 'Sticks', 'Salvos'];
 function galGroup(st, name) {
   const ms = st.modules || [], sp = ms.filter(m => m.kind === 'spray').map(m => m.sprayType ?? LIB[m.type]?.sprayType);
-  if (st.draft) return 'Draft';
   if (ms.some(m => m.kind === 'bisnaga') || sp.some(t => ['tubo', 'sextavada'].includes(t))) return 'Bisnagas';
   if (/stick|bastão/i.test(name)) return 'Sticks';
   if (sp.some(t => ['gotas', 'gloss'].includes(t))) return 'Conta-gotas e gloss';
   if (sp.length) return 'Pump e spray';
   return 'Tampas';
 }
-let galTab = store.get('shape.galTab', 'Todos');
+let galTab = store.get('shape.galTab', 'Todos'); if (!GAL_TABS.includes(galTab)) galTab = 'Todos'; // aba que deixou de existir
 function renderPresets() {
   const sv = saved(), gal = $('#gallery'), keepTop = gal.scrollTop;
   const tabs = $('#galTabs');
