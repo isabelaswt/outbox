@@ -444,7 +444,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-26.png-vidro';
+const BUILD = '2026-09-26.liquido-repeticao';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -3263,10 +3263,13 @@ function levelCap(geo, y) {
   const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setIndex(idx); g.computeVertexNormals();
   return g;
 }
-function liquidMeshes(m, y0) {
+// levelAbs: altura do líquido já calculada para o frasco inteiro (corpo com
+// repetições é um frasco só: as cópias de baixo enchem, a do nível fica parcial).
+function liquidMeshes(m, y0, levelAbs) {
   const inner = moduleGeo(m, y0, { inset: S.wall + 0.3, lift: S.wall, lo: false }); if (!inner) return [];
   inner.computeBoundingBox();
-  const b = inner.boundingBox, level = b.min.y + (b.max.y - b.min.y) * clamp(m.liqLevel, 0, 100) / 100;
+  const b = inner.boundingBox, level = levelAbs ?? b.min.y + (b.max.y - b.min.y) * clamp(m.liqLevel, 0, 100) / 100;
+  if (level <= b.min.y + 0.05) { inner.dispose(); return []; } // cópia acima do nível: vazia
   const clip = [new THREE.Plane(new THREE.Vector3(0, -1, 0), level)];
   // Cremoso (hidratante): sólido e brilhante, aparece pelo vidro por ser opaco.
   // Transparente (gel, tônico, óleo): translúcido; como o vidro só mostra por dentro
@@ -3276,7 +3279,7 @@ function liquidMeshes(m, y0) {
   const opts = clear ? { transparent: true, opacity: (1 - clamp(m.liqClear, 0, 95) / 100) * (frost ? 0.55 : 1), depthWrite: false, depthTest: !glass, roughness: frost ? 0.5 : 0.05, clearcoat: frost ? 0 : 1 } : {};
   const mat = new THREE.MeshPhysicalMaterial({ color: m.liqColor, roughness: 0.12, clearcoat: 0.6, clippingPlanes: clip, ...opts });
   const out = [new THREE.Mesh(inner, mat)];
-  const cap = m.liqLevel < 99.5 ? levelCap(inner, level - 0.01) : null;
+  const cap = level < b.max.y - 0.05 ? levelCap(inner, level - 0.01) : null;
   if (cap) out.push(new THREE.Mesh(cap, new THREE.MeshPhysicalMaterial({ color: m.liqColor, roughness: 0.08, clearcoat: 0.8, ...opts })));
   out.forEach(o => { o.userData.liquid = true; o.name = 'liquido'; if (clear && glass) o.renderOrder = 15; });
   return out;
@@ -3395,7 +3398,11 @@ function buildInto(product, S, explodeAmt = 0) {
       } else if (pg) add(pg, 'pescante');
     }
     // Líquido dentro do corpo, até o nível escolhido.
-    if (m0.vol && m0.liq) liquidMeshes(m0, y0).forEach(o => { o.userData.idx = idx; product.add(o); });
+    if (m0.vol && m0.liq) {
+      const cps = L.filter(e => e.idx === idx), lo = cps[0].y0 + S.wall, top = cps[cps.length - 1].y0 + m0.h;
+      const level = lo + (top - lo) * clamp(m0.liqLevel, 0, 100) / 100;
+      liquidMeshes(m0, y0, level).forEach(o => { o.userData.idx = idx; product.add(o); });
+    }
     // Pescante do próprio corpo: do topo do gargalo (ou do corpo) até o fundo.
     if (m0.vol && m0.kind !== 'bisnaga' && m0.bpesc && !valvePesc && !tubeBody && isFinite(floor)
       && (hasNeck ? L[i + 1]?.m.kind === 'gargalo' : i === topVol)) {
