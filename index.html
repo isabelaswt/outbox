@@ -449,7 +449,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-27.vidro-oco';
+const BUILD = '2026-09-27.exporta-oco';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -1173,7 +1173,7 @@ function neckGeo(m, y0, { lo = false, body = null } = {}) {
   };
   const g = loft(rings, lo ? 48 : 256, disp);
   if (mouth) { // fundo escuro da boca (sombra de dentro do frasco)
-    const dk = cyl(rIn - 0.05, y0 + h - Math.min(h - rh - 1, 9) + 0.05, 0.3); g.userData.extras = [dk];
+    const dk = cyl(rIn - 0.05, y0 + h - Math.min(h - rh - 1, 9) + 0.05, 0.3); dk.userData.boca = true; g.userData.extras = [dk];
   }
   if (m.ox) { g.translate(m.ox, 0, 0); g.userData.extras?.forEach(x => x.translate(m.ox, 0, 0)); }
   return g;
@@ -3426,7 +3426,7 @@ function buildInto(product, S, explodeAmt = 0) {
     product.add(mesh);
     // boca do gargalo em vidro transparente: sem o fundo escuro (ele aparecia pelas paredes)
     if (m0.kind === 'gargalo' && (ms.own ? ms.finish : S.finish) === 'vidro') g.userData.extras = [];
-    (g.userData.extras || []).forEach(xg => { const xm = new THREE.Mesh(xg, xg.userData.mat === 'insert' ? insertMat : xg.userData.mat === 'clear' ? clearMat : holeFor(ms.own ? ms.color : S.color)); xm.userData.idx = idx; product.add(xm); });
+    (g.userData.extras || []).forEach(xg => { const xm = new THREE.Mesh(xg, xg.userData.mat === 'insert' ? insertMat : xg.userData.mat === 'clear' ? clearMat : holeFor(ms.own ? ms.color : S.color)); xm.userData.idx = idx; if (xg.userData.boca) xm.name = 'boca'; product.add(xm); });
     if (!tubeBody && (m.kind === 'spray' || (m.kind === 'perfil' && !m.vol)) && m.pesc && isFinite(floor)) {
       // Comprimento medido montado; na vista explodida desce junto com a válvula.
       const add = (geo, name) => { const pm = new THREE.Mesh(geo, innerMat); pm.userData.idx = idx; pm.name = `${String(idx + 1).padStart(2, '0')}_${name}`; product.add(pm); };
@@ -4624,21 +4624,53 @@ $('#dlPng').onclick = () => {
   renderer.setPixelRatio(pr); renderer.setSize(size.x, size.y, false); req();
   fetch(data).then(r => r.blob()).then(b => download(b, fname('png')));
 };
-function exportRoot(scale) {
+// Subtração booleana (A − B) para a exportação: a parte de A fora de B + as faces
+// de B dentro de A. Lenta demais para a tela; no arquivo vale a espera.
+function csgSub(a, b) {
+  const [outer, inner] = cutHole(a, b); b.dispose?.();
+  if (outer === a) return a;
+  const ni = x => { const y = x.index ? x.toNonIndexed() : x; for (const k in y.attributes) if (k !== 'position' && k !== 'normal') y.deleteAttribute(k); return y; };
+  return mergeGeometries([ni(outer), ni(inner)]) || a;
+}
+// Frasco oco de verdade no arquivo: corpo em casca (parede, fundo grosso no vidro,
+// abertura até o gargalo) e gargalo furado. Os efeitos só de tela ficam de fora.
+async function exportRoot(scale) {
+  toast('Montando o frasco oco para o arquivo…'); await new Promise(r => setTimeout(r, 60));
   const root = new THREE.Group(); root.name = S.name || 'embalagem';
-  product.children.forEach(m => root.add(m.clone()));
+  const L = layout(S), vols = L.filter(e => e.m.vol), floor = vols.length ? Math.min(...vols.map(e => e.y0)) : 0;
+  for (const o of product.children) {
+    if (o.name === 'cavidade' || o.name === 'boca' || o.userData.liquid) continue;
+    const c = o.clone();
+    if (o.isMesh && o.userData.main) {
+      const idx = o.userData.idx, m0 = S.modules[idx], y0 = o.userData.y0, e = L.find(x => x.idx === idx && Math.abs(x.y0 - y0) < 0.01);
+      try {
+        if (m0?.vol && e) {
+          const fin = m0.own ? m0.finish : S.finish, first = Math.abs(y0 - floor) < 0.01;
+          const lift = first && isGlass(fin) ? Math.max(S.wall, m0.fundo ?? 6) : S.wall;
+          let g = o.geometry.clone();
+          const gi = moduleGeo(e.m, y0, { inset: S.wall, lift, lo: false }); if (gi) g = csgSub(g, gi);
+          const nk = S.modules[idx + 1], last = !L.some(x => x.idx === idx && x.y0 > y0 + 0.01);
+          if (nk?.kind === 'gargalo' && last) g = csgSub(g, cyl(neckBore(nk), y0 + e.m.h * 0.5, e.m.h * 0.5 + 2));
+          c.geometry = g;
+        } else if (m0?.kind === 'gargalo') {
+          c.geometry = csgSub(o.geometry.clone(), cyl(neckBore(m0), y0 - (m0.embed || 0) - 2, m0.h + (m0.embed || 0) + 4));
+        }
+      } catch (err) { console.warn('casca: ficou maciço', err); }
+    }
+    root.add(c);
+  }
   sideRoot.children.forEach(g => root.add(g.clone())); // produtos ao lado, já na posição
   root.scale.setScalar(scale); root.updateMatrixWorld(true);
   return root;
 }
 $('#dlGlb').onclick = () => {
-  new GLTFExporter().parse(exportRoot(0.001), buf => download(new Blob([buf], { type: 'model/gltf-binary' }), fname('glb')),
-    err => toast('Erro ao gerar GLB: ' + err), { binary: true });
+  exportRoot(0.001).then(r => new GLTFExporter().parse(r, buf => download(new Blob([buf], { type: 'model/gltf-binary' }), fname('glb')),
+    err => toast('Erro ao gerar GLB: ' + err), { binary: true }));
 };
 $('#spinBtn').onclick = () => recordSpin(+$('#spinSec').value || 10, $('#spinMode').value);
 $('#fullBtn').onclick = () => { document.fullscreenElement ? document.exitFullscreen() : view.requestFullscreen?.(); setTimeout(() => window.dispatchEvent(new Event('resize')), 200); };
-$('#dlStl').onclick = () => download(new Blob([new STLExporter().parse(exportRoot(1), { binary: true })], { type: 'model/stl' }), fname('stl'));
-$('#dlObj').onclick = () => download(new Blob([new OBJExporter().parse(exportRoot(1))], { type: 'text/plain' }), fname('obj'));
+$('#dlStl').onclick = async () => download(new Blob([new STLExporter().parse(await exportRoot(1), { binary: true })], { type: 'model/stl' }), fname('stl'));
+$('#dlObj').onclick = async () => download(new Blob([new OBJExporter().parse(await exportRoot(1))], { type: 'text/plain' }), fname('obj'));
 
 // ───────────────────────── início ─────────────────────────
 // Acesso para inspeção no console do navegador.
@@ -4832,7 +4864,7 @@ $('#varBtn').onclick = () => {
 };
 $('#genDice').onclick = () => { $('#genSeed').value = Math.floor(Math.random() * 99999) + 1; runGen(); };
 
-window.OUTBOX = { moduleGeo, get S() { return S; }, get swapScroll() { return swapScroll; }, product, layout, scene, sun, stage, ground, renderer, areaKey, areaFill, hemi, detailShow, applyLogos, build, render: () => renderFrame(), get cam() { return cam; } };
+window.OUTBOX = { moduleGeo, exportRoot, get S() { return S; }, get swapScroll() { return swapScroll; }, product, layout, scene, sun, stage, ground, renderer, areaKey, areaFill, hemi, detailShow, applyLogos, build, render: () => renderFrame(), get cam() { return cam; } };
 
 buildDraftPresets();
 resize();
