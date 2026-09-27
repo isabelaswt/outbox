@@ -449,7 +449,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-27.pescante-transp';
+const BUILD = '2026-09-27.jateado-cor';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -2306,29 +2306,25 @@ function material(color, finish, band = null) {
         .replace('totalDiffuse = mix( totalDiffuse, transmitted.rgb, material.transmission );',
           `float frE = pow(1.0 - abs(dot(normalize(vViewPosition), normal)), 1.8);\n\ttransmitted.rgb *= mix(vec3(1.0), ${etv}, clamp(frE, 0.0, 1.0));\n\ttotalDiffuse = mix( totalDiffuse, transmitted.rgb, material.transmission );`)); };
     m.customProgramCacheKey = () => 'pet' + color; }
+  // Vidro jateado: a MESMA cor do vidro transparente — só muda o acabamento (o
+  // desfoque do que está atrás, o brilho espalhado e o grão). Bordas e fundo ficam
+  // mais escuros só em luminosidade, sem desviar o tom (a absorção por potência
+  // puxava laranja para vermelho/rosa).
   if (finish === 'vidroFosco') { m.roughness = 0.42; m.transmission = 0.9; m.thickness = 6; m.ior = 1.5; m.depthWrite = true;
-    m.color.lerp(new THREE.Color('#ffffff'), 0.45); // véu do jateado (com um pouco da cor, senão lava para cinza)
-    m.attenuationColor = new THREE.Color(color); m.attenuationDistance = 5;
     m.sheen = 0.15; m.sheenRoughness = 0.45; m.sheenColor = new THREE.Color(color).lerp(new THREE.Color('#ffffff'), 0.5); m.specularIntensity = 1;
-    // brilho macio porém definido nos gomos e ombros (dá o impacto; sem ele o vidro ficava chapado)
-    m.clearcoat = 0.18; m.clearcoatRoughness = 0.42; // jateado: brilho presente mas espalhado, sem cara de verniz
+    m.clearcoat = 0.18; m.clearcoatRoughness = 0.42; // brilho presente mas espalhado, sem cara de verniz
     m.onBeforeCompile = sh => {
       if (band) bandVert(sh);
       sh.fragmentShader = sh.fragmentShader.replace('#include <transmission_fragment>', THREE.ShaderChunk.transmission_fragment
-        // refração com a espessura do centro (desvio pequeno: na borda o desvio grande
-        // ia buscar o fundo claro fora do frasco e fazia um tracejado no contorno);
-        // a cor mais densa das bordas vem de uma absorção extra, à parte.
+        // refração com a espessura do centro (na borda o desvio grande pegava o fundo claro fora do frasco)
         .replace('material.thickness = thickness;', `float frEdge = pow(1.0 - abs(dot(normalize(vViewPosition), normal)), 1.1);
 \tmaterial.thickness = thickness * 0.35;`)
         .replace('totalDiffuse = mix( totalDiffuse, transmitted.rgb, material.transmission );',
-          // o three multiplica a luz que atravessa pela cor da superfície (o véu): desfaz
-          // boa parte disso — com líquido escuro atrás, a conta dupla deixava o frasco preto
-          `transmitted.rgb *= mix(vec3(1.0), 1.0 / max(material.diffuseColor, vec3(0.1)), 0.7);
-\ttransmitted.rgb *= pow(max(attenuationColor, vec3(0.001)), vec3(thickness * (0.15 + 12.0 * frEdge${band ? ' + 1.6 * ' + bandF(band.y) : ''}) / attenuationDistance)); // miolo luminoso, borda funda: tons bem contrastados
+          `transmitted.rgb *= mix(1.0, 0.38, clamp(frEdge * 1.3, 0.0, 1.0))${band ? ' * mix(1.0, 0.62, ' + bandF(band.y) + ')' : ''}; // borda e fundo mais densos, mesmo tom
 \ttotalDiffuse = mix( totalDiffuse, transmitted.rgb, material.transmission );`)
-        + '\n#if defined(USE_TRANSMISSION) && defined(USE_ENVMAP)\n totalDiffuse += material.diffuseColor * attenuationColor * (transmitted.rgb / max(max(transmitted.r, max(transmitted.g, transmitted.b)), 0.05)) * getIBLIrradiance(-normal) * 1.1 * pow(1.0 - frEdge, 1.5); // tinge com o que está atrás (o líquido)\n#endif'); // só com transmissão (o PNG transparente desliga ela por um instante)
+        + '\n#if defined(USE_TRANSMISSION) && defined(USE_ENVMAP)\n totalDiffuse += material.diffuseColor * (transmitted.rgb / max(max(transmitted.r, max(transmitted.g, transmitted.b)), 0.05)) * getIBLIrradiance(-normal) * 0.8 * pow(1.0 - frEdge, 1.5); // luz de trás acende o miolo, na cor do que está atrás\n#endif'); // só com transmissão (o PNG transparente desliga ela por um instante)
     };
-    m.customProgramCacheKey = () => 'jateado9' + (band ? 'b' + band.y.toFixed(1) : ''); }
+    m.customProgramCacheKey = () => 'jateado10' + (band ? 'b' + band.y.toFixed(1) : ''); }
   if (finish === 'metal') { m.metalness = 1; m.roughness = 0.3; } // um pouco menos espelhado: sem brilho piscando nas quinas
   const grain = { fosco: 1, acetinado: 0.8, perolado: 0.6, vidroFosco: 1 }[finish];
   if (grain) addGrain(m, grain);
