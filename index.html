@@ -449,7 +449,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-27.pescante-liquido';
+const BUILD = '2026-09-27.png-4096';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -2299,11 +2299,14 @@ function material(color, finish, band = null) {
         .replace('material.thickness = thickness;', `float frEdge = pow(1.0 - abs(dot(normalize(vViewPosition), normal)), 1.1);
 \tmaterial.thickness = thickness * 0.35;`)
         .replace('totalDiffuse = mix( totalDiffuse, transmitted.rgb, material.transmission );',
-          `transmitted.rgb *= pow(max(attenuationColor, vec3(0.001)), vec3(thickness * (0.15 + 12.0 * frEdge${band ? ' + 1.6 * ' + bandF(band.y) : ''}) / attenuationDistance)); // miolo luminoso, borda funda: tons bem contrastados
+          // o three multiplica a luz que atravessa pela cor da superfície (o véu): desfaz
+          // boa parte disso — com líquido escuro atrás, a conta dupla deixava o frasco preto
+          `transmitted.rgb *= mix(vec3(1.0), 1.0 / max(material.diffuseColor, vec3(0.1)), 0.7);
+\ttransmitted.rgb *= pow(max(attenuationColor, vec3(0.001)), vec3(thickness * (0.15 + 12.0 * frEdge${band ? ' + 1.6 * ' + bandF(band.y) : ''}) / attenuationDistance)); // miolo luminoso, borda funda: tons bem contrastados
 \ttotalDiffuse = mix( totalDiffuse, transmitted.rgb, material.transmission );`)
         + '\n#if defined(USE_TRANSMISSION) && defined(USE_ENVMAP)\n totalDiffuse += material.diffuseColor * attenuationColor * (transmitted.rgb / max(max(transmitted.r, max(transmitted.g, transmitted.b)), 0.05)) * getIBLIrradiance(-normal) * 1.1 * pow(1.0 - frEdge, 1.5); // tinge com o que está atrás (o líquido)\n#endif'); // só com transmissão (o PNG transparente desliga ela por um instante)
     };
-    m.customProgramCacheKey = () => 'jateado8' + (band ? 'b' + band.y.toFixed(1) : ''); }
+    m.customProgramCacheKey = () => 'jateado9' + (band ? 'b' + band.y.toFixed(1) : ''); }
   if (finish === 'metal') { m.metalness = 1; m.roughness = 0.3; } // um pouco menos espelhado: sem brilho piscando nas quinas
   const grain = { fosco: 1, acetinado: 0.8, perolado: 0.6, vidroFosco: 1 }[finish];
   if (grain) addGrain(m, grain);
@@ -4636,7 +4639,10 @@ $('#dlPng').onclick = () => {
   ground.visible = $('#pngShadow').checked;
   // Super qualidade só na exportação: renderiza no dobro (antisserrilhado forte)
   // com sombra em alta resolução e reduz para o tamanho pedido.
-  const gl = renderer.getContext(), cap = Math.min(8192, gl.getParameter(gl.MAX_RENDERBUFFER_SIZE) || 4096);
+  // Teto de 4096 px no render interno: acima disso a imagem que o vidro usa para
+  // ver o que está atrás (transmissão) não cabe na memória da placa e o vidro saía
+  // preto ou branco estourado no PNG de 4096.
+  const gl = renderer.getContext(), cap = Math.min(4096, gl.getParameter(gl.MAX_RENDERBUFFER_SIZE) || 4096);
   const ss = Math.max(1, Math.min(2, cap / Math.max(w, h)));
   // (a sombra é VSM, já desfocada: não troca a resolução do mapa aqui — recriado
   //  na hora, ele saía inválido e deixava o chão todo "na sombra")
