@@ -454,7 +454,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-27.gomas-dentro';
+const BUILD = '2026-09-27.abas-potes-perfumes';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -672,6 +672,9 @@ const PRESETS = {
     M('reto', { W: 64, D: 64, h: 128, rBot: 8, rTop: 24 }), NECK('28/410'),
     M('gatilho', { W: 30, D: 30, h: 22 })] },
   // Referência sérum: vidro bojudo com pezinho e pump de luva alta.
+  // Perfume: frasco oval com a válvula spray clássica (virola lisa e atuador estreito).
+  'Perfume oval': { color: BEIGE, finish: 'fosco', modules: [
+    M('perfumeOval', { name: 'Frasco perfume', W: 58, D: 36, n: 2.2, h: 66, taper: 88, bulge: 6, bulgePos: 40, rBot: 5, rTop: 10 }), NECK('18/410'), M('sprayClassico')] },
   'Sérum com pé + pump': { color: BEIGE, finish: 'fosco', modules: [
     M('disco', { name: 'Pé', W: 44, D: 44, h: 6, rBot: 1, rTop: 0, vol: true }),
     M('capsula', { W: 62, D: 62, h: 66, rBot: 16, rTop: 17 }), NECK('24/410'),
@@ -4816,14 +4819,18 @@ function queueThumb(img, st) {
 // escolher um modelo apenas move o destaque, sem recarregar miniaturas.
 let galleryKey = '';
 // Abas da galeria: grupo de cada modelo pelo tipo de fechamento (os salvos têm a aba deles).
-const GAL_TABS = ['Todos', 'Tampas', 'Pump e spray', 'Conta-gotas e gloss', 'Bisnagas', 'Sticks', 'Salvos'];
+const GAL_TABS = ['Todos', 'Frascos', 'Potes', 'Perfumes', 'Pump e gatilho', 'Conta-gotas e gloss', 'Bisnagas', 'Sticks', 'Salvos'];
 function galGroup(st, name) {
   const ms = st.modules || [], sp = ms.filter(m => m.kind === 'spray').map(m => m.sprayType ?? LIB[m.type]?.sprayType);
   if (ms.some(m => m.kind === 'bisnaga') || sp.some(t => ['tubo', 'sextavada'].includes(t))) return 'Bisnagas';
   if (/stick|bastão/i.test(name)) return 'Sticks';
   if (sp.some(t => ['gotas', 'gloss'].includes(t))) return 'Conta-gotas e gloss';
-  if (sp.length) return 'Pump e spray';
-  return 'Tampas';
+  if (sp.includes('mist')) return 'Perfumes'; // válvula spray fina (sem gatilho)
+  if (sp.length) return 'Pump e gatilho';
+  // pote: boca larga e corpo baixo (mais largo que alto)
+  const vols = ms.filter(m => m.vol), bh = vols.reduce((t, m) => t + m.h * Math.max(1, m.rep || 1), 0), bw = Math.max(0, ...vols.map(m => Math.max(m.W, m.D)));
+  if (/pote/i.test(name) || (vols.length && bh <= bw * 0.8)) return 'Potes';
+  return 'Frascos';
 }
 let galTab = store.get('shape.galTab', 'Todos'); if (!GAL_TABS.includes(galTab)) galTab = 'Todos'; // aba que deixou de existir
 function renderPresets() {
