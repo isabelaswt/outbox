@@ -449,7 +449,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-27.gargalo-vidro';
+const BUILD = '2026-09-27.mola-corpo';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -3783,6 +3783,7 @@ const padDef = d => { const a = [...d]; if (a[2] === 'select' && typeof a[4] ===
 const only = (kind, d) => { const a = padDef(d); const prev = a[6]; a[6] = m => m.kind === kind && (!prev || prev(m)); return a; };
 const GP = d => { const a = padDef(d); const prev = a[6]; a[6] = m => (m.kind === 'giro' || m.kind === 'perfil') && (!prev || prev(m)); return a; };
 const isBody = m => m.vol || categoryOf(m)?.[0] === 'Corpo';
+const valveHasPesc = () => S.modules.some(v => v.kind === 'spray' && v.pesc && v.sprayType !== 'gotas');
 const GT = d => { const a = padDef(d), prev = a[6]; a[6] = m => (m.kind === 'giro' || m.kind === 'perfil') && !isBody(m) && (!prev || prev(m)); return a; };
 const G = d => only('giro', d), P = d => only('placa', d), B = d => only('bisnaga', d), N = d => only('gargalo', d);
 const notK = (kinds, d) => { const a = padDef(d); a[6] = m => !kinds.includes(m.kind); return a; };
@@ -3938,10 +3939,14 @@ const MF = [
   // Pescante do corpo (tampas sem pescante próprio); bisnaga não tem.
   ['Pescante', [
     ['bpesc', 'Pescante até o fundo', 'check', 0, 0, 0, m => m.vol && m.kind !== 'bisnaga'],
-    ['bpescD', 'Diâmetro', 2, 10, 0.1, 'mm', m => m.vol && m.kind !== 'bisnaga' && m.bpesc],
-    ['bpescGap', 'Folga do fundo', 0, 20, 0.5, 'mm', m => m.vol && m.kind !== 'bisnaga' && m.bpesc],
-    ['bpescCurve', 'Curva no pé (− esquerda)', -40, 40, 0.5, 'mm', m => m.vol && m.kind !== 'bisnaga' && m.bpesc],
-    ['bpescWave', 'Ondulação em S', -15, 15, 0.5, 'mm', m => m.vol && m.kind !== 'bisnaga' && m.bpesc],
+    ['bpescD', 'Diâmetro', 2, 10, 0.1, 'mm', m => m.vol && m.kind !== 'bisnaga' && (m.bpesc || valveHasPesc())],
+    ['bpescGap', 'Folga do fundo', 0, 20, 0.5, 'mm', m => m.vol && m.kind !== 'bisnaga' && (m.bpesc || valveHasPesc())],
+    ['bpescCurve', 'Curva no pé (− esquerda)', -40, 40, 0.5, 'mm', m => m.vol && m.kind !== 'bisnaga' && (m.bpesc || valveHasPesc())],
+    ['bpescWave', 'Ondulação em S', -15, 15, 0.5, 'mm', m => m.vol && m.kind !== 'bisnaga' && (m.bpesc || valveHasPesc())],
+    // mecanismo da válvula (mola), ajustável daqui também — é o mesmo da válvula
+    ['mola', 'Mola da bomba (visível no frasco transparente)', 'check', 0, 0, 0, m => m.vol && S.modules.some(v => v.kind === 'spray' && v.pesc && v.sprayType !== 'gotas')],
+    ['houseD', 'Mola: diâmetro', 4, 20, 0.5, 'mm', m => m.vol && m.mola && S.modules.some(v => v.kind === 'spray' && v.pesc && v.sprayType !== 'gotas')],
+    ['springL', 'Mola: comprimento', 5, 60, 0.5, 'mm', m => m.vol && m.mola && S.modules.some(v => v.kind === 'spray' && v.pesc && v.sprayType !== 'gotas')],
   ]],
   ['Encaixe', [
     ['gap', 'Distância do módulo de baixo', -40, 40, 0.1, 'mm'],
@@ -4071,8 +4076,8 @@ function renderEditor() {
         if ((m.kind === 'gargalo' || m.kind === 'spray') && k === 'W') m.D = m.W;
         // Um pescante só por frasco: os controles do corpo e os da válvula mexem no
         // mesmo (antes, com válvula de pescante próprio, os do corpo não faziam nada).
-        const PESC = { bpescD: 'pescD', bpescGap: 'pescGap', bpescCurve: 'pescCurve', bpescWave: 'pescWave' };
-        if (PESC[k] && m.vol) S.modules.filter(v => v.kind === 'spray' && v.pesc && v.sprayType !== 'gotas').forEach(v => { v[PESC[k]] = m[k]; });
+        const PESC = { bpescD: 'pescD', bpescGap: 'pescGap', bpescCurve: 'pescCurve', bpescWave: 'pescWave', mola: 'mola', houseD: 'houseD', springL: 'springL' };
+        if (PESC[k] && m.vol) { if (k === 'mola') renderEditorKeepScroll(); } if (PESC[k] && m.vol) S.modules.filter(v => v.kind === 'spray' && v.pesc && v.sprayType !== 'gotas').forEach(v => { v[PESC[k]] = m[k]; });
         const bk = Object.keys(PESC).find(q => PESC[q] === k);
         if (bk && m.kind === 'spray' && m.sprayType !== 'gotas') S.modules.filter(v => v.vol).forEach(v => { v[bk] = m[k]; });
         if (isSphereCap(m)) {
