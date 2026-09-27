@@ -454,7 +454,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-27.conteudo';
+const BUILD = '2026-09-27.gomas-dentro';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -3599,19 +3599,40 @@ function solidFill(m, y0, levelAbs, lift) {
   while (vol / (s * T.step) ** 3 > 3500) s *= 1.1;
   const step = s * T.step, fitR = s * T.fit, dy = step * 0.86, rnd = seeded(m.uid + m.liqType);
   const pos = [], q = new THREE.Quaternion(), e = new THREE.Euler(), M4 = new THREE.Matrix4(), sc = new V();
+  const geo = T.geo(s); geo.deleteAttribute('uv');
+  // A peça inteira tem de caber: pontos da própria superfície, já girados, conferidos
+  // contra a parede de dentro (um raio só deixava quinas da goma atravessando o vidro).
+  const gp = geo.attributes.position, samp = [], nS = Math.min(gp.count, 64);
+  for (let i = 0; i < nS; i++) samp.push(new V().fromBufferAttribute(gp, Math.floor(i * gp.count / nS)));
+  const ix = inner.index, ip = inner.attributes.position, ta = new V(), tb = new V(), tc = new V(), fn = new V(), wp = new V();
+  const faceN = f => { const [i0, i1, i2] = ix ? [ix.getX(f * 3), ix.getX(f * 3 + 1), ix.getX(f * 3 + 2)] : [f * 3, f * 3 + 1, f * 3 + 2];
+    ta.fromBufferAttribute(ip, i0); tb.fromBufferAttribute(ip, i1); tc.fromBufferAttribute(ip, i2); return fn.subVectors(tc, tb).cross(ta.clone().sub(tb)).normalize(); };
+  const fits = (p, q, sc) => {
+    for (const v of samp) {
+      wp.copy(v).multiply(sc).applyQuaternion(q).add(p);
+      if (wp.y < b.min.y + 0.2) return false;
+      inner.boundsTree.closestPointToPoint(wp, hit); if (!hit.point) return false;
+      if (hit.distance < 0.15 || faceN(hit.faceIndex).dot(wp.clone().sub(hit.point)) > 0) return false; // encostou ou passou da parede
+    }
+    return true;
+  };
   let layer = 0;
-  for (let y = b.min.y + fitR; y < level + step * 0.2; y += dy, layer++) {
+  for (let y = b.min.y + fitR * 0.75; y < level + step * 0.2; y += dy, layer++) { // 1ª camada assentada no fundo
     const ox = (layer % 2) * step / 2, oz = (layer % 3) * step / 3;
     for (let x = b.min.x + ox; x <= b.max.x; x += step) for (let z = b.min.z + oz; z <= b.max.z; z += step) {
       const p = new V(x + (rnd() - 0.5) * step * 0.3, y + (rnd() - 0.5) * dy * 0.35, z + (rnd() - 0.5) * step * 0.3);
       if (p.y > level + (rnd() - 0.5) * step * 0.6) continue; // topo irregular
       if (!inside(p)) continue;
-      inner.boundsTree.closestPointToPoint(p, hit); if (!hit.point || hit.distance < fitR) continue;
-      pos.push(p);
+      inner.boundsTree.closestPointToPoint(p, hit); if (!hit.point || hit.distance < fitR * 0.6) continue;
+      // até oito giros sorteados; se nenhum couber inteiro, fica sem peça ali
+      for (let tr = 0; tr < 8; tr++) {
+        const qq = new THREE.Quaternion().setFromEuler(e.set(rnd() * TAU, rnd() * TAU, rnd() * TAU));
+        const k = T.irregular ? 0.7 + rnd() * 0.5 : 0.94 + rnd() * 0.12, ss = new V(k * (T.irregular ? 0.8 + rnd() * 0.4 : 1), k, k);
+        if (fits(p, qq, ss)) { pos.push({ p, q: qq, sc: ss }); break; }
+      }
     }
   }
   probe.material.dispose();
-  const geo = T.geo(s); geo.deleteAttribute('uv');
   const c1 = new THREE.Color(m.liqColor), c2 = new THREE.Color(m.liqColor2 || '#ffffff');
   const mat = new THREE.MeshPhysicalMaterial({ color: '#ffffff', roughness: T.rough, clearcoat: T.coat, clearcoatRoughness: 0.2,
     ...(T.sheen ? { sheen: T.sheen, sheenRoughness: 0.4, sheenColor: c1.clone().lerp(new THREE.Color('#ffffff'), 0.2) } : {}),
@@ -3624,9 +3645,7 @@ function solidFill(m, y0, levelAbs, lift) {
     mat.customProgramCacheKey = () => 'capsula' + cv + cw;
   }
   const im = new THREE.InstancedMesh(geo, mat, Math.max(1, pos.length)); im.count = pos.length;
-  pos.forEach((p, i) => {
-    q.setFromEuler(e.set(rnd() * TAU, rnd() * TAU, rnd() * TAU));
-    const k = T.irregular ? 0.7 + rnd() * 0.5 : 0.94 + rnd() * 0.12; sc.set(k * (T.irregular ? 0.8 + rnd() * 0.4 : 1), k, k);
+  pos.forEach(({ p, q, sc }, i) => {
     im.setMatrixAt(i, M4.compose(p, q, sc));
     if (!T.two) { // mistura das duas cores (gomas, pérolas, sais) ou uma só com leve variação
       const c = T.mix && rnd() < 0.5 ? c2.clone() : c1.clone(); c.offsetHSL(0, 0, (rnd() - 0.5) * 0.06); im.setColorAt(i, c);
