@@ -455,7 +455,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-27.abas-equipe';
+const BUILD = '2026-09-27.aba-beauty';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -4821,16 +4821,19 @@ function queueThumb(img, st) {
 // escolher um modelo apenas move o destaque, sem recarregar miniaturas.
 let galleryKey = '';
 // Abas da galeria: grupo de cada modelo pelo tipo de fechamento (os salvos têm a aba deles).
-const GAL_TABS = ['Todos', 'Frascos', 'Potes', 'Perfumes', 'Pump e gatilho', 'Conta-gotas e gloss', 'Bisnagas', 'Sticks', 'Salvos'];
+const GAL_TABS = ['Todos', 'Frascos', 'Potes', 'Perfumes', 'Pump e gatilho', 'Conta-gotas', 'Bisnagas', 'Beauty', 'Salvos'];
+// abas antigas que viraram outras (escolhas já gravadas continuam valendo)
+const GAL_OLD = { Sticks: 'Beauty', 'Conta-gotas e gloss': 'Conta-gotas', Tampas: 'Frascos', 'Pump e spray': 'Pump e gatilho' };
 function galGroup(st, name, kind) {
   // aba escolhida arrastando o card: gravada no modelo salvo; nos modelos base, a da
   // equipe (servidor, vale para todos) ou, sem login, a deste navegador
-  const pick = kind === 'b' ? baseAbas()[name] : st.aba;
+  const pick0 = kind === 'b' ? baseAbas()[name] : st.aba, pick = GAL_OLD[pick0] || pick0;
   if (pick && GAL_TABS.includes(pick) && !['Todos', 'Salvos'].includes(pick)) return pick;
   const ms = st.modules || [], sp = ms.filter(m => m.kind === 'spray').map(m => m.sprayType ?? LIB[m.type]?.sprayType);
   if (ms.some(m => m.kind === 'bisnaga') || sp.some(t => ['tubo', 'sextavada'].includes(t))) return 'Bisnagas';
-  if (/stick|bastão/i.test(name)) return 'Sticks';
-  if (sp.some(t => ['gotas', 'gloss'].includes(t))) return 'Conta-gotas e gloss';
+  // Beauty: maquiagem e bastões (gloss, stick, batom, bastão)
+  if (/stick|bastão|batom|gloss|\blip\b/i.test(name) || sp.includes('gloss')) return 'Beauty';
+  if (sp.includes('gotas')) return 'Conta-gotas';
   if (sp.includes('mist')) return 'Perfumes'; // válvula spray fina (sem gatilho)
   if (sp.length) return 'Pump e gatilho';
   // pote: boca larga e corpo baixo (mais largo que alto)
@@ -4840,7 +4843,7 @@ function galGroup(st, name, kind) {
 }
 let teamAba = null; // abas dos modelos base definidas pela equipe (com login)
 const baseAbas = () => (cloud && teamAba ? teamAba : store.get('shape.galAba', {}));
-let galTab = store.get('shape.galTab', 'Todos'); if (!GAL_TABS.includes(galTab)) galTab = 'Todos'; // aba que deixou de existir
+let galTab = store.get('shape.galTab', 'Todos'); galTab = GAL_OLD[galTab] || galTab; if (!GAL_TABS.includes(galTab)) galTab = 'Todos'; // aba que deixou de existir
 function renderPresets() {
   const sv = saved(), gal = $('#gallery'), keepTop = gal.scrollTop;
   const tabs = $('#galTabs');
