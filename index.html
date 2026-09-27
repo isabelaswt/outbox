@@ -253,7 +253,12 @@ canvas{display:block;width:100%;height:100%;touch-action:none}
 
   <details id="genBox">
     <summary>Gerador</summary>
-    <div class="tip">Clique nas características e gere opções. Nada marcado num grupo = qualquer uma. A mesma seed repete a mesma leva; o dado sorteia outra.</div>
+    <div class="gen-l">A partir do projeto aberto</div>
+    <div class="tip" style="margin-top:2px">Variações do que está na tela: mesmas peças, cores e logos, com proporções, curvas e tampa mudando. Mantém o volume.</div>
+    <div class="chips" id="varAmt"><span class="chip" data-v="0.35">Sutil</span><span class="chip on" data-v="0.7">Média</span><span class="chip" data-v="1.2">Ousada</span></div>
+    <div class="row"><button class="btn pri" id="varBtn" style="flex:1">Gerar variações deste projeto</button></div>
+    <div class="gen-l" style="margin-top:12px">Do zero</div>
+    <div class="tip" style="margin-top:2px">Clique nas características e gere opções. Nada marcado num grupo = qualquer uma. A mesma seed repete a mesma leva; o dado sorteia outra.</div>
     <div id="genOpts"></div>
     <div class="gen-l">Volume</div>
     <div class="row"><input type="number" id="genMl" value="300" min="5" max="3000" step="5" style="flex:1"><span class="tip" style="margin:0">ml</span></div>
@@ -444,7 +449,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-26.liquido-repeticao';
+const BUILD = '2026-09-27.variacoes';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -1139,8 +1144,16 @@ function neckGeo(m, y0, { lo = false, body = null } = {}) {
   prof.forEach(q => { if (q.length === 2) q.push(q[1]); }); // [y, meia-largura, meia-profundidade]
   const step = lo ? 2 : 0.18;
   for (let y = rh + 0.2; y < h - 0.8; y += step) prof.push([y, E]);
+  // Boca aberta: borda com a espessura da parede e o furo descendo (o fundo escuro
+  // é uma peça à parte, abaixo) — o gargalo não é mais um cilindro fechado.
+  const rIn = Math.min(neckBore(m), E - 1.2), mouth = !lo;
   prof.push([h - 0.8, E], [h - 0.3, E - 0.25], [h, E - 0.8]);
+  if (mouth) prof.push([h + 0.001, rIn + 0.35], [h + 0.002, rIn + 0.35]);
   const rings = prof.filter((q, i, a) => i === 0 || q[0] > a[i - 1][0]).map(([ly, a, b]) => ({ y: y0 + ly, ly, a, b: b ?? a, n: 2 }));
+  if (mouth) { // parede de dentro da boca, descendo (anéis em ordem decrescente de altura)
+    const d = Math.min(h - rh - 1, 9);
+    [[h - 0.25, rIn], [h - d, rIn], [h - d, rIn * 0.5]].forEach(([ly, r]) => rings.push({ y: y0 + ly, ly, a: r, b: r, n: 2, noDisp: true }));
+  }
   // A hélice termina perto da boca, como no gargalo real.
   const pitch = Math.max(m.pitch, 0.5), w = pitch * 0.45, yT1 = h - 1.2 - pitch * 0.25;
   const turns = Math.min(m.turns, Math.max(0, (yT1 - (rh + 1.2)) / pitch)), yT0 = yT1 - turns * pitch;
@@ -1159,7 +1172,10 @@ function neckGeo(m, y0, { lo = false, body = null } = {}) {
     return [x, z];
   };
   const g = loft(rings, lo ? 48 : 256, disp);
-  if (m.ox) g.translate(m.ox, 0, 0);
+  if (mouth) { // fundo escuro da boca (sombra de dentro do frasco)
+    const dk = cyl(rIn - 0.05, y0 + h - Math.min(h - rh - 1, 9) + 0.05, 0.3); g.userData.extras = [dk];
+  }
+  if (m.ox) { g.translate(m.ox, 0, 0); g.userData.extras?.forEach(x => x.translate(m.ox, 0, 0)); }
   return g;
 }
 
@@ -1227,6 +1243,8 @@ function refShape(cmds, P) {
 // do furo saem numa geometria à parte, pintada escura (nada colado no lugar do furo).
 const HOLE_A = new THREE.MeshBasicMaterial(), HOLE_B = new THREE.MeshBasicMaterial();
 const flatPN = g => { g = g.index ? g.toNonIndexed() : g.clone(); for (const k of Object.keys(g.attributes)) if (k !== 'position' && k !== 'normal') g.deleteAttribute(k); if (!g.attributes.normal) g.computeVertexNormals(); return g; };
+// Boca do gargalo: diâmetro interno ≈ rosca − parede − filete (24/410 → ~17,5 mm).
+const neckBore = n => Math.max(2, n.W / 2 - 3.2);
 function cutHole(part, cutter) {
   try {
     const a = flatPN(part), b = flatPN(cutter); a.clearGroups(); b.clearGroups();
@@ -3363,6 +3381,7 @@ function buildInto(product, S, explodeAmt = 0) {
       const ni = x => { const y = x.index ? x.toNonIndexed() : x; for (const k in y.attributes) if (k !== 'position' && k !== 'normal') y.deleteAttribute(k); return y; };
       if (outer !== g) g = mergeGeometries([ni(outer), ni(inner)]) || g;
     }
+
     // Gargalo é parte do frasco: sempre a cor e o acabamento do corpo de baixo.
     const ms = m0.kind === 'gargalo' && L[i - 1]?.m.vol ? L[i - 1].m : m;
     const mesh = new THREE.Mesh(g, material(ms.own ? ms.color : S.color, ms.own ? ms.finish : S.finish));
@@ -4725,6 +4744,56 @@ function runGen() {
   }
 }
 $('#genBtn').onclick = runGen;
+// Variações do projeto aberto: mesmas peças (e cores, acabamentos, logos, cena),
+// com medidas, curvas, gomos e tampa variando; o corpo volta ao volume original.
+document.querySelectorAll('#varAmt .chip').forEach(c => c.onclick = () => { document.querySelectorAll('#varAmt .chip').forEach(x => x.classList.toggle('on', x === c)); });
+function varyOne(seed, base, amt) {
+  const rnd = genRng(seed), R = (a, b) => a + (b - a) * rnd(), f = k => 1 + (rnd() * 2 - 1) * k * amt;
+  const st = structuredClone(base); st.side = []; delete st.name;
+  const want = volumes(normalize(structuredClone(base))).cap;
+  st.modules.forEach(m => {
+    if (m.hidden || m.kind === 'gargalo' || m.kind === 'spray') return;
+    const round = Math.abs(m.W - m.D) < 0.5;
+    if (m.vol) {
+      const fw = f(0.22); m.W *= fw; m.D *= round ? fw : f(0.22); m.h *= f(0.3);
+      const lim = Math.min(m.W, m.D) / 2;
+      m.rBot = clamp((m.rBot || 0) * f(0.6) + (rnd() < 0.25 * amt ? lim * R(0, 0.3) : 0), 0, Math.min(lim, m.h / 2));
+      m.rTop = clamp((m.rTop || 0) * f(0.6) + (rnd() < 0.25 * amt ? lim * R(0, 0.35) : 0), 0, Math.min(lim, m.h / 2));
+      if (m.taper && m.taper !== 100) m.taper = clamp(m.taper * f(0.15), 50, 160); else if (rnd() < 0.2 * amt) m.taper = r1(R(78, 96));
+      if (m.bulge) m.bulge *= f(0.5); else if (rnd() < 0.2 * amt) { m.bulge = r1(Math.min(m.W, m.D) * R(-0.08, 0.1)); m.bulgePos = r1(R(35, 65)); }
+      if (m.lobes >= 3) { m.lobes = Math.max(3, Math.round(m.lobes + (rnd() * 2 - 1) * 4 * amt)); m.lobeD = (m.lobeD || 2) * f(0.5); }
+      if (!round && m.n) m.n = clamp(m.n * f(0.3), 1.6, 12);
+    } else { // tampas e peças: escala junto, altura e curvas variam
+      const fw = f(0.2); m.W *= fw; m.D *= fw; m.h *= f(0.3);
+      const lim = Math.min(m.W, m.D) / 2;
+      m.rBot = clamp((m.rBot || 0) * fw * f(0.4), 0, Math.min(lim, m.h)); m.rTop = clamp((m.rTop || 0) * fw * f(0.4), 0, Math.min(lim, m.h));
+      if (m.lobes >= 3) { m.lobes = Math.max(3, Math.round(m.lobes + (rnd() * 2 - 1) * 3 * amt)); m.lobeD = (m.lobeD || 2) * fw; }
+      if (m.taper && m.taper !== 100) m.taper = clamp(m.taper * f(0.15), 40, 220);
+      if (m.sphereR) m.sphereR *= fw;
+    }
+  });
+  // de volta ao volume do original (proporcional, só os corpos)
+  const vols = st.modules.filter(m => m.vol);
+  for (let it = 0; it < 12 && want > 0; it++) {
+    const c = volumes(normalize(structuredClone(st))).cap; if (c <= 0 || Math.abs(c - want) < 0.5) break;
+    const k = Math.cbrt(want / c); vols.forEach(m => ['W', 'D', 'h', 'rBot', 'rTop', 'lobeD', 'bulge'].forEach(q => { if (m[q]) m[q] *= k; }));
+  }
+  st.modules.forEach(m => ['W', 'D', 'h', 'rBot', 'rTop', 'lobeD', 'bulge', 'taper', 'n', 'sphereR'].forEach(q => { if (typeof m[q] === 'number') m[q] = r1(m[q]); }));
+  return { st, ml: volumes(normalize(structuredClone(st))).cap };
+}
+$('#varBtn').onclick = () => {
+  const seed = Math.round(+$('#genSeed').value || 1), n = +[...genSel.qtd][0] || 9, amt = +document.querySelector('#varAmt .chip.on')?.dataset.v || 0.7;
+  const base = structuredClone(S), nm = (S.name || 'Projeto').replace(/ \(autosave\)$/, '');
+  const grid = $('#genGrid'); grid.innerHTML = '';
+  for (let i = 0; i < n; i++) {
+    let r; try { r = varyOne(seed * 7919 + i * 104729, base, amt); } catch (e) { console.error(e); continue; }
+    const name = `${nm} · variação ${seed}-${i + 1}`;
+    const card = document.createElement('div'); card.className = 'card'; card.title = name;
+    card.innerHTML = `<img class="ph" alt=""><div>${Math.round(r.ml)} ml · variação ${i + 1}</div>`;
+    card.onclick = () => { loadState(r.st, name); grid.querySelectorAll('.card').forEach(c => c.classList.toggle('on', c === card)); };
+    grid.appendChild(card); queueThumb(card.querySelector('img'), r.st);
+  }
+};
 $('#genDice').onclick = () => { $('#genSeed').value = Math.floor(Math.random() * 99999) + 1; runGen(); };
 
 window.OUTBOX = { get S() { return S; }, get swapScroll() { return swapScroll; }, product, layout, scene, sun, stage, ground, renderer, areaKey, areaFill, hemi, detailShow, applyLogos, build, render: () => renderFrame(), get cam() { return cam; } };
