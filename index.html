@@ -449,7 +449,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-27.pipeta';
+const BUILD = '2026-09-27.nome-conta-gotas';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -3784,7 +3784,7 @@ canvas.addEventListener('dblclick', e => {
 // ───────────────────────── interface ─────────────────────────
 // Campo genérico: slider + número ligados a obj[k].
 function field(parent, obj, def, onChange) {
-  const [k, label, min, max, step, unit] = def;
+  const [k, label0, min, max, step, unit] = def, label = typeof label0 === 'function' ? label0(obj) : label0; // rótulo pode depender da peça
   const el = document.createElement('div'); el.className = 'f';
   if (min === 'check') {
     el.innerHTML = `<label class="chk"><input type="checkbox"> ${label}</label>`;
@@ -3828,6 +3828,7 @@ const GT = d => { const a = padDef(d), prev = a[6]; a[6] = m => (m.kind === 'gir
 const G = d => only('giro', d), P = d => only('placa', d), B = d => only('bisnaga', d), N = d => only('gargalo', d);
 const notK = (kinds, d) => { const a = padDef(d); a[6] = m => !kinds.includes(m.kind); return a; };
 const K = d => only('spray', d), isType = t => m => m.sprayType === t;
+const pescName = m => (m.sprayType === 'gotas' ? 'Conta-gotas' : 'Pescante'); // no conta-gotas o tubo é o próprio conta-gotas
 const GB = d => { const a = padDef(d); const prev = a[6]; a[6] = m => ['giro', 'bisnaga', 'perfil'].includes(m.kind) && (!prev || prev(m)); return a; };
 // Grupos do editor. Cada peça mostra só os grupos que valem para ela; o nome
 // do grupo dá o contexto, então os rótulos ficam curtos.
@@ -3932,11 +3933,11 @@ const MF = [
     K(['springL', 'Mola: comprimento', 5, 60, 0.5, 'mm', m => m.mola]),
     K(['coils', 'Mola: voltas', 3, 30, 1, '', m => m.mola]),
     K(['sleeve', 'Carcaça da mola', 'select', [['transparente', 'Transparente (mostra a mola)'], ['fechada', 'Fechada'], ['nenhuma', 'Sem carcaça']], m => m.mola]),
-    K(['pesc', 'Pescante (tubo até o fundo)', 'check']),
-    K(['pescD', 'Pescante: diâmetro', 2, 10, 0.1, 'mm', m => m.pesc]),
-    K(['pescGap', 'Pescante: folga do fundo', 0, 20, 0.5, 'mm', m => m.pesc]),
-    K(['pescCurve', 'Pescante: curva no pé (− esquerda)', -40, 40, 0.5, 'mm', m => m.pesc]),
-    K(['pescWave', 'Pescante: ondulação em S', -15, 15, 0.5, 'mm', m => m.pesc]),
+    K(['pesc', m => m.sprayType === 'gotas' ? 'Conta-gotas (tubo de vidro até perto do fundo)' : 'Pescante (tubo até o fundo)', 'check']),
+    K(['pescD', m => `${pescName(m)}: diâmetro`, 2, 10, 0.1, 'mm', m => m.pesc]),
+    K(['pescGap', m => `${pescName(m)}: folga do fundo`, 0, 20, 0.5, 'mm', m => m.pesc]),
+    K(['pescCurve', m => `${pescName(m)}: curva no pé (− esquerda)`, -40, 40, 0.5, 'mm', m => m.pesc]),
+    K(['pescWave', m => `${pescName(m)}: ondulação em S`, -15, 15, 0.5, 'mm', m => m.pesc]),
   ]],
   ['Abertura', [
     GT(['topType', 'Sistema de abertura', 'select', [['nenhum', 'Nenhum'], ['flip', 'Flip-top (tampinha com dobradiça)'], ['disc', 'Disc-top (disco basculante)']]]),
@@ -3978,7 +3979,7 @@ const MF = [
   ]],
   // Pescante do corpo (tampas sem pescante próprio); bisnaga não tem.
   ['Pescante', [
-    ['bpesc', 'Pescante até o fundo', 'check', 0, 0, 0, m => m.vol && m.kind !== 'bisnaga'],
+    ['bpesc', 'Pescante até o fundo', 'check', 0, 0, 0, m => m.vol && m.kind !== 'bisnaga' && !S.modules.some(v => v.sprayType === 'gotas' && v.pesc)], // com conta-gotas, o tubo é dele
     ['bpescD', 'Diâmetro', 2, 10, 0.1, 'mm', m => m.vol && m.kind !== 'bisnaga' && (m.bpesc || valveHasPesc())],
     ['bpescGap', 'Folga do fundo', 0, 20, 0.5, 'mm', m => m.vol && m.kind !== 'bisnaga' && (m.bpesc || valveHasPesc())],
     ['bpescCurve', 'Curva no pé (− esquerda)', -40, 40, 0.5, 'mm', m => m.vol && m.kind !== 'bisnaga' && (m.bpesc || valveHasPesc())],
