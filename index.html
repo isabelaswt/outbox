@@ -444,7 +444,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-26.abre-como-salvo';
+const BUILD = '2026-09-26.sem-cinza';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -2199,7 +2199,8 @@ function material(color, finish) {
   const m = new THREE.MeshPhysicalMaterial({ color, roughness: 0.5, metalness: 0 });
   // Fosco de verdade não é chapado: o contorno acende de leve (sheen) e uma camada
   // bem difusa devolve os brilhos largos das caixas de luz em ombros e quinas.
-  if (finish === 'fosco') { m.roughness = 0.56; m.sheen = 0.32; m.sheenRoughness = 0.55; m.sheenColor = new THREE.Color('#ffffff');
+  // (sheen tingido com a cor da peça: branco, ele virava uma película cinza nos lados de sombra)
+  if (finish === 'fosco') { m.roughness = 0.56; m.sheen = 0.28; m.sheenRoughness = 0.55; m.sheenColor = new THREE.Color(color).lerp(new THREE.Color('#ffffff'), 0.5);
     m.clearcoat = 0.1; m.clearcoatRoughness = 0.5; }
   if (finish === 'acetinado') { m.roughness = 0.34; m.clearcoat = 0.25; m.clearcoatRoughness = 0.4; }
   if (finish === 'brilho') { m.roughness = 0.14; m.clearcoat = 1; m.clearcoatRoughness = 0.06; }
@@ -2221,9 +2222,9 @@ function material(color, finish) {
   // de fora em pedaços (escadinha/tracejado nos vales dos gomos). No jateado o que
   // está dentro já quase não aparece, então não se perde nada.
   if (finish === 'vidroFosco') { m.roughness = 0.35; m.transmission = 0.9; m.thickness = 6; m.ior = 1.5; m.depthWrite = true;
-    m.color.lerp(new THREE.Color('#ffffff'), 0.9); // véu do jateado
+    m.color.lerp(new THREE.Color('#ffffff'), 0.7); // véu do jateado (com um pouco da cor, senão lava para cinza)
     m.attenuationColor = new THREE.Color(color); m.attenuationDistance = 5;
-    m.sheen = 0.4; m.sheenRoughness = 0.45; m.sheenColor = new THREE.Color('#ffffff'); m.specularIntensity = 1;
+    m.sheen = 0.2; m.sheenRoughness = 0.45; m.sheenColor = new THREE.Color(color).lerp(new THREE.Color('#ffffff'), 0.5); m.specularIntensity = 1;
     m.onBeforeCompile = sh => {
       sh.fragmentShader = sh.fragmentShader.replace('#include <transmission_fragment>', THREE.ShaderChunk.transmission_fragment
         // refração com a espessura do centro (desvio pequeno: na borda o desvio grande
@@ -2232,11 +2233,11 @@ function material(color, finish) {
         .replace('material.thickness = thickness;', `float frEdge = pow(1.0 - abs(dot(normalize(vViewPosition), normal)), 1.3);
 \tmaterial.thickness = thickness * 0.35;`)
         .replace('totalDiffuse = mix( totalDiffuse, transmitted.rgb, material.transmission );',
-          `transmitted.rgb *= pow(max(attenuationColor, vec3(0.001)), vec3(thickness * 4.65 * frEdge / attenuationDistance));
+          `transmitted.rgb *= pow(max(attenuationColor, vec3(0.001)), vec3(thickness * (0.65 + 4.65 * frEdge) / attenuationDistance)); // cor já no centro, mais densa na borda
 \ttotalDiffuse = mix( totalDiffuse, transmitted.rgb, material.transmission );`)
         + '\n#ifdef USE_ENVMAP\n totalDiffuse += material.diffuseColor * attenuationColor * getIBLIrradiance(-normal) * 0.15 * (1.0 - frEdge);\n#endif');
     };
-    m.customProgramCacheKey = () => 'jateado4'; }
+    m.customProgramCacheKey = () => 'jateado5'; }
   if (finish === 'metal') { m.metalness = 1; m.roughness = 0.3; } // um pouco menos espelhado: sem brilho piscando nas quinas
   const grain = { fosco: 1, acetinado: 0.8, perolado: 0.6, vidroFosco: 1 }[finish];
   if (grain) addGrain(m, grain);
