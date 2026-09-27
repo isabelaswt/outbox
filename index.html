@@ -449,7 +449,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-27.variacoes';
+const BUILD = '2026-09-27.boca-vidro';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -3392,6 +3392,8 @@ function buildInto(product, S, explodeAmt = 0) {
     Object.assign(mesh.userData, { main: true, uid: m.uid, y0, ox: m.ox || 0, rep });
     mesh.name = `${String(idx + 1).padStart(2, '0')}_${m.name}`;
     product.add(mesh);
+    // boca do gargalo em vidro transparente: sem o fundo escuro (ele aparecia pelas paredes)
+    if (m0.kind === 'gargalo' && (ms.own ? ms.finish : S.finish) === 'vidro') g.userData.extras = [];
     (g.userData.extras || []).forEach(xg => { const xm = new THREE.Mesh(xg, xg.userData.mat === 'insert' ? insertMat : xg.userData.mat === 'clear' ? clearMat : holeFor(ms.own ? ms.color : S.color)); xm.userData.idx = idx; product.add(xm); });
     if (!tubeBody && (m.kind === 'spray' || (m.kind === 'perfil' && !m.vol)) && m.pesc && isFinite(floor)) {
       // Comprimento medido montado; na vista explodida desce junto com a válvula.
