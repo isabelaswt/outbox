@@ -449,7 +449,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-27.luz-premium2';
+const BUILD = '2026-09-27.pipeta';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -3561,7 +3561,10 @@ function buildInto(product, S, explodeAmt = 0) {
         // Conta-gotas: a pipeta é sempre de vidro (o resto do acabamento é livre).
         // Num frasco opaco ela fica escondida; no Explodir ou no frasco transparente aparece.
         const frost = base.some(e => e.m.vol && (e.m.own ? e.m.finish : S.finish) === 'vidroFosco');
-        const pm = new THREE.Mesh(pg, frost ? pipetteFrostMat : pipetteMat); pm.userData.idx = idx;
+        // pipeta como o pescante: em multiplicar, quase invisível no meio e desenhada nas bordas
+        const pipMat = frost ? multTubeMat(0.01, 0.16, '#a8adaf')
+          : liqBody ? multTubeMat(0.03, 0.62, new THREE.Color(liqBody.liqColor).multiplyScalar(0.5)) : multTubeMat(0.02, 0.55, '#7d8486');
+        const pm = new THREE.Mesh(pg, pipMat); pm.userData.idx = idx;
         pm.name = `${String(idx + 1).padStart(2, '0')}_pipeta`; pm.renderOrder = 18; product.add(pm);
       } else if (pg) add(pg, 'pescante');
     }
