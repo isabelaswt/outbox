@@ -449,7 +449,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-27.ousada';
+const BUILD = '2026-09-27.liquido-recuo';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -3332,8 +3332,23 @@ function levelCap(geo, y) {
 }
 // levelAbs: altura do líquido já calculada para o frasco inteiro (corpo com
 // repetições é um frasco só: as cópias de baixo enchem, a do nível fica parcial).
+// Superfície de dentro por recuo de verdade: cada ponto da superfície do frasco
+// anda para dentro pela normal (a espessura), e o fundo fica plano na altura do
+// fundo. Encolher largura/raios não segue barrigas, cinturas e gomos — ali a peça
+// de dentro saía para fora do vidro (faixa escura do líquido).
+function offsetInner(m, y0, inset, lift) {
+  const g0 = moduleGeo(m, y0, { lo: false }); if (!g0) return null;
+  const g = g0.index ? g0 : g0; if (!g.attributes.normal) g.computeVertexNormals();
+  const p = g.attributes.position.array, n = g.attributes.normal.array, yb = y0 + lift;
+  for (let i = 0; i < p.length; i += 3) {
+    p[i] -= n[i] * inset; p[i + 1] -= n[i + 1] * inset; p[i + 2] -= n[i + 2] * inset;
+    if (p[i + 1] < yb) p[i + 1] = yb;
+  }
+  g.attributes.position.needsUpdate = true; g.computeVertexNormals(); g.computeBoundingBox();
+  return g;
+}
 function liquidMeshes(m, y0, levelAbs, lift = S.wall) {
-  const inner = moduleGeo(m, y0, { inset: S.wall + 0.3, lift, lo: false }); if (!inner) return [];
+  const inner = offsetInner(m, y0, S.wall + 0.3, lift); if (!inner) return [];
   inner.computeBoundingBox();
   const b = inner.boundingBox, level = levelAbs ?? b.min.y + (b.max.y - b.min.y) * clamp(m.liqLevel, 0, 100) / 100;
   if (level <= b.min.y + 0.05) { inner.dispose(); return []; } // cópia acima do nível: vazia
@@ -3468,7 +3483,7 @@ function buildInto(product, S, explodeAmt = 0) {
     // Vidro transparente: a cavidade (parede de dentro) aparece nas bordas, como a
     // espessura do vidro vista de lado, e o fundo grosso ganha a sua linha.
     if (m0.vol && (finM === 'vidro' || finM === 'pet') && !m0.hidden) {
-      const ig = moduleGeo(m, y0, { inset: S.wall, lift: firstBody && thickBase(finM) ? fundo : S.wall, lo: false });
+      const ig = offsetInner(m, y0, S.wall, firstBody && thickBase(finM) ? fundo : S.wall);
       if (ig) { const cm = new THREE.Mesh(ig, cavityMat(colM)); cm.name = 'cavidade'; cm.userData.idx = idx; cm.renderOrder = 4; product.add(cm); }
     }
     mesh.castShadow = true; mesh.receiveShadow = true;
