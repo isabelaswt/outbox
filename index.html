@@ -449,7 +449,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-27.liquido-recuo';
+const BUILD = '2026-09-27.pescante-slider';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -3928,7 +3928,7 @@ const MF = [
   ]],
   // Pescante do corpo (tampas sem pescante próprio); bisnaga não tem.
   ['Pescante', [
-    ['bpesc', 'Pescante até o fundo (se a válvula tiver o dela, vale o da válvula)', 'check', 0, 0, 0, m => m.vol && m.kind !== 'bisnaga'],
+    ['bpesc', 'Pescante até o fundo', 'check', 0, 0, 0, m => m.vol && m.kind !== 'bisnaga'],
     ['bpescD', 'Diâmetro', 2, 10, 0.1, 'mm', m => m.vol && m.kind !== 'bisnaga' && m.bpesc],
     ['bpescGap', 'Folga do fundo', 0, 20, 0.5, 'mm', m => m.vol && m.kind !== 'bisnaga' && m.bpesc],
     ['bpescCurve', 'Curva no pé (− esquerda)', -40, 40, 0.5, 'mm', m => m.vol && m.kind !== 'bisnaga' && m.bpesc],
@@ -4060,6 +4060,12 @@ function renderEditor() {
         if (k === 'topType' && m.topType === 'flip' && !(m.groove > 0)) m.groove = r1(Math.min(12, m.h * 0.35));
         if (k === 'neckStd' && NECKS[m.neckStd]) Object.assign(m, NECKS[m.neckStd], { D: NECKS[m.neckStd].W });
         if ((m.kind === 'gargalo' || m.kind === 'spray') && k === 'W') m.D = m.W;
+        // Um pescante só por frasco: os controles do corpo e os da válvula mexem no
+        // mesmo (antes, com válvula de pescante próprio, os do corpo não faziam nada).
+        const PESC = { bpescD: 'pescD', bpescGap: 'pescGap', bpescCurve: 'pescCurve', bpescWave: 'pescWave' };
+        if (PESC[k] && m.vol) S.modules.filter(v => v.kind === 'spray' && v.pesc && v.sprayType !== 'gotas').forEach(v => { v[PESC[k]] = m[k]; });
+        const bk = Object.keys(PESC).find(q => PESC[q] === k);
+        if (bk && m.kind === 'spray' && m.sprayType !== 'gotas') S.modules.filter(v => v.vol).forEach(v => { v[bk] = m[k]; });
         if (isSphereCap(m)) {
           if (k === 'sphereR') m.roundLock = false;
           syncSphereRadius(m, k === 'roundLock' && m.roundLock || ['W', 'D', 'h'].includes(k) && m.roundLock);
