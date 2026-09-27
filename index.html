@@ -339,7 +339,7 @@ const BASE = {
   groove: 0, grooveD: 0.6,
   notch: false, notchLock: true, notchY: 12, notchW: 20, notchH: 8, notchD: 2, notchP: 2,
   ridges: 0, ridgeD: 0.6, lobes: 0, lobeD: 3,
-  labType: 'nenhum', labH: 50, labY: 50, labW: 40, labColor: '#ffffff', labFinish: 'fosco', labImg: '', labImgB: '',
+  labType: 'nenhum', labH: 50, labY: 50, labW: 40, labColor: '#ffffff', labFinish: 'fosco', labImg: '', labImgB: '', labInk: false, labInkColor: '#1c1c1c', labInkFinish: 'metal',
   own: false, color: '#e8dcc6', finish: 'fosco', vol: false,
   // kind 'giro': seção girando no eixo; 'placa': silhueta frontal extrudada na profundidade.
   kind: 'giro', ox: 0, rTL: 6, rTR: 6, rBL: 6, rBR: 6, rEdge: 3, chamfer: false,
@@ -455,7 +455,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-27.papel-sem-cor';
+const BUILD = '2026-09-27.arte-metalizada';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -3308,6 +3308,36 @@ function labelTexture(url, paper) {
   im.src = url;
   labTex.set(key, t); return t;
 }
+// Tinta da arte (PNG sem fundo): o contorno vem da transparência da imagem e a cor e o
+// acabamento são escolhidos à parte (ex.: hot stamping metalizado). O three lê o
+// alphaMap no canal verde, então a transparência vira tons de cinza.
+const labAlpha = new Map();
+function labelAlphaTexture(url) {
+  if (!url) return null;
+  if (labAlpha.has(url)) return labAlpha.get(url);
+  const cv = document.createElement('canvas'); cv.width = cv.height = 4;
+  const t = new THREE.CanvasTexture(cv); t.anisotropy = 8;
+  const im = new Image();
+  im.onload = () => {
+    const s = Math.min(1, 4096 / Math.max(im.naturalWidth, im.naturalHeight));
+    cv.width = Math.max(1, Math.round(im.naturalWidth * s)); cv.height = Math.max(1, Math.round(im.naturalHeight * s));
+    const c = cv.getContext('2d'); c.drawImage(im, 0, 0, cv.width, cv.height);
+    const d = c.getImageData(0, 0, cv.width, cv.height), px = d.data;
+    for (let i = 0; i < px.length; i += 4) { const a = px[i + 3]; px[i] = px[i + 1] = px[i + 2] = a; px[i + 3] = 255; }
+    c.putImageData(d, 0, 0); t.dispose(); t.needsUpdate = true; req();
+  };
+  im.src = url;
+  labAlpha.set(url, t); return t;
+}
+const inkMats = new Map();
+function labelInkMaterial(m, img) {
+  const key = [m.labInkColor, m.labInkFinish, img?.slice(-40) || '', img?.length || 0].join('|');
+  if (inkMats.has(key)) return inkMats.get(key);
+  const mt = material(m.labInkColor || '#1c1c1c', m.labInkFinish || 'metal').clone();
+  mt.alphaMap = labelAlphaTexture(img); mt.alphaTest = 0.4; mt.transparent = false; mt.transmission = 0; mt.depthWrite = true;
+  mt.side = THREE.DoubleSide; mt.polygonOffset = true; mt.polygonOffsetFactor = -4; mt.polygonOffsetUnits = -4; // por cima do papel
+  inkMats.set(key, mt); return mt;
+}
 const labMats = new Map();
 // Papel sem cor: o rótulo assume a cor da peça (a própria dela ou a cor geral).
 const labPaper = m => (m.labNoPaper ? (m.own ? m.color : S.color) : m.labColor) || '#ffffff';
@@ -3391,9 +3421,15 @@ function applyLabelsTo(group, st) {
       const g = new THREE.BufferGeometry();
       g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
       g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); g.setIndex(idx); g.computeVertexNormals();
-      const lm = new THREE.Mesh(g, labelMaterial(m, img));
-      lm.castShadow = true; lm.receiveShadow = true; lm.userData = { label: true, idx: o.userData.idx }; lm.name = 'rotulo';
-      group.add(lm);
+      const ink = m.labInk && img; // arte recolorida: papel liso + camada de tinta com o contorno da arte
+      const parts = [];
+      if (!(ink && m.labNoPaper)) parts.push([g, labelMaterial(m, ink ? null : img), 'rotulo']); // sem papel: só a tinta, direto na peça
+      if (ink) parts.push([g.clone(), labelInkMaterial(m, img), 'rotulo_tinta']);
+      for (const [geo, mat, nm] of parts) {
+        const lm = new THREE.Mesh(geo, mat);
+        lm.castShadow = true; lm.receiveShadow = true; lm.userData = { label: true, idx: o.userData.idx }; lm.name = nm;
+        group.add(lm);
+      }
     };
     // u cresce da esquerda para a direita de quem olha de fora (θ decrescente).
     if (m.labType === 'envolve') patch((R, u) => (1 - u) * R.total, 256, m.labImg);
@@ -4301,6 +4337,9 @@ const MF = [
     ['labBack', 'Adesivo no verso', 'check', 0, 0, 0, m => canLabel(m) && m.labType === 'frenteVerso'],
     ['labW', 'Largura de cada adesivo', 5, 300, 0.5, 'mm', m => canLabel(m) && m.labType === 'frenteVerso'],
     ['labNoPaper', 'Papel sem cor (usa a cor da peça)', 'check', 0, 0, 0, m => canLabel(m) && m.labType && m.labType !== 'nenhum'],
+    ['labInk', 'Arte com cor e acabamento próprios (PNG sem fundo)', 'check', 0, 0, 0, m => canLabel(m) && m.labType && m.labType !== 'nenhum'],
+    ['labInkColor', 'Cor da arte', 'color', 0, 0, 0, m => canLabel(m) && m.labType && m.labType !== 'nenhum' && m.labInk],
+    ['labInkFinish', 'Acabamento da arte', 'finish', 0, 0, 0, m => canLabel(m) && m.labType && m.labType !== 'nenhum' && m.labInk],
     ['labColor', 'Cor do papel', 'color', 0, 0, 0, m => canLabel(m) && m.labType && m.labType !== 'nenhum' && !m.labNoPaper],
     ['labFinish', 'Acabamento do rótulo', 'finish', 0, 0, 0, m => canLabel(m) && m.labType && m.labType !== 'nenhum'],
   ]],
@@ -4475,7 +4514,7 @@ function renderLabelBox() {
   if (m.labFront === undefined) m.labFront = true;
   if (m.labBack === undefined) m.labBack = true;
   for (const def of defs) {
-    const el = field(box, m, def, k => { if (['labType', 'labFront', 'labBack', 'labNoPaper'].includes(k)) renderLabelBox(); renderStack(); queueBuild(); });
+    const el = field(box, m, def, k => { if (['labType', 'labFront', 'labBack', 'labNoPaper', 'labInk'].includes(k)) renderLabelBox(); renderStack(); queueBuild(); });
     if (def[6] && !def[6](m)) el.classList.add('hidden');
   }
   if (m.labType && m.labType !== 'nenhum') {
