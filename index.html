@@ -449,7 +449,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-27.pipeta-pontas';
+const BUILD = '2026-09-27.gotas-sem-mola';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -2246,6 +2246,26 @@ function multTubeMat(a0, a1, tint) {
   g.customProgramCacheKey = () => `mult${a0}_${a1}_${t.getHexString()}`;
   return g;
 }
+// Reflexo de vidro (camada que só clareia, por cima): duas linhas finas verticais
+// das luzes do estúdio e um brilho leve de borda — é o que faz a pipeta ler como vidro.
+function glassGlintMat(k = 1) {
+  const g = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, depthWrite: false, side: THREE.FrontSide,
+    blending: THREE.AdditiveBlending, toneMapped: false });
+  g.onBeforeCompile = sh => {
+    sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vGN; varying vec3 vGV;')
+      .replace('#include <project_vertex>', '#include <project_vertex>\nvGN = normalize(normalMatrix * normal); vGV = -mvPosition.xyz;');
+    sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying vec3 vGN; varying vec3 vGV;')
+      .replace('#include <opaque_fragment>', `vec3 n = normalize(vGN), v = normalize(vGV);
+       float s1 = pow(max(dot(reflect(-v, n), normalize(vec3(-0.55, 0.15, 0.82))), 0.0), 60.0);
+       float s2 = pow(max(dot(reflect(-v, n), normalize(vec3(0.6, 0.1, 0.8))), 0.0), 90.0);
+       float fr = pow(1.0 - abs(dot(v, n)), 3.0);
+       float b = (s1 * 0.85 + s2 * 0.45 + fr * 0.12 + 0.03) * ${k.toFixed(2)};
+       gl_FragColor = vec4(vec3(b), 1.0);`)
+      .replace('#include <tonemapping_fragment>', '').replace('#include <colorspace_fragment>', '');
+  };
+  g.customProgramCacheKey = () => 'brilhoVidro' + k;
+  return g;
+}
 const plastMat = multTubeMat(0.015, 0.45, '#8c9294');
 const plastFrostMat = multTubeMat(0.005, 0.12, '#a8adaf');
 // Pescante dentro de líquido transparente (vidro/PET): aparece um pouco, na cor do líquido.
@@ -3564,7 +3584,7 @@ function buildInto(product, S, explodeAmt = 0) {
       // Comprimento medido montado; na vista explodida desce junto com a válvula.
       const add = (geo, name) => { const pm = new THREE.Mesh(geo, innerMat); pm.userData.idx = idx; pm.name = `${String(idx + 1).padStart(2, '0')}_${name}`; product.add(pm); };
       let yTop = y0 + m.h * 0.6;
-      if (m.mola) {
+      if (m.mola && m.sprayType !== 'gotas') { // conta-gotas não tem mola
         const mech = pumpMechGeo(m, yTop, y0); mech.parts.forEach(g => add(g, 'bomba')); yTop = mech.yEnd;
         if (mech.sleeve) {
           // Transparente só se o frasco for de vidro: por cima de tudo, como
@@ -3584,6 +3604,8 @@ function buildInto(product, S, explodeAmt = 0) {
           : liqBody ? multTubeMat(0.03, 0.62, new THREE.Color(liqBody.liqColor).multiplyScalar(0.5)) : multTubeMat(0.02, 0.55, '#7d8486');
         const pm = new THREE.Mesh(pg, pipMat); pm.userData.idx = idx;
         pm.name = `${String(idx + 1).padStart(2, '0')}_pipeta`; pm.renderOrder = 18; product.add(pm);
+        const gl = new THREE.Mesh(pg, glassGlintMat(frost ? 0.25 : 1)); gl.userData.idx = idx; // reflexo do vidro por cima
+        gl.name = `${String(idx + 1).padStart(2, '0')}_pipeta`; gl.renderOrder = 19; product.add(gl);
       } else if (pg) add(pg, 'pescante');
     }
     // Líquido dentro do corpo, até o nível escolhido.
@@ -3946,11 +3968,11 @@ const MF = [
     K(['dir', 'Direção (giro)', -180, 180, 1, '°']),
   ]],
   ['Mola e pescante', [
-    K(['mola', 'Bomba com mola (visível no frasco transparente)', 'check']),
-    K(['houseD', 'Mola: diâmetro', 4, 20, 0.5, 'mm', m => m.mola]),
-    K(['springL', 'Mola: comprimento', 5, 60, 0.5, 'mm', m => m.mola]),
-    K(['coils', 'Mola: voltas', 3, 30, 1, '', m => m.mola]),
-    K(['sleeve', 'Carcaça da mola', 'select', [['transparente', 'Transparente (mostra a mola)'], ['fechada', 'Fechada'], ['nenhuma', 'Sem carcaça']], m => m.mola]),
+    K(['mola', 'Bomba com mola (visível no frasco transparente)', 'check', 0, 0, 0, m => m.sprayType !== 'gotas']),
+    K(['houseD', 'Mola: diâmetro', 4, 20, 0.5, 'mm', m => m.mola && m.sprayType !== 'gotas']),
+    K(['springL', 'Mola: comprimento', 5, 60, 0.5, 'mm', m => m.mola && m.sprayType !== 'gotas']),
+    K(['coils', 'Mola: voltas', 3, 30, 1, '', m => m.mola && m.sprayType !== 'gotas']),
+    K(['sleeve', 'Carcaça da mola', 'select', [['transparente', 'Transparente (mostra a mola)'], ['fechada', 'Fechada'], ['nenhuma', 'Sem carcaça']], m => m.mola && m.sprayType !== 'gotas']),
     K(['pesc', m => m.sprayType === 'gotas' ? 'Conta-gotas (tubo de vidro até perto do fundo)' : 'Pescante (tubo até o fundo)', 'check']),
     K(['pipTip', 'Ponta do conta-gotas', 'select', [['bolinha', 'Com bolinha'], ['afunilada', 'Afunilada']], m => m.pesc && m.sprayType === 'gotas']),
     K(['pescD', m => `${pescName(m)}: diâmetro`, 2, 10, 0.1, 'mm', m => m.pesc]),
