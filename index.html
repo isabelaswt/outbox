@@ -134,6 +134,7 @@ canvas{display:block;width:100%;height:100%;touch-action:none}
 <aside>
   <h1>OUTBOX</h1>
   <div class="sub">Shapes de embalagem · módulos empilhados · mm · volumetria ao vivo<br><span id="build" style="font-variant-numeric:tabular-nums"></span></div>
+  <div class="row" style="margin:10px 0 2px"><button class="btn pri" id="newProduct" style="flex:1" title="Começa do zero: sem lado a lado, sem logos e sem nome">+ Novo produto</button></div>
 
   <details open>
     <summary>Modelo</summary>
@@ -443,7 +444,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-26.grao-fino';
+const BUILD = '2026-09-26.novo-produto';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -4309,6 +4310,16 @@ function loadState(s, name) {
   if (name) S.name = name;
   sel = 0; renderAll(); build(); fit();
 }
+// Novo produto: começa do zero (modelo base, sem lado a lado, sem logos, sem nome,
+// para o "Salvar" não sobrescrever o anterior). Luz e fundo do estúdio ficam.
+$('#newProduct').onclick = () => {
+  if (!confirm('Começar um produto novo do zero?\n\nO produto atual e o lado a lado saem da tela. O que já foi salvo continua na galeria.')) return;
+  const base = PRESETS[Object.keys(PRESETS)[0]];
+  S = normalize(structuredClone({ wall: S.wall, bg: S.bg, scene: S.scene, ...base, side: [], logos: [], name: '' }));
+  S.name = ''; sel = 0; lastAuto = '';
+  renderAll(); build(); fit(); saveStatus('');
+  toast('Produto novo: monte e salve com um nome');
+};
 $('#projName').oninput = e => { S.name = e.target.value; store.set('shape.autosave', S); };
 $('#savePreset').onclick = async () => {
   const name = (S.name || '').trim() || 'Sem nome';
