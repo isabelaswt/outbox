@@ -455,7 +455,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-27.video-30s';
+const BUILD = '2026-09-27.cena-pedra';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -2488,7 +2488,7 @@ const contactMat = (() => {
   const t = new THREE.CanvasTexture(cv); t.colorSpace = THREE.SRGBColorSpace;
   return new THREE.MeshBasicMaterial({ map: t, transparent: true, depthWrite: false, toneMapped: false, polygonOffset: true, polygonOffsetFactor: -1 });
 })();
-const SCENE0 = { cena: 'nenhum', cenaCor: '#e6e0d6', cenaH: 40, luz: 'studio', ao: true, luzRot: 0, luzInt: 100, luzCon: 50, bgGrad: 'nenhum', bgEdge: '#b9b7b2',
+const SCENE0 = { cena: 'nenhum', cenaCor: '#e6e0d6', cenaH: 40, cenaTilt: 0, pedraCor: '#5a4a3e', luz: 'studio', ao: true, luzRot: 0, luzInt: 100, luzCon: 50, bgGrad: 'nenhum', bgEdge: '#b9b7b2',
   luzAlt: 0, luzKey: 100, luzFill: 100, luzSoft: 50 };
 const LIGHT_KEYS = ['luz', 'luzRot', 'luzInt', 'luzCon', 'luzAlt', 'luzKey', 'luzFill', 'luzSoft'];
 // Contraste da luz: 50 = neutro; mais = luz principal forte e ambiente/preenchimento
@@ -2496,13 +2496,60 @@ const LIGHT_KEYS = ['luz', 'luzRot', 'luzInt', 'luzCon', 'luzAlt', 'luzKey', 'lu
 const conKey = sc => 1 + 1.1 * (clamp((sc.luzCon ?? 50) / 100, 0, 1) - 0.5);
 const conAmb = sc => 1 - 1.25 * (clamp((sc.luzCon ?? 50) / 100, 0, 1) - 0.5);
 const sceneOf = () => ({ ...SCENE0, ...(S.scene || {}) });
+// Ruído 3D suave (valor com interpolação), somado em oitavas: base da pedra.
+function vnoise(x, y, z) {
+  const h = (i, j, k) => { let n = i * 374761393 + j * 668265263 + k * 1274126177; n = (n ^ (n >>> 13)) * 1274126177; return ((n ^ (n >>> 16)) >>> 0) / 4294967296; };
+  const X = Math.floor(x), Y = Math.floor(y), Z = Math.floor(z), fx = x - X, fy = y - Y, fz = z - Z;
+  const s = t => t * t * (3 - 2 * t), u = s(fx), v = s(fy), w = s(fz), L = (a, b, t) => a + (b - a) * t;
+  return L(L(L(h(X, Y, Z), h(X + 1, Y, Z), u), L(h(X, Y + 1, Z), h(X + 1, Y + 1, Z), u), v),
+           L(L(h(X, Y, Z + 1), h(X + 1, Y, Z + 1), u), L(h(X, Y + 1, Z + 1), h(X + 1, Y + 1, Z + 1), u), v), w);
+}
+const fbm = (x, y, z, o = 5) => { let a = 0, f = 1, amp = 0.5; for (let i = 0; i < o; i++) { a += amp * vnoise(x * f, y * f, z * f); f *= 2.03; amp *= 0.5; } return a; };
+// Pedra: rocha irregular que afina até um bico (onde o produto se equilibra), com
+// facetas, lascas e a cor variando entre marrom, cinza e as frestas escuras.
+function rockGeo(R, Hr, color) {
+  const g = new THREE.IcosahedronGeometry(1, 7), p = g.attributes.position, c = new THREE.Color(color), col = new Float32Array(p.count * 3), v = new THREE.Vector3();
+  for (let i = 0; i < p.count; i++) {
+    v.fromBufferAttribute(p, i);
+    const up = (v.y + 1) / 2; // 0 embaixo, 1 no bico
+    const big = fbm(v.x * 1.1 + 7, v.y * 1.1, v.z * 1.1 - 3, 4), mid = fbm(v.x * 3.2 + 1, v.y * 3.2, v.z * 3.2, 4), fine = fbm(v.x * 11, v.y * 11, v.z * 11, 3);
+    // lascas: planos quebrados suaves (degraus arredondados do ruído médio)
+    const chip = mid + 0.12 * Math.sin(mid * 18);
+    const taper = 1 - 0.9 * Math.pow(up, 2.4); // lados largos, afina só no alto até o bico
+    const grit = fbm(v.x * 5.5 + 3, v.y * 5.5, v.z * 5.5 + 9, 3); // relevo miúdo: quebra as faces grandes
+    const r = 0.74 + 0.4 * big + 0.1 * chip + 0.05 * grit + 0.03 * fine;
+    const ang = 0.35 * (big - 0.5); // pedra torta, não simétrica
+    const x = v.x * R * taper * r, z = v.z * R * 0.78 * taper * r;
+    p.setXYZ(i, x * Math.cos(ang) - z * Math.sin(ang), (up * (0.94 + 0.12 * big)) * Hr - Hr, x * Math.sin(ang) + z * Math.cos(ang));
+    // cor: marrom-acinzentado, frestas escuras e topo gasto um pouco mais claro
+    const crev = clamp((chip - 0.35) * 2.2, 0, 1), shade = 0.62 + 0.45 * crev + 0.18 * (fine - 0.5) + 0.15 * up;
+    const warm = fbm(v.x * 2 + 11, v.y * 2, v.z * 2, 2);
+    const k = c.clone().offsetHSL((warm - 0.5) * 0.05, (warm - 0.5) * 0.2, (fine - 0.5) * 0.04).multiplyScalar(clamp(shade, 0.3, 1.3));
+    col.set([k.r, k.g, k.b], i * 3);
+  }
+  g.setAttribute('color', new THREE.BufferAttribute(col, 3)); g.computeVertexNormals();
+  // o bico fica exatamente em y = 0, embaixo do centro do produto
+  g.computeBoundingBox(); const bb = g.boundingBox;
+  let tx = 0, tz = 0, ty = -Infinity; for (let i = 0; i < p.count; i++) if (p.getY(i) > ty) { ty = p.getY(i); tx = p.getX(i); tz = p.getZ(i); }
+  g.translate(-tx, -ty, -tz);
+  return g;
+}
+// Produto inclinado no cenário (equilibrado na pedra): gira em volta do centro da base.
+function applyStageTilt(sc, cx, cz) {
+  product.quaternion.identity(); product.position.set(0, 0, 0);
+  const t = THREE.MathUtils.degToRad(sc.cenaTilt || 0);
+  if (t) { const q = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), -t), P = new THREE.Vector3(cx, 0, cz);
+    product.quaternion.copy(q); product.position.copy(P).sub(P.clone().applyQuaternion(q)); }
+  product.updateMatrixWorld(true);
+}
 function buildStage() {
   placeAreaLights();
   stage.children.slice().forEach(o => { o.geometry?.dispose(); stage.remove(o); });
   const sc = sceneOf(); ground.visible = true; ground.position.y = -0.05;
+  if (!spinning) { product.quaternion.identity(); product.position.set(0, 0, 0); product.updateMatrixWorld(true); } // mede de pé
   // Sombra de contato: mancha suave logo embaixo de cada produto (ocupa a base e
   // esvai para fora), o que o sol sozinho não dá.
-  if (sc.ao !== false) for (const g of [product, ...sideRoot.children]) {
+  if (sc.ao !== false && sc.cena !== 'pedra') for (const g of [product, ...sideRoot.children]) {
     const b = new THREE.Box3().setFromObject(g); if (b.isEmpty()) continue;
     const w = b.max.x - b.min.x, d = b.max.z - b.min.z;
     const o = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), contactMat);
@@ -2510,14 +2557,20 @@ function buildStage() {
     o.position.set((b.min.x + b.max.x) / 2, 0.06, (b.min.z + b.max.z) / 2); o.renderOrder = 2;
     stage.add(o);
   }
-  if (sc.cena === 'nenhum') return;
+  if (sc.cena === 'nenhum') { if (!spinning) applyStageTilt(sc, 0, 0); return; }
   const bb = new THREE.Box3().setFromObject(product).union(new THREE.Box3().setFromObject(sideRoot));
   if (bb.isEmpty()) return;
   const cx = (bb.min.x + bb.max.x) / 2, cz = (bb.min.z + bb.max.z) / 2, w = bb.max.x - bb.min.x, d = bb.max.z - bb.min.z, H = bb.max.y;
   const mat = new THREE.MeshStandardMaterial({ color: sc.cenaCor, roughness: 0.92, metalness: 0 });
   const add = (g, x, y, z) => { const o = new THREE.Mesh(g, mat); o.position.set(x, y, z); o.castShadow = true; o.receiveShadow = true; stage.add(o); return o; };
   const h = sc.cenaH, pad = Math.max(16, Math.max(w, d) * 0.22);
-  if (sc.cena === 'pedestal') {
+  if (sc.cena === 'pedra') { // rocha com bico embaixo do produto; o chão some (a pedra sai do quadro)
+    const R = Math.max(w, d) * 1.7 + 40, Hr = Math.max(H * 2.4, R * 1.8);
+    const o = new THREE.Mesh(rockGeo(R, Hr, sc.pedraCor || '#5a4a3e'), new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.93, metalness: 0 }));
+    o.position.set(cx, 0.4, cz); o.castShadow = true; o.receiveShadow = true; stage.add(o);
+    addGrain(o.material, 2.2, 0.9); // poros da pedra (grão bem maior que o do plástico)
+    ground.visible = false;
+  } else if (sc.cena === 'pedestal') {
     const r = Math.hypot(w, d) / 2 + pad * 0.6, e = Math.min(2.5, h / 4), pts = [[0, -h], [r, -h], [r, -e]];
     for (let i = 1; i <= 8; i++) { const a = i / 8 * Math.PI / 2; pts.push([r - e + e * Math.cos(a), -e + e * Math.sin(a)]); }
     pts.push([0, 0]);
@@ -2547,6 +2600,7 @@ function buildStage() {
     const o = add(g, 0, 0, 0); o.castShadow = false; o.material = mat.clone(); o.material.side = THREE.DoubleSide;
     ground.visible = false;
   }
+  if (!spinning) applyStageTilt(sc, cx, cz);
 }
 // Girar a luz / Intensidade valem para todas as luzes: gira o estúdio inteiro
 // (ambiente, sol/sombra e caixas de luz de área) em volta do produto.
@@ -2573,10 +2627,15 @@ function renderScene() {
   if (S.scene.luzV !== 2) { if (S.scene.luz === 'padrao') S.scene.luz = 'studio'; S.scene.luzV = 2; }
   // Qualquer ajuste de luz recalcula tudo (ambiente, sol/sombra e caixas): o que se vê
   // mexendo é exatamente o que é salvo e reaplicado depois.
-  const ch = (k) => { if (LIGHT_KEYS.includes(k)) applySceneLight(); buildStage(); if (k === 'cena') { renderScene(); fit(); } store.set('shape.autosave', S); req(); };
+  const ch = (k) => {
+    // Pedra: começa com o produto inclinado, fundo em degradê quente e luz de janela (como foto de campanha)
+    if (k === 'cena' && S.scene.cena === 'pedra') { Object.assign(S.scene, { cenaTilt: S.scene.cenaTilt || 14, bgGrad: 'radial', bgEdge: '#b89a7a', luz: 'janela' }); S.bg = '#f3e6d6'; applySceneLight(); applyBackground(); }
+    if (LIGHT_KEYS.includes(k)) applySceneLight(); buildStage(); if (k === 'cena') { renderScene(); fit(); } store.set('shape.autosave', S); req(); };
   field(f, S.scene, ['cena', 'Cenário', 'select', [['nenhum', 'Nenhum (só a sombra)'], ['pedestal', 'Pedestal redondo'], ['bloco', 'Bloco'],
-    ['degraus', 'Degraus (vitrine)'], ['arco', 'Arco ao fundo'], ['infinito', 'Fundo infinito (estúdio)']]], ch);
-  if (S.scene.cena !== 'nenhum') field(f, S.scene, ['cenaCor', 'Cor do cenário', 'color'], ch);
+    ['degraus', 'Degraus (vitrine)'], ['arco', 'Arco ao fundo'], ['infinito', 'Fundo infinito (estúdio)'], ['pedra', 'Pedra (produto equilibrado)']]], ch);
+  if (S.scene.cena === 'pedra') field(f, S.scene, ['pedraCor', 'Cor da pedra', 'color'], ch);
+  else if (S.scene.cena !== 'nenhum') field(f, S.scene, ['cenaCor', 'Cor do cenário', 'color'], ch);
+  field(f, S.scene, ['cenaTilt', 'Inclinar o produto (− esquerda, + direita)', -35, 35, 1, '°'], ch);
   if (['pedestal', 'bloco', 'degraus'].includes(S.scene.cena)) field(f, S.scene, ['cenaH', 'Altura do pedestal', 5, 150, 1, 'mm'], ch);
   field(f, S.scene, ['luz', 'Luz (vale para tela, imagem e vídeo)', 'select', [['studio', 'Estúdio claro (padrão)'], ['premium', 'Premium (vidro e perfume, contraste)'], ['produto', 'Produto (e-commerce, faixa macia)'], ['padrao', 'Volume (mais contraste de lado)'],
     ['soft', 'Suave'], ['contrast', 'Contraste'], ['sol', 'Sol (sombra longa)'], ['drama', 'Dramática'], ['faixa', 'Faixas de estúdio (reflexo vertical)'],
@@ -2909,6 +2968,7 @@ async function encodeFrames(frameAt, sec, W, H, onProgress) {
 async function recordSpin(sec, mode = '360') {
   const offline = 'VideoEncoder' in window && 'VideoFrame' in window;
   if (spinning || (!offline && !window.MediaRecorder)) { if (!offline && !window.MediaRecorder) toast('Este navegador não grava vídeo'); return; }
+  product.quaternion.identity(); product.position.set(0, 0, 0); product.updateMatrixWorld(true); // o vídeo faz as próprias poses
   // Vista ortográfica não aproxima com a distância (close, inclinado e tampa saíam
   // todos do mesmo tamanho): o vídeo grava sempre em perspectiva, na mesma direção.
   const orthoT = cam === ortho ? controls.target.clone() : null, orthoDir = orthoT && ortho.position.clone().sub(orthoT).normalize();
@@ -3002,7 +3062,7 @@ async function recordSpin(sec, mode = '360') {
   cam.position.copy(keep.pos); cam.lookAt(T); grid.visible = keep.grid; refMesh.visible = keep.ref; controls.enabled = true; controls.update(); req();
   ground.visible = keep.ground; stage.visible = keep.stage;
   download(blob, fname(ext));
-  btn.disabled = false; btn.textContent = 'Gravar vídeo'; spinning = false;
+  btn.disabled = false; btn.textContent = 'Gravar vídeo'; spinning = false; buildStage(); req(); // devolve a inclinação do cenário
   resize();
   if (orthoT) { // volta para a vista ortográfica em que estava
     cam = ortho; ortho.position.copy(orthoT).addScaledVector(orthoDir, 3000); ortho.up.set(0, 1, 0); ortho.lookAt(orthoT); makeControls(orthoT); req();
@@ -3267,7 +3327,8 @@ async function applyLogosTo(group, st, alive) {
   if (!st.logos?.length) return;
   const masks = await Promise.all(st.logos.map(L => logoMask(L.svg)));
   if (!alive()) return;
-  const px = group.position.x; group.position.x = 0; group.updateMatrixWorld(true);
+  const px = group.position.clone(), pq = group.quaternion.clone(); // mede de pé (produto pode estar inclinado no cenário)
+  group.position.set(0, 0, 0); group.quaternion.identity(); group.updateMatrixWorld(true);
   st.logos.forEach((L, li) => {
     const M = masks[li]; if (!L.n || !M) return;
     const mains = group.children.filter(o => o.userData.main && o.userData.uid === L.uid);
@@ -3287,7 +3348,7 @@ async function applyLogosTo(group, st, alive) {
     lm.userData = { logo: true, idx: target.userData.idx }; lm.name = `logo_${L.name}`;
     group.add(lm);
   });
-  group.position.x = px; group.updateMatrixWorld(true);
+  group.position.copy(px); group.quaternion.copy(pq); group.updateMatrixWorld(true);
   req();
 }
 // ───────────────────────── rótulo ─────────────────────────
@@ -3364,7 +3425,8 @@ const canLabel = m => !!m && m.kind !== 'gargalo' && m.kind !== 'spray';
 const labDims = new Map();
 function applyLabelsTo(group, st) {
   const mods = new Map(st.modules.map(m => [m.uid, m]));
-  const px = group.position.x; group.position.x = 0; group.updateMatrixWorld(true);
+  const px = group.position.clone(), pq = group.quaternion.clone(); // mede de pé (produto pode estar inclinado no cenário)
+  group.position.set(0, 0, 0); group.quaternion.identity(); group.updateMatrixWorld(true);
   const rc = new THREE.Raycaster(), V = THREE.Vector3; rc.firstHitOnly = true;
   for (const o of group.children.filter(o => o.userData.main && !(o.userData.rep > 0))) {
     const m = mods.get(o.userData.uid);
@@ -3446,7 +3508,7 @@ function applyLabelsTo(group, st) {
       if (m.labBack !== false) patch((R, u) => half(R) * (1 - 2 * u), 96, m.labImgB);                 // verso (−z)
     }
   }
-  group.position.x = px; group.updateMatrixWorld(true);
+  group.position.copy(px); group.quaternion.copy(pq); group.updateMatrixWorld(true);
 }
 let placing = null, placingMask = null, preview = null;
 // Imagem da prévia: área clara com borda e o desenho do logo por cima.
@@ -3961,7 +4023,9 @@ function bounds() { return new THREE.Box3().setFromObject(product); }
 function boundsAll() {
   const b = bounds(); sideRoot.children.forEach(g => b.union(new THREE.Box3().setFromObject(g)));
   // Pedestal, bloco, degraus e arco entram no enquadramento (o fundo infinito não).
-  if (S.scene?.cena && S.scene.cena !== 'infinito') stage.children.forEach(o => b.union(new THREE.Box3().setFromObject(o)));
+  // Pedra: só o topo dela entra no quadro (o resto sai por baixo, como na foto de campanha).
+  if (S.scene?.cena === 'pedra') { if (!b.isEmpty()) b.min.y -= (b.max.y - b.min.y) * 0.5; }
+  else if (S.scene?.cena && S.scene.cena !== 'infinito') stage.children.forEach(o => b.union(new THREE.Box3().setFromObject(o)));
   return b;
 }
 
@@ -4112,7 +4176,8 @@ canvas.addEventListener('pointerup', e => {
     const hit = ray.intersectObjects(product.children.filter(o => o.userData.main))[0];
     if (!hit) return toast('Clique em cima do shape');
     const { uid, y0, ox } = hit.object.userData;
-    Object.assign(placing, { uid, rep: hit.object.userData.rep || 0, p: [hit.point.x - ox, hit.point.y - y0, hit.point.z], n: hit.face.normal.toArray() });
+    const lp = product.worldToLocal(hit.point.clone()); // produto inclinado no cenário: guarda de pé
+    Object.assign(placing, { uid, rep: hit.object.userData.rep || 0, p: [lp.x - ox, lp.y - y0, lp.z], n: hit.face.normal.toArray() });
     stopPlacing();
     renderLogos(); store.set('shape.autosave', S); build();
     return;

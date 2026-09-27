@@ -73,6 +73,7 @@ Teste local com PHP: `php -S 127.0.0.1:8767 -t .` e um `api/config.php` apontand
 - Rotulo vai na peca selecionada (corpo ou tampa).
 - Arrastar um card para uma aba muda a aba dele (salvos: gravado no modelo; base: vale para a equipe toda, via api/settings.php). Grupos de controles comecam fechados ao abrir um produto.
 - Galeria de modelos com abas: Frascos, Potes, Perfumes, Pump e gatilho, Conta-gotas, Bisnagas, Beauty (gloss, stick, batom) e Salvos.
+- Cenario Pedra: rocha 3D com o produto equilibrado no bico, inclinacao do produto, fundo em degrade quente e luz de janela.
 - Video artistico de detalhes: ~30 s, fade cruzado entre as tomadas e o frasco deitado nos dois ultimos takes.
 - Rotulo: arte com cor e acabamento proprios (PNG sem fundo, ex.: hot stamping metalizado), com ou sem papel.
 - Rotulo: a arte vai por cima da cor do papel (a cor aparece onde a imagem e transparente, sem tingir a arte).
