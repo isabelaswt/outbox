@@ -449,7 +449,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-27.liquido-real';
+const BUILD = '2026-09-27.pescante-liquido';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -2186,6 +2186,14 @@ const pipetteFrostMat = glassTubeMat(0.02, 0.22);
 // (só o contorno aparece); atrás de vidro fosco, mais apagado ainda.
 const plastMat = glassTubeMat(0.04, 0.4);
 const plastFrostMat = glassTubeMat(0.01, 0.06);
+// Pescante dentro de líquido transparente (vidro/PET): aparece um pouco, na cor do líquido.
+const plastLiqMats = new Map();
+function plastLiqMat(color, clear) {
+  const k = color + clear;
+  if (!plastLiqMats.has(k)) { const a = 0.15 + 0.45 * clamp(clear, 0, 95) / 95, g = glassTubeMat(a * 0.5, a);
+    g.color = new THREE.Color(color).lerp(new THREE.Color('#ffffff'), 0.35); g.customProgramCacheKey = () => 'pescLiq'; plastLiqMats.set(k, g); }
+  return plastLiqMats.get(k);
+}
 // Parede de dentro do frasco de vidro: some de frente e aparece de lado (fresnel),
 // na cor do vidro, um pouco mais escura.
 const cavityMats = new Map();
@@ -3361,6 +3369,7 @@ function liquidMeshes(m, y0, levelAbs, lift = S.wall) {
        #include <opaque_fragment>`); };
     mat.customProgramCacheKey = () => 'liqLente' + lv + '_' + span;
   }
+  if (clear && glass && !frost) mat.depthWrite = false; // o pescante (desenhado depois) aparece através do líquido
   const out = [new THREE.Mesh(inner, mat)];
   const cap = level < b.max.y - 0.05 ? levelCap(inner, level - 0.01) : null;
   if (cap) out.push(new THREE.Mesh(cap, new THREE.MeshPhysicalMaterial({ color: lc, roughness: 0.08, clearcoat: 0.8, ...opts, ...inGlass })));
@@ -3402,7 +3411,8 @@ function buildInto(product, S, explodeAmt = 0) {
   const base = layout(S), floor = Math.min(...base.filter(e => e.m.vol).map(e => e.y0));
   const glassBody = base.some(e => e.m.vol && isGlass(e.m.own ? e.m.finish : S.finish));
   const frostBody = base.some(e => e.m.vol && (e.m.own ? e.m.finish : S.finish) === 'vidroFosco');
-  const innerMat = glassBody ? (frostBody ? plastFrostMat : plastMat) : pescMat; // peças internas (pescante, mola, carcaça)
+  const liqBody = base.find(e => e.m.vol && e.m.liq && e.m.liqType === 'transparente' && isGlass(e.m.own ? e.m.finish : S.finish))?.m;
+  const innerMat = glassBody ? (frostBody ? plastFrostMat : liqBody ? plastLiqMat(liqBody.liqColor, liqBody.liqClear) : plastMat) : pescMat; // peças internas (pescante, mola, carcaça)
   const L = layout(S, explodeAmt);
   const tubeBody = base.some(e => e.m.kind === 'bisnaga' && e.m.vol);
   const valvePesc = !tubeBody && S.modules.some(v => v.kind === 'spray' && v.pesc && !['pushpull', 'bico', 'conico', 'sport', 'tubo', 'sextavada'].includes(v.sprayType));
