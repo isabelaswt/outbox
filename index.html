@@ -449,7 +449,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-27.internos-multiply';
+const BUILD = '2026-09-27.frisos-fora';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -1312,7 +1312,7 @@ function hexCapGeo(m, y0, lo) {
   for (let i = 0; i < NP; i++) {
     const t = i / NP * 6, k = Math.floor(t), f = t - k, A = C[k], B = C[(k + 1) % 6];
     let x = A[0] + (B[0] - A[0]) * f, y = A[1] + (B[1] - A[1]) * f;
-    if (m.ridges > 0) { const d = m.ridgeD * (0.5 - 0.5 * Math.cos(TAU * m.ridges * i / NP)), r = Math.hypot(x, y); x -= x / r * d; y -= y / r * d; }
+    if (m.ridges > 0) { const d = m.ridgeD * (0.5 - 0.5 * Math.cos(TAU * m.ridges * i / NP)), r = Math.hypot(x, y); x += x / r * d; y += y / r * d; } // frisos para fora
     i ? sh.lineTo(x, y) : sh.moveTo(x, y);
   }
   const hex = new THREE.ExtrudeGeometry(sh, { depth: Math.max(0.2, hexH - 2 * ch), bevelEnabled: ch > 0, bevelThickness: ch, bevelSize: ch * 0.9, bevelOffset: -ch * 0.9, bevelSegments: lo ? 1 : 2, curveSegments: 1 });
@@ -1750,9 +1750,9 @@ function moduleGeo(m0, y0, opts = {}) {
     if (kmax) { const d = ribAt(m, ly, tu); if (d) { const [nx, nz] = nrm(); x -= nx * d; z -= nz * d; } }
     // Disc-top: borda em sela, mais baixa na frente e atrás.
     const dy = saddle ? -m.discDip * Math.sin(th) ** 2 * (ly / m.h) : 0;
-    if (m.ridges > 0 && ly > rB && ly < m.h - rT) {
+    if (m.ridges > 0 && ly > rB && ly < m.h - rT) { // frisos saltam para fora (a medida é o fundo deles)
       const d = m.ridgeD * (0.5 + 0.5 * Math.cos(m.ridges * tu)), [nx, nz] = nrm();
-      x -= nx * d; z -= nz * d;
+      x += nx * d; z += nz * d;
     }
     if (m.notch && z > 0) {
       // Concha: mais funda junto à linha, suavizando até a borda (abaixo ou acima dela).
