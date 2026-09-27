@@ -455,7 +455,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-27.sem-pedra';
+const BUILD = '2026-09-27.mais-leve';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -2399,11 +2399,15 @@ function addGrain(m, amt, cell = 0.13) {
 const bandVert = sh => { sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying float vObjY;').replace('#include <begin_vertex>', '#include <begin_vertex>\nvObjY = position.y;');
   sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying float vObjY;'); };
 const bandF = y => `(1.0 - smoothstep(${(y - 0.9).toFixed(2)}, ${(y + 0.9).toFixed(2)}, vObjY))`;
+const WALL_U = { value: 1.2 };
+const wallUniform = sh => { sh.uniforms.uWall = WALL_U; sh.fragmentShader = 'uniform float uWall;\n' + sh.fragmentShader; };
 function material(color, finish, band = null) {
   if (band && !isGlass(finish)) band = null;
-  // Espessura da parede entra no vidro/PET: borda mais densa quanto mais grossa.
-  const wl = clamp(S?.wall ?? 1.2, 0.3, 4), wk = isGlass(finish) ? '|w' + wl.toFixed(1) : '';
-  const key = color + finish + (band ? '|b' + band.y.toFixed(1) : '') + wk;
+  // Espessura da parede entra no vidro/PET (borda mais densa quanto mais grossa) por um
+  // uniform compartilhado: mudar a parede não recompila shader nem cria material novo.
+  WALL_U.value = clamp(S?.wall ?? 1.2, 0.3, 4);
+  const wk = '';
+  const key = color + finish + (band ? '|b' + band.y.toFixed(1) : '');
   if (matCache.has(key)) return matCache.get(key);
   const m = new THREE.MeshPhysicalMaterial({ color, roughness: 0.5, metalness: 0 });
   // Fosco de verdade não é chapado: o contorno acende de leve (sheen) e uma camada
@@ -2421,11 +2425,11 @@ function material(color, finish, band = null) {
   // só sobrava um filete branco em volta do líquido.
   if (finish === 'vidro') { m.roughness = 0.05; m.transmission = 1; m.thickness = 4; m.ior = 1.5; m.depthWrite = false;
     const et = new THREE.Color(color).multiply(new THREE.Color(0.4, 0.49, 0.46)), etv = `vec3(${et.r.toFixed(3)}, ${et.g.toFixed(3)}, ${et.b.toFixed(3)})`;
-    m.onBeforeCompile = sh => { if (band) bandVert(sh);
+    m.onBeforeCompile = sh => { wallUniform(sh); if (band) bandVert(sh);
       sh.fragmentShader = sh.fragmentShader.replace('#include <transmission_fragment>', THREE.ShaderChunk.transmission_fragment
         .replace('totalDiffuse = mix( totalDiffuse, transmitted.rgb, material.transmission );',
           `float frE = pow(1.0 - abs(dot(normalize(vViewPosition), normal)), 1.4);
-\ttransmitted.rgb *= mix(vec3(1.0), ${etv}, clamp(frE * ${(0.9 + wl * 0.5).toFixed(2)}, 0.0, 1.0));
+\ttransmitted.rgb *= mix(vec3(1.0), ${etv}, clamp(frE * (0.9 + uWall * 0.5), 0.0, 1.0));
 \t${band ? `transmitted.rgb *= mix(vec3(1.0), pow(max(material.diffuseColor, vec3(0.02)), vec3(1.7)), ${bandF(band.y)});` : ''}
 \ttotalDiffuse = mix( totalDiffuse, transmitted.rgb, material.transmission );`)); };
     m.customProgramCacheKey = () => 'vidro2' + color + (band ? band.y.toFixed(1) : '') + wk; }
@@ -2445,10 +2449,10 @@ function material(color, finish, band = null) {
   // PET transparente: parede fina, borda bem mais sutil que a do vidro, sem fundo grosso.
   if (finish === 'pet') { m.roughness = 0.08; m.transmission = 1; m.thickness = 1.2; m.ior = 1.45; m.depthWrite = false;
     const et = new THREE.Color(color).multiply(new THREE.Color(0.72, 0.76, 0.74)), etv = `vec3(${et.r.toFixed(3)}, ${et.g.toFixed(3)}, ${et.b.toFixed(3)})`;
-    m.onBeforeCompile = sh => {
+    m.onBeforeCompile = sh => { wallUniform(sh);
       sh.fragmentShader = sh.fragmentShader.replace('#include <transmission_fragment>', THREE.ShaderChunk.transmission_fragment
         .replace('totalDiffuse = mix( totalDiffuse, transmitted.rgb, material.transmission );',
-          `float frE = pow(1.0 - abs(dot(normalize(vViewPosition), normal)), 1.8);\n\ttransmitted.rgb *= mix(vec3(1.0), ${etv}, clamp(frE * ${(0.45 + wl * 0.45).toFixed(2)}, 0.0, 1.0));\n\ttotalDiffuse = mix( totalDiffuse, transmitted.rgb, material.transmission );`)); };
+          `float frE = pow(1.0 - abs(dot(normalize(vViewPosition), normal)), 1.8);\n\ttransmitted.rgb *= mix(vec3(1.0), ${etv}, clamp(frE * (0.45 + uWall * 0.45), 0.0, 1.0));\n\ttotalDiffuse = mix( totalDiffuse, transmitted.rgb, material.transmission );`)); };
     m.customProgramCacheKey = () => 'pet' + color + wk; }
   // Vidro jateado: a MESMA cor do vidro transparente — só muda o acabamento (o
   // desfoque do que está atrás, o brilho espalhado e o grão). Bordas e fundo ficam
@@ -2462,14 +2466,14 @@ function material(color, finish, band = null) {
     m.roughness = semi ? 0.12 : ps ? 0.24 : pf ? 0.5 : 0.42; m.transmission = semi || ps ? 1 : pf ? 0.88 : 0.9; m.thickness = pf ? 1.5 : 6; m.ior = pf ? 1.45 : 1.5; m.depthWrite = !semi; // semi: as peças de dentro aparecem apagadas
     m.sheen = semi ? 0.08 : ps ? 0.1 : pf ? 0.22 : 0.15; m.sheenRoughness = 0.45; m.sheenColor = new THREE.Color(color).lerp(new THREE.Color('#ffffff'), 0.5); m.specularIntensity = 1;
     m.clearcoat = semi ? 0.4 : ps ? 0.15 : pf ? 0.06 : 0.18; m.clearcoatRoughness = semi ? 0.22 : ps ? 0.45 : pf ? 0.6 : 0.42; // brilho presente mas espalhado, sem cara de verniz
-    m.onBeforeCompile = sh => {
+    m.onBeforeCompile = sh => { wallUniform(sh);
       if (band) bandVert(sh);
       sh.fragmentShader = sh.fragmentShader.replace('#include <transmission_fragment>', THREE.ShaderChunk.transmission_fragment
         // refração com a espessura do centro (na borda o desvio grande pegava o fundo claro fora do frasco)
         .replace('material.thickness = thickness;', `float frEdge = pow(1.0 - abs(dot(normalize(vViewPosition), normal)), 1.1);
 \tmaterial.thickness = thickness * 0.35;`)
         .replace('totalDiffuse = mix( totalDiffuse, transmitted.rgb, material.transmission );',
-          `transmitted.rgb *= mix(1.0, ${semi ? '0.45' : pf ? '0.8' : '0.38'}, clamp(frEdge * ${(0.55 + wl * 0.6).toFixed(2)}, 0.0, 1.0))${band ? ' * mix(1.0, 0.62, ' + bandF(band.y) + ')' : ''}; // borda e fundo mais densos, mesmo tom
+          `transmitted.rgb *= mix(1.0, ${semi ? '0.45' : pf ? '0.8' : '0.38'}, clamp(frEdge * (0.55 + uWall * 0.6), 0.0, 1.0))${band ? ' * mix(1.0, 0.62, ' + bandF(band.y) + ')' : ''}; // borda e fundo mais densos, mesmo tom
 \ttotalDiffuse = mix( totalDiffuse, transmitted.rgb, material.transmission );`)
         + '\n#if defined(USE_TRANSMISSION) && defined(USE_ENVMAP)\n totalDiffuse += material.diffuseColor * (transmitted.rgb / max(max(transmitted.r, max(transmitted.g, transmitted.b)), 0.05)) * getIBLIrradiance(-normal) * ' + (semi ? '0.45' : ps ? '0.0' : '0.8') + ' * pow(1.0 - frEdge, 1.5); // luz de trás acende o miolo, na cor do que está atrás\n#endif'); // só com transmissão (o PNG transparente desliga ela por um instante)
     };
@@ -3407,13 +3411,16 @@ function applyLabelsTo(group, st) {
       };
       let ring = [];
       for (let j = 0; j < NA; j++) { const th = -Math.PI / 2 + j / NA * TAU; ring.push({ th, p: hitAt(th, ring[j - 1]?.p) }); }
-      // onde dois pontos seguidos ficam longe (quina de peça achatada), mede no meio também
+      // onde dois pontos seguidos ficam bem mais longe que o normal (quina de peça achatada),
+      // mede no meio também; em peça redonda nada muda (não pesa)
+      const gaps = ring.map((A, j) => A.p.distanceTo(ring[(j + 1) % ring.length].p)).sort((x, y) => x - y);
+      const lim = m.kind === 'bisnaga' ? Math.max(0.7, gaps[gaps.length >> 1] * 2.2) : Infinity; // só a bisnaga achata até virar quina
       for (let pass = 0; pass < 4; pass++) {
         const nx = []; let added = 0;
         for (let j = 0; j < ring.length; j++) {
           const A = ring[j], B = ring[(j + 1) % ring.length], thB = j + 1 < ring.length ? B.th : B.th + TAU;
           nx.push(A);
-          if (A.p.distanceTo(B.p) > 0.7 && ring.length + added < NA * 4) { const th = (A.th + thB) / 2; nx.push({ th, p: hitAt(th, A.p) }); added++; }
+          if (A.p.distanceTo(B.p) > lim && ring.length + added < NA * 4) { const th = (A.th + thB) / 2; nx.push({ th, p: hitAt(th, A.p) }); added++; }
         }
         ring = nx; if (!added) break;
       }
@@ -3627,13 +3634,14 @@ function levelCap(geo, y) {
     const f = (y - ya) / (yb - ya); pts.push([p[A] + (p[B] - p[A]) * f, p[A + 2] + (p[B + 2] - p[A + 2]) * f]);
   }
   if (pts.length < 3) return null;
-  // contorno convexo (seções dos corpos são convexas ou quase)
-  pts.sort((u, v) => u[0] - v[0] || u[1] - v[1]);
-  const cr = (o, a, b) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]), lo = [], up = [];
-  for (const q of pts) { while (lo.length >= 2 && cr(lo[lo.length - 2], lo[lo.length - 1], q) <= 0) lo.pop(); lo.push(q); }
-  for (const q of [...pts].reverse()) { while (up.length >= 2 && cr(up[up.length - 2], up[up.length - 1], q) <= 0) up.pop(); up.push(q); }
-  const h = lo.slice(0, -1).concat(up.slice(0, -1)); if (h.length < 3) return null;
-  const cx = h.reduce((s, q) => s + q[0], 0) / h.length, cz = h.reduce((s, q) => s + q[1], 0) / h.length, pos = [cx, y, cz], idx = [];
+  // contorno real em volta do centro (antes era o convexo: em corpo com gomos ele
+  // passava por fora nos vales e aparecia uma linha tracejada no topo do líquido)
+  const mx = pts.reduce((s, q) => s + q[0], 0) / pts.length, mz = pts.reduce((s, q) => s + q[1], 0) / pts.length;
+  const h = [];
+  pts.map(q => [q[0], q[1], Math.atan2(q[1] - mz, q[0] - mx)]).sort((u, v) => u[2] - v[2])
+    .forEach(q => { const l = h[h.length - 1]; if (!l || Math.hypot(q[0] - l[0], q[1] - l[1]) > 1e-3) h.push(q); });
+  if (h.length < 3) return null;
+  const cx = mx, cz = mz, pos = [cx, y, cz], idx = [];
   h.forEach(q => pos.push(q[0], y, q[1]));
   for (let i = 1; i <= h.length; i++) idx.push(0, 1 + (i % h.length), i); // normal para cima
   const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setIndex(idx); g.computeVertexNormals();
