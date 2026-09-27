@@ -449,7 +449,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-27.nome-conta-gotas';
+const BUILD = '2026-09-27.pipeta-pontas';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -1594,13 +1594,31 @@ function pumpMechGeo(m, yTop, yCollar) {
 
 function pescanteGeo(m, yBot, yTop) {
   const len = yTop - yBot; if (len < 5) return null;
-  const rings = [];
-  for (let i = 0; i <= 40; i++) {
-    const t = i / 40, y = yBot + len * t;
-    const rp = m.sprayType === 'gotas' ? m.pescD / 2 * (t < 0.15 ? 0.3 + 0.7 * t / 0.15 : 1) : m.pescD / 2;
-    rings.push({ y, ly: y, a: rp, b: rp, n: 2, cx: m.ox + m.pescCurve * (1 - t) * (1 - t) + m.pescWave * Math.sin(TAU * t) });
-  }
-  return loft(rings, 24);
+  const rings = [], cxAt = y => { const t = (y - yBot) / len; return m.ox + m.pescCurve * (1 - t) * (1 - t) + m.pescWave * Math.sin(TAU * t); };
+  const push = (y, r) => { if (!rings.length || y > rings[rings.length - 1].y + 1e-4) rings.push({ y, ly: y, a: r, b: r, n: 2, cx: cxAt(y) }); };
+  if (m.sprayType === 'gotas') {
+    // Pipeta de conta-gotas (como a de vidro real): tubo reto, estreitamento curto e
+    // suave, ponta fina curta e uma bolinha arredondada na ponta.
+    const R = m.pescD / 2;
+    let y0;
+    if (m.pipTip === 'afunilada') {
+      // ponta afunilada: tubo reto que afina num cone longo até uma ponta fina e reta (aberta)
+      const rt = Math.max(0.55, R * 0.4), Lt = Math.max(2, R * 1.1), Lc = Math.max(6, R * 4.5);
+      push(yBot, rt * 0.85); push(yBot + 0.3, rt); push(yBot + Lt, rt);
+      for (let i = 1; i <= 16; i++) { const u = i / 16, k = u * u * (3 - 2 * u); push(yBot + Lt + Lc * u, rt + (R - rt) * k); }
+      y0 = yBot + Lt + Lc;
+    } else {
+      // com bolinha: estreitamento curto, ponta fina curta e bolinha arredondada na ponta
+      const rb = Math.max(0.9, R * 0.45), rt = Math.max(0.5, rb * 0.62), Lt = Math.max(2.5, R * 1.3), Ls = Math.max(2, R * 1.5);
+      const hBead = rb + Math.sqrt(Math.max(0, rb * rb - rt * rt)); // onde a bolinha encontra a ponta fina
+      for (let i = 0; i <= 12; i++) { const h = hBead * i / 12; push(yBot + h, Math.max(i ? 0.05 : 0.02, h <= rb ? Math.sqrt(Math.max(0, rb * rb - (h - rb) ** 2)) : Math.max(rt, Math.sqrt(Math.max(0, rb * rb - (h - rb) ** 2))))); }
+      push(yBot + hBead + Lt, rt);
+      for (let i = 1; i <= 12; i++) { const u = i / 12, k = u * u * (3 - 2 * u); push(yBot + hBead + Lt + Ls * u, rt + (R - rt) * k); }
+      y0 = yBot + hBead + Lt + Ls;
+    }
+    for (let i = 1; i <= 30; i++) push(y0 + (yTop - y0) * i / 30, R);
+  } else for (let i = 0; i <= 40; i++) push(yBot + len * i / 40, m.pescD / 2);
+  return loft(rings, 32);
 }
 
 // Perímetro da elipse (Ramanujan).
@@ -3934,6 +3952,7 @@ const MF = [
     K(['coils', 'Mola: voltas', 3, 30, 1, '', m => m.mola]),
     K(['sleeve', 'Carcaça da mola', 'select', [['transparente', 'Transparente (mostra a mola)'], ['fechada', 'Fechada'], ['nenhuma', 'Sem carcaça']], m => m.mola]),
     K(['pesc', m => m.sprayType === 'gotas' ? 'Conta-gotas (tubo de vidro até perto do fundo)' : 'Pescante (tubo até o fundo)', 'check']),
+    K(['pipTip', 'Ponta do conta-gotas', 'select', [['bolinha', 'Com bolinha'], ['afunilada', 'Afunilada']], m => m.pesc && m.sprayType === 'gotas']),
     K(['pescD', m => `${pescName(m)}: diâmetro`, 2, 10, 0.1, 'mm', m => m.pesc]),
     K(['pescGap', m => `${pescName(m)}: folga do fundo`, 0, 20, 0.5, 'mm', m => m.pesc]),
     K(['pescCurve', m => `${pescName(m)}: curva no pé (− esquerda)`, -40, 40, 0.5, 'mm', m => m.pesc]),
