@@ -455,7 +455,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-27.rotulo-bisnaga';
+const BUILD = '2026-09-27.papel-sem-cor';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -3309,10 +3309,12 @@ function labelTexture(url, paper) {
   labTex.set(key, t); return t;
 }
 const labMats = new Map();
+// Papel sem cor: o rótulo assume a cor da peça (a própria dela ou a cor geral).
+const labPaper = m => (m.labNoPaper ? (m.own ? m.color : S.color) : m.labColor) || '#ffffff';
 function labelMaterial(m, img) {
-  const key = [m.labColor, m.labFinish, img?.slice(-40) || '', img?.length || 0].join('|');
+  const paper = labPaper(m), key = [paper, m.labFinish, img?.slice(-40) || '', img?.length || 0].join('|');
   if (labMats.has(key)) return labMats.get(key);
-  const paper = m.labColor || '#ffffff', t = labelTexture(img, paper);
+  const t = labelTexture(img, paper);
   const mt = material(t ? '#ffffff' : paper, m.labFinish || 'fosco').clone(); // com arte, a cor já vem da textura
   if (t) mt.map = t;
   mt.side = THREE.DoubleSide; mt.polygonOffset = true; mt.polygonOffsetFactor = -2; mt.polygonOffsetUnits = -2;
@@ -4298,7 +4300,8 @@ const MF = [
     ['labFront', 'Adesivo na frente', 'check', 0, 0, 0, m => canLabel(m) && m.labType === 'frenteVerso'],
     ['labBack', 'Adesivo no verso', 'check', 0, 0, 0, m => canLabel(m) && m.labType === 'frenteVerso'],
     ['labW', 'Largura de cada adesivo', 5, 300, 0.5, 'mm', m => canLabel(m) && m.labType === 'frenteVerso'],
-    ['labColor', 'Cor do papel', 'color', 0, 0, 0, m => canLabel(m) && m.labType && m.labType !== 'nenhum'],
+    ['labNoPaper', 'Papel sem cor (usa a cor da peça)', 'check', 0, 0, 0, m => canLabel(m) && m.labType && m.labType !== 'nenhum'],
+    ['labColor', 'Cor do papel', 'color', 0, 0, 0, m => canLabel(m) && m.labType && m.labType !== 'nenhum' && !m.labNoPaper],
     ['labFinish', 'Acabamento do rótulo', 'finish', 0, 0, 0, m => canLabel(m) && m.labType && m.labType !== 'nenhum'],
   ]],
   // Pescante do corpo (tampas sem pescante próprio); bisnaga não tem.
@@ -4472,7 +4475,7 @@ function renderLabelBox() {
   if (m.labFront === undefined) m.labFront = true;
   if (m.labBack === undefined) m.labBack = true;
   for (const def of defs) {
-    const el = field(box, m, def, k => { if (['labType', 'labFront', 'labBack'].includes(k)) renderLabelBox(); renderStack(); queueBuild(); });
+    const el = field(box, m, def, k => { if (['labType', 'labFront', 'labBack', 'labNoPaper'].includes(k)) renderLabelBox(); renderStack(); queueBuild(); });
     if (def[6] && !def[6](m)) el.classList.add('hidden');
   }
   if (m.labType && m.labType !== 'nenhum') {
