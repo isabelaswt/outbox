@@ -444,7 +444,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-26.jateado-contraste';
+const BUILD = '2026-09-26.png-vidro';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -2237,7 +2237,7 @@ function material(color, finish) {
         .replace('totalDiffuse = mix( totalDiffuse, transmitted.rgb, material.transmission );',
           `transmitted.rgb *= pow(max(attenuationColor, vec3(0.001)), vec3(thickness * (0.15 + 12.0 * frEdge) / attenuationDistance)); // miolo luminoso, borda funda: tons bem contrastados
 \ttotalDiffuse = mix( totalDiffuse, transmitted.rgb, material.transmission );`)
-        + '\n#ifdef USE_ENVMAP\n totalDiffuse += material.diffuseColor * attenuationColor * getIBLIrradiance(-normal) * 1.1 * pow(1.0 - frEdge, 1.5);\n#endif');
+        + '\n#if defined(USE_TRANSMISSION) && defined(USE_ENVMAP)\n totalDiffuse += material.diffuseColor * attenuationColor * getIBLIrradiance(-normal) * 1.1 * pow(1.0 - frEdge, 1.5);\n#endif'); // só com transmissão (o PNG transparente desliga ela por um instante)
     };
     m.customProgramCacheKey = () => 'jateado8'; }
   if (finish === 'metal') { m.metalness = 1; m.roughness = 0.3; } // um pouco menos espelhado: sem brilho piscando nas quinas
