@@ -444,7 +444,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-26.novo-produto';
+const BUILD = '2026-09-26.abre-como-salvo';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -4305,8 +4305,9 @@ function renderPresets() {
 
 }
 function loadState(s, name) {
-  const keep = s.side?.length ? {} : { side: S.side, slot: S.slot, gap: S.gap }; // troca só o produto em edição
-  S = normalize(structuredClone({ wall: S.wall, bg: S.bg, ...s, ...keep }));
+  // Abre exatamente como foi salvo: com o lado a lado dele, ou sem nenhum (antes o
+  // lado a lado da tela ficava grudado em todo modelo aberto).
+  S = normalize(structuredClone({ wall: S.wall, bg: S.bg, side: [], ...s }));
   if (name) S.name = name;
   sel = 0; renderAll(); build(); fit();
 }
