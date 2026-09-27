@@ -449,7 +449,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-27.frisos-fora';
+const BUILD = '2026-09-27.pescante-transp';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -2198,7 +2198,7 @@ function multTubeMat(a0, a1, tint) {
     sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vMN; varying vec3 vMV;')
       .replace('#include <project_vertex>', '#include <project_vertex>\nvMN = normalize(normalMatrix * normal); vMV = -mvPosition.xyz;');
     sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying vec3 vMN; varying vec3 vMV;')
-      .replace('#include <opaque_fragment>', `float fres = pow(1.0 - abs(dot(normalize(vMV), normalize(vMN))), 1.6);
+      .replace('#include <opaque_fragment>', `float fres = pow(1.0 - abs(dot(normalize(vMV), normalize(vMN))), 2.6); // miolo quase transparente, sombra só nas bordas
        float k = mix(${a0.toFixed(3)}, ${a1.toFixed(3)}, fres);
        gl_FragColor = vec4(mix(vec3(1.0), vec3(${t.r.toFixed(3)}, ${t.g.toFixed(3)}, ${t.b.toFixed(3)}), k), 1.0);`)
       .replace('#include <tonemapping_fragment>', '').replace('#include <colorspace_fragment>', '');
@@ -2206,14 +2206,14 @@ function multTubeMat(a0, a1, tint) {
   g.customProgramCacheKey = () => `mult${a0}_${a1}_${t.getHexString()}`;
   return g;
 }
-const plastMat = multTubeMat(0.06, 0.45, '#8c9294');
-const plastFrostMat = multTubeMat(0.02, 0.12, '#a8adaf');
+const plastMat = multTubeMat(0.015, 0.45, '#8c9294');
+const plastFrostMat = multTubeMat(0.005, 0.12, '#a8adaf');
 // Pescante dentro de líquido transparente (vidro/PET): aparece um pouco, na cor do líquido.
 const plastLiqMats = new Map();
 function plastLiqMat(color, clear) {
   const k = color + clear;
-  if (!plastLiqMats.has(k)) { const a = 0.18 + 0.5 * clamp(clear, 0, 95) / 95;
-    plastLiqMats.set(k, multTubeMat(a * 0.35, a, new THREE.Color(color).multiplyScalar(0.55))); }
+  if (!plastLiqMats.has(k)) { const a = 0.25 + 0.4 * clamp(clear, 0, 95) / 95;
+    plastLiqMats.set(k, multTubeMat(0.03, a, new THREE.Color(color).multiplyScalar(0.6))); }
   return plastLiqMats.get(k);
 }
 // Parede de dentro do frasco de vidro: some de frente e aparece de lado (fresnel),
