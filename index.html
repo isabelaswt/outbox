@@ -455,7 +455,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-27.aba-beauty';
+const BUILD = '2026-09-27.transparencia-conteudo';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -3693,12 +3693,14 @@ function liquidMeshes(m, y0, levelAbs, lift = S.wall) {
   // foto real: cor luminosa e borda do nível suave); por cima, ele saía nítido.
   // Líquido transparente dentro de vidro/PET: visto através da embalagem, luminoso
   // (a luz atravessa o líquido), como sérum/tônico em frasco transparente.
-  const opts = frost ? { roughness: 0.45, clearcoat: 0, emissive: new THREE.Color(m.liqColor).multiplyScalar(0.18) } // pouco brilho próprio: a luz da cena desenha o volume (brilho alto deixava tudo chapado)
+  const clr = clear ? clamp(m.liqClear, 0, 95) / 95 : 0; // transparência do conteúdo (0 = denso, 1 = quase água)
+  const opts = frost ? { roughness: 0.45, clearcoat: 0, emissive: new THREE.Color(m.liqColor).multiplyScalar(0.18 * (1 - 0.6 * clr)) } // pouco brilho próprio: a luz da cena desenha o volume (brilho alto deixava tudo chapado)
     : clear && glass ? { roughness: 0.3, clearcoat: 0, specularIntensity: 0.1, emissive: new THREE.Color(m.liqColor).multiplyScalar(0.55 * (1 - clamp(m.liqClear, 0, 95) / 190)) }
     : clear ? { transparent: true, opacity: 1 - clamp(m.liqClear, 0, 95) / 100, depthWrite: false, roughness: 0.05, clearcoat: 1 } : {};
   const inGlass = glass && !frost && !clear ? { roughness: 0.35, clearcoat: 0, specularIntensity: 0.15 } : {}; // dentro do vidro quem reflete é o vidro
   // líquido transparente em vidro/PET: quanto mais transparente, mais clara a cor (menos corpo de líquido)
-  const lc = clear && glass && !frost ? new THREE.Color(m.liqColor).lerp(new THREE.Color('#ffffff'), clamp(m.liqClear, 0, 95) / 100 * 0.6) : new THREE.Color(m.liqColor);
+  // vale também atrás de vidro/PET fosco ou semi (antes a transparência só mudava algo no vidro liso)
+  const lc = clear && glass ? new THREE.Color(m.liqColor).lerp(new THREE.Color('#ffffff'), clr * (frost ? 0.45 : 0.6)) : new THREE.Color(m.liqColor);
   const mat = new THREE.MeshPhysicalMaterial({ color: lc, roughness: 0.12, clearcoat: 0.6, clippingPlanes: clip, ...opts, ...inGlass });
   // Líquido transparente em vidro/PET funciona como lente: miolo claro onde a luz
   // atravessa, bordas mais escuras e saturadas (sem isso parecia um bloco chapado).
