@@ -414,7 +414,7 @@ const LIB = {
   // com o furinho na lateral; a tampa de cima veste tudo.
   sprayClassico: { name: 'Válvula spray clássica', kind: 'spray', sprayType: 'mist', W: 20, D: 20, h: 13, skirtPct: 100, ridges: 0, collarR: 0.8,
              guideW: 0, guideH: 0, actW: 13.5, actH: 11, stemH: 1.2, stemD: 4.6, houseD: 6.5, springL: 16 },
-  gatilho: { name: 'Spray gatilho', kind: 'spray', sprayType: 'gatilho', W: 24, D: 24, h: 16.5, collarR: 0.8, ridges: 0, actW: 11 },
+  gatilho: { name: 'Spray gatilho', kind: 'spray', sprayType: 'gatilho', W: 28, D: 28, h: 21, collarR: 0.8, ridges: 0, actW: 11 },
   pumpOnda: { name: 'Pump bico onda', kind: 'spray', sprayType: 'onda', W: 28, D: 28, h: 14.5, collarR: 0.6, ridges: 64, ridgeD: 0.3,
              stemD: 10, stemH: 14.5, actW: 12 },
   pumpFoam: { name: 'Pump espuma / foam', kind: 'spray', sprayType: 'foam', nozzleL: 2.6, W: 43, D: 43, h: 16, collarR: 1.2, ridges: 0,
@@ -450,7 +450,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-27.faca-rotulo-luz';
+const BUILD = '2026-09-27.gatilho-semijateado';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -666,7 +666,7 @@ const PRESETS = {
   // Referência Ashley & Co: frasco de ombro arredondado com spray gatilho.
   'Frasco gatilho': { color: BEIGE, finish: 'fosco', modules: [
     M('reto', { W: 64, D: 64, h: 128, rBot: 8, rTop: 24 }), NECK('28/410'),
-    M('gatilho', { W: 31, D: 31, h: 17, ridges: 80, ridgeD: 0.35 })] },
+    M('gatilho', { W: 30, D: 30, h: 22 })] },
   // Referência sérum: vidro bojudo com pezinho e pump de luva alta.
   'Sérum com pé + pump': { color: BEIGE, finish: 'fosco', modules: [
     M('disco', { name: 'Pé', W: 44, D: 44, h: 6, rBot: 1, rTop: 0, vol: true }),
@@ -846,9 +846,12 @@ function buildDraftPresets() {
   }
 }
 
-const FINISHES = [['fosco', 'Fosco'], ['acetinado', 'Acetinado'], ['brilho', 'Brilho'], ['perolado', 'Perolado'], ['vidro', 'Transparente / vidro'], ['pet', 'Plástico transparente (PET)'], ['vidroFosco', 'Vidro fosco (jateado)'], ['metal', 'Metalizado']];
-const isGlass = f => f === 'vidro' || f === 'vidroFosco' || f === 'pet';
-const thickBase = f => f === 'vidro' || f === 'vidroFosco'; // fundo grosso: só vidro (PET é fino)
+const FINISHES = [['fosco', 'Fosco'], ['acetinado', 'Acetinado'], ['brilho', 'Brilho'], ['perolado', 'Perolado'], ['vidro', 'Transparente / vidro'], ['pet', 'Plástico transparente (PET)'], ['vidroSemi', 'Vidro semi-jateado (acetinado)'], ['vidroFosco', 'Vidro fosco (jateado)'], ['metal', 'Metalizado']];
+// Semi-jateado: meio do caminho entre o vidro transparente e o jateado (mesmo
+// tratamento do jateado, com o embaçado e o véu mais leves).
+const isFrost = f => f === 'vidroFosco' || f === 'vidroSemi';
+const isGlass = f => f === 'vidro' || isFrost(f) || f === 'pet';
+const thickBase = f => f === 'vidro' || isFrost(f); // fundo grosso: só vidro (PET é fino)
 
 const typeKey = m => m?.type || Object.keys(LIB).find(k => LIB[k].name === m?.name);
 const isSphereCap = m => ['esfera', 'esferaBisnaga'].includes(typeKey(m));
@@ -1423,22 +1426,44 @@ function sprayGeo(m, y0, { lo = false } = {}) {
     const [coneC, c1] = cutHole(cone, drill), [nubC, c2] = cutHole(nub, drill);
     head.push(coneC, nubC); holes.push(c1, c2);
   } else if (m.sprayType === 'gatilho') {
-    // Gatilho: carenagem sólida sobre a virola, cabeça longa com cauda atrás,
-    // bico quadrado furado na frente e alavanca em gancho embaixo da cabeça.
-    const k = m.W / 31, P = (x, y) => [x * k, y * k + top];
+    // Mini gatilho de catálogo (medidas em mm de uma virola 28, escaladas pela largura):
+    // virola lisa, anel de trava mais estreito, cilindro do pistão à mostra, cabeça em
+    // arco com pino articulado na cauda, perna traseira descendo até o anel, bico
+    // cilíndrico na frente, alavanca em lâmina afinando até a ponta e trava em gancho.
+    const k = m.W / 28, P = (x, y) => [x * k, y * k + top];
     const solid = (cmds, depth, bev) => {
       const b = Math.min(bev, depth * 0.3);
       const g = new THREE.ExtrudeGeometry(refShape(cmds, P), { depth: Math.max(0.2, depth - 2 * b), bevelEnabled: true,
         bevelThickness: b, bevelSize: b * 0.8, bevelOffset: -b * 0.8, bevelSegments: lo ? 1 : 5, curveSegments: lo ? 8 : 32 });
       g.deleteAttribute('uv'); g.translate(0, 0, -(depth - 2 * b) / 2); return mergeVertices(g);
     };
-    head.push(solid([['m', -11.5, -0.6], ['l', 11.5, -0.6], ['l', 11.5, 3], ['c', 12, 9, 13, 14, 17, 16.5], ['l', 38.5, 18.5],
-      ['l', 38.5, 33], ['c', 20, 33.6, 0, 33.6, -12, 32.5], ['q', -21, 31.8, -25, 26.5], ['q', -17.5, 24.5, -13.8, 18.5],
-      ['q', -11.5, 13, -11.5, 6], ['l', -11.5, -0.6]], 19 * k, 2.2 * k));
-    head.push(solid([['m', 16.5, 16.8], ['l', 27.5, 17.2], ['c', 33, 8, 38, -8, 41.5, -22], ['q', 40.2, -24.6, 37.4, -21.8],
-      ['c', 34, -9.5, 28.5, 2, 20.5, 8.8], ['q', 16.6, 11.5, 16.5, 16.8]], 12.5 * k, 1.6 * k));
-    const noz = solid([['m', 36, 18.8], ['l', 49, 19.3], ['l', 49, 32.4], ['l', 36, 32.8], ['l', 36, 18.8]], 15 * k, 1.5 * k);
-    const yN = top + 25.8 * k, nh = cyl(0.75 * k, 0, 3.5); nh.rotateZ(Math.PI / 2); nh.translate(49 * k + 1, yN, 0);
+    head.push(ring(20 * k, 7.8 * k, top - 1.3 * k, { rBot: 0, rTop: 0.6 * k }));   // anel de trava
+    head.push(ring(10 * k, 3.7 * k, top + 6.3 * k, { rBot: 0, rTop: 0.5 * k }));   // topo do corpo da bomba
+    head.push(ring(8.4 * k, 10.4 * k, top + 9.8 * k, { rBot: 0, rTop: 0.4 * k })); // cilindro do pistão
+    head.push(ring(5.6 * k, 4 * k, top + 20 * k, { rBot: 0, rTop: 0 }));           // haste até a cabeça
+    // Cabeça: cauda arredondada atrás, dorso em arco subindo até a frente, face do bico.
+    head.push(solid([['m', -22.3, 24.5], ['q', -22, 29.5, -16.5, 31.8], ['c', -8, 35.5, 4, 38.6, 15.5, 38.8],
+      ['q', 18, 38.8, 18.6, 36.5], ['l', 20.4, 28.5], ['q', 20.6, 26.4, 18.6, 26.2], ['c', 12, 25.6, 8, 23.2, 2, 23],
+      ['c', -4, 22.8, -12, 22.5, -17, 20], ['q', -22.5, 19, -22.3, 24.5]], 13 * k, 2 * k));
+    // Perna traseira: sai de baixo da cauda e desce em diagonal até o anel de trava.
+    head.push(solid([['m', -19.5, 21], ['l', -11, 22.6], ['q', -6.8, 16.5, -4.3, 11], ['l', -4.3, 6.5], ['l', -9.8, 6.5],
+      ['q', -10.3, 8.5, -11.5, 10.5], ['l', -19.5, 21]], 9 * k, 1.2 * k));
+    // Alavanca: nasce dentro da cabeça e desce em lâmina fina até a ponta arredondada.
+    head.push(solid([['m', 8, 24.4], ['l', 20.2, 27.6], ['c', 23, 20.5, 27, 15, 30.5, 10], ['c', 33.5, 5.5, 37.5, 0, 40, -3.6],
+      ['q', 40.3, -4.3, 39.4, -4], ['c', 35.5, -1, 31, 5, 27.5, 10.5], ['c', 24, 16, 19.5, 20.5, 14, 22.8],
+      ['q', 11, 24, 8, 24.4]], 8 * k, 1.2 * k));
+    // Trava lateral em gancho ao lado do cilindro.
+    head.push(solid([['m', 4, 16.8], ['l', 7, 17.3], ['q', 12.6, 16.3, 12.4, 12], ['l', 11.6, 7.2], ['q', 10.6, 6.9, 10.2, 7.8],
+      ['l', 10.4, 11.5], ['q', 10.2, 14, 7, 14.2], ['l', 4, 14.2], ['l', 4, 16.8]], 2.6 * k, 0.5 * k));
+    // Pino da articulação atravessando a cauda, um pouco saltado, com fenda nas pontas.
+    const [px, py] = P(-17, 24.3), pinL = 13 * k + 0.8;
+    const pin = cyl(2.1 * k, -pinL / 2, pinL, 0.3 * k, 0.3 * k, lo); pin.rotateX(Math.PI / 2); pin.translate(px, py, 0);
+    const slots = [-1, 1].map(sg => { const s = new THREE.BoxGeometry(3.4 * k, 0.55 * k, 1.2 * k); s.deleteAttribute('uv');
+      s.rotateZ(0.35); s.translate(px, py, sg * pinL / 2); return s; });
+    const [pinC, pinCav] = cutHole(pin, mergeGeometries(slots)); head.push(pinC); holes.push(pinCav);
+    // Bico: cilindro saindo da face da frente, com o furo na ponta.
+    const yN = top + 33.7 * k, nEnd = 24.6 * k, noz = xCyl(3.25 * k, nEnd - 16.5 * k, 16.5 * k, yN, lo);
+    const nh = cyl(0.7 * k, 0, 3.5); nh.rotateZ(Math.PI / 2); nh.translate(nEnd + 1, yN, 0);
     const [nozC, cav] = cutHole(noz, nh); head.push(nozC); holes.push(cav);
   } else if (m.sprayType === 'onda') {
     // Pump com cabeça chata em onda: aba atrás, sobe na haste e desce até o bico cortado em ângulo.
@@ -2376,9 +2401,10 @@ function material(color, finish, band = null) {
   // desfoque do que está atrás, o brilho espalhado e o grão). Bordas e fundo ficam
   // mais escuros só em luminosidade, sem desviar o tom (a absorção por potência
   // puxava laranja para vermelho/rosa).
-  if (finish === 'vidroFosco') { m.roughness = 0.42; m.transmission = 0.9; m.thickness = 6; m.ior = 1.5; m.depthWrite = true;
-    m.sheen = 0.15; m.sheenRoughness = 0.45; m.sheenColor = new THREE.Color(color).lerp(new THREE.Color('#ffffff'), 0.5); m.specularIntensity = 1;
-    m.clearcoat = 0.18; m.clearcoatRoughness = 0.42; // brilho presente mas espalhado, sem cara de verniz
+  if (isFrost(finish)) { const semi = finish === 'vidroSemi'; // semi: menos embaçado, brilho mais definido
+    m.roughness = semi ? 0.12 : 0.42; m.transmission = semi ? 1 : 0.9; m.thickness = 6; m.ior = 1.5; m.depthWrite = !semi; // semi: as peças de dentro aparecem apagadas
+    m.sheen = semi ? 0.08 : 0.15; m.sheenRoughness = 0.45; m.sheenColor = new THREE.Color(color).lerp(new THREE.Color('#ffffff'), 0.5); m.specularIntensity = 1;
+    m.clearcoat = semi ? 0.4 : 0.18; m.clearcoatRoughness = semi ? 0.22 : 0.42; // brilho presente mas espalhado, sem cara de verniz
     m.onBeforeCompile = sh => {
       if (band) bandVert(sh);
       sh.fragmentShader = sh.fragmentShader.replace('#include <transmission_fragment>', THREE.ShaderChunk.transmission_fragment
@@ -2386,13 +2412,13 @@ function material(color, finish, band = null) {
         .replace('material.thickness = thickness;', `float frEdge = pow(1.0 - abs(dot(normalize(vViewPosition), normal)), 1.1);
 \tmaterial.thickness = thickness * 0.35;`)
         .replace('totalDiffuse = mix( totalDiffuse, transmitted.rgb, material.transmission );',
-          `transmitted.rgb *= mix(1.0, 0.38, clamp(frEdge * 1.3, 0.0, 1.0))${band ? ' * mix(1.0, 0.62, ' + bandF(band.y) + ')' : ''}; // borda e fundo mais densos, mesmo tom
+          `transmitted.rgb *= mix(1.0, ${semi ? '0.45' : '0.38'}, clamp(frEdge * 1.3, 0.0, 1.0))${band ? ' * mix(1.0, 0.62, ' + bandF(band.y) + ')' : ''}; // borda e fundo mais densos, mesmo tom
 \ttotalDiffuse = mix( totalDiffuse, transmitted.rgb, material.transmission );`)
-        + '\n#if defined(USE_TRANSMISSION) && defined(USE_ENVMAP)\n totalDiffuse += material.diffuseColor * (transmitted.rgb / max(max(transmitted.r, max(transmitted.g, transmitted.b)), 0.05)) * getIBLIrradiance(-normal) * 0.8 * pow(1.0 - frEdge, 1.5); // luz de trás acende o miolo, na cor do que está atrás\n#endif'); // só com transmissão (o PNG transparente desliga ela por um instante)
+        + '\n#if defined(USE_TRANSMISSION) && defined(USE_ENVMAP)\n totalDiffuse += material.diffuseColor * (transmitted.rgb / max(max(transmitted.r, max(transmitted.g, transmitted.b)), 0.05)) * getIBLIrradiance(-normal) * ' + (semi ? '0.45' : '0.8') + ' * pow(1.0 - frEdge, 1.5); // luz de trás acende o miolo, na cor do que está atrás\n#endif'); // só com transmissão (o PNG transparente desliga ela por um instante)
     };
-    m.customProgramCacheKey = () => 'jateado10' + (band ? 'b' + band.y.toFixed(1) : ''); }
+    m.customProgramCacheKey = () => (semi ? 'semi1' : 'jateado10') + (band ? 'b' + band.y.toFixed(1) : ''); }
   if (finish === 'metal') { m.metalness = 1; m.roughness = 0.3; } // um pouco menos espelhado: sem brilho piscando nas quinas
-  const grain = { fosco: 1, acetinado: 0.8, perolado: 0.6, vidroFosco: 1 }[finish];
+  const grain = { fosco: 1, acetinado: 0.8, perolado: 0.6, vidroFosco: 1, vidroSemi: 0.5 }[finish];
   if (grain) addGrain(m, grain);
   matCache.set(key, m);
   return m;
@@ -3175,19 +3201,33 @@ async function applyLogosTo(group, st, alive) {
 // (frente e verso). Cada linha é medida por raios vindos de fora na direção do eixo,
 // então o rótulo segue qualquer seção (oval, plana, gomos) sem esticar.
 const labTex = new Map();
-function labelTexture(url) {
+// A arte vai por cima do papel: a cor do papel aparece onde a imagem é transparente
+// (antes ela multiplicava a imagem inteira e tingia a arte toda).
+function labelTexture(url, paper) {
   if (!url) return null;
-  if (labTex.has(url)) return labTex.get(url);
-  const t = new THREE.TextureLoader().load(url, () => req());
+  const key = paper + '|' + url;
+  if (labTex.has(key)) return labTex.get(key);
+  const cv = document.createElement('canvas'); cv.width = cv.height = 4;
+  const t = new THREE.CanvasTexture(cv);
   t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8;
-  labTex.set(url, t); return t;
+  const im = new Image();
+  im.onload = () => {
+    const s = Math.min(1, 4096 / Math.max(im.naturalWidth, im.naturalHeight));
+    cv.width = Math.max(1, Math.round(im.naturalWidth * s)); cv.height = Math.max(1, Math.round(im.naturalHeight * s));
+    const c = cv.getContext('2d'); c.fillStyle = paper; c.fillRect(0, 0, cv.width, cv.height);
+    c.drawImage(im, 0, 0, cv.width, cv.height);
+    t.dispose(); t.needsUpdate = true; req();
+  };
+  im.src = url;
+  labTex.set(key, t); return t;
 }
 const labMats = new Map();
 function labelMaterial(m, img) {
   const key = [m.labColor, m.labFinish, img?.slice(-40) || '', img?.length || 0].join('|');
   if (labMats.has(key)) return labMats.get(key);
-  const mt = material(m.labColor || '#ffffff', m.labFinish || 'fosco').clone();
-  const t = labelTexture(img); if (t) { mt.map = t; mt.transparent = img.startsWith('data:image/png'); }
+  const paper = m.labColor || '#ffffff', t = labelTexture(img, paper);
+  const mt = material(t ? '#ffffff' : paper, m.labFinish || 'fosco').clone(); // com arte, a cor já vem da textura
+  if (t) mt.map = t;
   mt.side = THREE.DoubleSide; mt.polygonOffset = true; mt.polygonOffsetFactor = -2; mt.polygonOffsetUnits = -2;
   mt.depthWrite = true; mt.transmission = 0;
   labMats.set(key, mt); return mt;
@@ -3461,7 +3501,7 @@ function liquidMeshes(m, y0, levelAbs, lift = S.wall) {
   // Transparente (gel, tônico, óleo): translúcido; como o vidro só mostra por dentro
   // o que é opaco, é desenhado por cima do frasco, e só quando o frasco é transparente.
   const clear = m.liqType === 'transparente', glass = isGlass(m.own ? m.finish : S.finish);
-  const frost = (m.own ? m.finish : S.finish) === 'vidroFosco';
+  const frost = isFrost(m.own ? m.finish : S.finish);
   // Atrás de vidro jateado o líquido entra na imagem que o vidro desfoca (como na
   // foto real: cor luminosa e borda do nível suave); por cima, ele saía nítido.
   // Líquido transparente dentro de vidro/PET: visto através da embalagem, luminoso
@@ -3532,7 +3572,7 @@ function buildInto(product, S, explodeAmt = 0) {
   product.clear();
   const base = layout(S), floor = Math.min(...base.filter(e => e.m.vol).map(e => e.y0));
   const glassBody = base.some(e => e.m.vol && isGlass(e.m.own ? e.m.finish : S.finish));
-  const frostBody = base.some(e => e.m.vol && (e.m.own ? e.m.finish : S.finish) === 'vidroFosco');
+  const frostBody = base.some(e => e.m.vol && isFrost(e.m.own ? e.m.finish : S.finish));
   const liqBody = base.find(e => e.m.vol && e.m.liq && e.m.liqType === 'transparente' && isGlass(e.m.own ? e.m.finish : S.finish))?.m;
   const innerMat = glassBody ? (frostBody ? plastFrostMat : liqBody ? plastLiqMat(liqBody.liqColor, liqBody.liqClear) : plastMat) : pescMat; // peças internas (pescante, mola, carcaça)
   const L = layout(S, explodeAmt);
@@ -3620,7 +3660,7 @@ function buildInto(product, S, explodeAmt = 0) {
       if (pg && m.sprayType === 'gotas') {
         // Conta-gotas: a pipeta é sempre de vidro (o resto do acabamento é livre).
         // Num frasco opaco ela fica escondida; no Explodir ou no frasco transparente aparece.
-        const frost = base.some(e => e.m.vol && (e.m.own ? e.m.finish : S.finish) === 'vidroFosco');
+        const frost = base.some(e => e.m.vol && isFrost(e.m.own ? e.m.finish : S.finish));
         // pipeta como o pescante: em multiplicar, quase invisível no meio e desenhada nas bordas
         const pipMat = frost ? multTubeMat(0.01, 0.16, '#a8adaf')
           : liqBody ? multTubeMat(0.03, 0.62, new THREE.Color(liqBody.liqColor).multiplyScalar(0.5)) : multTubeMat(0.02, 0.55, '#7d8486');
@@ -5008,7 +5048,7 @@ function genOne(seed, want) {
   } else if (fecho === 'spray') {
     collarUnder();
     if (rnd() < 0.7) { mods.push(NECK('20/410'), M('spray')); nome = 'Spray fino'; }
-    else { mods.push(NECK('28/410'), M('gatilho', { W: 31, D: 31, h: 17, ridges: 80, ridgeD: 0.35 })); nome = 'Spray gatilho'; }
+    else { mods.push(NECK('28/410'), M('gatilho', { W: 30, D: 30, h: 22 })); nome = 'Spray gatilho'; }
   } else if (fecho === 'gotas') {
     collarUnder(); mods.push(NECK('18/410'), M('contaGotas', { W: 21, D: 21 })); nome = 'Conta-gotas';
   } else {

@@ -62,6 +62,9 @@ Teste local com PHP: `php -S 127.0.0.1:8767 -t .` e um `api/config.php` apontand
 - Bico dosador foi ajustado para uma construcao mais alta e conica.
 - Push-pull e push-pull esportivo receberam proporcoes/frisos mais consistentes.
 - Bisnaga foi polida: solda menos larga, serrilhado mais suave e tampa inferior mais integrada.
+- Spray gatilho refeito como mini gatilho de catalogo: virola lisa, anel de trava, cilindro do pistao a mostra, cabeca em arco com pino, perna traseira, bico cilindrico, alavanca em lamina e trava lateral.
+- Novo acabamento `Vidro semi-jateado (acetinado)`, entre o vidro transparente e o jateado.
+- Rotulo: a arte vai por cima da cor do papel (a cor aparece onde a imagem e transparente, sem tingir a arte).
 
 ## Proximos cuidados
 
