@@ -459,7 +459,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-28.arrastar-lado';
+const BUILD = '2026-09-28.plastico-satin';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -2579,9 +2579,10 @@ const bandVert = sh => { sh.vertexShader = sh.vertexShader.replace('#include <co
   sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying float vObjY;'); };
 const bandF = y => `(1.0 - smoothstep(${(y - 0.9).toFixed(2)}, ${(y + 0.9).toFixed(2)}, vObjY))`;
 const WALL_U = { value: 1.2 };
+const COAT_U = { value: 1 }; // reforço do reflexo do estúdio no verniz do plástico (por luz)
 const wallUniform = sh => { sh.uniforms.uWall = WALL_U; sh.fragmentShader = 'uniform float uWall;\n' + sh.fragmentShader; };
 // Difusão e IOR escolhidos à mão (sem escolha: o do acabamento). Difusão 0–100% = aspereza 0–0,8.
-const FIN_ROUGH = { fosco: 0.52, acetinado: 0.3, brilho: 0.14, perolado: 0.3, vidro: 0.05, pet: 0.08, vidroSemi: 0.27, vidroFosco: 0.42, petFosco: 0.5, petSemi: 0.24, metal: 0.3 };
+const FIN_ROUGH = { fosco: 0.55, acetinado: 0.3, brilho: 0.14, perolado: 0.3, vidro: 0.05, pet: 0.08, vidroSemi: 0.27, vidroFosco: 0.42, petFosco: 0.5, petSemi: 0.24, metal: 0.3 };
 const presetDif = f => Math.round((FIN_ROUGH[f] ?? 0.5) / 0.8 * 100), presetIor = f => (String(f).startsWith('pet') ? 1.45 : 1.5);
 function material(color, finish, band = null, thick, look = null) {
   if (band && !isGlass(finish)) band = null;
@@ -2598,11 +2599,20 @@ function material(color, finish, band = null, thick, look = null) {
   // (sheen tingido com a cor da peça: branco, ele virava uma película cinza nos lados de sombra)
   // Plástico de verdade tem uma película que reflete a softbox: no fosco uma faixa larga e
   // bem macia, no acetinado mais definida. Sem ela a peça ficava chapada, com cara de massinha.
-  if (finish === 'fosco') { m.roughness = 0.52; m.sheen = 0.25; m.sheenRoughness = 0.55; m.sheenColor = new THREE.Color(color).lerp(new THREE.Color('#ffffff'), 0.5);
-    m.clearcoat = 0.42; m.clearcoatRoughness = 0.34; }
-  if (finish === 'acetinado') { m.roughness = 0.3; m.clearcoat = 0.6; m.clearcoatRoughness = 0.2; }
+  if (finish === 'fosco') { m.roughness = 0.55; m.sheen = 0.35; m.sheenRoughness = 0.6; m.sheenColor = new THREE.Color(color).lerp(new THREE.Color('#ffffff'), 0.7);
+    m.clearcoat = 0.75; m.clearcoatRoughness = 0.42; }
+  if (finish === 'acetinado') { m.roughness = 0.3; m.clearcoat = 0.85; m.clearcoatRoughness = 0.24; }
   if (finish === 'brilho') { m.roughness = 0.14; m.clearcoat = 1; m.clearcoatRoughness = 0.06; }
   if (finish === 'perolado') { m.roughness = 0.3; m.iridescence = 0.7; m.iridescenceIOR = 1.4; m.clearcoat = 0.4; }
+  // Plástico: o reflexo da softbox fica branco por cima da cor (a faixa larga e leitosa das
+  // fotos). As caixas de luz de área não refletem na camada de verniz, então o reflexo do
+  // estúdio (ambiente) nessa camada é reforçado conforme a luz; sem isso o brilho saía da
+  // própria cor, saturado, e a peça parecia borracha.
+  const coatK = { fosco: 1, acetinado: 0.7, perolado: 0.6, brilho: 0.4 }[finish]; // o brilhante já reflete bastante
+  if (coatK) {
+    m.onBeforeCompile = sh => { sh.uniforms.uCoatBoost = COAT_U;
+      sh.fragmentShader = 'uniform float uCoatBoost;\n' + sh.fragmentShader.replace('#include <lights_fragment_maps>', `#include <lights_fragment_maps>\n#ifdef USE_CLEARCOAT\n clearcoatRadiance *= 1.0 + (uCoatBoost - 1.0) * ${coatK.toFixed(2)};\n#endif`); };
+    m.customProgramCacheKey = () => 'coat2_' + coatK; }
   // Vidro não grava profundidade: o que é translúcido dentro dele (pipeta) aparece,
   // e as peças opacas da frente continuam cobrindo.
   // Vidro transparente: a espessura aparece nas bordas (mais escura e levemente
@@ -5412,10 +5422,11 @@ function toast(msg) { const t = $('#toast'); t.textContent = msg; t.classList.ad
 
 const HDR = { env: null, url: null, name: '', rot: 0, strength: 100 };
 function snapshotLighting() {
-  return { env: scene.environment, envI: scene.environmentIntensity, envRot: scene.environmentRotation?.clone(), hemi: hemi.intensity, sun: sun.intensity, sunPos: sun.position.clone(), area: areaOn };
+  return { env: scene.environment, envI: scene.environmentIntensity, envRot: scene.environmentRotation?.clone(), hemi: hemi.intensity, sun: sun.intensity, sunPos: sun.position.clone(), area: areaOn, coat: COAT_U.value };
 }
 function setLighting(keep) {
   if (keep.area !== undefined) { areaOn = keep.area; placeAreaLights(); }
+  if (keep.coat !== undefined) COAT_U.value = keep.coat;
   scene.environment = keep.env; scene.environmentIntensity = keep.envI; hemi.intensity = keep.hemi; sun.intensity = keep.sun; sun.position.copy(keep.sunPos);
   if (scene.environmentRotation && keep.envRot) scene.environmentRotation.copy(keep.envRot);
 }
@@ -5461,6 +5472,8 @@ function applyLightingMode(mode) {
   } else { // estúdio claro (padrão): caixa de luz de área + ambiente de estúdio
     scene.environment = refEnv; scene.environmentIntensity = 0.5 * boost; hemi.intensity = 0.08; sun.intensity = 0.5; sun.position.set(220, 520, 260);
   }
+  // quanto mais a luz vem das caixas de área (e menos do ambiente), mais o reflexo do estúdio no verniz precisa de reforço
+  COAT_U.value = { macia: 7, lateral: 3.5, studio: 3, produto: 3.5, janela: 3.5, recorte: 3.5, faixa: 1.8 }[mode] ?? 1;
   areaOn = ['studio', 'faixa', 'janela', 'recorte', 'produto', 'macia', 'lateral'].includes(mode) ? 1 : 0;
   areaMode = ['faixa', 'janela', 'recorte', 'produto', 'macia', 'lateral'].includes(mode) ? mode : 'studio'; placeAreaLights();
 }
@@ -5805,7 +5818,7 @@ $('#varBtn').onclick = () => {
 };
 $('#genDice').onclick = () => { $('#genSeed').value = Math.floor(Math.random() * 99999) + 1; runGen(); };
 
-window.OUTBOX = { get ao() { return { aoP, aoO, GTAOPass }; }, CS, moduleGeo, exportRoot, get S() { return S; }, get swapScroll() { return swapScroll; }, product, layout, scene, sun, stage, ground, renderer, areaKey, areaFill, hemi, detailShow, applyLogos, build, render: () => renderFrame(), get cam() { return cam; } };
+window.OUTBOX = { get ao() { return { aoP, aoO, GTAOPass }; }, CS, COAT_U, moduleGeo, exportRoot, get S() { return S; }, get swapScroll() { return swapScroll; }, product, layout, scene, sun, stage, ground, renderer, areaKey, areaFill, hemi, detailShow, applyLogos, build, render: () => renderFrame(), get cam() { return cam; } };
 
 buildDraftPresets();
 resize();
