@@ -459,7 +459,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-28.cavidade-jateada';
+const BUILD = '2026-09-28.cavidade-contorno';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -2531,6 +2531,11 @@ function plastLiqMat(color, clear) {
 // na cor do vidro, um pouco mais escura.
 const cavityMats = new Map();
 const frostCavityMats = new Map();
+const frostEdgeMats = new Map();
+function frostCavityEdge(color) {
+  if (!frostEdgeMats.has(color)) frostEdgeMats.set(color, multTubeMat(0.03, 0.42, new THREE.Color(color).multiplyScalar(0.5)));
+  return frostEdgeMats.get(color);
+}
 function frostCavityMat(color) {
   if (!frostCavityMats.has(color)) frostCavityMats.set(color, new THREE.MeshStandardMaterial({ color: new THREE.Color(color).lerp(new THREE.Color('#ffffff'), 0.25).multiplyScalar(0.8), roughness: 0.55, side: THREE.FrontSide }));
   return frostCavityMats.get(color);
@@ -4125,6 +4130,9 @@ function buildInto(product, S, explodeAmt = 0) {
     // linha nítida por cima, e a válvula continua na frente dela.
     if (capCav && isFrost(finM)) {
       const cm = new THREE.Mesh(capCav, frostCavityMat(colM)); cm.name = 'cavidade'; cm.userData.idx = idx; product.add(cm);
+      // + o contorno do oco: nas bordas da parede de dentro há mais vidro no caminho, então
+      // ela aparece como duas linhas mais densas dos lados da válvula e o arco do teto
+      const ce = new THREE.Mesh(capCav, frostCavityEdge(colM)); ce.name = 'cavidade'; ce.userData.idx = idx; ce.renderOrder = 6; product.add(ce);
     }
     // Vidro transparente: a cavidade (parede de dentro) aparece nas bordas, como a
     // espessura do vidro vista de lado, e o fundo grosso ganha a sua linha.
