@@ -505,7 +505,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-28.relevo-sem-gargalo';
+const BUILD = '2026-09-28.relevo-uv-proporcional';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -2545,15 +2545,34 @@ function ensureReliefData(src) {
   reliefDataCache.set(src, { promise });
   return promise;
 }
+const reliefUvArcCache = new Map();
+function reliefArcFraction(a, b, th) {
+  const key = `${Math.round(a * 10)}:${Math.round(b * 10)}`;
+  let tab = reliefUvArcCache.get(key);
+  if (!tab) {
+    const N = 720, cum = new Float32Array(N + 1); let total = 0, px = a, pz = 0;
+    for (let i = 1; i <= N; i++) {
+      const t = i / N * TAU, x = a * Math.cos(t), z = b * Math.sin(t);
+      total += Math.hypot(x - px, z - pz); cum[i] = total; px = x; pz = z;
+    }
+    tab = { N, cum, total }; reliefUvArcCache.set(key, tab);
+  }
+  const u = ((th % TAU) + TAU) % TAU, f = u / TAU * tab.N, i = Math.floor(f), k = f - i;
+  return ((tab.cum[i] + (tab.cum[i + 1] - tab.cum[i]) * k) / tab.total + 1) % 1;
+}
 function addAutoUv(g, repeatMm = 18) {
   if (!g || !g.attributes.position) return;
   g.computeBoundingBox();
   const b = g.boundingBox, p = g.attributes.position, uv = [];
-  const sx = Math.max(1, b.max.x - b.min.x), sz = Math.max(1, b.max.z - b.min.z);
-  const around = Math.max(1, Math.round(Math.PI * Math.max(sx, sz) / repeatMm));
+  const cx = (b.min.x + b.max.x) / 2, cz = (b.min.z + b.max.z) / 2;
+  const a = Math.max(0.5, (b.max.x - b.min.x) / 2), c = Math.max(0.5, (b.max.z - b.min.z) / 2);
+  const around = Math.max(1, Math.round(perim(a, c) / repeatMm));
   for (let i = 0; i < p.count; i++) {
-    const x = p.getX(i), y = p.getY(i), z = p.getZ(i);
-    uv.push(((Math.atan2(z, x) / TAU + 1) % 1) * around, (y - b.min.y) / repeatMm);
+    const x = p.getX(i) - cx, y = p.getY(i), z = p.getZ(i) - cz;
+    // Parametriza pela distância percorrida na seção elíptica, não pelo ângulo.
+    // Isso mantém a textura proporcional em corpos ovais/quadrados arredondados.
+    const th = Math.atan2(x / a, z / c) + Math.PI; // costura no verso (-Z)
+    uv.push(reliefArcFraction(a, c, th) * around, (y - b.min.y) / repeatMm);
   }
   g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
 }
