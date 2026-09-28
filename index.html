@@ -391,7 +391,7 @@ const BASE = {
   notch: false, notchLock: true, notchY: 12, notchW: 20, notchH: 8, notchD: 2, notchP: 2,
   ridges: 0, ridgeD: 0.6, lobes: 0, lobeD: 3,
   labType: 'nenhum', labH: 50, labY: 50, labW: 40, labColor: '#ffffff', labFinish: 'fosco', labImg: '', labImgB: '', labInk: false, labInkColor: '#1c1c1c', labInkFinish: 'metal',
-  reliefImg: '', reliefName: '', reliefScale: 18, reliefDepth: 0, reliefY: 50, reliefH: 82, reliefW: 100, reliefFade: 4, reliefQuality: 3, reliefSoft: 0.5, reliefGeomSmooth: 1,
+  reliefImg: '', reliefName: '', reliefScale: 18, reliefDepth: 0, reliefY: 50, reliefH: 82, reliefW: 100, reliefFade: 4, reliefQuality: 3, reliefSoft: 1.2, reliefGeomSmooth: 2,
   own: false, color: '#e8dcc6', finish: 'fosco', vol: false,
   // kind 'giro': seção girando no eixo; 'placa': silhueta frontal extrudada na profundidade.
   kind: 'giro', ox: 0, rTL: 6, rTR: 6, rBL: 6, rBR: 6, rEdge: 3, chamfer: false,
@@ -507,7 +507,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-28.relevo-seamless-convert';
+const BUILD = '2026-09-28.relevo-suave';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -4981,10 +4981,10 @@ const MF = [
     ['reliefW', 'Largura da volta', 1, 100, 1, '%', m => m.reliefImg],
     ['reliefFade', 'Suavizar borda', 0, 24, 0.5, 'mm', m => m.reliefImg],
     ['reliefScale', 'Tamanho da repetição', 3, 120, 0.5, 'mm', m => m.reliefImg],
-    ['reliefDepth', 'Força do relevo', 0, 4, 0.05, 'mm', m => m.reliefImg],
+    ['reliefDepth', 'Força do relevo', 0, 4, 0.02, 'mm', m => m.reliefImg],
     ['reliefQuality', 'Qualidade da malha', 1, 9, 1, '', m => m.reliefImg],
-    ['reliefSoft', 'Suavizar textura', 0, 3, 0.1, 'px', m => m.reliefImg],
-    ['reliefGeomSmooth', 'Suavizar malha', 0, 4, 1, '', m => m.reliefImg],
+    ['reliefSoft', 'Suavizar textura', 0, 8, 0.1, 'px', m => m.reliefImg],
+    ['reliefGeomSmooth', 'Suavizar malha', 0, 8, 1, '', m => m.reliefImg],
   ]],
 ];
 
@@ -5096,6 +5096,7 @@ function renderEditor() {
       const up = document.createElement('button'); up.className = 'btn sm'; up.textContent = m.reliefImg ? 'Trocar textura' : 'Subir textura seamless';
       const conv = document.createElement('button'); conv.className = 'btn sm'; conv.textContent = 'Converter imagem em relevo';
       const mt = document.createElement('button'); mt.className = 'btn sm'; mt.textContent = 'Matelassê losangos';
+      const soft = document.createElement('button'); soft.className = 'btn sm'; soft.textContent = 'Acabamento suave';
       const rm = document.createElement('button'); rm.className = 'btn sm'; rm.textContent = 'Remover'; rm.classList.toggle('hidden', !m.reliefImg);
       up.onclick = () => {
         const inp = document.createElement('input'); inp.type = 'file'; inp.accept = 'image/png,image/jpeg,image/webp';
@@ -5106,7 +5107,7 @@ function renderEditor() {
             m.reliefImg = r.result; m.reliefName = f.name;
             if (!(m.reliefDepth > 0)) m.reliefDepth = 0.55; if (!(m.reliefScale > 0)) m.reliefScale = 18;
             if (!(m.reliefH > 0)) m.reliefH = 82; if (!(m.reliefY >= 0)) m.reliefY = 50; if (!(m.reliefW > 0)) m.reliefW = 100; if (!(m.reliefFade >= 0)) m.reliefFade = 4;
-            if (!(m.reliefQuality > 0)) m.reliefQuality = 5; if (!(m.reliefSoft >= 0)) m.reliefSoft = 0.8; if (!(m.reliefGeomSmooth >= 0)) m.reliefGeomSmooth = 1;
+            if (!(m.reliefQuality > 0)) m.reliefQuality = 6; if (!(m.reliefSoft >= 0)) m.reliefSoft = 1.8; if (!(m.reliefGeomSmooth >= 0)) m.reliefGeomSmooth = 2;
             ensureReliefData(m.reliefImg).then(() => queueBuild()); renderEditorKeepScroll(); queueBuild();
           };
           r.readAsDataURL(f);
@@ -5124,9 +5125,9 @@ function renderEditor() {
             m.reliefName = `${f.name} → displacement`;
             if (!(m.reliefDepth > 0)) m.reliefDepth = 0.55; if (!(m.reliefScale > 0)) m.reliefScale = 18;
             if (!(m.reliefH > 0)) m.reliefH = 82; if (!(m.reliefY >= 0)) m.reliefY = 50; if (!(m.reliefW > 0)) m.reliefW = 100; if (!(m.reliefFade >= 0)) m.reliefFade = 4;
-            m.reliefQuality = Math.max(m.reliefQuality || 0, 5);
-            m.reliefSoft = Math.max(m.reliefSoft || 0, 0.8);
-            m.reliefGeomSmooth = Math.max(m.reliefGeomSmooth || 0, 1);
+            m.reliefQuality = Math.max(m.reliefQuality || 0, 6);
+            m.reliefSoft = Math.max(m.reliefSoft || 0, 1.8);
+            m.reliefGeomSmooth = Math.max(m.reliefGeomSmooth || 0, 2);
             ensureReliefData(m.reliefImg).then(() => queueBuild());
             toast('Imagem convertida em displacement e salva no projeto');
             renderEditorKeepScroll(); queueBuild();
@@ -5150,9 +5151,18 @@ function renderEditor() {
         renderEditorKeepScroll();
         queueBuild();
       };
+      soft.onclick = () => {
+        if (!m.reliefImg) return toast('Suba ou converta uma textura primeiro');
+        m.reliefDepth = Math.min(m.reliefDepth || 0.45, 0.45);
+        m.reliefQuality = Math.max(m.reliefQuality || 0, 7);
+        m.reliefSoft = Math.max(m.reliefSoft || 0, 2.4);
+        m.reliefGeomSmooth = Math.max(m.reliefGeomSmooth || 0, 3);
+        m.reliefFade = Math.max(m.reliefFade || 0, 6);
+        renderEditorKeepScroll(); queueBuild();
+      };
       rm.onclick = () => { m.reliefImg = ''; m.reliefName = ''; m.reliefDepth = 0; renderEditorKeepScroll(); queueBuild(); };
-      row.append(up, conv, mt, rm); grp.append(row);
-      const tip = document.createElement('div'); tip.className = 'tip'; tip.textContent = m.reliefImg ? `Textura: ${m.reliefName || 'imagem carregada'} · vira malha real no GLB/OBJ/STL. Ao salvar o projeto, esse mapa convertido vai para o banco.` : 'Suba um displacement pronto ou converta uma imagem comum. Claro sobe, escuro afunda; o mapa convertido fica salvo dentro do projeto.';
+      row.append(up, conv, mt, soft, rm); grp.append(row);
+      const tip = document.createElement('div'); tip.className = 'tip'; tip.textContent = m.reliefImg ? `Textura: ${m.reliefName || 'imagem carregada'} · use Acabamento suave para baixo relevo macio, sem dureza e serrilhado.` : 'Suba um displacement pronto ou converta uma imagem comum. Claro sobe, escuro afunda; o mapa convertido fica salvo dentro do projeto.';
       grp.append(tip);
     }
     for (const def of defs) {
