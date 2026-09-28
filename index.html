@@ -459,7 +459,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-28.sombra-contato';
+const BUILD = '2026-09-28.perfume-limpido';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -3939,10 +3939,35 @@ function liquidMeshes(m, y0, levelAbs, lift = S.wall) {
   const b = inner.boundingBox, level = levelAbs ?? b.min.y + (b.max.y - b.min.y) * clamp(m.liqLevel, 0, 100) / 100;
   if (level <= b.min.y + 0.05) { inner.dispose(); return []; } // cópia acima do nível: vazia
   const clip = [new THREE.Plane(new THREE.Vector3(0, -1, 0), level)];
+  // Perfume / água: líquido límpido de verdade. Em vez de um corpo colorido, ele mesmo
+  // transmite e refrata o que está atrás (ior do álcool/água) com a espessura do frasco
+  // inteiro — é a lente que faz o frasco parecer cheio (fundo ampliado/invertido, bordas
+  // densas), com a cor do vidro e, se houver, um tom leve do líquido. Branco = sem cor.
+  if (m.liqType === 'perfume' && glassBody && !isFrost(m.own ? m.finish : S.finish)) {
+    const gc = new THREE.Color(m.own ? m.color : S.color), tint = new THREE.Color(m.liqColor);
+    // é desenhado por cima do vidro, então leva também o brilho e a borda densa dele
+    const lm = new THREE.MeshPhysicalMaterial({ color: gc.clone().multiply(tint), transmission: 1, roughness: 0.03,
+      ior: 1.36, thickness: Math.min(b.max.x - b.min.x, b.max.z - b.min.z) * 0.85, clearcoat: 1, clearcoatRoughness: 0.04, depthWrite: false, clippingPlanes: clip,
+      attenuationColor: tint, attenuationDistance: Math.max(8, (b.max.x - b.min.x) * 1.5) });
+    const et = gc.clone().multiply(new THREE.Color(0.4, 0.49, 0.46)).multiply(tint), etv = `vec3(${et.r.toFixed(3)}, ${et.g.toFixed(3)}, ${et.b.toFixed(3)})`;
+    lm.onBeforeCompile = sh => { sh.fragmentShader = sh.fragmentShader.replace('#include <transmission_fragment>', THREE.ShaderChunk.transmission_fragment
+      .replace('totalDiffuse = mix( totalDiffuse, transmitted.rgb, material.transmission );',
+        `float frE = pow(1.0 - abs(dot(normalize(vViewPosition), normal)), 1.6);
+\ttransmitted.rgb *= mix(vec3(1.0), ${etv}, clamp(frE * 1.1, 0.0, 1.0));
+\ttotalDiffuse = mix( totalDiffuse, transmitted.rgb, material.transmission );`)); };
+    lm.customProgramCacheKey = () => 'perfumeLiq' + etv;
+    const out = [new THREE.Mesh(inner, lm)];
+    const cap = level < b.max.y - 0.05 ? levelCap(inner, level - 0.01) : null;
+    if (cap) { const cm = lm.clone(); cm.clippingPlanes = []; cm.onBeforeCompile = lm.onBeforeCompile; cm.customProgramCacheKey = lm.customProgramCacheKey; out.push(new THREE.Mesh(cap, cm)); } // a superfície do nível espelha a luz
+    out.forEach(o => { o.userData.liquid = true; o.name = 'liquido'; o.renderOrder = 1; });
+    return out;
+  }
+  // perfume atrás de vidro jateado / em plástico: como o transparente no máximo, na cor do frasco
+  if (m.liqType === 'perfume') m = { ...m, liqClear: 95, liqColor: '#' + new THREE.Color(m.own ? m.color : S.color).multiply(new THREE.Color(m.liqColor)).getHexString() };
   // Cremoso (hidratante): sólido e brilhante, aparece pelo vidro por ser opaco.
   // Transparente (gel, tônico, óleo): translúcido; como o vidro só mostra por dentro
   // o que é opaco, é desenhado por cima do frasco, e só quando o frasco é transparente.
-  const clear = m.liqType === 'transparente', glass = isGlass(m.own ? m.finish : S.finish);
+  const clear = m.liqType === 'transparente' || m.liqType === 'perfume', glass = isGlass(m.own ? m.finish : S.finish);
   const frost = isFrost(m.own ? m.finish : S.finish);
   // Atrás de vidro jateado o líquido entra na imagem que o vidro desfoca (como na
   // foto real: cor luminosa e borda do nível suave); por cima, ele saía nítido.
@@ -4017,9 +4042,9 @@ function buildInto(product, S, explodeAmt = 0) {
   const base = layout(S), floor = Math.min(...base.filter(e => e.m.vol).map(e => e.y0));
   const glassBody = base.some(e => e.m.vol && isGlass(e.m.own ? e.m.finish : S.finish));
   const frostBody = base.some(e => e.m.vol && isFrost(e.m.own ? e.m.finish : S.finish));
-  const liqBody = base.find(e => e.m.vol && e.m.liq && e.m.liqType === 'transparente' && isGlass(e.m.own ? e.m.finish : S.finish))?.m;
+  const liqBody = base.find(e => e.m.vol && e.m.liq && ['transparente', 'perfume'].includes(e.m.liqType) && isGlass(e.m.own ? e.m.finish : S.finish))?.m;
   const semiPet = base.some(e => e.m.vol && (e.m.own ? e.m.finish : S.finish) === 'petSemi');
-  const innerMat = semiPet ? semiInnerMat : glassBody ? (frostBody ? plastFrostMat : liqBody ? plastLiqMat(liqBody.liqColor, liqBody.liqClear) : plastMat) : pescMat; // peças internas (pescante, mola, carcaça)
+  const innerMat = semiPet ? semiInnerMat : glassBody ? (frostBody ? plastFrostMat : liqBody ? plastLiqMat(liqBody.liqColor, liqBody.liqType === 'perfume' ? 95 : liqBody.liqClear) : plastMat) : pescMat; // peças internas (pescante, mola, carcaça)
   const L = layout(S, explodeAmt);
   const tubeBody = base.some(e => e.m.kind === 'bisnaga' && e.m.vol);
   const solidBody = S.modules.some(m => hasSolid(m) || isPote(m)); // pote ou recheio sólido: nenhum tubo por dentro
@@ -4907,9 +4932,14 @@ function renderBodyLiquid(ed, m) {
   };
   field(grp, m, ['liq', 'Conteúdo dentro', 'check'], ch);
   if (m.liq) {
-    field(grp, m, ['liqType', 'Tipo', 'select', [['cremoso', 'Cremoso (hidratante, loção)'], ['transparente', 'Transparente (gel, tônico, óleo)'],
+    field(grp, m, ['liqType', 'Tipo', 'select', [['cremoso', 'Cremoso (hidratante, loção)'], ['transparente', 'Transparente (gel, tônico, óleo)'], ['perfume', 'Perfume / água (límpido, sem corpo)'],
       ...Object.entries(FILL_SOLIDS).map(([k, T]) => [k, T.name])]], (k) => ch(k, true));
     const solid = !!FILL_SOLIDS[m.liqType];
+    { const fin = m.own ? m.finish : S.finish, nt = document.createElement('div'); nt.className = 'sub'; nt.style.margin = '0 0 8px';
+      nt.textContent = !isGlass(fin) ? 'O conteúdo só aparece em frasco de vidro ou PET (ou no Explodir).'
+        : m.liqType === 'perfume' ? 'Límpido: vê-se através, com a lente do frasco cheio. Branco = sem cor; outra cor tinge de leve.'
+        : m.liqType === 'cremoso' ? 'Para perfume ou água sem cor, use "Perfume / água" — cremoso é opaco.' : '';
+      if (nt.textContent) grp.appendChild(nt); }
     if (m.liqType === 'transparente') field(grp, m, ['liqClear', 'Transparência', 0, 95, 1, '%'], ch);
     if (solid) field(grp, m, ['liqSize', 'Tamanho da peça', 1, 40, 0.5, 'mm'], ch);
     field(grp, m, ['liqLevel', 'Nível', 0, 100, 1, '%'], ch);
