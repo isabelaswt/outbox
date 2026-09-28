@@ -43,7 +43,8 @@ Teste local com PHP: `php -S 127.0.0.1:8767 -t .` e um `api/config.php` apontand
 - Pumps e valvulas: spray fino, pump locao, pump locao com frisos, pump espuma, pump escultural, conta-gotas, push-pull, bico dosador e push-pull esportiva.
 - Pescante translucido quando aplicavel; bisnaga nao usa pescante.
 - Logo/SVG aplicado na superficie com relevo para fora ou para dentro, com melhoria para suavizar serrilhado em curvas.
-- HDR para iluminar preview e PNG exportado, com controle de rotacao e intensidade.
+- HDR ou EXR para iluminar preview e PNG exportado, com controle de rotacao e intensidade.
+- Sombra de contato de estudio: linha escura onde o produto encosta e penumbra larga e difusa em volta, seguindo o formato real da base (vidro projeta sombra mais clara).
 - Exportacao de PNG, GLB, OBJ, STL e JSON do modelo.
 - Modelos Draft reconstruidos como perfis parametricos em `draft/perfis.json`.
 

@@ -241,7 +241,7 @@ canvas{display:block;width:100%;height:100%;touch-action:none}
       <select id="pngRes"><option value="2048">2048 px</option><option value="3072">3072 px</option><option value="4096" selected>4096 px</option></select>
     </div>
     <div class="tip">A imagem e o vídeo saem com a luz escolhida em Apresentação.</div>
-    <input type="file" id="hdrFile" accept=".hdr,image/vnd.radiance" class="hidden">
+    <input type="file" id="hdrFile" accept=".hdr,.exr,image/vnd.radiance,image/x-exr" class="hidden">
     <label class="chk"><input type="checkbox" id="pngTransp" checked> Fundo transparente</label>
     <label class="chk"><input type="checkbox" id="pngShadow" checked> Incluir sombra</label>
     <div class="row"><button class="btn pri" id="dlPng">Baixar PNG</button></div>
@@ -459,7 +459,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-28.brilho-softbox';
+const BUILD = '2026-09-28.sombra-contato';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -2307,6 +2307,83 @@ let cam = persp, controls, orthoHalf = 150, needs = true;
 const req = () => { needs = true; };
 let frameHook = null; // vídeo: um quadro composto (ex.: revelação da malha) no lugar do render simples
 function renderFrame() { if (frameHook) frameHook(); else renderMain(); }
+// Sombra de contato como em foto de estúdio com luz macia: o produto é visto de baixo, a
+// partir do chão, e vira duas manchas — uma estreita e escura onde ele encosta (a linha que
+// "assenta" a peça) e uma larga e clara em volta (a penumbra difusa da softbox). Segue o
+// formato real da base e das partes que ficam perto do chão, e não uma caixa.
+const CS = (() => {
+  const N = 256, opt = { type: THREE.HalfFloatType, depthBuffer: false };
+  const rtA = new THREE.WebGLRenderTarget(N, N, { type: THREE.HalfFloatType }), rtB = new THREE.WebGLRenderTarget(N, N, opt),
+    rtT = new THREE.WebGLRenderTarget(N, N, opt), rtW = new THREE.WebGLRenderTarget(N, N, opt), rtO = new THREE.WebGLRenderTarget(N, N, opt);
+  const cam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1); cam.up.set(0, 0, 1);
+  const hU = { uC: { value: 2 }, uA: { value: 40 } };
+  const heightMat = k => new THREE.ShaderMaterial({ uniforms: { ...hU, uK: { value: k } }, side: THREE.DoubleSide,
+    vertexShader: `varying float vY;
+void main() {
+  #include <begin_vertex>
+  vec4 wp = vec4(transformed, 1.0);
+  #ifdef USE_INSTANCING
+  wp = instanceMatrix * wp;
+  #endif
+  wp = modelMatrix * wp; vY = wp.y;
+  gl_Position = projectionMatrix * viewMatrix * wp;
+}`,
+    fragmentShader: `uniform float uC; uniform float uA; uniform float uK; varying float vY;
+void main() { float h = max(vY, 0.0); float a = 1.0 - clamp(h / uA, 0.0, 1.0);
+  gl_FragColor = vec4(exp(-h / uC) * uK, a * a * uK, 0.0, 1.0); }` });
+  // vidro e plástico transparente deixam a luz passar: a sombra deles é bem mais clara
+  const height = heightMat(1), heightClear = heightMat(0.38), swap = [];
+  const hidden = new THREE.MeshBasicMaterial({ visible: false });
+  const clearish = m => m && (m.transmission > 0.05 || (m.transparent && m.opacity < 0.9));
+  const quadCam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1), quadScene = new THREE.Scene();
+  const blur = new THREE.ShaderMaterial({ uniforms: { t: { value: null }, d: { value: new THREE.Vector2() }, s: { value: 1 } }, depthTest: false, depthWrite: false,
+    vertexShader: 'varying vec2 vUv; void main() { vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }',
+    fragmentShader: `uniform sampler2D t; uniform vec2 d; uniform float s; varying vec2 vUv;
+void main() { vec4 c = vec4(0.0); float wt = 0.0; float r = ceil(s * 2.5);
+  for (int i = -48; i <= 48; i++) { float x = float(i); if (abs(x) > r) continue;
+    float w = exp(-0.5 * x * x / (s * s)); c += texture2D(t, vUv + d * x) * w; wt += w; }
+  gl_FragColor = c / wt; }` });
+  const comb = new THREE.ShaderMaterial({ uniforms: { tT: { value: rtT.texture }, tW: { value: rtW.texture }, kT: { value: 0.72 }, kW: { value: 0.5 } }, depthTest: false, depthWrite: false,
+    vertexShader: 'varying vec2 vUv; void main() { vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }',
+    fragmentShader: `uniform sampler2D tT; uniform sampler2D tW; uniform float kT; uniform float kW; varying vec2 vUv;
+void main() { float a = 1.0 - (1.0 - texture2D(tT, vUv).r * kT) * (1.0 - texture2D(tW, vUv).g * kW); gl_FragColor = vec4(a); }` });
+  const quad = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), blur); quad.frustumCulled = false; quadScene.add(quad);
+  const geo = new THREE.PlaneGeometry(1, 1), uv = geo.attributes.uv; for (let i = 0; i < uv.count; i++) uv.setY(i, 1 - uv.getY(i));
+  const mesh = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: '#2a2118', alphaMap: rtO.texture, transparent: true, depthWrite: false, toneMapped: false, polygonOffset: true, polygonOffsetFactor: -1 }));
+  mesh.rotation.x = -Math.PI / 2; mesh.position.y = 0.06; mesh.renderOrder = 2; mesh.visible = false; scene.add(mesh);
+  const pass = (mat, src, dst, dx, dy, s) => { quad.material = mat; if (mat === blur) { blur.uniforms.t.value = src.texture; blur.uniforms.d.value.set(dx, dy); blur.uniforms.s.value = Math.max(s, 0.3); }
+    renderer.setRenderTarget(dst); renderer.render(quadScene, quadCam); };
+  const cc = new THREE.Color();
+  function update(on) {
+    mesh.visible = false; if (!on) return;
+    const b = new THREE.Box3().setFromObject(product); sideRoot.children.forEach(g => b.union(new THREE.Box3().setFromObject(g)));
+    if (b.isEmpty() || b.max.y <= 0) return;
+    const w = b.max.x - b.min.x, d = b.max.z - b.min.z, F = Math.max(w, d, 1), H = b.max.y;
+    const sw = clamp(F * 0.26, 4, 90), half = F / 2 + sw * 3, px = N / (2 * half); // desfoque largo (mm) e mm → pixel
+    const st = clamp(F * 0.035, 0.8, 8);
+    const cx = (b.min.x + b.max.x) / 2, cz = (b.min.z + b.max.z) / 2;
+    Object.assign(cam, { left: -half, right: half, top: half, bottom: -half, near: 0, far: H + 2 }); cam.updateProjectionMatrix();
+    cam.position.set(cx, -0.5, cz); cam.lookAt(cx, 1, cz); cam.updateMatrixWorld();
+    hU.uC.value = clamp(F * 0.02, 0.8, 6); hU.uA.value = clamp(Math.min(H * 0.5, F * 0.7), 6, 160);
+    // só o produto (e os ao lado) entram nesta passada
+    const hid = scene.children.filter(o => o !== product && o !== sideRoot && o.visible); hid.forEach(o => { o.visible = false; });
+    const bg = scene.background, ov = scene.overrideMaterial, prev = renderer.getRenderTarget(), ca = renderer.getClearAlpha(); renderer.getClearColor(cc);
+    swap.length = 0;
+    for (const root of [product, sideRoot]) root.traverse(o => { if (!o.isMesh) return; const m = Array.isArray(o.material) ? o.material[0] : o.material;
+      swap.push([o, o.material]); o.material = m?.visible === false || m?.colorWrite === false ? hidden : clearish(m) ? heightClear : height; });
+    scene.background = null; scene.overrideMaterial = null; renderer.setClearColor(0x000000, 0);
+    renderer.setRenderTarget(rtA); renderer.clear(); renderer.render(scene, cam);
+    swap.forEach(([o, m]) => { o.material = m; }); swap.length = 0;
+    scene.background = bg; scene.overrideMaterial = ov; hid.forEach(o => { o.visible = true; });
+    pass(blur, rtA, rtB, 1 / N, 0, st * px); pass(blur, rtB, rtT, 0, 1 / N, st * px);
+    const sW = Math.sqrt(Math.max(sw * sw - st * st, 0.01)) * px;
+    pass(blur, rtT, rtB, 1 / N, 0, sW); pass(blur, rtB, rtW, 0, 1 / N, sW);
+    pass(comb, null, rtO);
+    renderer.setRenderTarget(prev); renderer.setClearColor(cc, ca);
+    mesh.scale.set(2 * half, 2 * half, 1); mesh.position.set(cx, 0.06, cz); mesh.visible = true;
+  }
+  return { update, mesh, comb };
+})();
 // Oclusão de ambiente (GTAO), como nos renderizadores de produto: escurece de leve as
 // frestas, as junções entre as peças (tampa/gargalo, gomos, frisos) e o contato com o
 // chão — sem ela as peças pareciam coladas e o produto flutuava. Uma passada por tipo de
@@ -2315,6 +2392,7 @@ let composer = null, rPass = null, aoP = null, aoO = null, aoR = 0;
 const LOG_U = { near: { value: 1 }, far: { value: 20000 } };
 function renderMain() {
   const sc = S?.scene || {};
+  CS.update(sc.ao !== false);
   if (sc.oclusao === false) { renderer.render(scene, cam); return; }
   const ds = renderer.getDrawingBufferSize(new THREE.Vector2());
   if (!composer) {
@@ -2586,14 +2664,6 @@ function material(color, finish, band = null, thick, look = null) {
 
 // ───────────────────────── apresentação ─────────────────────────
 // Cenário montado em volta do que está na cena (produto + os ao lado).
-const contactMat = (() => {
-  const cv = document.createElement('canvas'); cv.width = cv.height = 256;
-  const cx = cv.getContext('2d'), g = cx.createRadialGradient(128, 128, 0, 128, 128, 128);
-  g.addColorStop(0, 'rgba(40,32,24,0.55)'); g.addColorStop(0.45, 'rgba(40,32,24,0.32)'); g.addColorStop(0.75, 'rgba(40,32,24,0.08)'); g.addColorStop(1, 'rgba(40,32,24,0)');
-  cx.fillStyle = g; cx.fillRect(0, 0, 256, 256);
-  const t = new THREE.CanvasTexture(cv); t.colorSpace = THREE.SRGBColorSpace;
-  return new THREE.MeshBasicMaterial({ map: t, transparent: true, depthWrite: false, toneMapped: false, polygonOffset: true, polygonOffsetFactor: -1 });
-})();
 const SCENE0 = { cena: 'nenhum', cenaCor: '#e6e0d6', cenaH: 40, cenaTilt: 0, oclusao: true, oclusaoInt: 100, luz: 'studio', ao: true, luzRot: 0, luzInt: 100, luzCon: 50, bgGrad: 'nenhum', bgEdge: '#b9b7b2',
   luzAlt: 0, luzKey: 100, luzFill: 100, luzSoft: 50 };
 const LIGHT_KEYS = ['luz', 'luzRot', 'luzInt', 'luzCon', 'luzAlt', 'luzKey', 'luzFill', 'luzSoft'];
@@ -2615,16 +2685,6 @@ function buildStage() {
   stage.children.slice().forEach(o => { o.geometry?.dispose(); stage.remove(o); });
   const sc = sceneOf(); ground.visible = true; ground.position.y = -0.05;
   if (!spinning) { product.quaternion.identity(); product.position.set(0, 0, 0); product.updateMatrixWorld(true); } // mede de pé
-  // Sombra de contato: mancha suave logo embaixo de cada produto (ocupa a base e
-  // esvai para fora), o que o sol sozinho não dá.
-  if (sc.ao !== false) for (const g of [product, ...sideRoot.children]) {
-    const b = new THREE.Box3().setFromObject(g); if (b.isEmpty()) continue;
-    const w = b.max.x - b.min.x, d = b.max.z - b.min.z;
-    const o = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), contactMat);
-    o.rotation.x = -Math.PI / 2; o.scale.set(w * 1.35 + 8, d * 1.35 + 8, 1);
-    o.position.set((b.min.x + b.max.x) / 2, 0.06, (b.min.z + b.max.z) / 2); o.renderOrder = 2;
-    stage.add(o);
-  }
   if (sc.cena === 'nenhum') { if (!spinning) applyStageTilt(sc, 0, 0); return; }
   const bb = new THREE.Box3().setFromObject(product).union(new THREE.Box3().setFromObject(sideRoot));
   if (bb.isEmpty()) return;
@@ -2741,7 +2801,7 @@ function renderScene() {
   };
   f.appendChild(ml);
   const hb = document.createElement('div'); hb.className = 'row';
-  hb.innerHTML = `<button class="btn">${HDR.env ? 'Trocar HDR' : 'Carregar HDR (luz de foto)'}</button>`;
+  hb.innerHTML = `<button class="btn">${HDR.env ? 'Trocar HDR / EXR' : 'Carregar HDR ou EXR (luz de foto)'}</button>`;
   hb.querySelector('button').onclick = () => $('#hdrFile').click(); f.appendChild(hb);
   field(f, S.scene, ['ao', 'Sombra de contato (o produto pesa na superfície)', 'check'], ch);
   field(f, S, ['bg', 'Fundo da cena', 'color'], queueBuild);
@@ -5334,18 +5394,21 @@ function applyPngLighting(mode) {
   return keep;
 }
 
-$('#hdrFile').onchange = e => {
+$('#hdrFile').onchange = async e => {
   const f = e.target.files[0]; if (!f) return;
-  const url = URL.createObjectURL(f);
-  new RGBELoader().load(url, tex => {
+  const url = URL.createObjectURL(f), exr = /\.exr$/i.test(f.name); e.target.value = '';
+  // .hdr (Radiance) ou .exr (OpenEXR, o que sai do Blender/KeyShot); o leitor de EXR só
+  // é baixado quando alguém sobe um
+  let Loader = RGBELoader;
+  if (exr) try { Loader = (await import('three/addons/loaders/EXRLoader.js')).EXRLoader; } catch { URL.revokeObjectURL(url); toast('Não consegui abrir o leitor de EXR'); return; }
+  new Loader().load(url, tex => {
     const env = pmrem.fromEquirectangular(tex).texture;
     tex.dispose(); HDR.env?.dispose(); if (HDR.url) URL.revokeObjectURL(HDR.url);
     HDR.env = env; HDR.url = url; HDR.name = f.name;
     S.scene = { ...sceneOf(), luz: 'hdr' }; renderScene(); applySceneLight(); // HDR carregado vira a luz da cena
-    toast(`HDR carregado: ${f.name}`);
+    toast(`${exr ? 'EXR' : 'HDR'} carregado: ${f.name}`);
     req();
-  }, undefined, () => { URL.revokeObjectURL(url); toast('Não consegui carregar esse HDR'); });
-  e.target.value = '';
+  }, undefined, () => { URL.revokeObjectURL(url); toast(`Não consegui carregar esse ${exr ? 'EXR' : 'HDR'}`); });
 };
 
 $('#dlPng').onclick = () => {
@@ -5666,7 +5729,7 @@ $('#varBtn').onclick = () => {
 };
 $('#genDice').onclick = () => { $('#genSeed').value = Math.floor(Math.random() * 99999) + 1; runGen(); };
 
-window.OUTBOX = { get ao() { return { aoP, aoO, GTAOPass }; }, moduleGeo, exportRoot, get S() { return S; }, get swapScroll() { return swapScroll; }, product, layout, scene, sun, stage, ground, renderer, areaKey, areaFill, hemi, detailShow, applyLogos, build, render: () => renderFrame(), get cam() { return cam; } };
+window.OUTBOX = { get ao() { return { aoP, aoO, GTAOPass }; }, CS, moduleGeo, exportRoot, get S() { return S; }, get swapScroll() { return swapScroll; }, product, layout, scene, sun, stage, ground, renderer, areaKey, areaFill, hemi, detailShow, applyLogos, build, render: () => renderFrame(), get cam() { return cam; } };
 
 buildDraftPresets();
 resize();
