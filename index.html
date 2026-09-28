@@ -505,7 +505,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-28.relevo-ultra-malha';
+const BUILD = '2026-09-28.relevo-seamless-uv';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -2546,13 +2546,14 @@ function ensureReliefData(src) {
   return promise;
 }
 function addAutoUv(g, repeatMm = 18) {
-  if (!g || g.attributes.uv || !g.attributes.position) return;
+  if (!g || !g.attributes.position) return;
   g.computeBoundingBox();
   const b = g.boundingBox, p = g.attributes.position, uv = [];
   const sx = Math.max(1, b.max.x - b.min.x), sz = Math.max(1, b.max.z - b.min.z);
+  const around = Math.max(1, Math.round(Math.PI * Math.max(sx, sz) / repeatMm));
   for (let i = 0; i < p.count; i++) {
     const x = p.getX(i), y = p.getY(i), z = p.getZ(i);
-    uv.push(((Math.atan2(z, x) / TAU + 1) % 1) * (Math.PI * Math.max(sx, sz) / repeatMm), (y - b.min.y) / repeatMm);
+    uv.push(((Math.atan2(z, x) / TAU + 1) % 1) * around, (y - b.min.y) / repeatMm);
   }
   g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
 }
