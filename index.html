@@ -459,7 +459,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-28.perfume-limpido';
+const BUILD = '2026-09-28.cavidade-jateada';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -2530,6 +2530,11 @@ function plastLiqMat(color, clear) {
 // Parede de dentro do frasco de vidro: some de frente e aparece de lado (fresnel),
 // na cor do vidro, um pouco mais escura.
 const cavityMats = new Map();
+const frostCavityMats = new Map();
+function frostCavityMat(color) {
+  if (!frostCavityMats.has(color)) frostCavityMats.set(color, new THREE.MeshStandardMaterial({ color: new THREE.Color(color).lerp(new THREE.Color('#ffffff'), 0.25).multiplyScalar(0.8), roughness: 0.55, side: THREE.FrontSide }));
+  return frostCavityMats.get(color);
+}
 function cavityMat(color) {
   if (!cavityMats.has(color)) {
     const g = glassTubeMat(0.015, 0.42); g.color = new THREE.Color(color).multiplyScalar(0.55); g.customProgramCacheKey = () => 'cavidade';
@@ -4107,12 +4112,19 @@ function buildInto(product, S, explodeAmt = 0) {
     // Tampa jateada/fosca vestindo a válvula: só a casca de fora. A parede da cavidade
     // aparecia nítida através do jateado, como se estivesse na frente; sem ela, o que está
     // dentro (a válvula) aparece embaçado pelo vidro, como na peça real.
+    const capCav = g.userData.capCavity;
     if (g.userData.capOuter && isFrost(finM)) { const ex = g.userData.extras; g = g.userData.capOuter; if (ex) g.userData.extras = ex; }
     const mesh = new THREE.Mesh(g, material(colM, finM, firstBody && thickBase(finM) ? { y: y0 + fundo } : null, thick, look));
     // Tampa de vidro que veste a válvula: as paredes da cavidade aparecem como as linhas
     // do vidro grosso dos dois lados da válvula (antes a cavidade sumia e parecia uma janela).
     if (g.userData.capCavity && isGlass(finM) && !isFrost(finM)) { // jateado/fosco: a cavidade fica embaçada no próprio vidro, sem linha nítida
       const cm = new THREE.Mesh(g.userData.capCavity, cavityMat(colM)); cm.name = 'cavidade'; cm.userData.idx = idx; cm.renderOrder = 6; product.add(cm);
+    }
+    // Jateado/fosco: a cavidade volta, mas só a parede do fundo (a da frente fica de costas)
+    // e opaca — ela entra na imagem que o jateado desfoca, então aparece o oco macio, sem
+    // linha nítida por cima, e a válvula continua na frente dela.
+    if (capCav && isFrost(finM)) {
+      const cm = new THREE.Mesh(capCav, frostCavityMat(colM)); cm.name = 'cavidade'; cm.userData.idx = idx; product.add(cm);
     }
     // Vidro transparente: a cavidade (parede de dentro) aparece nas bordas, como a
     // espessura do vidro vista de lado, e o fundo grosso ganha a sua linha.
