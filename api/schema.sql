@@ -37,3 +37,22 @@ CREATE TABLE IF NOT EXISTS team_settings (
   v MEDIUMTEXT NOT NULL,
   updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- HDR / EXR da equipe (luz de foto): o arquivo vai em pedaços para caber nos limites
+-- de envio do servidor e do MySQL.
+CREATE TABLE IF NOT EXISTS hdr_files (
+  id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  name VARCHAR(190) NOT NULL,
+  size INT UNSIGNED NOT NULL,
+  chunks INT UNSIGNED NOT NULL,
+  complete TINYINT(1) NOT NULL DEFAULT 0,
+  user_id INT UNSIGNED NOT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  KEY (name)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+CREATE TABLE IF NOT EXISTS hdr_chunks (
+  file_id INT UNSIGNED NOT NULL,
+  idx INT UNSIGNED NOT NULL,
+  data MEDIUMBLOB NOT NULL,
+  PRIMARY KEY (file_id, idx)
+) ENGINE=InnoDB;

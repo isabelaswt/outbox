@@ -459,7 +459,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-28.bordas-limpas';
+const BUILD = '2026-09-28.hdr-servidor';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -2835,7 +2835,7 @@ function renderScene() {
   // HDRs guardados neste navegador: escolher, excluir ou subir outro
   const hl = document.createElement('div'); hl.className = 'f';
   const cur = S.scene.hdrName || HDR.name, esc = t => String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
-  hl.innerHTML = `<div class="top"><label>Meus HDR / EXR (guardados neste navegador)</label></div>
+  hl.innerHTML = `<div class="top"><label>HDR / EXR da equipe (guardados no servidor)</label></div>
     ${hdrNames.length ? `<div class="row"><select style="flex:1">${hdrNames.map(n => `<option value="${esc(n)}"${n === cur ? ' selected' : ''}>${esc(n)}</option>`).join('')}</select>
     <button class="btn sm">Usar</button><button class="btn sm">Excluir</button></div>` : ''}
     <div class="row"><button class="btn">Carregar HDR ou EXR (luz de foto)</button></div>`;
@@ -2843,8 +2843,8 @@ function renderScene() {
   hbs.at(-1).onclick = () => $('#hdrFile').click();
   if (hsel) {
     hbs[0].onclick = () => { S.scene.luz = 'hdr'; S.scene.hdrName = hsel.value; renderScene(); applySceneLight(); store.set('shape.autosave', S); req(); };
-    hbs[1].onclick = async () => { const n = hsel.value; if (!confirm(`Excluir "${n}" deste navegador?`)) return;
-      try { await hdrDB.del(n); hdrNames = hdrNames.filter(x => x !== n); } catch {} renderScene(); toast('HDR excluído'); };
+    hbs[1].onclick = async () => { const n = hsel.value; if (!confirm(`Excluir "${n}" do servidor? Some para a equipe toda.`)) return;
+      try { await api('hdr.php?a=delete', { name: n }); await refreshHdrList(); toast('HDR excluído'); } catch { toast('Não consegui excluir'); } };
   }
   f.appendChild(hl);
   field(f, S.scene, ['ao', 'Sombra de contato (o produto pesa na superfície)', 'check'], ch);
@@ -5511,19 +5511,29 @@ function applyPngLighting(mode) {
   return keep;
 }
 
-// HDR/EXR guardados neste navegador (IndexedDB): não somem ao recarregar, e cada projeto
-// lembra qual usa (S.scene.hdrName) e reabre sozinho.
-const hdrDB = (() => {
-  let op;
-  const open = () => op ??= new Promise((res, rej) => { const r = indexedDB.open('outbox-hdr', 1);
-    r.onupgradeneeded = () => r.result.createObjectStore('hdr', { keyPath: 'name' }); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); });
-  const tx = async (mode, fn) => { const db = await open(); return new Promise((res, rej) => {
-    const t = db.transaction('hdr', mode), rq = fn(t.objectStore('hdr')); t.oncomplete = () => res(rq?.result); t.onerror = t.onabort = () => rej(t.error); }); };
-  return { put: (name, blob) => tx('readwrite', st => st.put({ name, blob, t: Date.now() })), get: name => tx('readonly', st => st.get(name)),
-    del: name => tx('readwrite', st => st.delete(name)), names: () => tx('readonly', st => st.getAllKeys()) };
-})();
-hdrDB.names().then(n => { hdrNames = n || []; renderScene(); }).catch(() => {});
-async function loadHdr(blob, name, save) {
+// HDR/EXR da equipe, guardados no banco (api/hdr.php): valem em qualquer computador e
+// para todo mundo; cada projeto lembra qual usa (S.scene.hdrName) e reabre com ele.
+let hdrFiles = null; // nome → id no servidor (null = lista ainda não carregada)
+async function refreshHdrList() {
+  if (!cloud) return;
+  try { const { files } = await api('hdr.php?a=list'); hdrFiles = Object.fromEntries(files.map(f => [f.name, f.id])); hdrNames = files.map(f => f.name); }
+  catch { return; }
+  renderScene();
+  const sc = S.scene; if (sc?.luz === 'hdr' && sc.hdrName && sc.hdrName !== HDR.name) ensureHdr(sc.hdrName);
+}
+// Sobe em pedaços (cada um cabe no limite de envio do servidor), com progresso
+async function uploadHdr(blob, name) {
+  const CH = 768 * 1024, n = Math.ceil(blob.size / CH);
+  const b64 = part => new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(String(r.result).split(',')[1] || ''); r.onerror = () => rej(r.error); r.readAsDataURL(part); });
+  const { id } = await api('hdr.php?a=start', { name, size: blob.size, chunks: n });
+  for (let i = 0; i < n; i++) {
+    await api('hdr.php?a=chunk', { id, i, data: await b64(blob.slice(i * CH, (i + 1) * CH)) });
+    if (n > 2) toast(`Guardando ${name}… ${Math.round((i + 1) / n * 100)}%`);
+  }
+  await api('hdr.php?a=finish', { id });
+  await refreshHdrList();
+}
+async function loadHdr(blob, name) {
   const exr = /\.exr$/i.test(name), url = URL.createObjectURL(blob);
   // .hdr (Radiance) ou .exr (OpenEXR, o que sai do Blender/KeyShot); o leitor de EXR só
   // é baixado quando alguém sobe um
@@ -5533,23 +5543,28 @@ async function loadHdr(blob, name, save) {
     const env = pmrem.fromEquirectangular(tex).texture;
     tex.dispose(); HDR.env?.dispose(); if (HDR.url) URL.revokeObjectURL(HDR.url);
     HDR.env = env; HDR.url = url; HDR.name = name;
-    if (save) hdrDB.put(name, blob).then(() => hdrDB.names()).then(n => { hdrNames = n || []; renderScene(); })
-      .catch(() => toast('HDR carregado, mas não coube no armazenamento do navegador (arquivo grande demais)'));
     res(true);
   }, undefined, () => { URL.revokeObjectURL(url); toast(`Não consegui carregar esse ${exr ? 'EXR' : 'HDR'}`); res(false); }));
 }
-// Projeto que usa um HDR guardado: carrega do navegador quando a luz pede
+// Projeto que usa um HDR da equipe: baixa do servidor quando a luz pede
 async function ensureHdr(name) {
-  if (!name || HDR.name === name || hdrLoading === name) return;
+  if (!name || HDR.name === name || hdrLoading === name || !cloud) return;
   hdrLoading = name;
-  try { const r = await hdrDB.get(name); if (r && await loadHdr(r.blob, name, false) && sceneOf().hdrName === name) { renderScene(); applySceneLight(); req(); } }
-  catch {} finally { hdrLoading = ''; }
+  try {
+    if (!hdrFiles) { const { files } = await api('hdr.php?a=list'); hdrFiles = Object.fromEntries(files.map(f => [f.name, f.id])); hdrNames = files.map(f => f.name); }
+    const id = hdrFiles[name]; if (!id) return;
+    const r = await fetch(`api/hdr.php?a=file&id=${id}`, { credentials: 'same-origin' }); if (!r.ok) return;
+    if (await loadHdr(await r.blob(), name) && sceneOf().hdrName === name) { renderScene(); applySceneLight(); req(); }
+  } catch {} finally { hdrLoading = ''; }
 }
 $('#hdrFile').onchange = async e => {
   const f = e.target.files[0]; if (!f) return; e.target.value = '';
-  if (!(await loadHdr(f, f.name, true))) return;
-  S.scene = { ...sceneOf(), luz: 'hdr', hdrName: f.name }; renderScene(); applySceneLight(); store.set('shape.autosave', S); // HDR carregado vira a luz da cena
-  toast(`${/\.exr$/i.test(f.name) ? 'EXR' : 'HDR'} carregado e guardado: ${f.name}`); req();
+  if (!(await loadHdr(f, f.name))) return;
+  S.scene = { ...sceneOf(), luz: 'hdr', hdrName: f.name }; renderScene(); applySceneLight(); store.set('shape.autosave', S); req(); // HDR carregado vira a luz da cena
+  const kind = /\.exr$/i.test(f.name) ? 'EXR' : 'HDR';
+  if (!cloud) return toast(`${kind} carregado (entre na conta para guardar no servidor)`);
+  try { await uploadHdr(f, f.name); toast(`${kind} guardado para a equipe: ${f.name}`); }
+  catch (err) { toast(err.code === 'size' ? `${kind} grande demais (máx. 150 MB)` : `${kind} carregado, mas não consegui guardar no servidor`); }
 };
 
 $('#dlPng').onclick = () => {
@@ -5870,7 +5885,7 @@ $('#varBtn').onclick = () => {
 };
 $('#genDice').onclick = () => { $('#genSeed').value = Math.floor(Math.random() * 99999) + 1; runGen(); };
 
-window.OUTBOX = { get ao() { return { aoP, aoO, GTAOPass }; }, CS, COAT_U, get hdr() { return HDR; }, ensureHdr, hdrDB, moduleGeo, exportRoot, get S() { return S; }, get swapScroll() { return swapScroll; }, product, layout, scene, sun, stage, ground, renderer, areaKey, areaFill, hemi, detailShow, applyLogos, build, render: () => renderFrame(), get cam() { return cam; } };
+window.OUTBOX = { get ao() { return { aoP, aoO, GTAOPass }; }, CS, COAT_U, get hdr() { return HDR; }, ensureHdr, moduleGeo, exportRoot, get S() { return S; }, get swapScroll() { return swapScroll; }, product, layout, scene, sun, stage, ground, renderer, areaKey, areaFill, hemi, detailShow, applyLogos, build, render: () => renderFrame(), get cam() { return cam; } };
 
 buildDraftPresets();
 resize();
@@ -5938,6 +5953,7 @@ async function signedIn(user) {
   try { cloud = Object.fromEntries((await api('models.php?a=list')).models.map(x => [x.name, x.data])); }
   catch { toast('Não consegui carregar seus modelos'); }
   try { teamAba = (await api('settings.php?a=get&k=galAba')).value || {}; } catch { teamAba = null; } // abas da equipe
+  refreshHdrList(); // HDR/EXR da equipe
   galleryKey = ''; renderPresets();
   if (user.is_admin) { $('#teamBox').classList.remove('hidden'); renderTeam(); }
 }
