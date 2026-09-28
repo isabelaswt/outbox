@@ -455,7 +455,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-28.ior-difusao';
+const BUILD = '2026-09-28.luzes-macia-lateral';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -2160,6 +2160,30 @@ function premiumScene() {
   return sc;
 }
 const premiumEnv = pmrem.fromScene(premiumScene(), 0.005).texture; // pouco desfoque: faixas nítidas
+// Cena de estúdio genérica: sala, chão (rebatedor) e caixas de luz [largura, altura, força, posição, mira].
+function makeStudioScene(roomC, floorC, boxes) {
+  const sc = new THREE.Scene();
+  const room = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshBasicMaterial({ color: new THREE.Color(roomC), side: THREE.BackSide }));
+  room.scale.set(30, 18, 30); room.position.y = 5; sc.add(room);
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(30, 30), new THREE.MeshBasicMaterial({ color: new THREE.Color(floorC) }));
+  floor.rotation.x = -Math.PI / 2; floor.position.y = -2.9; sc.add(floor);
+  for (const [w, h, k, pos, look = [0, 1, 0]] of boxes) {
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ color: new THREE.Color('#ffffff').multiplyScalar(k), side: THREE.DoubleSide }));
+    m.position.set(...pos); m.lookAt(...look); sc.add(m);
+  }
+  return sc;
+}
+// Macia (foto de produto limpa, como e-commerce premium e render de marca): uma softbox
+// enorme de frente um pouco à esquerda, preenchimento generoso à direita, topo leve e
+// chão claro rebatendo. Sombras quase sumindo, cor fiel, brilho largo e suave.
+const maciaEnv = pmrem.fromScene(makeStudioScene('#6a6864', '#cfcac1', [
+  [10, 12, 1.3, [-3, 4, 10]], [7, 11, 3.0, [-9.5, 5, 3.5]], [4, 9, 0.6, [9, 4, 4]], [10, 3, 1.2, [0, 11, 1], [0, 0, 0]],
+]), 0.04).texture;
+// Lateral recortada (luz projetada): uma softbox média forte no alto à esquerda, quase
+// nada do outro lado — claro de um lado, sombra marcada do outro, contraste de foto.
+const lateralEnv = pmrem.fromScene(makeStudioScene('#2f2f31', '#6f6d6a', [
+  [7, 10, 5.5, [-8.5, 6, 6]], [4, 2, 1.1, [-2, 11, 2], [0, 0, 0]], [2, 10, 0.6, [8, 4, -4]],
+]), 0.03).texture;
 scene.environment = roomEnv;
 // Luz padrão pensada para ler volume: ambiente baixo, luz principal lateral
 // forte e um contraluz frio do outro lado para recortar a silhueta.
@@ -2205,6 +2229,22 @@ function placeAreaCore(c, R) {
     areaFill.width = R * 1.0; areaFill.height = R * 0.5;
     areaFill.position.set(c.x, c.y + R * 1.3, c.z + R * 0.3); areaFill.lookAt(c);
     areaKey.intensity = areaOn * 7.5; areaFill.intensity = areaOn * 1.4; // contida: bege e cores claras não estouram
+    return;
+  }
+  if (areaMode === 'macia') { // softbox enorme de frente (um pouco à esquerda) + preenchimento largo à direita
+    areaKey.width = R * 1.9; areaKey.height = R * 2.1;
+    areaKey.position.set(c.x - R * 1.15, c.y + R * 0.6, c.z + R * 1.2); areaKey.lookAt(c.x, c.y, c.z); // de lado o bastante para dar degradê na face
+    areaFill.width = R * 1.2; areaFill.height = R * 1.7;
+    areaFill.position.set(c.x + R * 1.4, c.y + R * 0.25, c.z + R * 0.7); areaFill.lookAt(c);
+    areaKey.intensity = areaOn * 4.8; areaFill.intensity = areaOn * 0.6;
+    return;
+  }
+  if (areaMode === 'lateral') { // softbox média forte no alto à esquerda; o outro lado fica na sombra
+    areaKey.width = R * 1.1; areaKey.height = R * 1.6;
+    areaKey.position.set(c.x - R * 1.35, c.y + R * 0.8, c.z + R * 0.75); areaKey.lookAt(c.x, c.y - R * 0.1, c.z);
+    areaFill.width = R * 0.6; areaFill.height = R * 1.0;
+    areaFill.position.set(c.x + R * 1.4, c.y + R * 0.1, c.z + R * 0.6); areaFill.lookAt(c);
+    areaKey.intensity = areaOn * 11; areaFill.intensity = areaOn * 0.2;
     return;
   }
   if (areaMode === 'janela') { // janela grande ao lado: degradê longo de um lado ao outro
@@ -2600,13 +2640,16 @@ function renderScene() {
   const ch = (k) => {
     // Premium: foto de perfume pede fundo escuro (o vidro só ganha contraste contra o escuro)
     if (k === 'luz' && S.scene.luz === 'premium') { S.bg = '#5a5249'; Object.assign(S.scene, { bgGrad: 'radial', bgEdge: '#131211' }); applyBackground(); }
+    // Macia: fundo claro quente quase liso. Lateral: cinza com a mancha de luz à esquerda.
+    if (k === 'luz' && S.scene.luz === 'macia') { S.bg = '#e7e2d9'; Object.assign(S.scene, { bgGrad: 'vertical', bgEdge: '#d8d1c5' }); applyBackground(); }
+    if (k === 'luz' && S.scene.luz === 'lateral') { S.bg = '#dcdad6'; Object.assign(S.scene, { bgGrad: 'lateral', bgEdge: '#4f4d4a' }); applyBackground(); }
     if (LIGHT_KEYS.includes(k)) applySceneLight(); buildStage(); if (k === 'cena') { renderScene(); fit(); } store.set('shape.autosave', S); req(); };
   field(f, S.scene, ['cena', 'Cenário', 'select', [['nenhum', 'Nenhum (só a sombra)'], ['pedestal', 'Pedestal redondo'], ['bloco', 'Bloco'],
     ['degraus', 'Degraus (vitrine)'], ['arco', 'Arco ao fundo'], ['infinito', 'Fundo infinito (estúdio)']]], ch);
   if (S.scene.cena !== 'nenhum') field(f, S.scene, ['cenaCor', 'Cor do cenário', 'color'], ch);
   field(f, S.scene, ['cenaTilt', 'Inclinar o produto (− esquerda, + direita)', -35, 35, 1, '°'], ch);
   if (['pedestal', 'bloco', 'degraus'].includes(S.scene.cena)) field(f, S.scene, ['cenaH', 'Altura do pedestal', 5, 150, 1, 'mm'], ch);
-  field(f, S.scene, ['luz', 'Luz (vale para tela, imagem e vídeo)', 'select', [['studio', 'Estúdio claro (padrão)'], ['premium', 'Premium (vidro e perfume, contraste)'], ['produto', 'Produto (e-commerce, faixa macia)'], ['padrao', 'Volume (mais contraste de lado)'],
+  field(f, S.scene, ['luz', 'Luz (vale para tela, imagem e vídeo)', 'select', [['macia', 'Macia — foto de produto limpa (e-commerce, render de marca)'], ['lateral', 'Lateral recortada — luz projetada, sombra de um lado'], ['studio', 'Estúdio claro (padrão)'], ['premium', 'Premium (vidro e perfume, contraste)'], ['produto', 'Produto (e-commerce, faixa macia)'], ['padrao', 'Volume (mais contraste de lado)'],
     ['soft', 'Suave'], ['contrast', 'Contraste'], ['sol', 'Sol (sombra longa)'], ['drama', 'Dramática'], ['faixa', 'Faixas de estúdio (reflexo vertical)'],
     ['janela', 'Janela lateral (degradê longo)'], ['recorte', 'Recorte / contraluz (contornos acesos)'],
     ...(HDR.env ? [['hdr', `HDR carregado (${HDR.name})`]] : [])]], ch);
@@ -2648,7 +2691,7 @@ function renderScene() {
   hb.querySelector('button').onclick = () => $('#hdrFile').click(); f.appendChild(hb);
   field(f, S.scene, ['ao', 'Sombra de contato (o produto pesa na superfície)', 'check'], ch);
   field(f, S, ['bg', 'Fundo da cena', 'color'], queueBuild);
-  field(f, S.scene, ['bgGrad', 'Fundo em degradê', 'select', [['nenhum', 'Liso'], ['radial', 'Radial (centro claro, bordas escuras)'], ['vertical', 'Vertical (claro em cima)']]], () => { renderScene(); applyBackground(); store.set('shape.autosave', S); });
+  field(f, S.scene, ['bgGrad', 'Fundo em degradê', 'select', [['nenhum', 'Liso'], ['radial', 'Radial (centro claro, bordas escuras)'], ['vertical', 'Vertical (claro em cima)'], ['lateral', 'Lateral (luz projetada da esquerda)']]], () => { renderScene(); applyBackground(); store.set('shape.autosave', S); });
   if (S.scene.bgGrad && S.scene.bgGrad !== 'nenhum') field(f, S.scene, ['bgEdge', 'Cor da borda do degradê', 'color'], () => { applyBackground(); store.set('shape.autosave', S); });
 }
 // Vídeo: o produto gira no prato (360° ou vai e volta) com câmera e luz fixas, ou
@@ -3047,8 +3090,9 @@ function applyBackground() {
   if (g === 'nenhum') { scene.background = new THREE.Color(S.bg); req(); return; }
   const cv = document.createElement('canvas'); cv.width = 1024; cv.height = 1024;
   const cx = cv.getContext('2d'), edge = sc.bgEdge || '#b9b7b2';
-  const gr = g === 'vertical' ? cx.createLinearGradient(0, 0, 0, 1024) : cx.createRadialGradient(512, 440, 40, 512, 512, 760);
-  gr.addColorStop(0, S.bg); gr.addColorStop(g === 'vertical' ? 0.45 : 0.25, S.bg); gr.addColorStop(1, edge);
+  // lateral: mancha de luz projetada no alto à esquerda, escurecendo para a direita (foto com luz lateral)
+  const gr = g === 'vertical' ? cx.createLinearGradient(0, 0, 0, 1024) : g === 'lateral' ? cx.createRadialGradient(230, 330, 30, 300, 420, 1050) : cx.createRadialGradient(512, 440, 40, 512, 512, 760);
+  gr.addColorStop(0, S.bg); gr.addColorStop(g === 'vertical' ? 0.45 : g === 'lateral' ? 0.18 : 0.25, S.bg); gr.addColorStop(1, edge);
   cx.fillStyle = gr; cx.fillRect(0, 0, 1024, 1024);
   bgTex?.dispose(); bgTex = new THREE.CanvasTexture(cv); bgTex.colorSpace = THREE.SRGBColorSpace;
   scene.background = bgTex; req();
@@ -3908,7 +3952,7 @@ function buildInto(product, S, explodeAmt = 0) {
       const cut = cyl(vr, y0 - 1, Math.max(1, Math.min(vb.max.y - L[i - 1].y0 + 1.5, m.h * Math.max(1, m.rep || 1) - 1))); if (m.ox) cut.translate(m.ox, 0, 0);
       const [outer, inner] = cutHole(g, cut); vg.dispose();
       const ni = x => { const y = x.index ? x.toNonIndexed() : x; for (const k in y.attributes) if (k !== 'position' && k !== 'normal') y.deleteAttribute(k); return y; };
-      if (outer !== g) { const ig = ni(inner); g = mergeGeometries([ni(outer), ig]) || g; g.userData.capCavity = ig; }
+      if (outer !== g) { const ig = ni(inner), og = ni(outer); g = mergeGeometries([og, ig]) || g; g.userData.capCavity = ig; g.userData.capOuter = og; }
     }
 
     // Gargalo é parte do frasco: sempre a cor e o acabamento do corpo de baixo.
@@ -3921,10 +3965,14 @@ function buildInto(product, S, explodeAmt = 0) {
     // distorciam), então a refração — e o IOR — aparecem de verdade.
     const thick = !isGlass(finM) ? undefined : r1(!m0.vol ? clamp(Math.min(m.W, m.D) * 0.35, 4, 18) : clamp(Math.min(m.W, m.D) * 0.3, 4, 30));
     const own = ms.own ? ms : S, look = own.difus != null || own.ior != null ? { dif: own.difus, ior: own.ior } : null;
+    // Tampa jateada/fosca vestindo a válvula: só a casca de fora. A parede da cavidade
+    // aparecia nítida através do jateado, como se estivesse na frente; sem ela, o que está
+    // dentro (a válvula) aparece embaçado pelo vidro, como na peça real.
+    if (g.userData.capOuter && isFrost(finM)) { const ex = g.userData.extras; g = g.userData.capOuter; if (ex) g.userData.extras = ex; }
     const mesh = new THREE.Mesh(g, material(colM, finM, firstBody && thickBase(finM) ? { y: y0 + fundo } : null, thick, look));
     // Tampa de vidro que veste a válvula: as paredes da cavidade aparecem como as linhas
     // do vidro grosso dos dois lados da válvula (antes a cavidade sumia e parecia uma janela).
-    if (g.userData.capCavity && isGlass(finM)) {
+    if (g.userData.capCavity && isGlass(finM) && !isFrost(finM)) { // jateado/fosco: a cavidade fica embaçada no próprio vidro, sem linha nítida
       const cm = new THREE.Mesh(g.userData.capCavity, cavityMat(colM)); cm.name = 'cavidade'; cm.userData.idx = idx; cm.renderOrder = 6; product.add(cm);
     }
     // Vidro transparente: a cavidade (parede de dentro) aparece nas bordas, como a
@@ -5196,7 +5244,11 @@ function applyLightingMode(mode) {
   const boost = envStrength(sceneOf().luzInt);
   scene.environment = env;
   setEnvRotation(sceneOf().luzRot || 0);
-  if (mode === 'produto') { // e-commerce: faixa macia de reflexo, pouca sombra, degradê para baixo
+  if (mode === 'macia') { // foto limpa: ambiente claro, sombra só um véu
+    scene.environment = maciaEnv; scene.environmentIntensity = 0.27 * boost; hemi.intensity = 0.06; sun.intensity = 0.3; sun.position.set(-110, 900, 150); // sol quase a pino: sombra curta embaixo
+  } else if (mode === 'lateral') { // luz projetada da esquerda: sombra do lado direito e no fundo
+    scene.environment = lateralEnv; scene.environmentIntensity = 0.45 * boost; hemi.intensity = 0.02; sun.intensity = 1.5; sun.position.set(-520, 380, 180);
+  } else if (mode === 'produto') { // e-commerce: faixa macia de reflexo, pouca sombra, degradê para baixo
     scene.environment = productEnv; scene.environmentIntensity = 0.42 * boost; hemi.intensity = 0.04; sun.intensity = 0.2; sun.position.set(120, 600, 260);
   } else if (mode === 'janela') {
     scene.environment = refEnv; scene.environmentIntensity = 0.42 * boost; hemi.intensity = 0.05; sun.intensity = 0.9; sun.position.set(-520, 330, 120);
@@ -5219,8 +5271,8 @@ function applyLightingMode(mode) {
   } else { // estúdio claro (padrão): caixa de luz de área + ambiente de estúdio
     scene.environment = refEnv; scene.environmentIntensity = 0.5 * boost; hemi.intensity = 0.08; sun.intensity = 0.5; sun.position.set(220, 520, 260);
   }
-  areaOn = ['studio', 'faixa', 'janela', 'recorte', 'produto'].includes(mode) ? 1 : 0;
-  areaMode = ['faixa', 'janela', 'recorte', 'produto'].includes(mode) ? mode : 'studio'; placeAreaLights();
+  areaOn = ['studio', 'faixa', 'janela', 'recorte', 'produto', 'macia', 'lateral'].includes(mode) ? 1 : 0;
+  areaMode = ['faixa', 'janela', 'recorte', 'produto', 'macia', 'lateral'].includes(mode) ? mode : 'studio'; placeAreaLights();
 }
 function applyPngLighting(mode) {
   const keep = snapshotLighting();
