@@ -74,6 +74,7 @@ Teste local com PHP: `php -S 127.0.0.1:8767 -t .` e um `api/config.php` apontand
 - Arrastar um card para uma aba muda a aba dele (salvos: gravado no modelo; base: vale para a equipe toda, via api/settings.php). Grupos de controles comecam fechados ao abrir um produto.
 - Galeria de modelos com abas: Frascos, Potes, Perfumes, Pump e gatilho, Conta-gotas, Bisnagas, Beauty (gloss, stick, batom) e Salvos.
 - Video artistico de detalhes: ~30 s, fade cruzado entre as tomadas e o frasco deitado nos dois ultimos takes.
+- Oclusao de ambiente (GTAO): junções, frestas e contato com o chao escurecem de leve, como foto real; liga/desliga e forca em Apresentacao.
 - Luzes novas: Macia (foto de produto limpa, e-commerce e render de marca) e Lateral recortada (luz projetada, sombra de um lado), cada uma com o fundo combinando.
 - Controles de Difusao (liso a difuso, qualquer acabamento) e IOR do vidro, no geral e por peca; vidro refrata pelo volume (tampa macica e frasco), com a cavidade da tampa visivel.
 - Rotulo: arte com cor e acabamento proprios (PNG sem fundo, ex.: hot stamping metalizado), com ou sem papel.

@@ -312,6 +312,10 @@ import { STLExporter } from 'three/addons/exporters/STLExporter.js';
 import { OBJExporter } from 'three/addons/exporters/OBJExporter.js';
 import { mergeGeometries, mergeVertices } from 'three/addons/utils/BufferGeometryUtils.js';
 import { DecalGeometry } from 'three/addons/geometries/DecalGeometry.js';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { GTAOPass } from 'three/addons/postprocessing/GTAOPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION } from 'three-bvh-csg';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
@@ -455,7 +459,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-28.luzes-macia-lateral';
+const BUILD = '2026-09-28.oclusao';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -2300,7 +2304,51 @@ const ortho = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 20000);
 let cam = persp, controls, orthoHalf = 150, needs = true;
 const req = () => { needs = true; };
 let frameHook = null; // vídeo: um quadro composto (ex.: revelação da malha) no lugar do render simples
-function renderFrame() { if (frameHook) frameHook(); else renderer.render(scene, cam); }
+function renderFrame() { if (frameHook) frameHook(); else renderMain(); }
+// Oclusão de ambiente (GTAO), como nos renderizadores de produto: escurece de leve as
+// frestas, as junções entre as peças (tampa/gargalo, gomos, frisos) e o contato com o
+// chão — sem ela as peças pareciam coladas e o produto flutuava. Uma passada por tipo de
+// câmera (perspectiva / ortográfica), porque o GTAO fixa isso ao ser criado.
+let composer = null, rPass = null, aoP = null, aoO = null, aoR = 0;
+const LOG_U = { near: { value: 1 }, far: { value: 20000 } };
+function renderMain() {
+  const sc = S?.scene || {};
+  if (sc.oclusao === false) { renderer.render(scene, cam); return; }
+  const ds = renderer.getDrawingBufferSize(new THREE.Vector2());
+  if (!composer) {
+    composer = new EffectComposer(renderer, new THREE.WebGLRenderTarget(ds.x, ds.y, { type: THREE.HalfFloatType, samples: 4 }));
+    composer.setPixelRatio(1);
+    rPass = new RenderPass(scene, cam); aoP = new GTAOPass(scene, persp, ds.x, ds.y); aoO = new GTAOPass(scene, ortho, ds.x, ds.y);
+    [aoP, aoO].forEach(a => { a.output = GTAOPass.OUTPUT.Default; });
+    // O renderizador usa profundidade logarítmica (evita piscar a distância); o GTAO espera
+    // a comum: na câmera em perspectiva, converte cada leitura de profundidade de volta.
+    const LOGD = `uniform float uLogNear; uniform float uLogFar;
+float logToPersp(float d) { if (d >= 1.0) return 1.0; float w = exp2(d * log2(uLogFar + 1.0)) - 1.0; float vz = -max(w, uLogNear);
+  return ((uLogNear + vz) * uLogFar) / ((uLogFar - uLogNear) * vz); }
+vec4 logDepth4(vec4 v) { return vec4(logToPersp(v.x), logToPersp(v.y), logToPersp(v.z), logToPersp(v.w)); }
+`;
+    for (const mt of [aoP.gtaoMaterial, aoP.pdMaterial]) {
+      mt.uniforms.uLogNear = LOG_U.near; mt.uniforms.uLogFar = LOG_U.far;
+      mt.fragmentShader = LOGD + mt.fragmentShader.replace(/textureLod\(tDepth, ([^;]*?), 0\.0\)/g, 'logDepth4(textureLod(tDepth, $1, 0.0))').replace(/texelFetch\(tDepth, ([^;]*?), 0\)/g, 'logDepth4(texelFetch(tDepth, $1, 0))');
+      mt.needsUpdate = true;
+    }
+    composer.addPass(rPass); composer.addPass(aoP); composer.addPass(aoO); composer.addPass(new OutputPass());
+    composer._w = ds.x; composer._h = ds.y;
+  }
+  if (composer._w !== ds.x || composer._h !== ds.y) { composer.setSize(ds.x, ds.y); composer._w = ds.x; composer._h = ds.y; }
+  // raio da oclusão na escala do produto (mm): frestas e contato, sem sujar faces grandes
+  const b = new THREE.Box3().setFromObject(product); sideRoot.children.forEach(g => b.union(new THREE.Box3().setFromObject(g)));
+  const R = b.isEmpty() ? 100 : b.getSize(new THREE.Vector3()).length();
+  const r = r1(clamp(R * 0.11, 3, 60));
+  if (r !== aoR) { aoR = r; [aoP, aoO].forEach(a => a.updateGtaoMaterial({ radius: r, thickness: r * 0.6, distanceExponent: 1.8, scale: 1.3, samples: 16 })); }
+  // só em volta do produto (e do chão logo embaixo): o chão visto de lado ao longe
+  // gerava leques pontilhados no fundo
+  if (!b.isEmpty()) { const cb = b.clone().expandByScalar(r * 1.5); cb.min.y = Math.min(cb.min.y, -r); [aoP, aoO].forEach(a => a.setSceneClipBox(cb)); }
+  const k = clamp((sc.oclusaoInt ?? 100) / 100, 0, 1.5);
+  LOG_U.near.value = persp.near; LOG_U.far.value = persp.far;
+  rPass.camera = cam; aoP.enabled = cam === persp; aoO.enabled = cam !== persp; aoP.blendIntensity = aoO.blendIntensity = k;
+  composer.render();
+}
 function makeControls(target) {
   controls?.dispose();
   controls = new OrbitControls(cam, canvas);
@@ -2542,7 +2590,7 @@ const contactMat = (() => {
   const t = new THREE.CanvasTexture(cv); t.colorSpace = THREE.SRGBColorSpace;
   return new THREE.MeshBasicMaterial({ map: t, transparent: true, depthWrite: false, toneMapped: false, polygonOffset: true, polygonOffsetFactor: -1 });
 })();
-const SCENE0 = { cena: 'nenhum', cenaCor: '#e6e0d6', cenaH: 40, cenaTilt: 0, luz: 'studio', ao: true, luzRot: 0, luzInt: 100, luzCon: 50, bgGrad: 'nenhum', bgEdge: '#b9b7b2',
+const SCENE0 = { cena: 'nenhum', cenaCor: '#e6e0d6', cenaH: 40, cenaTilt: 0, oclusao: true, oclusaoInt: 100, luz: 'studio', ao: true, luzRot: 0, luzInt: 100, luzCon: 50, bgGrad: 'nenhum', bgEdge: '#b9b7b2',
   luzAlt: 0, luzKey: 100, luzFill: 100, luzSoft: 50 };
 const LIGHT_KEYS = ['luz', 'luzRot', 'luzInt', 'luzCon', 'luzAlt', 'luzKey', 'luzFill', 'luzSoft'];
 // Contraste da luz: 50 = neutro; mais = luz principal forte e ambiente/preenchimento
@@ -2642,7 +2690,7 @@ function renderScene() {
     if (k === 'luz' && S.scene.luz === 'premium') { S.bg = '#5a5249'; Object.assign(S.scene, { bgGrad: 'radial', bgEdge: '#131211' }); applyBackground(); }
     // Macia: fundo claro quente quase liso. Lateral: cinza com a mancha de luz à esquerda.
     if (k === 'luz' && S.scene.luz === 'macia') { S.bg = '#e7e2d9'; Object.assign(S.scene, { bgGrad: 'vertical', bgEdge: '#d8d1c5' }); applyBackground(); }
-    if (k === 'luz' && S.scene.luz === 'lateral') { S.bg = '#dcdad6'; Object.assign(S.scene, { bgGrad: 'lateral', bgEdge: '#4f4d4a' }); applyBackground(); }
+    if (k === 'luz' && S.scene.luz === 'lateral') { S.bg = '#efebe4'; Object.assign(S.scene, { bgGrad: 'lateral', bgEdge: '#9b9285' }); applyBackground(); } // quente e claro (cinza pesado demais)
     if (LIGHT_KEYS.includes(k)) applySceneLight(); buildStage(); if (k === 'cena') { renderScene(); fit(); } store.set('shape.autosave', S); req(); };
   field(f, S.scene, ['cena', 'Cenário', 'select', [['nenhum', 'Nenhum (só a sombra)'], ['pedestal', 'Pedestal redondo'], ['bloco', 'Bloco'],
     ['degraus', 'Degraus (vitrine)'], ['arco', 'Arco ao fundo'], ['infinito', 'Fundo infinito (estúdio)']]], ch);
@@ -2653,6 +2701,8 @@ function renderScene() {
     ['soft', 'Suave'], ['contrast', 'Contraste'], ['sol', 'Sol (sombra longa)'], ['drama', 'Dramática'], ['faixa', 'Faixas de estúdio (reflexo vertical)'],
     ['janela', 'Janela lateral (degradê longo)'], ['recorte', 'Recorte / contraluz (contornos acesos)'],
     ...(HDR.env ? [['hdr', `HDR carregado (${HDR.name})`]] : [])]], ch);
+  field(f, S.scene, ['oclusao', 'Oclusão de ambiente (frestas, junções e contato com o chão)', 'check'], k => { ch(k); renderScene(); });
+  if (S.scene.oclusao !== false) field(f, S.scene, ['oclusaoInt', 'Força da oclusão', 0, 150, 1, '%'], ch);
   field(f, S.scene, ['luzRot', 'Girar a luz (o estúdio todo em volta do produto)', -180, 180, 1, '°'], ch);
   field(f, S.scene, ['luzInt', 'Intensidade da luz', 20, 250, 1, '%'], ch);
   field(f, S.scene, ['luzCon', 'Contraste da luz (− uniforme, + mais volume)', 0, 100, 1, ''], ch);
@@ -2867,7 +2917,7 @@ function detailShow() {
   const half = sz.y * 0.62, smoother = x => x * x * x * (x * (x * 6 - 15) + 10);
   const land = x => smoother(Math.pow(x, 0.72)); // arranque macio, pouso longo e suave no fim
   // Fade: o quadro da tomada que sai é guardado e desenhado por cima da que entra.
-  const renderShot = sh => { if (sh.wire) composite(); else renderer.render(scene, cam); };
+  const renderShot = sh => { if (sh.wire) composite(); else renderMain(); };
   let fadeTex = null;
   const fadeMat = new THREE.ShaderMaterial({ depthTest: false, depthWrite: false, toneMapped: false, transparent: true,
     uniforms: { tF: { value: null }, uA: { value: 1 }, uRes: { value: new THREE.Vector2() } },
@@ -5314,7 +5364,7 @@ $('#dlPng').onclick = () => {
   renderer.setPixelRatio(1); renderer.setSize(Math.round(w * ss), Math.round(h * ss), false);
   const shot = bg => {
     if (bg !== undefined) scene.background = bg;
-    renderer.render(scene, cam);
+    renderMain();
     const c = document.createElement('canvas'); c.width = w; c.height = h;
     const cx = c.getContext('2d'); cx.imageSmoothingEnabled = true; cx.imageSmoothingQuality = 'high';
     cx.drawImage(renderer.domElement, 0, 0, w, h); return c;
@@ -5612,7 +5662,7 @@ $('#varBtn').onclick = () => {
 };
 $('#genDice').onclick = () => { $('#genSeed').value = Math.floor(Math.random() * 99999) + 1; runGen(); };
 
-window.OUTBOX = { moduleGeo, exportRoot, get S() { return S; }, get swapScroll() { return swapScroll; }, product, layout, scene, sun, stage, ground, renderer, areaKey, areaFill, hemi, detailShow, applyLogos, build, render: () => renderFrame(), get cam() { return cam; } };
+window.OUTBOX = { get ao() { return { aoP, aoO, GTAOPass }; }, moduleGeo, exportRoot, get S() { return S; }, get swapScroll() { return swapScroll; }, product, layout, scene, sun, stage, ground, renderer, areaKey, areaFill, hemi, detailShow, applyLogos, build, render: () => renderFrame(), get cam() { return cam; } };
 
 buildDraftPresets();
 resize();
