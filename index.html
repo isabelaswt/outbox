@@ -389,6 +389,7 @@ const BASE = {
   notch: false, notchLock: true, notchY: 12, notchW: 20, notchH: 8, notchD: 2, notchP: 2,
   ridges: 0, ridgeD: 0.6, lobes: 0, lobeD: 3,
   labType: 'nenhum', labH: 50, labY: 50, labW: 40, labColor: '#ffffff', labFinish: 'fosco', labImg: '', labImgB: '', labInk: false, labInkColor: '#1c1c1c', labInkFinish: 'metal',
+  reliefImg: '', reliefName: '', reliefScale: 18, reliefDepth: 0,
   own: false, color: '#e8dcc6', finish: 'fosco', vol: false,
   // kind 'giro': seção girando no eixo; 'placa': silhueta frontal extrudada na profundidade.
   kind: 'giro', ox: 0, rTL: 6, rTR: 6, rBL: 6, rBR: 6, rEdge: 3, chamfer: false,
@@ -504,7 +505,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-28.import-stl';
+const BUILD = '2026-09-28.relevo-textura';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -2507,6 +2508,38 @@ function applyHand() {
 }
 
 const matCache = new Map();
+const reliefTexCache = new Map();
+function reliefTexture(src) {
+  if (!src) return null;
+  let tex = reliefTexCache.get(src);
+  if (!tex) {
+    tex = new THREE.TextureLoader().load(src, t => { t.needsUpdate = true; req(); });
+    tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+    tex.colorSpace = THREE.NoColorSpace;
+    tex.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy?.() || 1);
+    reliefTexCache.set(src, tex);
+  }
+  return tex;
+}
+function addAutoUv(g, repeatMm = 18) {
+  if (!g || g.attributes.uv || !g.attributes.position) return;
+  g.computeBoundingBox();
+  const b = g.boundingBox, p = g.attributes.position, uv = [];
+  const sx = Math.max(1, b.max.x - b.min.x), sz = Math.max(1, b.max.z - b.min.z);
+  for (let i = 0; i < p.count; i++) {
+    const x = p.getX(i), y = p.getY(i), z = p.getZ(i);
+    uv.push(((Math.atan2(z, x) / TAU + 1) % 1) * (Math.PI * Math.max(sx, sz) / repeatMm), (y - b.min.y) / repeatMm);
+  }
+  g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+}
+function reliefMat(base, m) {
+  if (!m.reliefImg || !(m.reliefDepth > 0)) return base;
+  const tex = reliefTexture(m.reliefImg), mat = base.clone();
+  mat.bumpMap = tex;
+  mat.bumpScale = m.reliefDepth;
+  mat.needsUpdate = true;
+  return mat;
+}
 const insertMat = new THREE.MeshStandardMaterial({ color: '#ececea', roughness: 0.35 });
 // Sobretampa transparente (pump de bisnaga): por fora de tudo, então pode ser transparente comum.
 const clearMat = new THREE.MeshPhysicalMaterial({ color: '#f6f7f5', roughness: 0.12, transparent: true, opacity: 0.22, depthWrite: false, clearcoat: 1 });
@@ -4200,7 +4233,8 @@ function buildInto(product, S, explodeAmt = 0) {
     // dentro (a válvula) aparece embaçado pelo vidro, como na peça real.
     const capCav = g.userData.capCavity;
     if (g.userData.capOuter && isFrost(finM)) { const ex = g.userData.extras; g = g.userData.capOuter; if (ex) g.userData.extras = ex; }
-    const mesh = new THREE.Mesh(g, material(colM, finM, firstBody && thickBase(finM) ? { y: y0 + fundo } : null, thick, look));
+    if (ms.reliefImg && ms.reliefDepth > 0) addAutoUv(g, ms.reliefScale || 18);
+    const mesh = new THREE.Mesh(g, reliefMat(material(colM, finM, firstBody && thickBase(finM) ? { y: y0 + fundo } : null, thick, look), ms));
     // Tampa de vidro que veste a válvula: as paredes da cavidade aparecem como as linhas
     // do vidro grosso dos dois lados da válvula (antes a cavidade sumia e parecia uma janela).
     if (g.userData.capCavity && isGlass(finM) && !isFrost(finM)) { // jateado/fosco: a cavidade fica embaçada no próprio vidro, sem linha nítida
@@ -4746,6 +4780,10 @@ const MF = [
     ['difus', 'Difusão (0 = liso/polido, 100 = bem difuso)', 0, 100, 1, '%', m => m.own, m => presetDif(m.finish)],
     ['ior', 'IOR do vidro (1,0 ar · 1,33 água · 1,5 vidro · 2,4 diamante)', 1, 2.4, 0.01, '', m => m.own && isGlass(m.finish), m => presetIor(m.finish)],
   ]],
+  ['Relevo por textura', [
+    ['reliefScale', 'Tamanho da repetição', 3, 120, 0.5, 'mm', m => m.reliefImg],
+    ['reliefDepth', 'Força do relevo', 0, 4, 0.05, 'mm', m => m.reliefImg],
+  ]],
 ];
 
 let rebuildQueued = false;
@@ -4839,7 +4877,8 @@ function renderEditor() {
   for (const [title, defs] of MF) {
     if (title === 'Rótulo') continue; // fica no painel do logotipo (renderLabelBox)
     const ribsHere = title === 'Frisos' && (m.kind === 'giro' || m.kind === 'perfil');
-    if (!ribsHere && !defs.some(d => !d[6] || d[6](m))) continue;
+    const reliefHere = title === 'Relevo por textura';
+    if (!ribsHere && !reliefHere && !defs.some(d => !d[6] || d[6](m))) continue;
     // Grupo recolhível; lembra quais ficaram abertos.
     const grp = document.createElement('details'); grp.className = 'grp'; grp.open = !!openG[title] || (title === 'Gomos' && m.lobes >= 3);
     grp.innerHTML = `<summary>${title}</summary>`;
@@ -4849,6 +4888,25 @@ function renderEditor() {
       const b = document.createElement('button'); b.className = 'btn'; b.textContent = 'Espelhar ←→';
       b.onclick = () => { [m.rTL, m.rTR, m.rBL, m.rBR, m.ox] = [m.rTR, m.rTL, m.rBR, m.rBL, -m.ox]; renderEditorKeepScroll(); queueBuild(); };
       grp.appendChild(b);
+    }
+    if (title === 'Relevo por textura') {
+      const row = document.createElement('div'); row.className = 'row';
+      const up = document.createElement('button'); up.className = 'btn sm'; up.textContent = m.reliefImg ? 'Trocar textura' : 'Subir textura seamless';
+      const rm = document.createElement('button'); rm.className = 'btn sm'; rm.textContent = 'Remover'; rm.classList.toggle('hidden', !m.reliefImg);
+      up.onclick = () => {
+        const inp = document.createElement('input'); inp.type = 'file'; inp.accept = 'image/png,image/jpeg,image/webp';
+        inp.onchange = () => {
+          const f = inp.files[0]; if (!f) return;
+          const r = new FileReader();
+          r.onload = () => { m.reliefImg = r.result; m.reliefName = f.name; if (!(m.reliefDepth > 0)) m.reliefDepth = 0.55; if (!(m.reliefScale > 0)) m.reliefScale = 18; renderEditorKeepScroll(); queueBuild(); };
+          r.readAsDataURL(f);
+        };
+        inp.click();
+      };
+      rm.onclick = () => { m.reliefImg = ''; m.reliefName = ''; m.reliefDepth = 0; renderEditorKeepScroll(); queueBuild(); };
+      row.append(up, rm); grp.append(row);
+      const tip = document.createElement('div'); tip.className = 'tip'; tip.textContent = m.reliefImg ? `Textura: ${m.reliefName || 'imagem carregada'}` : 'Use uma textura preto e branco seamless: claro sobe, escuro afunda.';
+      grp.append(tip);
     }
     for (const def of defs) {
       const show = def[6];
@@ -4875,7 +4933,7 @@ function renderEditor() {
           syncSphereRadius(m, k === 'roundLock' && m.roundLock || ['W', 'D', 'h'].includes(k) && m.roundLock);
         }
         if (k === 'finish') { delete m.difus; delete m.ior; } // acabamento novo: difusão e IOR voltam ao dele
-        if (structural || ['rep', 'groove', 'ridges', 'own', 'labType', 'bpesc', 'finish'].includes(k) || (isSphereCap(m) && ['W', 'D', 'h', 'roundLock', 'sphereR'].includes(k))) renderEditorKeepScroll();
+        if (structural || ['rep', 'groove', 'ridges', 'own', 'labType', 'bpesc', 'finish', 'reliefScale', 'reliefDepth'].includes(k) || (isSphereCap(m) && ['W', 'D', 'h', 'roundLock', 'sphereR'].includes(k))) renderEditorKeepScroll();
         renderStack(); queueBuild();
       });
       if (show && !show(m)) el.classList.add('hidden');
