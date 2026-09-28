@@ -505,7 +505,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-28.relevo-uv-proporcional';
+const BUILD = '2026-09-28.converter-imagem-relevo';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -2606,6 +2606,51 @@ function makeMatelasseTexture() {
     px[i] = px[i + 1] = px[i + 2] = c; px[i + 3] = 255;
   }
   cx.putImageData(img, 0, 0);
+  return cv.toDataURL('image/png');
+}
+function imageFromUrl(src) {
+  return new Promise((res, rej) => {
+    const img = new Image();
+    img.onload = () => res(img);
+    img.onerror = rej;
+    img.src = src;
+  });
+}
+async function imageToDisplacement(src) {
+  const img = await imageFromUrl(src), max = 1024;
+  const sc = Math.min(1, max / Math.max(img.naturalWidth || img.width, img.naturalHeight || img.height));
+  const w = Math.max(8, Math.round((img.naturalWidth || img.width) * sc)), h = Math.max(8, Math.round((img.naturalHeight || img.height) * sc));
+  const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+  const cx = cv.getContext('2d', { willReadFrequently: true });
+  cx.drawImage(img, 0, 0, w, h);
+  const raw = cx.getImageData(0, 0, w, h), gray = cx.createImageData(w, h), gp = gray.data, rp = raw.data;
+  const lum = new Float32Array(w * h);
+  for (let i = 0, j = 0; i < lum.length; i++, j += 4) {
+    const v = (rp[j] * 0.2126 + rp[j + 1] * 0.7152 + rp[j + 2] * 0.0722) / 255;
+    lum[i] = v; const c = Math.round(v * 255); gp[j] = gp[j + 1] = gp[j + 2] = c; gp[j + 3] = 255;
+  }
+  const gcv = document.createElement('canvas'); gcv.width = w; gcv.height = h;
+  const gcx = gcv.getContext('2d', { willReadFrequently: true }); gcx.putImageData(gray, 0, 0);
+  const bcv = document.createElement('canvas'); bcv.width = w; bcv.height = h;
+  const bcx = bcv.getContext('2d', { willReadFrequently: true });
+  bcx.filter = `blur(${clamp(Math.min(w, h) * 0.04, 8, 42)}px)`;
+  bcx.drawImage(gcv, 0, 0);
+  const bp = bcx.getImageData(0, 0, w, h).data, vals = new Float32Array(w * h), sorted = new Float32Array(w * h);
+  for (let i = 0, j = 0; i < vals.length; i++, j += 4) {
+    const base = bp[j] / 255;
+    const v = clamp(0.5 + (lum[i] - base) * 1.85 + (lum[i] - 0.5) * 0.18, 0, 1);
+    vals[i] = sorted[i] = v;
+  }
+  sorted.sort();
+  const lo = sorted[Math.floor(sorted.length * 0.01)], hi = sorted[Math.floor(sorted.length * 0.99)], span = Math.max(0.01, hi - lo);
+  const out = cx.createImageData(w, h), op = out.data;
+  for (let i = 0, j = 0; i < vals.length; i++, j += 4) {
+    let v = clamp((vals[i] - lo) / span, 0, 1);
+    v = smooth(0, 1, v);
+    v = clamp(0.5 + (v - 0.5) * 1.25, 0, 1);
+    const c = Math.round(v * 255); op[j] = op[j + 1] = op[j + 2] = c; op[j + 3] = 255;
+  }
+  cx.putImageData(out, 0, 0);
   return cv.toDataURL('image/png');
 }
 function textureReliefMask(m, b, x, y, z) {
@@ -5028,6 +5073,7 @@ function renderEditor() {
     if (title === 'Relevo por textura') {
       const row = document.createElement('div'); row.className = 'row';
       const up = document.createElement('button'); up.className = 'btn sm'; up.textContent = m.reliefImg ? 'Trocar textura' : 'Subir textura seamless';
+      const conv = document.createElement('button'); conv.className = 'btn sm'; conv.textContent = 'Converter imagem em relevo';
       const mt = document.createElement('button'); mt.className = 'btn sm'; mt.textContent = 'Matelassê losangos';
       const rm = document.createElement('button'); rm.className = 'btn sm'; rm.textContent = 'Remover'; rm.classList.toggle('hidden', !m.reliefImg);
       up.onclick = () => {
@@ -5043,6 +5089,27 @@ function renderEditor() {
             ensureReliefData(m.reliefImg).then(() => queueBuild()); renderEditorKeepScroll(); queueBuild();
           };
           r.readAsDataURL(f);
+        };
+        inp.click();
+      };
+      conv.onclick = () => {
+        const inp = document.createElement('input'); inp.type = 'file'; inp.accept = 'image/png,image/jpeg,image/webp';
+        inp.onchange = async () => {
+          const f = inp.files[0]; if (!f) return;
+          conv.disabled = true; conv.textContent = 'Convertendo...';
+          try {
+            const src = await new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = () => rej(r.error); r.readAsDataURL(f); });
+            m.reliefImg = await imageToDisplacement(src);
+            m.reliefName = `${f.name} → displacement`;
+            if (!(m.reliefDepth > 0)) m.reliefDepth = 0.55; if (!(m.reliefScale > 0)) m.reliefScale = 18;
+            if (!(m.reliefH > 0)) m.reliefH = 82; if (!(m.reliefY >= 0)) m.reliefY = 50; if (!(m.reliefW > 0)) m.reliefW = 100; if (!(m.reliefFade >= 0)) m.reliefFade = 4;
+            m.reliefQuality = Math.max(m.reliefQuality || 0, 5);
+            m.reliefSoft = Math.max(m.reliefSoft || 0, 0.8);
+            m.reliefGeomSmooth = Math.max(m.reliefGeomSmooth || 0, 1);
+            ensureReliefData(m.reliefImg).then(() => queueBuild());
+            toast('Imagem convertida em displacement e salva no projeto');
+            renderEditorKeepScroll(); queueBuild();
+          } catch (e) { console.warn(e); toast('Não consegui converter essa imagem'); renderEditorKeepScroll(); }
         };
         inp.click();
       };
@@ -5063,8 +5130,8 @@ function renderEditor() {
         queueBuild();
       };
       rm.onclick = () => { m.reliefImg = ''; m.reliefName = ''; m.reliefDepth = 0; renderEditorKeepScroll(); queueBuild(); };
-      row.append(up, mt, rm); grp.append(row);
-      const tip = document.createElement('div'); tip.className = 'tip'; tip.textContent = m.reliefImg ? `Textura: ${m.reliefName || 'imagem carregada'} · vira malha real no GLB/OBJ/STL. Para acabamento fino, suba Qualidade da malha e use Suavizar malha.` : 'Use uma textura preto e branco seamless: claro sobe, escuro afunda. O relevo vira vértice real no 3D.';
+      row.append(up, conv, mt, rm); grp.append(row);
+      const tip = document.createElement('div'); tip.className = 'tip'; tip.textContent = m.reliefImg ? `Textura: ${m.reliefName || 'imagem carregada'} · vira malha real no GLB/OBJ/STL. Ao salvar o projeto, esse mapa convertido vai para o banco.` : 'Suba um displacement pronto ou converta uma imagem comum. Claro sobe, escuro afunda; o mapa convertido fica salvo dentro do projeto.';
       grp.append(tip);
     }
     for (const def of defs) {
