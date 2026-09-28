@@ -459,7 +459,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-28.oclusao';
+const BUILD = '2026-09-28.brilho-softbox';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -2181,7 +2181,7 @@ function makeStudioScene(roomC, floorC, boxes) {
 // enorme de frente um pouco à esquerda, preenchimento generoso à direita, topo leve e
 // chão claro rebatendo. Sombras quase sumindo, cor fiel, brilho largo e suave.
 const maciaEnv = pmrem.fromScene(makeStudioScene('#6a6864', '#cfcac1', [
-  [10, 12, 1.3, [-3, 4, 10]], [7, 11, 3.0, [-9.5, 5, 3.5]], [4, 9, 0.6, [9, 4, 4]], [10, 3, 1.2, [0, 11, 1], [0, 0, 0]],
+  [3.2, 14, 22, [-3.2, 4, 10]], [8, 12, 0.5, [2, 4, 10]], [7, 11, 2.2, [-9.5, 5, 3.5]], [4, 9, 0.6, [9, 4, 4]], [10, 3, 1.2, [0, 11, 1], [0, 0, 0]], // faixa vertical na frente-esquerda: o brilho largo do plástico
 ]), 0.04).texture;
 // Lateral recortada (luz projetada): uma softbox média forte no alto à esquerda, quase
 // nada do outro lado — claro de um lado, sombra marcada do outro, contraste de foto.
@@ -2236,11 +2236,13 @@ function placeAreaCore(c, R) {
     return;
   }
   if (areaMode === 'macia') { // softbox enorme de frente (um pouco à esquerda) + preenchimento largo à direita
-    areaKey.width = R * 1.9; areaKey.height = R * 2.1;
-    areaKey.position.set(c.x - R * 1.15, c.y + R * 0.6, c.z + R * 1.2); areaKey.lookAt(c.x, c.y, c.z); // de lado o bastante para dar degradê na face
-    areaFill.width = R * 1.2; areaFill.height = R * 1.7;
-    areaFill.position.set(c.x + R * 1.4, c.y + R * 0.25, c.z + R * 0.7); areaFill.lookAt(c);
-    areaKey.intensity = areaOn * 4.8; areaFill.intensity = areaOn * 0.6;
+    // principal: faixa alta e estreita na frente-esquerda — vira o brilho largo e macio do
+    // plástico (como nas fotos) e ainda dá o degradê da face; preenchimento grande e fraco à direita
+    areaKey.width = R * 0.75; areaKey.height = R * 2.4;
+    areaKey.position.set(c.x - R * 0.85, c.y + R * 0.45, c.z + R * 1.35); areaKey.lookAt(c.x, c.y, c.z);
+    areaFill.width = R * 1.8; areaFill.height = R * 2.0;
+    areaFill.position.set(c.x + R * 1.2, c.y + R * 0.3, c.z + R * 1.0); areaFill.lookAt(c);
+    areaKey.intensity = areaOn * 10; areaFill.intensity = areaOn * 0.7;
     return;
   }
   if (areaMode === 'lateral') { // softbox média forte no alto à esquerda; o outro lado fica na sombra
@@ -2491,7 +2493,7 @@ const bandF = y => `(1.0 - smoothstep(${(y - 0.9).toFixed(2)}, ${(y + 0.9).toFix
 const WALL_U = { value: 1.2 };
 const wallUniform = sh => { sh.uniforms.uWall = WALL_U; sh.fragmentShader = 'uniform float uWall;\n' + sh.fragmentShader; };
 // Difusão e IOR escolhidos à mão (sem escolha: o do acabamento). Difusão 0–100% = aspereza 0–0,8.
-const FIN_ROUGH = { fosco: 0.56, acetinado: 0.34, brilho: 0.14, perolado: 0.3, vidro: 0.05, pet: 0.08, vidroSemi: 0.27, vidroFosco: 0.42, petFosco: 0.5, petSemi: 0.24, metal: 0.3 };
+const FIN_ROUGH = { fosco: 0.52, acetinado: 0.3, brilho: 0.14, perolado: 0.3, vidro: 0.05, pet: 0.08, vidroSemi: 0.27, vidroFosco: 0.42, petFosco: 0.5, petSemi: 0.24, metal: 0.3 };
 const presetDif = f => Math.round((FIN_ROUGH[f] ?? 0.5) / 0.8 * 100), presetIor = f => (String(f).startsWith('pet') ? 1.45 : 1.5);
 function material(color, finish, band = null, thick, look = null) {
   if (band && !isGlass(finish)) band = null;
@@ -2506,9 +2508,11 @@ function material(color, finish, band = null, thick, look = null) {
   // Fosco de verdade não é chapado: o contorno acende de leve (sheen) e uma camada
   // bem difusa devolve os brilhos largos das caixas de luz em ombros e quinas.
   // (sheen tingido com a cor da peça: branco, ele virava uma película cinza nos lados de sombra)
-  if (finish === 'fosco') { m.roughness = 0.56; m.sheen = 0.28; m.sheenRoughness = 0.55; m.sheenColor = new THREE.Color(color).lerp(new THREE.Color('#ffffff'), 0.5);
-    m.clearcoat = 0.1; m.clearcoatRoughness = 0.5; }
-  if (finish === 'acetinado') { m.roughness = 0.34; m.clearcoat = 0.25; m.clearcoatRoughness = 0.4; }
+  // Plástico de verdade tem uma película que reflete a softbox: no fosco uma faixa larga e
+  // bem macia, no acetinado mais definida. Sem ela a peça ficava chapada, com cara de massinha.
+  if (finish === 'fosco') { m.roughness = 0.52; m.sheen = 0.25; m.sheenRoughness = 0.55; m.sheenColor = new THREE.Color(color).lerp(new THREE.Color('#ffffff'), 0.5);
+    m.clearcoat = 0.42; m.clearcoatRoughness = 0.34; }
+  if (finish === 'acetinado') { m.roughness = 0.3; m.clearcoat = 0.6; m.clearcoatRoughness = 0.2; }
   if (finish === 'brilho') { m.roughness = 0.14; m.clearcoat = 1; m.clearcoatRoughness = 0.06; }
   if (finish === 'perolado') { m.roughness = 0.3; m.iridescence = 0.7; m.iridescenceIOR = 1.4; m.clearcoat = 0.4; }
   // Vidro não grava profundidade: o que é translúcido dentro dele (pipeta) aparece,
