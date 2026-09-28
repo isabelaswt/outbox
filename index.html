@@ -459,7 +459,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-28.plastico-satin';
+const BUILD = '2026-09-28.hdr-guardado';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -2686,7 +2686,7 @@ function material(color, finish, band = null, thick, look = null) {
 // Cenário montado em volta do que está na cena (produto + os ao lado).
 const SCENE0 = { cena: 'nenhum', cenaCor: '#e6e0d6', cenaH: 40, cenaTilt: 0, oclusao: true, oclusaoInt: 100, luz: 'studio', ao: true, luzRot: 0, luzInt: 100, luzCon: 50, bgGrad: 'nenhum', bgEdge: '#b9b7b2',
   luzAlt: 0, luzKey: 100, luzFill: 100, luzSoft: 50 };
-const LIGHT_KEYS = ['luz', 'luzRot', 'luzInt', 'luzCon', 'luzAlt', 'luzKey', 'luzFill', 'luzSoft'];
+const LIGHT_KEYS = ['luz', 'hdrName', 'luzRot', 'luzInt', 'luzCon', 'luzAlt', 'luzKey', 'luzFill', 'luzSoft'];
 // Contraste da luz: 50 = neutro; mais = luz principal forte e ambiente/preenchimento
 // fracos (lado escuro mais escuro, mais volume); menos = luz mais uniforme.
 const conKey = sc => 1 + 1.1 * (clamp((sc.luzCon ?? 50) / 100, 0, 1) - 0.5);
@@ -2784,7 +2784,7 @@ function renderScene() {
   field(f, S.scene, ['luz', 'Luz (vale para tela, imagem e vídeo)', 'select', [['macia', 'Macia — foto de produto limpa (e-commerce, render de marca)'], ['lateral', 'Lateral recortada — luz projetada, sombra de um lado'], ['studio', 'Estúdio claro (padrão)'], ['premium', 'Premium (vidro e perfume, contraste)'], ['produto', 'Produto (e-commerce, faixa macia)'], ['padrao', 'Volume (mais contraste de lado)'],
     ['soft', 'Suave'], ['contrast', 'Contraste'], ['sol', 'Sol (sombra longa)'], ['drama', 'Dramática'], ['faixa', 'Faixas de estúdio (reflexo vertical)'],
     ['janela', 'Janela lateral (degradê longo)'], ['recorte', 'Recorte / contraluz (contornos acesos)'],
-    ...(HDR.env ? [['hdr', `HDR carregado (${HDR.name})`]] : [])]], ch);
+    ...(HDR.env || hdrNames.length || S.scene.luz === 'hdr' ? [['hdr', 'HDR / EXR (luz de foto)']] : [])]], ch);
   field(f, S.scene, ['oclusao', 'Oclusão de ambiente (frestas, junções e contato com o chão)', 'check'], k => { ch(k); renderScene(); });
   if (S.scene.oclusao !== false) field(f, S.scene, ['oclusaoInt', 'Força da oclusão', 0, 150, 1, '%'], ch);
   field(f, S.scene, ['luzRot', 'Girar a luz (o estúdio todo em volta do produto)', -180, 180, 1, '°'], ch);
@@ -2820,9 +2820,21 @@ function renderScene() {
     store.set('shape.lights', mine); renderScene(); toast(`Luz salva: ${n}`);
   };
   f.appendChild(ml);
-  const hb = document.createElement('div'); hb.className = 'row';
-  hb.innerHTML = `<button class="btn">${HDR.env ? 'Trocar HDR / EXR' : 'Carregar HDR ou EXR (luz de foto)'}</button>`;
-  hb.querySelector('button').onclick = () => $('#hdrFile').click(); f.appendChild(hb);
+  // HDRs guardados neste navegador: escolher, excluir ou subir outro
+  const hl = document.createElement('div'); hl.className = 'f';
+  const cur = S.scene.hdrName || HDR.name, esc = t => String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+  hl.innerHTML = `<div class="top"><label>Meus HDR / EXR (guardados neste navegador)</label></div>
+    ${hdrNames.length ? `<div class="row"><select style="flex:1">${hdrNames.map(n => `<option value="${esc(n)}"${n === cur ? ' selected' : ''}>${esc(n)}</option>`).join('')}</select>
+    <button class="btn sm">Usar</button><button class="btn sm">Excluir</button></div>` : ''}
+    <div class="row"><button class="btn">Carregar HDR ou EXR (luz de foto)</button></div>`;
+  const hsel = hl.querySelector('select'), hbs = [...hl.querySelectorAll('button')];
+  hbs.at(-1).onclick = () => $('#hdrFile').click();
+  if (hsel) {
+    hbs[0].onclick = () => { S.scene.luz = 'hdr'; S.scene.hdrName = hsel.value; renderScene(); applySceneLight(); store.set('shape.autosave', S); req(); };
+    hbs[1].onclick = async () => { const n = hsel.value; if (!confirm(`Excluir "${n}" deste navegador?`)) return;
+      try { await hdrDB.del(n); hdrNames = hdrNames.filter(x => x !== n); } catch {} renderScene(); toast('HDR excluído'); };
+  }
+  f.appendChild(hl);
   field(f, S.scene, ['ao', 'Sombra de contato (o produto pesa na superfície)', 'check'], ch);
   field(f, S, ['bg', 'Fundo da cena', 'color'], queueBuild);
   field(f, S.scene, ['bgGrad', 'Fundo em degradê', 'select', [['nenhum', 'Liso'], ['radial', 'Radial (centro claro, bordas escuras)'], ['vertical', 'Vertical (claro em cima)'], ['lateral', 'Lateral (luz projetada da esquerda)']]], () => { renderScene(); applyBackground(); store.set('shape.autosave', S); });
@@ -3248,6 +3260,7 @@ function build() {
   buildLineup();
   buildStage();
   record();
+  { const sc = S.scene; if (sc?.luz === 'hdr' && sc.hdrName && sc.hdrName !== HDR.name) setTimeout(() => ensureHdr(sc.hdrName), 0); } // HDR guardado do projeto aberto
   scheduleLogos();
   applyBackground();
   updateStats();
@@ -5421,6 +5434,7 @@ function download(blob, name) {
 function toast(msg) { const t = $('#toast'); t.textContent = msg; t.classList.add('on'); clearTimeout(toast.t); toast.t = setTimeout(() => t.classList.remove('on'), 2200); }
 
 const HDR = { env: null, url: null, name: '', rot: 0, strength: 100 };
+let hdrNames = [], hdrLoading = ''; // HDRs guardados no navegador
 function snapshotLighting() {
   return { env: scene.environment, envI: scene.environmentIntensity, envRot: scene.environmentRotation?.clone(), hemi: hemi.intensity, sun: sun.intensity, sunPos: sun.position.clone(), area: areaOn, coat: COAT_U.value };
 }
@@ -5441,6 +5455,8 @@ function applyLightingMode(mode) {
     setLighting(baseLight);
     return;
   }
+  // HDR guardado no navegador: carrega e reaplica (depois da inicialização, que chama isto antes de o resto existir)
+  { const hn = mode === 'hdr' && sceneOf().hdrName; if (hn && hn !== HDR.name) setTimeout(() => ensureHdr(hn), 0); }
   const env = mode === 'hdr' && HDR.env ? HDR.env : roomEnv;
   const boost = envStrength(sceneOf().luzInt);
   scene.environment = env;
@@ -5483,21 +5499,45 @@ function applyPngLighting(mode) {
   return keep;
 }
 
-$('#hdrFile').onchange = async e => {
-  const f = e.target.files[0]; if (!f) return;
-  const url = URL.createObjectURL(f), exr = /\.exr$/i.test(f.name); e.target.value = '';
+// HDR/EXR guardados neste navegador (IndexedDB): não somem ao recarregar, e cada projeto
+// lembra qual usa (S.scene.hdrName) e reabre sozinho.
+const hdrDB = (() => {
+  let op;
+  const open = () => op ??= new Promise((res, rej) => { const r = indexedDB.open('outbox-hdr', 1);
+    r.onupgradeneeded = () => r.result.createObjectStore('hdr', { keyPath: 'name' }); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); });
+  const tx = async (mode, fn) => { const db = await open(); return new Promise((res, rej) => {
+    const t = db.transaction('hdr', mode), rq = fn(t.objectStore('hdr')); t.oncomplete = () => res(rq?.result); t.onerror = t.onabort = () => rej(t.error); }); };
+  return { put: (name, blob) => tx('readwrite', st => st.put({ name, blob, t: Date.now() })), get: name => tx('readonly', st => st.get(name)),
+    del: name => tx('readwrite', st => st.delete(name)), names: () => tx('readonly', st => st.getAllKeys()) };
+})();
+hdrDB.names().then(n => { hdrNames = n || []; renderScene(); }).catch(() => {});
+async function loadHdr(blob, name, save) {
+  const exr = /\.exr$/i.test(name), url = URL.createObjectURL(blob);
   // .hdr (Radiance) ou .exr (OpenEXR, o que sai do Blender/KeyShot); o leitor de EXR só
   // é baixado quando alguém sobe um
   let Loader = RGBELoader;
-  if (exr) try { Loader = (await import('three/addons/loaders/EXRLoader.js')).EXRLoader; } catch { URL.revokeObjectURL(url); toast('Não consegui abrir o leitor de EXR'); return; }
-  new Loader().load(url, tex => {
+  if (exr) try { Loader = (await import('three/addons/loaders/EXRLoader.js')).EXRLoader; } catch { URL.revokeObjectURL(url); toast('Não consegui abrir o leitor de EXR'); return false; }
+  return new Promise(res => new Loader().load(url, tex => {
     const env = pmrem.fromEquirectangular(tex).texture;
     tex.dispose(); HDR.env?.dispose(); if (HDR.url) URL.revokeObjectURL(HDR.url);
-    HDR.env = env; HDR.url = url; HDR.name = f.name;
-    S.scene = { ...sceneOf(), luz: 'hdr' }; renderScene(); applySceneLight(); // HDR carregado vira a luz da cena
-    toast(`${exr ? 'EXR' : 'HDR'} carregado: ${f.name}`);
-    req();
-  }, undefined, () => { URL.revokeObjectURL(url); toast(`Não consegui carregar esse ${exr ? 'EXR' : 'HDR'}`); });
+    HDR.env = env; HDR.url = url; HDR.name = name;
+    if (save) hdrDB.put(name, blob).then(() => hdrDB.names()).then(n => { hdrNames = n || []; renderScene(); })
+      .catch(() => toast('HDR carregado, mas não coube no armazenamento do navegador (arquivo grande demais)'));
+    res(true);
+  }, undefined, () => { URL.revokeObjectURL(url); toast(`Não consegui carregar esse ${exr ? 'EXR' : 'HDR'}`); res(false); }));
+}
+// Projeto que usa um HDR guardado: carrega do navegador quando a luz pede
+async function ensureHdr(name) {
+  if (!name || HDR.name === name || hdrLoading === name) return;
+  hdrLoading = name;
+  try { const r = await hdrDB.get(name); if (r && await loadHdr(r.blob, name, false) && sceneOf().hdrName === name) { renderScene(); applySceneLight(); req(); } }
+  catch {} finally { hdrLoading = ''; }
+}
+$('#hdrFile').onchange = async e => {
+  const f = e.target.files[0]; if (!f) return; e.target.value = '';
+  if (!(await loadHdr(f, f.name, true))) return;
+  S.scene = { ...sceneOf(), luz: 'hdr', hdrName: f.name }; renderScene(); applySceneLight(); store.set('shape.autosave', S); // HDR carregado vira a luz da cena
+  toast(`${/\.exr$/i.test(f.name) ? 'EXR' : 'HDR'} carregado e guardado: ${f.name}`); req();
 };
 
 $('#dlPng').onclick = () => {
@@ -5818,7 +5858,7 @@ $('#varBtn').onclick = () => {
 };
 $('#genDice').onclick = () => { $('#genSeed').value = Math.floor(Math.random() * 99999) + 1; runGen(); };
 
-window.OUTBOX = { get ao() { return { aoP, aoO, GTAOPass }; }, CS, COAT_U, moduleGeo, exportRoot, get S() { return S; }, get swapScroll() { return swapScroll; }, product, layout, scene, sun, stage, ground, renderer, areaKey, areaFill, hemi, detailShow, applyLogos, build, render: () => renderFrame(), get cam() { return cam; } };
+window.OUTBOX = { get ao() { return { aoP, aoO, GTAOPass }; }, CS, COAT_U, get hdr() { return HDR; }, ensureHdr, hdrDB, moduleGeo, exportRoot, get S() { return S; }, get swapScroll() { return swapScroll; }, product, layout, scene, sun, stage, ground, renderer, areaKey, areaFill, hemi, detailShow, applyLogos, build, render: () => renderFrame(), get cam() { return cam; } };
 
 buildDraftPresets();
 resize();
