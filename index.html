@@ -389,7 +389,7 @@ const BASE = {
   notch: false, notchLock: true, notchY: 12, notchW: 20, notchH: 8, notchD: 2, notchP: 2,
   ridges: 0, ridgeD: 0.6, lobes: 0, lobeD: 3,
   labType: 'nenhum', labH: 50, labY: 50, labW: 40, labColor: '#ffffff', labFinish: 'fosco', labImg: '', labImgB: '', labInk: false, labInkColor: '#1c1c1c', labInkFinish: 'metal',
-  reliefImg: '', reliefName: '', reliefScale: 18, reliefDepth: 0,
+  reliefImg: '', reliefName: '', reliefScale: 18, reliefDepth: 0, reliefY: 50, reliefH: 82, reliefW: 100, reliefFade: 4,
   own: false, color: '#e8dcc6', finish: 'fosco', vol: false,
   // kind 'giro': seção girando no eixo; 'placa': silhueta frontal extrudada na profundidade.
   kind: 'giro', ox: 0, rTL: 6, rTR: 6, rBL: 6, rBR: 6, rEdge: 3, chamfer: false,
@@ -505,7 +505,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-28.matelasse-malha';
+const BUILD = '2026-09-28.relevo-area-malha';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -590,6 +590,7 @@ function profSamples(m, lo) {
     const yt = h - notchTop(m), y0n = m.notchUp ? yt : yt - m.notchH - 1, y1n = m.notchUp ? yt + m.notchH + 1 : yt;
     for (let y = y0n; y <= y1n; y += 0.12) S.push(y); S.push(yt + 0.03, yt - 0.03);
   }
+  addReliefSamples(m, S, lo);
   ribSamples(m, S);
   const top = h - Math.max(0, m.cutTop || 0); S.push(top); // corte do topo (rosca trocada por gargalo ajustável)
   const sz = shoulderZone(m); if (sz) for (let i = 0; i <= (lo ? 6 : 24); i++) S.push(sz.y0 + sz.L * i / (lo ? 6 : 24));
@@ -1071,8 +1072,21 @@ function ySamples(m, rB, rT, lo) {
     const yt = h - notchTop(m), y0n = m.notchUp ? yt : yt - m.notchH - 1, y1n = m.notchUp ? yt + m.notchH + 1 : yt;
     for (let y = y0n; y <= y1n; y += 0.12) S.push(y); S.push(yt + 0.03, yt - 0.03);
   }
+  addReliefSamples(m, S, lo);
   if (!lo) ribSamples(m, S);
   return [...new Set(S.filter(y => y >= 0 && y <= h).map(y => +y.toFixed(3)))].sort((a, b) => a - b);
+}
+function reliefAreaLocal(m) {
+  const h = Math.max(0.1, m.h || 1), mid = clamp(m.reliefY ?? 50, 0, 100) / 100 * h, hh = clamp(m.reliefH ?? 82, 1, 100) / 100 * h / 2;
+  return { y0: clamp(mid - hh, 0, h), y1: clamp(mid + hh, 0, h), fade: clamp(m.reliefFade ?? 4, 0, h / 2) };
+}
+function addReliefSamples(m, S, lo) {
+  if (lo || !m.reliefImg || !(m.reliefDepth > 0)) return;
+  const { y0, y1, fade } = reliefAreaLocal(m), span = y1 - y0;
+  if (span <= 0.2) return;
+  const step = clamp((m.reliefScale || 18) / 8, 0.45, 1.4);
+  for (let y = y0; y <= y1; y += step) S.push(y);
+  [0, 0.2, 0.5, 1, fade].forEach(e => { if (e >= 0) S.push(y0 + e, y1 - e); });
 }
 // Anéis extras onde as faixas de frisos começam e terminam (bordas nítidas).
 function ribSamples(m, S) {
@@ -1878,9 +1892,9 @@ function moduleGeo(m0, y0, opts = {}) {
   });
   if (!lo && !inset) for (const b of m.ribs || []) kmax = Math.max(kmax, b.k || 0);
   if (rings.length < 2) return null;
-  const saddle = !inset && m.topType === 'disc' && m.discDip > 0;
-  const detailed = !lo && (m.notch || m.ridges > 0 || saddle || kmax > 0 || logoQuality);
-  const seg = lo ? 64 : kmax ? clamp(kmax * 12, 384, 2000) : logoQuality ? 960 : m.notch ? 720 : detailed ? 384 : 200;
+  const saddle = !inset && m.topType === 'disc' && m.discDip > 0, reliefDetailed = !inset && !!m.reliefImg && m.reliefDepth > 0;
+  const detailed = !lo && (m.notch || m.ridges > 0 || saddle || kmax > 0 || logoQuality || reliefDetailed);
+  const seg = lo ? 64 : kmax ? clamp(kmax * 12, 384, 2000) : logoQuality ? 960 : reliefDetailed ? 720 : m.notch ? 720 : detailed ? 384 : 200;
   const disp = detailed ? (x, ly, z, th, r) => {
     // Faixas de frisos (medidas no original ou criadas no editor).
     const tu = (kmax || m.ridges > 0) ? arcTheta(r, th) : th; // frisos com espaçamento igual no contorno
@@ -2565,15 +2579,30 @@ function makeMatelasseTexture() {
   cx.putImageData(img, 0, 0);
   return cv.toDataURL('image/png');
 }
+function textureReliefMask(m, b, x, y, z) {
+  const H = Math.max(0.1, b.max.y - b.min.y), mid = b.min.y + clamp(m.reliefY ?? 50, 0, 100) / 100 * H, hh = clamp(m.reliefH ?? 82, 1, 100) / 100 * H / 2;
+  const y0 = mid - hh, y1 = mid + hh, fade = Math.max(0.001, Math.min(m.reliefFade ?? 4, H / 2));
+  let mask = smooth(y0, y0 + fade, y) * (1 - smooth(y1 - fade, y1, y));
+  const w = clamp(m.reliefW ?? 100, 1, 100);
+  if (w < 99.9) {
+    const half = Math.PI * w / 100, a = Math.atan2(x, z), da = Math.abs(((a + Math.PI) % TAU + TAU) % TAU - Math.PI);
+    const af = Math.min(half * 0.35, Math.max(0.03, fade / Math.max(1, Math.max(b.max.x - b.min.x, b.max.z - b.min.z))));
+    mask *= 1 - smooth(Math.max(0, half - af), half, da);
+  }
+  return clamp(mask, 0, 1);
+}
 function applyReliefGeometry(g, m) {
   if (!m.reliefImg || !(m.reliefDepth > 0)) return false;
   const rec = reliefDataCache.get(m.reliefImg);
   if (!rec?.data) { ensureReliefData(m.reliefImg).then(() => queueBuild()); return false; }
   addAutoUv(g, m.reliefScale || 18);
+  g.computeBoundingBox();
   if (!g.attributes.normal) g.computeVertexNormals();
   const p = g.attributes.position, n = g.attributes.normal, uv = g.attributes.uv;
   for (let i = 0; i < p.count; i++) {
-    const h = (reliefHeight(rec.data, uv.getX(i), uv.getY(i)) - 0.5) * 2 * m.reliefDepth;
+    const x = p.getX(i), y = p.getY(i), z = p.getZ(i), mask = textureReliefMask(m, g.boundingBox, x, y, z);
+    if (mask <= 0.0001) continue;
+    const h = (reliefHeight(rec.data, uv.getX(i), uv.getY(i)) - 0.5) * 2 * m.reliefDepth * mask;
     p.setXYZ(i, p.getX(i) + n.getX(i) * h, p.getY(i) + n.getY(i) * h, p.getZ(i) + n.getZ(i) * h);
   }
   p.needsUpdate = true; g.computeVertexNormals(); g.computeBoundingBox();
@@ -4820,6 +4849,10 @@ const MF = [
     ['ior', 'IOR do vidro (1,0 ar · 1,33 água · 1,5 vidro · 2,4 diamante)', 1, 2.4, 0.01, '', m => m.own && isGlass(m.finish), m => presetIor(m.finish)],
   ]],
   ['Relevo por textura', [
+    ['reliefY', 'Centro da área', 0, 100, 1, '%', m => m.reliefImg],
+    ['reliefH', 'Altura da área', 1, 100, 1, '%', m => m.reliefImg],
+    ['reliefW', 'Largura da volta', 1, 100, 1, '%', m => m.reliefImg],
+    ['reliefFade', 'Suavizar borda', 0, 24, 0.5, 'mm', m => m.reliefImg],
     ['reliefScale', 'Tamanho da repetição', 3, 120, 0.5, 'mm', m => m.reliefImg],
     ['reliefDepth', 'Força do relevo', 0, 4, 0.05, 'mm', m => m.reliefImg],
   ]],
@@ -4938,7 +4971,12 @@ function renderEditor() {
         inp.onchange = () => {
           const f = inp.files[0]; if (!f) return;
           const r = new FileReader();
-          r.onload = () => { m.reliefImg = r.result; m.reliefName = f.name; if (!(m.reliefDepth > 0)) m.reliefDepth = 0.55; if (!(m.reliefScale > 0)) m.reliefScale = 18; ensureReliefData(m.reliefImg).then(() => queueBuild()); renderEditorKeepScroll(); queueBuild(); };
+          r.onload = () => {
+            m.reliefImg = r.result; m.reliefName = f.name;
+            if (!(m.reliefDepth > 0)) m.reliefDepth = 0.55; if (!(m.reliefScale > 0)) m.reliefScale = 18;
+            if (!(m.reliefH > 0)) m.reliefH = 82; if (!(m.reliefY >= 0)) m.reliefY = 50; if (!(m.reliefW > 0)) m.reliefW = 100; if (!(m.reliefFade >= 0)) m.reliefFade = 4;
+            ensureReliefData(m.reliefImg).then(() => queueBuild()); renderEditorKeepScroll(); queueBuild();
+          };
           r.readAsDataURL(f);
         };
         inp.click();
@@ -4948,6 +4986,10 @@ function renderEditor() {
         m.reliefName = 'Matelassê losangos';
         m.reliefScale = 38;
         m.reliefDepth = 1.05;
+        m.reliefY = 50;
+        m.reliefH = 76;
+        m.reliefW = 100;
+        m.reliefFade = 5;
         ensureReliefData(m.reliefImg).then(() => queueBuild());
         renderEditorKeepScroll();
         queueBuild();
@@ -4982,7 +5024,7 @@ function renderEditor() {
           syncSphereRadius(m, k === 'roundLock' && m.roundLock || ['W', 'D', 'h'].includes(k) && m.roundLock);
         }
         if (k === 'finish') { delete m.difus; delete m.ior; } // acabamento novo: difusão e IOR voltam ao dele
-        if (structural || ['rep', 'groove', 'ridges', 'own', 'labType', 'bpesc', 'finish', 'reliefScale', 'reliefDepth'].includes(k) || (isSphereCap(m) && ['W', 'D', 'h', 'roundLock', 'sphereR'].includes(k))) renderEditorKeepScroll();
+        if (structural || ['rep', 'groove', 'ridges', 'own', 'labType', 'bpesc', 'finish', 'reliefY', 'reliefH', 'reliefW', 'reliefFade', 'reliefScale', 'reliefDepth'].includes(k) || (isSphereCap(m) && ['W', 'D', 'h', 'roundLock', 'sphereR'].includes(k))) renderEditorKeepScroll();
         renderStack(); queueBuild();
       });
       if (show && !show(m)) el.classList.add('hidden');
