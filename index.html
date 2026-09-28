@@ -507,7 +507,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-28.relevo-sem-corte';
+const BUILD = '2026-09-28.relevo-denoise';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -2597,9 +2597,13 @@ function reliefHeight(info, u, v, mode = 'repeat') {
 }
 function reliefHeightSoft(info, u, v, soft = 0, mode = 'repeat') {
   if (!(soft > 0.01)) return reliefHeight(info, u, v, mode);
-  const r = soft / Math.max(info.w, info.h), pts = [[0, 0, 4], [r, 0, 1], [-r, 0, 1], [0, r, 1], [0, -r, 1], [r, r, 0.5], [-r, r, 0.5], [r, -r, 0.5], [-r, -r, 0.5]];
+  const r = soft / Math.max(info.w, info.h), rad = soft > 8 ? 3 : soft > 3 ? 2 : 1;
   let sum = 0, wt = 0;
-  for (const [du, dv, w] of pts) { sum += reliefHeight(info, u + du, v + dv, mode) * w; wt += w; }
+  for (let y = -rad; y <= rad; y++) for (let x = -rad; x <= rad; x++) {
+    const d2 = x * x + y * y, w = Math.exp(-d2 / Math.max(1, rad * rad * 0.72));
+    sum += reliefHeight(info, u + x * r / rad, v + y * r / rad, mode) * w;
+    wt += w;
+  }
   return sum / wt;
 }
 function makeMatelasseTexture() {
@@ -4978,8 +4982,8 @@ const MF = [
     ['reliefScale', 'Tamanho da repetição', 3, 120, 0.5, 'mm', m => m.reliefImg],
     ['reliefDepth', 'Força do relevo', 0, 4, 0.02, 'mm', m => m.reliefImg],
     ['reliefQuality', 'Qualidade da malha', 1, 9, 1, '', m => m.reliefImg],
-    ['reliefSoft', 'Suavizar textura', 0, 8, 0.1, 'px', m => m.reliefImg],
-    ['reliefGeomSmooth', 'Suavizar malha', 0, 8, 1, '', m => m.reliefImg],
+    ['reliefSoft', 'Suavizar textura', 0, 32, 0.5, 'px', m => m.reliefImg],
+    ['reliefGeomSmooth', 'Suavizar malha', 0, 12, 1, '', m => m.reliefImg],
   ]],
 ];
 
@@ -5103,7 +5107,7 @@ function renderEditor() {
             m.reliefTile = m.reliefTile || 'repeat';
             if (!(m.reliefDepth > 0)) m.reliefDepth = 0.55; if (!(m.reliefScale > 0)) m.reliefScale = 18;
             if (!(m.reliefH > 0)) m.reliefH = 82; if (!(m.reliefY >= 0)) m.reliefY = 50; if (!(m.reliefW > 0)) m.reliefW = 100; if (!(m.reliefFade >= 0)) m.reliefFade = 4;
-            if (!(m.reliefQuality > 0)) m.reliefQuality = 6; if (!(m.reliefSoft >= 0)) m.reliefSoft = 1.8; if (!(m.reliefGeomSmooth >= 0)) m.reliefGeomSmooth = 2;
+            if (!(m.reliefQuality > 0)) m.reliefQuality = 7; if (!(m.reliefSoft >= 0)) m.reliefSoft = 8; if (!(m.reliefGeomSmooth >= 0)) m.reliefGeomSmooth = 4;
             ensureReliefData(m.reliefImg).then(() => queueBuild()); renderEditorKeepScroll(); queueBuild();
           };
           r.readAsDataURL(f);
@@ -5122,9 +5126,9 @@ function renderEditor() {
             m.reliefTile = 'mirror';
             if (!(m.reliefDepth > 0)) m.reliefDepth = 0.55; if (!(m.reliefScale > 0)) m.reliefScale = 18;
             if (!(m.reliefH > 0)) m.reliefH = 82; if (!(m.reliefY >= 0)) m.reliefY = 50; if (!(m.reliefW > 0)) m.reliefW = 100; if (!(m.reliefFade >= 0)) m.reliefFade = 4;
-            m.reliefQuality = Math.max(m.reliefQuality || 0, 6);
-            m.reliefSoft = Math.max(m.reliefSoft || 0, 1.8);
-            m.reliefGeomSmooth = Math.max(m.reliefGeomSmooth || 0, 2);
+            m.reliefQuality = Math.max(m.reliefQuality || 0, 7);
+            m.reliefSoft = Math.max(m.reliefSoft || 0, 8);
+            m.reliefGeomSmooth = Math.max(m.reliefGeomSmooth || 0, 4);
             ensureReliefData(m.reliefImg).then(() => queueBuild());
             toast('Imagem convertida em displacement e salva no projeto');
             renderEditorKeepScroll(); queueBuild();
@@ -5151,11 +5155,11 @@ function renderEditor() {
       };
       soft.onclick = () => {
         if (!m.reliefImg) return toast('Suba ou converta uma textura primeiro');
-        m.reliefDepth = Math.min(m.reliefDepth || 0.45, 0.45);
-        m.reliefQuality = Math.max(m.reliefQuality || 0, 7);
-        m.reliefSoft = Math.max(m.reliefSoft || 0, 2.4);
-        m.reliefGeomSmooth = Math.max(m.reliefGeomSmooth || 0, 3);
-        m.reliefFade = Math.max(m.reliefFade || 0, 6);
+        m.reliefDepth = Math.min(m.reliefDepth || 0.28, 0.28);
+        m.reliefQuality = Math.max(m.reliefQuality || 0, 8);
+        m.reliefSoft = Math.max(m.reliefSoft || 0, 10);
+        m.reliefGeomSmooth = Math.max(m.reliefGeomSmooth || 0, 5);
+        m.reliefFade = Math.max(m.reliefFade || 0, 8);
         renderEditorKeepScroll(); queueBuild();
       };
       rm.onclick = () => { m.reliefImg = ''; m.reliefName = ''; m.reliefDepth = 0; renderEditorKeepScroll(); queueBuild(); };
