@@ -455,7 +455,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-28.premium-semijateado';
+const BUILD = '2026-09-28.ior-difusao';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -2402,13 +2402,17 @@ const bandVert = sh => { sh.vertexShader = sh.vertexShader.replace('#include <co
 const bandF = y => `(1.0 - smoothstep(${(y - 0.9).toFixed(2)}, ${(y + 0.9).toFixed(2)}, vObjY))`;
 const WALL_U = { value: 1.2 };
 const wallUniform = sh => { sh.uniforms.uWall = WALL_U; sh.fragmentShader = 'uniform float uWall;\n' + sh.fragmentShader; };
-function material(color, finish, band = null) {
+// Difusão e IOR escolhidos à mão (sem escolha: o do acabamento). Difusão 0–100% = aspereza 0–0,8.
+const FIN_ROUGH = { fosco: 0.56, acetinado: 0.34, brilho: 0.14, perolado: 0.3, vidro: 0.05, pet: 0.08, vidroSemi: 0.27, vidroFosco: 0.42, petFosco: 0.5, petSemi: 0.24, metal: 0.3 };
+const presetDif = f => Math.round((FIN_ROUGH[f] ?? 0.5) / 0.8 * 100), presetIor = f => (String(f).startsWith('pet') ? 1.45 : 1.5);
+function material(color, finish, band = null, thick, look = null) {
   if (band && !isGlass(finish)) band = null;
   // Espessura da parede entra no vidro/PET (borda mais densa quanto mais grossa) por um
   // uniform compartilhado: mudar a parede não recompila shader nem cria material novo.
   WALL_U.value = clamp(S?.wall ?? 1.2, 0.3, 4);
   const wk = '';
-  const key = color + finish + (band ? '|b' + band.y.toFixed(1) : '');
+  const lk = look ? `|d${look.dif ?? ''}|i${look.ior ?? ''}` : '';
+  const key = color + finish + (band ? '|b' + band.y.toFixed(1) : '') + (thick ? '|t' + thick : '') + lk;
   if (matCache.has(key)) return matCache.get(key);
   const m = new THREE.MeshPhysicalMaterial({ color, roughness: 0.5, metalness: 0 });
   // Fosco de verdade não é chapado: o contorno acende de leve (sheen) e uma camada
@@ -2424,7 +2428,7 @@ function material(color, finish, band = null) {
   // Vidro transparente: a espessura aparece nas bordas (mais escura e levemente
   // esverdeada, como vidro de verdade visto de lado) — sem isso o frasco sumia e
   // só sobrava um filete branco em volta do líquido.
-  if (finish === 'vidro') { m.roughness = 0.05; m.transmission = 1; m.thickness = 4; m.ior = 1.5; m.depthWrite = false;
+  if (finish === 'vidro') { m.roughness = 0.05; m.transmission = 1; m.thickness = thick ?? 4; m.ior = 1.5; m.depthWrite = false;
     const et = new THREE.Color(color).multiply(new THREE.Color(0.4, 0.49, 0.46)), etv = `vec3(${et.r.toFixed(3)}, ${et.g.toFixed(3)}, ${et.b.toFixed(3)})`;
     m.onBeforeCompile = sh => { wallUniform(sh); if (band) bandVert(sh);
       sh.fragmentShader = sh.fragmentShader.replace('#include <transmission_fragment>', THREE.ShaderChunk.transmission_fragment
@@ -2448,7 +2452,7 @@ function material(color, finish, band = null) {
   // de fora em pedaços (escadinha/tracejado nos vales dos gomos). No jateado o que
   // está dentro já quase não aparece, então não se perde nada.
   // PET transparente: parede fina, borda bem mais sutil que a do vidro, sem fundo grosso.
-  if (finish === 'pet') { m.roughness = 0.08; m.transmission = 1; m.thickness = 1.2; m.ior = 1.45; m.depthWrite = false;
+  if (finish === 'pet') { m.roughness = 0.08; m.transmission = 1; m.thickness = thick ?? 1.2; m.ior = 1.45; m.depthWrite = false;
     const et = new THREE.Color(color).multiply(new THREE.Color(0.72, 0.76, 0.74)), etv = `vec3(${et.r.toFixed(3)}, ${et.g.toFixed(3)}, ${et.b.toFixed(3)})`;
     m.onBeforeCompile = sh => { wallUniform(sh);
       sh.fragmentShader = sh.fragmentShader.replace('#include <transmission_fragment>', THREE.ShaderChunk.transmission_fragment
@@ -2464,7 +2468,7 @@ function material(color, finish, band = null) {
   // PET semi-fosco: plástico colorido translúcido, acetinado; o que está dentro aparece
   // desfocado e escuro (peças opacas entram na imagem que o plástico embaça), sem véu leitoso.
   if (isFrost(finish)) { const semi = finish === 'vidroSemi', ps = finish === 'petSemi', pf = finish === 'petFosco' || ps; // semi: menos embaçado, brilho mais definido
-    m.roughness = semi ? 0.27 : ps ? 0.24 : pf ? 0.5 : 0.42; m.transmission = semi ? 0.96 : ps ? 1 : pf ? 0.88 : 0.9; m.thickness = pf ? 1.5 : 6; m.ior = pf ? 1.45 : 1.5; m.depthWrite = !semi; // semi: as peças de dentro aparecem apagadas
+    m.roughness = semi ? 0.27 : ps ? 0.24 : pf ? 0.5 : 0.42; m.transmission = semi ? 0.96 : ps ? 1 : pf ? 0.88 : 0.9; m.thickness = thick ?? (pf ? 1.5 : 6); m.ior = pf ? 1.45 : 1.5; m.depthWrite = !semi; // semi: as peças de dentro aparecem apagadas
     m.sheen = semi ? 0.12 : ps ? 0.1 : pf ? 0.22 : 0.15; m.sheenRoughness = 0.45; m.sheenColor = new THREE.Color(color).lerp(new THREE.Color('#ffffff'), 0.5); m.specularIntensity = 1;
     m.clearcoat = semi ? 0.3 : ps ? 0.15 : pf ? 0.06 : 0.18; m.clearcoatRoughness = semi ? 0.3 : ps ? 0.45 : pf ? 0.6 : 0.42; // brilho presente mas espalhado, sem cara de verniz
     m.onBeforeCompile = sh => { wallUniform(sh);
@@ -2480,6 +2484,8 @@ function material(color, finish, band = null) {
     };
     m.customProgramCacheKey = () => (semi ? 'semi2' : ps ? 'pets1' : pf ? 'petf1' : 'jateado10') + wk + (band ? 'b' + band.y.toFixed(1) : ''); }
   if (finish === 'metal') { m.metalness = 1; m.roughness = 0.3; } // um pouco menos espelhado: sem brilho piscando nas quinas
+  if (look?.dif != null) { m.roughness = clamp(look.dif, 0, 100) / 100 * 0.8; if (m.clearcoat) m.clearcoatRoughness = Math.max(0.03, m.roughness * 0.8); if (m.sheen) m.sheenRoughness = Math.max(0.2, m.roughness); }
+  if (look?.ior != null && m.transmission > 0) m.ior = clamp(look.ior, 1, 2.4); // refração: quanto maior, mais o vidro distorce o que está atrás
   const grain = { fosco: 1, acetinado: 0.8, perolado: 0.6, vidroFosco: 1, vidroSemi: 0.7, petFosco: 0.8, petSemi: 0.5 }[finish];
   if (grain) addGrain(m, grain);
   matCache.set(key, m);
@@ -3902,14 +3908,25 @@ function buildInto(product, S, explodeAmt = 0) {
       const cut = cyl(vr, y0 - 1, Math.max(1, Math.min(vb.max.y - L[i - 1].y0 + 1.5, m.h * Math.max(1, m.rep || 1) - 1))); if (m.ox) cut.translate(m.ox, 0, 0);
       const [outer, inner] = cutHole(g, cut); vg.dispose();
       const ni = x => { const y = x.index ? x.toNonIndexed() : x; for (const k in y.attributes) if (k !== 'position' && k !== 'normal') y.deleteAttribute(k); return y; };
-      if (outer !== g) g = mergeGeometries([ni(outer), ni(inner)]) || g;
+      if (outer !== g) { const ig = ni(inner); g = mergeGeometries([ni(outer), ig]) || g; g.userData.capCavity = ig; }
     }
 
     // Gargalo é parte do frasco: sempre a cor e o acabamento do corpo de baixo.
     const ms = m0.kind === 'gargalo' && L[i - 1]?.m.vol ? L[i - 1].m : m;
     const finM = ms.own ? ms.finish : S.finish, colM = ms.own ? ms.color : S.color;
     const firstBody = m0.vol && Math.abs(yl - floor) < 0.01, fundo = Math.max(S.wall, m0.fundo ?? 6);
-    const mesh = new THREE.Mesh(g, material(colM, finM, firstBody && thickBase(finM) ? { y: y0 + fundo } : null));
+    // Peça maciça de vidro/acrílico (tampa): espessura de verdade na refração — a
+    // válvula aparece deslocada e ampliada pela peça grossa, como na foto.
+    // Frasco de vidro também: o volume inteiro age como lente (4 mm fixos quase não
+    // distorciam), então a refração — e o IOR — aparecem de verdade.
+    const thick = !isGlass(finM) ? undefined : r1(!m0.vol ? clamp(Math.min(m.W, m.D) * 0.35, 4, 18) : clamp(Math.min(m.W, m.D) * 0.3, 4, 30));
+    const own = ms.own ? ms : S, look = own.difus != null || own.ior != null ? { dif: own.difus, ior: own.ior } : null;
+    const mesh = new THREE.Mesh(g, material(colM, finM, firstBody && thickBase(finM) ? { y: y0 + fundo } : null, thick, look));
+    // Tampa de vidro que veste a válvula: as paredes da cavidade aparecem como as linhas
+    // do vidro grosso dos dois lados da válvula (antes a cavidade sumia e parecia uma janela).
+    if (g.userData.capCavity && isGlass(finM)) {
+      const cm = new THREE.Mesh(g.userData.capCavity, cavityMat(colM)); cm.name = 'cavidade'; cm.userData.idx = idx; cm.renderOrder = 6; product.add(cm);
+    }
     // Vidro transparente: a cavidade (parede de dentro) aparece nas bordas, como a
     // espessura do vidro vista de lado, e o fundo grosso ganha a sua linha.
     if (m0.vol && ['vidro', 'pet', 'vidroSemi'].includes(finM) && !m0.hidden && !m0.liq) { // com líquido, é ele quem desenha o interior
@@ -4199,7 +4216,7 @@ function field(parent, obj, def, onChange) {
   } else {
     el.innerHTML = `<div class="top"><label>${label}</label><span class="num"><input type="number" step="${step}"> ${unit || ''}</span></div><input type="range" min="${min}" max="${max}" step="${step}">`;
     const num = el.querySelector('input[type=number]'), rng = el.querySelector('input[type=range]');
-    num.value = rng.value = obj[k];
+    num.value = rng.value = obj[k] ?? (typeof def[7] === 'function' ? def[7](obj) : def[7]); // valor padrão sem gravar (ex.: difusão do acabamento)
     rng.oninput = () => { obj[k] = +rng.value; num.value = rng.value; onChange(k); };
     num.onchange = () => {
       const v = +num.value; if (!isFinite(v)) return;
@@ -4406,6 +4423,8 @@ const MF = [
     ['own', 'Cor própria neste módulo', 'check'],
     ['color', 'Cor', 'color', 0, 0, 0, m => m.own],
     ['finish', 'Acabamento', 'finish', 0, 0, 0, m => m.own],
+    ['difus', 'Difusão (0 = liso/polido, 100 = bem difuso)', 0, 100, 1, '%', m => m.own, m => presetDif(m.finish)],
+    ['ior', 'IOR do vidro (1,0 ar · 1,33 água · 1,5 vidro · 2,4 diamante)', 1, 2.4, 0.01, '', m => m.own && isGlass(m.finish), m => presetIor(m.finish)],
   ]],
 ];
 
@@ -4535,7 +4554,8 @@ function renderEditor() {
           if (k === 'sphereR') m.roundLock = false;
           syncSphereRadius(m, k === 'roundLock' && m.roundLock || ['W', 'D', 'h'].includes(k) && m.roundLock);
         }
-        if (structural || ['rep', 'groove', 'ridges', 'own', 'labType', 'bpesc'].includes(k) || (isSphereCap(m) && ['W', 'D', 'h', 'roundLock', 'sphereR'].includes(k))) renderEditorKeepScroll();
+        if (k === 'finish') { delete m.difus; delete m.ior; } // acabamento novo: difusão e IOR voltam ao dele
+        if (structural || ['rep', 'groove', 'ridges', 'own', 'labType', 'bpesc', 'finish'].includes(k) || (isSphereCap(m) && ['W', 'D', 'h', 'roundLock', 'sphereR'].includes(k))) renderEditorKeepScroll();
         renderStack(); queueBuild();
       });
       if (show && !show(m)) el.classList.add('hidden');
@@ -4853,7 +4873,9 @@ function renderGlobal() {
   field(vf, S, ['wall', 'Espessura da parede', 0.3, 4, 0.1, 'mm'], queueBuild);
   const lf = $('#lookFields'); lf.innerHTML = '';
   field(lf, S, ['color', 'Cor geral', 'color'], () => { renderStack(); queueBuild(); });
-  field(lf, S, ['finish', 'Acabamento geral', 'finish'], queueBuild);
+  field(lf, S, ['finish', 'Acabamento geral', 'finish'], () => { delete S.difus; delete S.ior; renderGlobal(); queueBuild(); });
+  field(lf, S, ['difus', 'Difusão (0 = liso/polido, 100 = bem difuso)', 0, 100, 1, '%', null, o => presetDif(o.finish)], queueBuild);
+  if (isGlass(S.finish)) field(lf, S, ['ior', 'IOR do vidro (1,0 ar · 1,33 água · 1,5 vidro · 2,4 diamante)', 1, 2.4, 0.01, '', null, o => presetIor(o.finish)], queueBuild);
   $('#projName').value = S.name;
 }
 
