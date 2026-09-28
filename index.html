@@ -166,6 +166,7 @@ canvas{display:block;width:100%;height:100%;touch-action:none}
     <div class="stack" id="stack"></div>
     <div class="tip">Inserir acima do módulo selecionado:</div>
     <div id="addRows"></div>
+    <div class="row"><button class="btn pri sm" id="importStlBtn" style="flex:1">+ STL</button><input type="file" id="importStl" accept=".stl,model/stl" class="hidden"></div>
     <div class="edit" id="editor"></div>
   </details>
 
@@ -307,6 +308,7 @@ import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { RectAreaLightUniformsLib } from 'three/addons/lights/RectAreaLightUniformsLib.js';
 import { RGBELoader } from 'three/addons/loaders/RGBELoader.js';
+import { STLLoader } from 'three/addons/loaders/STLLoader.js';
 import { GLTFExporter } from 'three/addons/exporters/GLTFExporter.js';
 import { STLExporter } from 'three/addons/exporters/STLExporter.js';
 import { OBJExporter } from 'three/addons/exporters/OBJExporter.js';
@@ -335,6 +337,49 @@ const store = {
   get(k, d) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch { return d; } },
   set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} },
 };
+const bytesToB64 = buf => {
+  const u = new Uint8Array(buf); let s = '';
+  for (let i = 0; i < u.length; i += 0x8000) s += String.fromCharCode(...u.subarray(i, i + 0x8000));
+  return btoa(s);
+};
+const b64ToBuf = b64 => {
+  const s = atob(b64), u = new Uint8Array(s.length);
+  for (let i = 0; i < s.length; i++) u[i] = s.charCodeAt(i);
+  return u.buffer;
+};
+const stlLoader = new STLLoader(), meshCache = new Map();
+function importedMeshBase(m) {
+  if (!m.meshData) return null;
+  let g = meshCache.get(m.meshData);
+  if (!g) {
+    g = stlLoader.parse(b64ToBuf(m.meshData));
+    if (g.index) g = g.toNonIndexed();
+    g.deleteAttribute('uv');
+    if (!g.attributes.normal) g.computeVertexNormals();
+    g.computeBoundingBox();
+    const b = g.boundingBox, sx = b.max.x - b.min.x || 1, sy = b.max.y - b.min.y || 1, sz = b.max.z - b.min.z || 1;
+    g.translate(-(b.min.x + b.max.x) / 2, -b.min.y, -(b.min.z + b.max.z) / 2);
+    g.userData.src = { W: sx, h: sy, D: sz };
+    g.computeVertexNormals(); g.computeBoundingBox();
+    meshCache.set(m.meshData, g);
+  }
+  return g.clone();
+}
+function importedMeshGeo(m, y0) {
+  const g = importedMeshBase(m); if (!g) return null;
+  const src = meshCache.get(m.meshData)?.userData.src || { W: m.W || 1, h: m.h || 1, D: m.D || 1 };
+  g.scale((m.W || src.W) / src.W, (m.h || src.h) / src.h, (m.D || src.D) / src.D);
+  const cx = 0, cy = (m.h || src.h) / 2, cz = 0;
+  g.translate(-cx, -cy, -cz);
+  g.rotateX((m.meshRotX || 0) * Math.PI / 180);
+  g.rotateY((m.meshRotY || 0) * Math.PI / 180);
+  g.rotateZ((m.meshRotZ || 0) * Math.PI / 180);
+  g.translate(cx, cy, cz);
+  g.computeBoundingBox();
+  g.translate(m.ox || 0, y0 - g.boundingBox.min.y, 0);
+  g.computeVertexNormals(); g.computeBoundingBox();
+  return g;
+}
 
 // ───────────────────────── módulos ─────────────────────────
 const BASE = {
@@ -459,7 +504,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-28.export-3d-leve';
+const BUILD = '2026-09-28.import-stl';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -1793,6 +1838,7 @@ function slabGeo(m0, y0, { inset = 0, lift = 0, lo = false } = {}) {
 
 // inset/lift geram o volume interno (parede e fundo) para a capacidade.
 function moduleGeo(m0, y0, opts = {}) {
+  if (m0.kind === 'mesh') return opts.inset ? null : importedMeshGeo(m0, y0);
   if (isSphereCap(m0)) {
     m0 = { ...m0 };
     syncSphereRadius(m0, m0.roundLock);
@@ -1949,9 +1995,9 @@ function discTopGeo(m, y0, ang, lo) {
 }
 
 function signedVolume(g, signed = false) {
-  const p = g.attributes.position.array, idx = g.index.array; let v = 0;
-  for (let i = 0; i < idx.length; i += 3) {
-    const a = idx[i] * 3, b = idx[i + 1] * 3, c = idx[i + 2] * 3;
+  const p = g.attributes.position.array, idx = g.index?.array; let v = 0, n = idx ? idx.length / 3 : p.length / 9;
+  for (let i = 0; i < n; i++) {
+    const a = (idx ? idx[i * 3] : i * 3) * 3, b = (idx ? idx[i * 3 + 1] : i * 3 + 1) * 3, c = (idx ? idx[i * 3 + 2] : i * 3 + 2) * 3;
     v += p[a] * (p[b + 1] * p[c + 2] - p[b + 2] * p[c + 1])
        - p[a + 1] * (p[b] * p[c + 2] - p[b + 2] * p[c])
        + p[a + 2] * (p[b] * p[c + 1] - p[b + 1] * p[c]);
@@ -4505,6 +4551,7 @@ const isBody = m => m.vol || categoryOf(m)?.[0] === 'Corpo';
 const valveHasPesc = () => S.modules.some(v => v.kind === 'spray' && v.pesc && !isWand(v));
 const GT = d => { const a = padDef(d), prev = a[6]; a[6] = m => (m.kind === 'giro' || m.kind === 'perfil') && !isBody(m) && (!prev || prev(m)); return a; };
 const G = d => only('giro', d), P = d => only('placa', d), B = d => only('bisnaga', d), N = d => only('gargalo', d);
+const MESH = d => only('mesh', d);
 const notK = (kinds, d) => { const a = padDef(d); a[6] = m => !kinds.includes(m.kind); return a; };
 const K = d => only('spray', d), isType = t => m => m.sprayType === t;
 const isWand = m => m.sprayType === 'gotas' || m.sprayType === 'gloss'; // tubo da própria tampa, não pescante
@@ -4530,6 +4577,11 @@ const MF = [
     GP(['sphereR', 'Raio da esfera', 0, 150, 0.5, 'mm', isSphereCap]),
     N(['neckStd', 'Padrão do acabamento (aprox.)', 'select', [...Object.keys(NECKS).map(k => [k, k]), ['livre', 'Livre']]]),
     N(['W', 'Diâmetro da rosca (T)', 8, 120, 0.1, 'mm']),
+  ]],
+  ['STL', [
+    MESH(['meshRotX', 'Girar X', -180, 180, 1, '°']),
+    MESH(['meshRotY', 'Girar Y', -180, 180, 1, '°']),
+    MESH(['meshRotZ', 'Girar Z', -180, 180, 1, '°']),
   ]],
   // Gomos: contorno em lóbulos (nuvem, canelado), em grupo próprio.
   ['Gomos', [
@@ -5033,7 +5085,7 @@ const typeOf = m => m.type || Object.keys(LIB).find(k => LIB[k].name === m.name)
 function categoryOf(m) {
   const t = typeOf(m), c = CATS.find(([, keys]) => keys.includes(t));
   if (c) return c;
-  const label = m.kind === 'spray' ? 'Válvula' : m.kind === 'gargalo' || ['octogono', 'cubo', 'piramide', 'prisma'].includes(t) ? 'Peça de encaixe' : m.vol ? 'Corpo' : 'Tampa';
+  const label = m.kind === 'spray' ? 'Válvula' : m.kind === 'mesh' || m.kind === 'gargalo' || ['octogono', 'cubo', 'piramide', 'prisma'].includes(t) ? 'Peça de encaixe' : m.vol ? 'Corpo' : 'Tampa';
   return CATS.find(([l]) => l === label);
 }
 // Medidas que acompanham a escala da peça (em mm).
@@ -5173,6 +5225,24 @@ CATS.forEach(([label, keys]) => {
   };
   $('#addRows').appendChild(row);
 });
+$('#importStlBtn').onclick = () => $('#importStl').click();
+$('#importStl').onchange = async e => {
+  const f = e.target.files[0]; e.target.value = ''; if (!f) return;
+  if (f.size > 8 * 1024 * 1024 && !confirm('Esse STL é grande e pode deixar o projeto salvo pesado. Importar mesmo assim?')) return;
+  try {
+    const buf = await f.arrayBuffer(), geo = stlLoader.parse(buf);
+    geo.computeBoundingBox();
+    const b = geo.boundingBox, W = r1(Math.max(1, b.max.x - b.min.x)), h = r1(Math.max(1, b.max.y - b.min.y)), D = r1(Math.max(1, b.max.z - b.min.z));
+    geo.dispose?.();
+    const at = sel + unitLen(sel), name = f.name.replace(/\.stl$/i, '') || 'STL importado';
+    S.modules.splice(at, 0, { ...BASE, uid: newUid(), type: 'stl', kind: 'mesh', name, W, D, h, meshData: bytesToB64(buf), meshRotX: 0, meshRotY: 0, meshRotZ: 0,
+      own: true, color: S.color || BEIGE, finish: S.finish || 'fosco', vol: false, pesc: false, bpesc: false });
+    sel = at; renderStack(); renderEditor(); build(); fit();
+    toast(`STL importado: ${name}`);
+  } catch (err) {
+    console.error(err); toast('Não consegui ler esse STL');
+  }
+};
 $('#colorAll').onclick = () => { S.modules.forEach(m => m.own = false); renderStack(); renderEditor(); build(); };
 
 // ───────────────────────── modelos (presets) ─────────────────────────
