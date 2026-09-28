@@ -459,7 +459,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-28.hdr-guardado';
+const BUILD = '2026-09-28.bordas-limpas';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -2250,7 +2250,7 @@ function placeAreaCore(c, R) {
     areaKey.position.set(c.x - R * 1.35, c.y + R * 0.8, c.z + R * 0.75); areaKey.lookAt(c.x, c.y - R * 0.1, c.z);
     areaFill.width = R * 0.6; areaFill.height = R * 1.0;
     areaFill.position.set(c.x + R * 1.4, c.y + R * 0.1, c.z + R * 0.6); areaFill.lookAt(c);
-    areaKey.intensity = areaOn * 11; areaFill.intensity = areaOn * 0.2;
+    areaKey.intensity = areaOn * 11; areaFill.intensity = areaOn * 1.3; // rebatedor: o lado da sombra fica na cor (escuro, mas sem virar preto sujo)
     return;
   }
   if (areaMode === 'janela') { // janela grande ao lado: degradê longo de um lado ao outro
@@ -2411,6 +2411,18 @@ vec4 logDepth4(vec4 v) { return vec4(logToPersp(v.x), logToPersp(v.y), logToPers
       mt.uniforms.uLogNear = LOG_U.near; mt.uniforms.uLogFar = LOG_U.far;
       mt.fragmentShader = LOGD + mt.fragmentShader.replace(/textureLod\(tDepth, ([^;]*?), 0\.0\)/g, 'logDepth4(textureLod(tDepth, $1, 0.0))').replace(/texelFetch\(tDepth, ([^;]*?), 0\)/g, 'logDepth4(texelFetch(tDepth, $1, 0))');
       mt.needsUpdate = true;
+    }
+    // No contorno (superfície virando de lado) a oclusão saía como um pontilhado preto sujando a
+    // borda das peças (o buffer da oclusão não tem o antisserrilhado da imagem): some ali.
+    for (const a of [aoP, aoO]) {
+      a.gtaoMaterial.fragmentShader = a.gtaoMaterial.fragmentShader.replace('ao = pow(ao, scale);', `ao = pow(ao, scale);
+#if PERSPECTIVE_CAMERA == 1
+  float nvG = abs(dot(viewNormal, normalize(-viewPos)));
+#else
+  float nvG = abs(viewNormal.z);
+#endif
+  ao = mix(1.0, ao, smoothstep(0.12, 0.45, nvG));`);
+      a.gtaoMaterial.needsUpdate = true;
     }
     composer.addPass(rPass); composer.addPass(aoP); composer.addPass(aoO); composer.addPass(new OutputPass());
     composer._w = ds.x; composer._h = ds.y;
