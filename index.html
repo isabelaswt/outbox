@@ -391,7 +391,7 @@ const BASE = {
   notch: false, notchLock: true, notchY: 12, notchW: 20, notchH: 8, notchD: 2, notchP: 2,
   ridges: 0, ridgeD: 0.6, lobes: 0, lobeD: 3,
   labType: 'nenhum', labH: 50, labY: 50, labW: 40, labColor: '#ffffff', labFinish: 'fosco', labImg: '', labImgB: '', labInk: false, labInkColor: '#1c1c1c', labInkFinish: 'metal',
-  reliefImg: '', reliefName: '', reliefScale: 18, reliefDepth: 0, reliefY: 50, reliefH: 82, reliefW: 100, reliefFade: 4, reliefQuality: 3, reliefSoft: 1.2, reliefGeomSmooth: 2,
+  reliefImg: '', reliefName: '', reliefScale: 18, reliefDepth: 0, reliefY: 50, reliefH: 82, reliefW: 100, reliefFade: 4, reliefQuality: 3, reliefSoft: 1.2, reliefGeomSmooth: 2, reliefTile: 'repeat',
   own: false, color: '#e8dcc6', finish: 'fosco', vol: false,
   // kind 'giro': seção girando no eixo; 'placa': silhueta frontal extrudada na profundidade.
   kind: 'giro', ox: 0, rTL: 6, rTR: 6, rBL: 6, rBR: 6, rEdge: 3, chamfer: false,
@@ -507,7 +507,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-28.relevo-suave';
+const BUILD = '2026-09-28.relevo-sem-corte';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -2578,19 +2578,28 @@ function addAutoUv(g, repeatMm = 18) {
   }
   g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
 }
-function reliefHeight(info, u, v) {
+function reliefCoord(t, mode) {
+  if (mode === 'mirror') {
+    const k = Math.floor(t), f = t - k;
+    return Math.abs(k % 2) === 1 ? 1 - f : f;
+  }
+  return ((t % 1) + 1) % 1;
+}
+function reliefHeight(info, u, v, mode = 'repeat') {
   if (!info) return 0.5;
-  u = ((u % 1) + 1) % 1; v = ((v % 1) + 1) % 1;
-  const x = u * (info.w - 1), y = (1 - v) * (info.h - 1), x0 = Math.floor(x), y0 = Math.floor(y), x1 = (x0 + 1) % info.w, y1 = (y0 + 1) % info.h;
+  u = reliefCoord(u, mode); v = reliefCoord(v, mode);
+  const x = u * (info.w - 1), y = (1 - v) * (info.h - 1), x0 = Math.floor(x), y0 = Math.floor(y);
+  const x1 = mode === 'mirror' ? Math.min(x0 + 1, info.w - 1) : (x0 + 1) % info.w;
+  const y1 = mode === 'mirror' ? Math.min(y0 + 1, info.h - 1) : (y0 + 1) % info.h;
   const fx = x - x0, fy = y - y0, lum = (xx, yy) => { const i = (yy * info.w + xx) * 4; return (info.px[i] * 0.2126 + info.px[i + 1] * 0.7152 + info.px[i + 2] * 0.0722) / 255; };
   const a = lum(x0, y0) * (1 - fx) + lum(x1, y0) * fx, b = lum(x0, y1) * (1 - fx) + lum(x1, y1) * fx;
   return a * (1 - fy) + b * fy;
 }
-function reliefHeightSoft(info, u, v, soft = 0) {
-  if (!(soft > 0.01)) return reliefHeight(info, u, v);
+function reliefHeightSoft(info, u, v, soft = 0, mode = 'repeat') {
+  if (!(soft > 0.01)) return reliefHeight(info, u, v, mode);
   const r = soft / Math.max(info.w, info.h), pts = [[0, 0, 4], [r, 0, 1], [-r, 0, 1], [0, r, 1], [0, -r, 1], [r, r, 0.5], [-r, r, 0.5], [r, -r, 0.5], [-r, -r, 0.5]];
   let sum = 0, wt = 0;
-  for (const [du, dv, w] of pts) { sum += reliefHeight(info, u + du, v + dv) * w; wt += w; }
+  for (const [du, dv, w] of pts) { sum += reliefHeight(info, u + du, v + dv, mode) * w; wt += w; }
   return sum / wt;
 }
 function makeMatelasseTexture() {
@@ -2652,23 +2661,8 @@ async function imageToDisplacement(src) {
     v = clamp(0.5 + (v - 0.5) * 1.25, 0, 1);
     vals[i] = v;
   }
-  // Torna o mapa tileável: bordas opostas recebem o mesmo valor e voltam
-  // suavemente ao original no miolo. Assim não existe "fim" no displacement.
-  const edge = Math.max(12, Math.round(Math.min(w, h) * 0.18));
-  const tile = new Float32Array(vals);
-  for (let y = 0; y < h; y++) for (let k = 0; k < edge; k++) {
-    const a = y * w + k, b = y * w + (w - 1 - k), s = smooth(0, edge, k), avg = (vals[a] + vals[b]) / 2;
-    tile[a] = avg * (1 - s) + vals[a] * s;
-    tile[b] = avg * (1 - s) + vals[b] * s;
-  }
-  const hpass = new Float32Array(tile);
-  for (let x = 0; x < w; x++) for (let k = 0; k < edge; k++) {
-    const a = k * w + x, b = (h - 1 - k) * w + x, s = smooth(0, edge, k), avg = (hpass[a] + hpass[b]) / 2;
-    tile[a] = avg * (1 - s) + hpass[a] * s;
-    tile[b] = avg * (1 - s) + hpass[b] * s;
-  }
   for (let y = 0, j = 0; y < h; y++) for (let x = 0; x < w; x++, j += 4) {
-    const v = tile[y * w + x];
+    const v = vals[y * w + x];
     const c = Math.round(clamp(v, 0, 1) * 255); op[j] = op[j + 1] = op[j + 2] = c; op[j + 3] = 255;
   }
   cx.putImageData(out, 0, 0);
@@ -2727,7 +2721,7 @@ function applyReliefGeometry(g, m) {
     const x = p.getX(i), y = p.getY(i), z = p.getZ(i), mask = textureReliefMask(m, g.boundingBox, x, y, z);
     if (mask <= 0.0001) continue;
     masks[i] = mask;
-    const h = (reliefHeightSoft(rec.data, uv.getX(i), uv.getY(i), m.reliefSoft || 0) - 0.5) * 2 * m.reliefDepth * mask;
+    const h = (reliefHeightSoft(rec.data, uv.getX(i), uv.getY(i), m.reliefSoft || 0, m.reliefTile || 'repeat') - 0.5) * 2 * m.reliefDepth * mask;
     p.setXYZ(i, p.getX(i) + n.getX(i) * h, p.getY(i) + n.getY(i) * h, p.getZ(i) + n.getZ(i) * h);
   }
   smoothReliefGeometry(g, masks, Math.round(m.reliefGeomSmooth || 0));
@@ -4980,6 +4974,7 @@ const MF = [
     ['reliefH', 'Altura da área', 1, 100, 1, '%', m => m.reliefImg],
     ['reliefW', 'Largura da volta', 1, 100, 1, '%', m => m.reliefImg],
     ['reliefFade', 'Suavizar borda', 0, 24, 0.5, 'mm', m => m.reliefImg],
+    ['reliefTile', 'Repetição', 'select', [['repeat', 'Repetir seamless'], ['mirror', 'Espelhar sem corte']], m => m.reliefImg],
     ['reliefScale', 'Tamanho da repetição', 3, 120, 0.5, 'mm', m => m.reliefImg],
     ['reliefDepth', 'Força do relevo', 0, 4, 0.02, 'mm', m => m.reliefImg],
     ['reliefQuality', 'Qualidade da malha', 1, 9, 1, '', m => m.reliefImg],
@@ -5105,6 +5100,7 @@ function renderEditor() {
           const r = new FileReader();
           r.onload = () => {
             m.reliefImg = r.result; m.reliefName = f.name;
+            m.reliefTile = m.reliefTile || 'repeat';
             if (!(m.reliefDepth > 0)) m.reliefDepth = 0.55; if (!(m.reliefScale > 0)) m.reliefScale = 18;
             if (!(m.reliefH > 0)) m.reliefH = 82; if (!(m.reliefY >= 0)) m.reliefY = 50; if (!(m.reliefW > 0)) m.reliefW = 100; if (!(m.reliefFade >= 0)) m.reliefFade = 4;
             if (!(m.reliefQuality > 0)) m.reliefQuality = 6; if (!(m.reliefSoft >= 0)) m.reliefSoft = 1.8; if (!(m.reliefGeomSmooth >= 0)) m.reliefGeomSmooth = 2;
@@ -5123,6 +5119,7 @@ function renderEditor() {
             const src = await new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = () => rej(r.error); r.readAsDataURL(f); });
             m.reliefImg = await imageToDisplacement(src);
             m.reliefName = `${f.name} → displacement`;
+            m.reliefTile = 'mirror';
             if (!(m.reliefDepth > 0)) m.reliefDepth = 0.55; if (!(m.reliefScale > 0)) m.reliefScale = 18;
             if (!(m.reliefH > 0)) m.reliefH = 82; if (!(m.reliefY >= 0)) m.reliefY = 50; if (!(m.reliefW > 0)) m.reliefW = 100; if (!(m.reliefFade >= 0)) m.reliefFade = 4;
             m.reliefQuality = Math.max(m.reliefQuality || 0, 6);
@@ -5138,6 +5135,7 @@ function renderEditor() {
       mt.onclick = () => {
         m.reliefImg = makeMatelasseTexture();
         m.reliefName = 'Matelassê losangos';
+        m.reliefTile = 'repeat';
         m.reliefScale = 38;
         m.reliefDepth = 1.05;
         m.reliefY = 50;
@@ -5162,7 +5160,7 @@ function renderEditor() {
       };
       rm.onclick = () => { m.reliefImg = ''; m.reliefName = ''; m.reliefDepth = 0; renderEditorKeepScroll(); queueBuild(); };
       row.append(up, conv, mt, soft, rm); grp.append(row);
-      const tip = document.createElement('div'); tip.className = 'tip'; tip.textContent = m.reliefImg ? `Textura: ${m.reliefName || 'imagem carregada'} · use Acabamento suave para baixo relevo macio, sem dureza e serrilhado.` : 'Suba um displacement pronto ou converta uma imagem comum. Claro sobe, escuro afunda; o mapa convertido fica salvo dentro do projeto.';
+      const tip = document.createElement('div'); tip.className = 'tip'; tip.textContent = m.reliefImg ? `Textura: ${m.reliefName || 'imagem carregada'} · use Espelhar sem corte quando aparecer linha de tile; use Repetir seamless para mapa já perfeito.` : 'Suba um displacement pronto ou converta uma imagem comum. Claro sobe, escuro afunda; o mapa convertido fica salvo dentro do projeto.';
       grp.append(tip);
     }
     for (const def of defs) {
@@ -5190,7 +5188,7 @@ function renderEditor() {
           syncSphereRadius(m, k === 'roundLock' && m.roundLock || ['W', 'D', 'h'].includes(k) && m.roundLock);
         }
         if (k === 'finish') { delete m.difus; delete m.ior; } // acabamento novo: difusão e IOR voltam ao dele
-        if (structural || ['rep', 'groove', 'ridges', 'own', 'labType', 'bpesc', 'finish', 'reliefY', 'reliefH', 'reliefW', 'reliefFade', 'reliefScale', 'reliefDepth', 'reliefQuality', 'reliefSoft', 'reliefGeomSmooth'].includes(k) || (isSphereCap(m) && ['W', 'D', 'h', 'roundLock', 'sphereR'].includes(k))) renderEditorKeepScroll();
+        if (structural || ['rep', 'groove', 'ridges', 'own', 'labType', 'bpesc', 'finish', 'reliefY', 'reliefH', 'reliefW', 'reliefFade', 'reliefTile', 'reliefScale', 'reliefDepth', 'reliefQuality', 'reliefSoft', 'reliefGeomSmooth'].includes(k) || (isSphereCap(m) && ['W', 'D', 'h', 'roundLock', 'sphereR'].includes(k))) renderEditorKeepScroll();
         renderStack(); queueBuild();
       });
       if (show && !show(m)) el.classList.add('hidden');
