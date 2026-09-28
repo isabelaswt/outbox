@@ -505,7 +505,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-28.relevo-textura';
+const BUILD = '2026-09-28.relevo-malha';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -2508,18 +2508,26 @@ function applyHand() {
 }
 
 const matCache = new Map();
-const reliefTexCache = new Map();
-function reliefTexture(src) {
-  if (!src) return null;
-  let tex = reliefTexCache.get(src);
-  if (!tex) {
-    tex = new THREE.TextureLoader().load(src, t => { t.needsUpdate = true; req(); });
-    tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
-    tex.colorSpace = THREE.NoColorSpace;
-    tex.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy?.() || 1);
-    reliefTexCache.set(src, tex);
-  }
-  return tex;
+const reliefDataCache = new Map();
+function ensureReliefData(src) {
+  if (!src) return Promise.resolve(null);
+  const cur = reliefDataCache.get(src);
+  if (cur?.data) return Promise.resolve(cur.data);
+  if (cur?.promise) return cur.promise;
+  const promise = new Promise(res => {
+    const img = new Image();
+    img.onload = () => {
+      const cv = document.createElement('canvas');
+      cv.width = img.naturalWidth || img.width; cv.height = img.naturalHeight || img.height;
+      const cx = cv.getContext('2d'); cx.drawImage(img, 0, 0);
+      const data = { w: cv.width, h: cv.height, px: cx.getImageData(0, 0, cv.width, cv.height).data };
+      reliefDataCache.set(src, { data }); res(data);
+    };
+    img.onerror = () => { reliefDataCache.delete(src); res(null); };
+    img.src = src;
+  });
+  reliefDataCache.set(src, { promise });
+  return promise;
 }
 function addAutoUv(g, repeatMm = 18) {
   if (!g || g.attributes.uv || !g.attributes.position) return;
@@ -2532,13 +2540,27 @@ function addAutoUv(g, repeatMm = 18) {
   }
   g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
 }
-function reliefMat(base, m) {
-  if (!m.reliefImg || !(m.reliefDepth > 0)) return base;
-  const tex = reliefTexture(m.reliefImg), mat = base.clone();
-  mat.bumpMap = tex;
-  mat.bumpScale = m.reliefDepth;
-  mat.needsUpdate = true;
-  return mat;
+function reliefHeight(info, u, v) {
+  if (!info) return 0.5;
+  u = ((u % 1) + 1) % 1; v = ((v % 1) + 1) % 1;
+  const x = u * (info.w - 1), y = (1 - v) * (info.h - 1), x0 = Math.floor(x), y0 = Math.floor(y), x1 = (x0 + 1) % info.w, y1 = (y0 + 1) % info.h;
+  const fx = x - x0, fy = y - y0, lum = (xx, yy) => { const i = (yy * info.w + xx) * 4; return (info.px[i] * 0.2126 + info.px[i + 1] * 0.7152 + info.px[i + 2] * 0.0722) / 255; };
+  const a = lum(x0, y0) * (1 - fx) + lum(x1, y0) * fx, b = lum(x0, y1) * (1 - fx) + lum(x1, y1) * fx;
+  return a * (1 - fy) + b * fy;
+}
+function applyReliefGeometry(g, m) {
+  if (!m.reliefImg || !(m.reliefDepth > 0)) return false;
+  const rec = reliefDataCache.get(m.reliefImg);
+  if (!rec?.data) { ensureReliefData(m.reliefImg).then(() => queueBuild()); return false; }
+  addAutoUv(g, m.reliefScale || 18);
+  if (!g.attributes.normal) g.computeVertexNormals();
+  const p = g.attributes.position, n = g.attributes.normal, uv = g.attributes.uv;
+  for (let i = 0; i < p.count; i++) {
+    const h = (reliefHeight(rec.data, uv.getX(i), uv.getY(i)) - 0.5) * 2 * m.reliefDepth;
+    p.setXYZ(i, p.getX(i) + n.getX(i) * h, p.getY(i) + n.getY(i) * h, p.getZ(i) + n.getZ(i) * h);
+  }
+  p.needsUpdate = true; g.computeVertexNormals(); g.computeBoundingBox();
+  return true;
 }
 const insertMat = new THREE.MeshStandardMaterial({ color: '#ececea', roughness: 0.35 });
 // Sobretampa transparente (pump de bisnaga): por fora de tudo, então pode ser transparente comum.
@@ -4233,8 +4255,8 @@ function buildInto(product, S, explodeAmt = 0) {
     // dentro (a válvula) aparece embaçado pelo vidro, como na peça real.
     const capCav = g.userData.capCavity;
     if (g.userData.capOuter && isFrost(finM)) { const ex = g.userData.extras; g = g.userData.capOuter; if (ex) g.userData.extras = ex; }
-    if (ms.reliefImg && ms.reliefDepth > 0) addAutoUv(g, ms.reliefScale || 18);
-    const mesh = new THREE.Mesh(g, reliefMat(material(colM, finM, firstBody && thickBase(finM) ? { y: y0 + fundo } : null, thick, look), ms));
+    applyReliefGeometry(g, ms);
+    const mesh = new THREE.Mesh(g, material(colM, finM, firstBody && thickBase(finM) ? { y: y0 + fundo } : null, thick, look));
     // Tampa de vidro que veste a válvula: as paredes da cavidade aparecem como as linhas
     // do vidro grosso dos dois lados da válvula (antes a cavidade sumia e parecia uma janela).
     if (g.userData.capCavity && isGlass(finM) && !isFrost(finM)) { // jateado/fosco: a cavidade fica embaçada no próprio vidro, sem linha nítida
@@ -4898,14 +4920,14 @@ function renderEditor() {
         inp.onchange = () => {
           const f = inp.files[0]; if (!f) return;
           const r = new FileReader();
-          r.onload = () => { m.reliefImg = r.result; m.reliefName = f.name; if (!(m.reliefDepth > 0)) m.reliefDepth = 0.55; if (!(m.reliefScale > 0)) m.reliefScale = 18; renderEditorKeepScroll(); queueBuild(); };
+          r.onload = () => { m.reliefImg = r.result; m.reliefName = f.name; if (!(m.reliefDepth > 0)) m.reliefDepth = 0.55; if (!(m.reliefScale > 0)) m.reliefScale = 18; ensureReliefData(m.reliefImg).then(() => queueBuild()); renderEditorKeepScroll(); queueBuild(); };
           r.readAsDataURL(f);
         };
         inp.click();
       };
       rm.onclick = () => { m.reliefImg = ''; m.reliefName = ''; m.reliefDepth = 0; renderEditorKeepScroll(); queueBuild(); };
       row.append(up, rm); grp.append(row);
-      const tip = document.createElement('div'); tip.className = 'tip'; tip.textContent = m.reliefImg ? `Textura: ${m.reliefName || 'imagem carregada'}` : 'Use uma textura preto e branco seamless: claro sobe, escuro afunda.';
+      const tip = document.createElement('div'); tip.className = 'tip'; tip.textContent = m.reliefImg ? `Textura: ${m.reliefName || 'imagem carregada'} · vira malha real no GLB/OBJ/STL` : 'Use uma textura preto e branco seamless: claro sobe, escuro afunda. O relevo vira vértice real no 3D.';
       grp.append(tip);
     }
     for (const def of defs) {
@@ -5747,10 +5769,18 @@ $('#dlPng').onclick = () => {
   renderer.setPixelRatio(pr); renderer.setSize(size.x, size.y, false); req();
   fetch(data).then(r => r.blob()).then(b => download(b, fname('png')));
 };
+const collectReliefSources = st => [...(st.modules || []), ...(st.side || []).flatMap(it => it.modules || [])].map(m => m.reliefImg).filter(Boolean);
+async function ensureReliefsForExport() {
+  const srcs = [...new Set(collectReliefSources(S))];
+  if (!srcs.length) return;
+  await Promise.all(srcs.map(ensureReliefData));
+  build();
+}
 // Export 3D leve: usa as mesmas malhas visíveis da cena. A casca/parede real por
 // CSG deixou GLB/OBJ/STL grandes e lentos demais; a espessura segue como aparência.
 async function exportRoot(scale) {
   toast('Montando arquivo 3D leve…'); await new Promise(r => setTimeout(r, 30));
+  await ensureReliefsForExport();
   const root = new THREE.Group(); root.name = S.name || 'embalagem';
   for (const o of product.children) {
     if (o.name === 'cavidade' || o.name === 'boca' || o.userData.liquid) continue;
