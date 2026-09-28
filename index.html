@@ -507,7 +507,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-28.relevo-denoise';
+const BUILD = '2026-09-28.relevo-clean-map';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -2670,6 +2670,25 @@ async function imageToDisplacement(src) {
     const c = Math.round(clamp(v, 0, 1) * 255); op[j] = op[j + 1] = op[j + 2] = c; op[j + 3] = 255;
   }
   cx.putImageData(out, 0, 0);
+  return cv.toDataURL('image/png');
+}
+async function cleanDisplacementMap(src, blur = 1.6) {
+  const img = await imageFromUrl(src), max = 1536;
+  const sc = Math.min(1, max / Math.max(img.naturalWidth || img.width, img.naturalHeight || img.height));
+  const w = Math.max(8, Math.round((img.naturalWidth || img.width) * sc)), h = Math.max(8, Math.round((img.naturalHeight || img.height) * sc));
+  const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+  const cx = cv.getContext('2d', { willReadFrequently: true }); cx.drawImage(img, 0, 0, w, h);
+  const raw = cx.getImageData(0, 0, w, h), gray = cx.createImageData(w, h), gp = gray.data, rp = raw.data;
+  for (let i = 0, j = 0; i < w * h; i++, j += 4) {
+    const c = Math.round(rp[j] * 0.2126 + rp[j + 1] * 0.7152 + rp[j + 2] * 0.0722);
+    gp[j] = gp[j + 1] = gp[j + 2] = c; gp[j + 3] = 255;
+  }
+  cx.putImageData(gray, 0, 0);
+  if (blur > 0) {
+    const tmp = document.createElement('canvas'); tmp.width = w; tmp.height = h;
+    const tx = tmp.getContext('2d'); tx.filter = `blur(${blur}px)`; tx.drawImage(cv, 0, 0);
+    cx.clearRect(0, 0, w, h); cx.drawImage(tmp, 0, 0);
+  }
   return cv.toDataURL('image/png');
 }
 function textureReliefMask(m, b, x, y, z) {
@@ -5095,22 +5114,24 @@ function renderEditor() {
       const up = document.createElement('button'); up.className = 'btn sm'; up.textContent = m.reliefImg ? 'Trocar textura' : 'Subir textura seamless';
       const conv = document.createElement('button'); conv.className = 'btn sm'; conv.textContent = 'Converter imagem em relevo';
       const mt = document.createElement('button'); mt.className = 'btn sm'; mt.textContent = 'Matelassê losangos';
+      const clean = document.createElement('button'); clean.className = 'btn sm'; clean.textContent = 'Limpar mapa';
       const soft = document.createElement('button'); soft.className = 'btn sm'; soft.textContent = 'Acabamento suave';
       const rm = document.createElement('button'); rm.className = 'btn sm'; rm.textContent = 'Remover'; rm.classList.toggle('hidden', !m.reliefImg);
       up.onclick = () => {
         const inp = document.createElement('input'); inp.type = 'file'; inp.accept = 'image/png,image/jpeg,image/webp';
-        inp.onchange = () => {
+        inp.onchange = async () => {
           const f = inp.files[0]; if (!f) return;
-          const r = new FileReader();
-          r.onload = () => {
-            m.reliefImg = r.result; m.reliefName = f.name;
+          up.disabled = true; up.textContent = 'Limpando...';
+          try {
+            const src = await new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = () => rej(r.error); r.readAsDataURL(f); });
+            m.reliefImg = await cleanDisplacementMap(src, f.type === 'image/jpeg' ? 2.2 : 1.2);
+            m.reliefName = `${f.name} → mapa limpo`;
             m.reliefTile = m.reliefTile || 'repeat';
             if (!(m.reliefDepth > 0)) m.reliefDepth = 0.55; if (!(m.reliefScale > 0)) m.reliefScale = 18;
             if (!(m.reliefH > 0)) m.reliefH = 82; if (!(m.reliefY >= 0)) m.reliefY = 50; if (!(m.reliefW > 0)) m.reliefW = 100; if (!(m.reliefFade >= 0)) m.reliefFade = 4;
             if (!(m.reliefQuality > 0)) m.reliefQuality = 7; if (!(m.reliefSoft >= 0)) m.reliefSoft = 8; if (!(m.reliefGeomSmooth >= 0)) m.reliefGeomSmooth = 4;
             ensureReliefData(m.reliefImg).then(() => queueBuild()); renderEditorKeepScroll(); queueBuild();
-          };
-          r.readAsDataURL(f);
+          } catch (e) { console.warn(e); toast('Não consegui limpar esse mapa'); renderEditorKeepScroll(); }
         };
         inp.click();
       };
@@ -5153,6 +5174,19 @@ function renderEditor() {
         renderEditorKeepScroll();
         queueBuild();
       };
+      clean.onclick = async () => {
+        if (!m.reliefImg) return toast('Suba um mapa primeiro');
+        clean.disabled = true; clean.textContent = 'Limpando...';
+        try {
+          m.reliefImg = await cleanDisplacementMap(m.reliefImg, 2.4);
+          m.reliefName = `${m.reliefName || 'mapa'} → limpo`;
+          m.reliefSoft = Math.max(m.reliefSoft || 0, 10);
+          m.reliefGeomSmooth = Math.max(m.reliefGeomSmooth || 0, 5);
+          ensureReliefData(m.reliefImg).then(() => queueBuild());
+          toast('Mapa limpo e salvo no projeto');
+          renderEditorKeepScroll(); queueBuild();
+        } catch (e) { console.warn(e); toast('Não consegui limpar esse mapa'); renderEditorKeepScroll(); }
+      };
       soft.onclick = () => {
         if (!m.reliefImg) return toast('Suba ou converta uma textura primeiro');
         m.reliefDepth = Math.min(m.reliefDepth || 0.28, 0.28);
@@ -5163,8 +5197,8 @@ function renderEditor() {
         renderEditorKeepScroll(); queueBuild();
       };
       rm.onclick = () => { m.reliefImg = ''; m.reliefName = ''; m.reliefDepth = 0; renderEditorKeepScroll(); queueBuild(); };
-      row.append(up, conv, mt, soft, rm); grp.append(row);
-      const tip = document.createElement('div'); tip.className = 'tip'; tip.textContent = m.reliefImg ? `Textura: ${m.reliefName || 'imagem carregada'} · use Espelhar sem corte quando aparecer linha de tile; use Repetir seamless para mapa já perfeito.` : 'Suba um displacement pronto ou converta uma imagem comum. Claro sobe, escuro afunda; o mapa convertido fica salvo dentro do projeto.';
+      row.append(up, conv, mt, clean, soft, rm); grp.append(row);
+      const tip = document.createElement('div'); tip.className = 'tip'; tip.textContent = m.reliefImg ? `Textura: ${m.reliefName || 'imagem carregada'} · use Limpar mapa em JPGs ou mapas com ruído fino; depois Acabamento suave.` : 'Suba um displacement pronto ou converta uma imagem comum. Claro sobe, escuro afunda; o mapa convertido fica salvo dentro do projeto.';
       grp.append(tip);
     }
     for (const def of defs) {
