@@ -391,7 +391,7 @@ const BASE = {
   notch: false, notchLock: true, notchY: 12, notchW: 20, notchH: 8, notchD: 2, notchP: 2,
   ridges: 0, ridgeD: 0.6, lobes: 0, lobeD: 3,
   labType: 'nenhum', labH: 50, labY: 50, labW: 40, labColor: '#ffffff', labFinish: 'fosco', labImg: '', labImgB: '', labInk: false, labInkColor: '#1c1c1c', labInkFinish: 'metal',
-  reliefImg: '', reliefName: '', reliefScale: 18, reliefDepth: 0, reliefY: 50, reliefH: 82, reliefW: 100, reliefFade: 4, reliefQuality: 3, reliefSoft: 1.2, reliefGeomSmooth: 2, reliefTile: 'repeat',
+  reliefImg: '', reliefName: '', reliefScale: 18, reliefDepth: 0, reliefY: 50, reliefH: 82, reliefW: 100, reliefFade: 4, reliefQuality: 3, reliefSoft: 1.2, reliefGeomSmooth: 2, reliefTile: 'repeat', reliefU: 0, reliefV: 0, reliefWarp: 0,
   own: false, color: '#e8dcc6', finish: 'fosco', vol: false,
   // kind 'giro': seção girando no eixo; 'placa': silhueta frontal extrudada na profundidade.
   kind: 'giro', ox: 0, rTL: 6, rTR: 6, rBL: 6, rBR: 6, rEdge: 3, chamfer: false,
@@ -507,7 +507,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-28.relevo-clean-map';
+const BUILD = '2026-09-28.relevo-organico';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -2579,29 +2579,35 @@ function addAutoUv(g, repeatMm = 18) {
   g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
 }
 function reliefCoord(t, mode) {
-  if (mode === 'mirror') {
+  if (mode === 'mirror' || mode === 'organic') {
     const k = Math.floor(t), f = t - k;
     return Math.abs(k % 2) === 1 ? 1 - f : f;
   }
   return ((t % 1) + 1) % 1;
 }
-function reliefHeight(info, u, v, mode = 'repeat') {
+function reliefHeight(info, u, v, mode = 'repeat', warp = 0) {
   if (!info) return 0.5;
+  if (mode === 'organic' && warp > 0) {
+    const w = warp / 100;
+    u += Math.sin(v * TAU * 1.73 + Math.sin(u * TAU * 0.67)) * 0.055 * w;
+    v += Math.sin(u * TAU * 1.31 + Math.cos(v * TAU * 0.58)) * 0.045 * w;
+  }
   u = reliefCoord(u, mode); v = reliefCoord(v, mode);
   const x = u * (info.w - 1), y = (1 - v) * (info.h - 1), x0 = Math.floor(x), y0 = Math.floor(y);
-  const x1 = mode === 'mirror' ? Math.min(x0 + 1, info.w - 1) : (x0 + 1) % info.w;
-  const y1 = mode === 'mirror' ? Math.min(y0 + 1, info.h - 1) : (y0 + 1) % info.h;
+  const mirrored = mode === 'mirror' || mode === 'organic';
+  const x1 = mirrored ? Math.min(x0 + 1, info.w - 1) : (x0 + 1) % info.w;
+  const y1 = mirrored ? Math.min(y0 + 1, info.h - 1) : (y0 + 1) % info.h;
   const fx = x - x0, fy = y - y0, lum = (xx, yy) => { const i = (yy * info.w + xx) * 4; return (info.px[i] * 0.2126 + info.px[i + 1] * 0.7152 + info.px[i + 2] * 0.0722) / 255; };
   const a = lum(x0, y0) * (1 - fx) + lum(x1, y0) * fx, b = lum(x0, y1) * (1 - fx) + lum(x1, y1) * fx;
   return a * (1 - fy) + b * fy;
 }
-function reliefHeightSoft(info, u, v, soft = 0, mode = 'repeat') {
-  if (!(soft > 0.01)) return reliefHeight(info, u, v, mode);
+function reliefHeightSoft(info, u, v, soft = 0, mode = 'repeat', warp = 0) {
+  if (!(soft > 0.01)) return reliefHeight(info, u, v, mode, warp);
   const r = soft / Math.max(info.w, info.h), rad = soft > 8 ? 3 : soft > 3 ? 2 : 1;
   let sum = 0, wt = 0;
   for (let y = -rad; y <= rad; y++) for (let x = -rad; x <= rad; x++) {
     const d2 = x * x + y * y, w = Math.exp(-d2 / Math.max(1, rad * rad * 0.72));
-    sum += reliefHeight(info, u + x * r / rad, v + y * r / rad, mode) * w;
+    sum += reliefHeight(info, u + x * r / rad, v + y * r / rad, mode, warp) * w;
     wt += w;
   }
   return sum / wt;
@@ -2744,7 +2750,8 @@ function applyReliefGeometry(g, m) {
     const x = p.getX(i), y = p.getY(i), z = p.getZ(i), mask = textureReliefMask(m, g.boundingBox, x, y, z);
     if (mask <= 0.0001) continue;
     masks[i] = mask;
-    const h = (reliefHeightSoft(rec.data, uv.getX(i), uv.getY(i), m.reliefSoft || 0, m.reliefTile || 'repeat') - 0.5) * 2 * m.reliefDepth * mask;
+    const u = uv.getX(i) + (m.reliefU || 0) / 100, v = uv.getY(i) + (m.reliefV || 0) / 100;
+    const h = (reliefHeightSoft(rec.data, u, v, m.reliefSoft || 0, m.reliefTile || 'repeat', m.reliefWarp || 0) - 0.5) * 2 * m.reliefDepth * mask;
     p.setXYZ(i, p.getX(i) + n.getX(i) * h, p.getY(i) + n.getY(i) * h, p.getZ(i) + n.getZ(i) * h);
   }
   smoothReliefGeometry(g, masks, Math.round(m.reliefGeomSmooth || 0));
@@ -4997,7 +5004,10 @@ const MF = [
     ['reliefH', 'Altura da área', 1, 100, 1, '%', m => m.reliefImg],
     ['reliefW', 'Largura da volta', 1, 100, 1, '%', m => m.reliefImg],
     ['reliefFade', 'Suavizar borda', 0, 24, 0.5, 'mm', m => m.reliefImg],
-    ['reliefTile', 'Repetição', 'select', [['repeat', 'Repetir seamless'], ['mirror', 'Espelhar sem corte']], m => m.reliefImg],
+    ['reliefTile', 'Repetição', 'select', [['repeat', 'Repetir seamless'], ['mirror', 'Espelhar sem corte'], ['organic', 'Orgânico sem grade']], m => m.reliefImg],
+    ['reliefU', 'Deslocar padrão X', -100, 100, 1, '%', m => m.reliefImg],
+    ['reliefV', 'Deslocar padrão Y', -100, 100, 1, '%', m => m.reliefImg],
+    ['reliefWarp', 'Quebrar grade', 0, 100, 1, '%', m => m.reliefImg && m.reliefTile === 'organic'],
     ['reliefScale', 'Tamanho da repetição', 3, 120, 0.5, 'mm', m => m.reliefImg],
     ['reliefDepth', 'Força do relevo', 0, 4, 0.02, 'mm', m => m.reliefImg],
     ['reliefQuality', 'Qualidade da malha', 1, 9, 1, '', m => m.reliefImg],
@@ -5144,7 +5154,8 @@ function renderEditor() {
             const src = await new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = () => rej(r.error); r.readAsDataURL(f); });
             m.reliefImg = await imageToDisplacement(src);
             m.reliefName = `${f.name} → displacement`;
-            m.reliefTile = 'mirror';
+            m.reliefTile = 'organic';
+            m.reliefWarp = Math.max(m.reliefWarp || 0, 38);
             if (!(m.reliefDepth > 0)) m.reliefDepth = 0.55; if (!(m.reliefScale > 0)) m.reliefScale = 18;
             if (!(m.reliefH > 0)) m.reliefH = 82; if (!(m.reliefY >= 0)) m.reliefY = 50; if (!(m.reliefW > 0)) m.reliefW = 100; if (!(m.reliefFade >= 0)) m.reliefFade = 4;
             m.reliefQuality = Math.max(m.reliefQuality || 0, 7);
@@ -5194,11 +5205,13 @@ function renderEditor() {
         m.reliefSoft = Math.max(m.reliefSoft || 0, 10);
         m.reliefGeomSmooth = Math.max(m.reliefGeomSmooth || 0, 5);
         m.reliefFade = Math.max(m.reliefFade || 0, 8);
+        if (m.reliefTile === 'mirror') m.reliefTile = 'organic';
+        m.reliefWarp = Math.max(m.reliefWarp || 0, 35);
         renderEditorKeepScroll(); queueBuild();
       };
       rm.onclick = () => { m.reliefImg = ''; m.reliefName = ''; m.reliefDepth = 0; renderEditorKeepScroll(); queueBuild(); };
       row.append(up, conv, mt, clean, soft, rm); grp.append(row);
-      const tip = document.createElement('div'); tip.className = 'tip'; tip.textContent = m.reliefImg ? `Textura: ${m.reliefName || 'imagem carregada'} · use Limpar mapa em JPGs ou mapas com ruído fino; depois Acabamento suave.` : 'Suba um displacement pronto ou converta uma imagem comum. Claro sobe, escuro afunda; o mapa convertido fica salvo dentro do projeto.';
+      const tip = document.createElement('div'); tip.className = 'tip'; tip.textContent = m.reliefImg ? `Textura: ${m.reliefName || 'imagem carregada'} · use Orgânico sem grade para esconder repetição em texturas naturais.` : 'Suba um displacement pronto ou converta uma imagem comum. Claro sobe, escuro afunda; o mapa convertido fica salvo dentro do projeto.';
       grp.append(tip);
     }
     for (const def of defs) {
@@ -5226,7 +5239,7 @@ function renderEditor() {
           syncSphereRadius(m, k === 'roundLock' && m.roundLock || ['W', 'D', 'h'].includes(k) && m.roundLock);
         }
         if (k === 'finish') { delete m.difus; delete m.ior; } // acabamento novo: difusão e IOR voltam ao dele
-        if (structural || ['rep', 'groove', 'ridges', 'own', 'labType', 'bpesc', 'finish', 'reliefY', 'reliefH', 'reliefW', 'reliefFade', 'reliefTile', 'reliefScale', 'reliefDepth', 'reliefQuality', 'reliefSoft', 'reliefGeomSmooth'].includes(k) || (isSphereCap(m) && ['W', 'D', 'h', 'roundLock', 'sphereR'].includes(k))) renderEditorKeepScroll();
+        if (structural || ['rep', 'groove', 'ridges', 'own', 'labType', 'bpesc', 'finish', 'reliefY', 'reliefH', 'reliefW', 'reliefFade', 'reliefTile', 'reliefU', 'reliefV', 'reliefWarp', 'reliefScale', 'reliefDepth', 'reliefQuality', 'reliefSoft', 'reliefGeomSmooth'].includes(k) || (isSphereCap(m) && ['W', 'D', 'h', 'roundLock', 'sphereR'].includes(k))) renderEditorKeepScroll();
         renderStack(); queueBuild();
       });
       if (show && !show(m)) el.classList.add('hidden');
