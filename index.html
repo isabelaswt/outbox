@@ -507,7 +507,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-28.relevo-menu-wrap';
+const BUILD = '2026-09-28.relevo-seamless-convert';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -2650,7 +2650,26 @@ async function imageToDisplacement(src) {
     let v = clamp((vals[i] - lo) / span, 0, 1);
     v = smooth(0, 1, v);
     v = clamp(0.5 + (v - 0.5) * 1.25, 0, 1);
-    const c = Math.round(v * 255); op[j] = op[j + 1] = op[j + 2] = c; op[j + 3] = 255;
+    vals[i] = v;
+  }
+  // Torna o mapa tileável: bordas opostas recebem o mesmo valor e voltam
+  // suavemente ao original no miolo. Assim não existe "fim" no displacement.
+  const edge = Math.max(12, Math.round(Math.min(w, h) * 0.18));
+  const tile = new Float32Array(vals);
+  for (let y = 0; y < h; y++) for (let k = 0; k < edge; k++) {
+    const a = y * w + k, b = y * w + (w - 1 - k), s = smooth(0, edge, k), avg = (vals[a] + vals[b]) / 2;
+    tile[a] = avg * (1 - s) + vals[a] * s;
+    tile[b] = avg * (1 - s) + vals[b] * s;
+  }
+  const hpass = new Float32Array(tile);
+  for (let x = 0; x < w; x++) for (let k = 0; k < edge; k++) {
+    const a = k * w + x, b = (h - 1 - k) * w + x, s = smooth(0, edge, k), avg = (hpass[a] + hpass[b]) / 2;
+    tile[a] = avg * (1 - s) + hpass[a] * s;
+    tile[b] = avg * (1 - s) + hpass[b] * s;
+  }
+  for (let y = 0, j = 0; y < h; y++) for (let x = 0; x < w; x++, j += 4) {
+    const v = tile[y * w + x];
+    const c = Math.round(clamp(v, 0, 1) * 255); op[j] = op[j + 1] = op[j + 2] = c; op[j + 3] = 255;
   }
   cx.putImageData(out, 0, 0);
   return cv.toDataURL('image/png');
