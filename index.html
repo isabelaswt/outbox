@@ -389,7 +389,7 @@ const BASE = {
   notch: false, notchLock: true, notchY: 12, notchW: 20, notchH: 8, notchD: 2, notchP: 2,
   ridges: 0, ridgeD: 0.6, lobes: 0, lobeD: 3,
   labType: 'nenhum', labH: 50, labY: 50, labW: 40, labColor: '#ffffff', labFinish: 'fosco', labImg: '', labImgB: '', labInk: false, labInkColor: '#1c1c1c', labInkFinish: 'metal',
-  reliefImg: '', reliefName: '', reliefScale: 18, reliefDepth: 0, reliefY: 50, reliefH: 82, reliefW: 100, reliefFade: 4, reliefQuality: 2, reliefSoft: 0.5,
+  reliefImg: '', reliefName: '', reliefScale: 18, reliefDepth: 0, reliefY: 50, reliefH: 82, reliefW: 100, reliefFade: 4, reliefQuality: 3, reliefSoft: 0.5, reliefGeomSmooth: 1,
   own: false, color: '#e8dcc6', finish: 'fosco', vol: false,
   // kind 'giro': seção girando no eixo; 'placa': silhueta frontal extrudada na profundidade.
   kind: 'giro', ox: 0, rTL: 6, rTR: 6, rBL: 6, rBR: 6, rEdge: 3, chamfer: false,
@@ -505,7 +505,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-28.relevo-qualidade-malha';
+const BUILD = '2026-09-28.relevo-ultra-malha';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -1084,8 +1084,8 @@ function addReliefSamples(m, S, lo) {
   if (lo || !m.reliefImg || !(m.reliefDepth > 0)) return;
   const { y0, y1, fade } = reliefAreaLocal(m), span = y1 - y0;
   if (span <= 0.2) return;
-  const q = clamp(m.reliefQuality || 2, 1, 5);
-  const step = clamp((m.reliefScale || 18) / (7 + q * 7), 0.16, 1.4);
+  const q = clamp(m.reliefQuality || 3, 1, 9);
+  const step = clamp((m.reliefScale || 18) / (8 + q * 10), 0.07, 1.2);
   for (let y = y0; y <= y1; y += step) S.push(y);
   [0, 0.2, 0.5, 1, fade].forEach(e => { if (e >= 0) S.push(y0 + e, y1 - e); });
 }
@@ -1895,7 +1895,7 @@ function moduleGeo(m0, y0, opts = {}) {
   if (rings.length < 2) return null;
   const saddle = !inset && m.topType === 'disc' && m.discDip > 0, reliefDetailed = !inset && !!m.reliefImg && m.reliefDepth > 0;
   const detailed = !lo && (m.notch || m.ridges > 0 || saddle || kmax > 0 || logoQuality || reliefDetailed);
-  const reliefSeg = reliefDetailed ? clamp(360 + (m.reliefQuality || 2) * 240, 600, 1600) : 720;
+  const reliefSeg = reliefDetailed ? clamp(480 + (m.reliefQuality || 3) * 320, 720, 3600) : 720;
   const seg = lo ? 64 : kmax ? clamp(kmax * 12, 384, 2000) : logoQuality ? 960 : reliefDetailed ? reliefSeg : m.notch ? 720 : detailed ? 384 : 200;
   const disp = detailed ? (x, ly, z, th, r) => {
     // Faixas de frisos (medidas no original ou criadas no editor).
@@ -2600,6 +2600,35 @@ function textureReliefMask(m, b, x, y, z) {
   }
   return clamp(mask, 0, 1);
 }
+function smoothReliefGeometry(g, masks, passes = 0) {
+  if (!(passes > 0) || !g.index || !g.attributes.position) return;
+  const p = g.attributes.position, idx = g.index.array, nb = Array.from({ length: p.count }, () => new Set());
+  for (let i = 0; i < idx.length; i += 3) {
+    const a = idx[i], b = idx[i + 1], c = idx[i + 2];
+    nb[a].add(b).add(c); nb[b].add(a).add(c); nb[c].add(a).add(b);
+  }
+  const arr = p.array, base = new Float32Array(arr);
+  for (let pass = 0; pass < passes; pass++) {
+    const src = new Float32Array(arr);
+    for (let i = 0; i < p.count; i++) {
+      const m = masks[i] || 0, list = nb[i];
+      if (m <= 0.02 || !list.size) continue;
+      let ax = 0, ay = 0, az = 0, n = 0;
+      for (const j of list) {
+        const jm = masks[j] || 0; if (jm <= 0.02) continue;
+        const o = j * 3; ax += src[o]; ay += src[o + 1]; az += src[o + 2]; n++;
+      }
+      if (!n) continue;
+      const o = i * 3, keep = 0.18, s = Math.min(0.32, 0.08 + 0.05 * passes) * m;
+      arr[o] = src[o] * (1 - s) + (ax / n) * s;
+      arr[o + 1] = src[o + 1] * (1 - s) + (ay / n) * s;
+      arr[o + 2] = src[o + 2] * (1 - s) + (az / n) * s;
+      arr[o] = arr[o] * (1 - keep) + base[o] * keep;
+      arr[o + 1] = arr[o + 1] * (1 - keep) + base[o + 1] * keep;
+      arr[o + 2] = arr[o + 2] * (1 - keep) + base[o + 2] * keep;
+    }
+  }
+}
 function applyReliefGeometry(g, m) {
   if (!m.reliefImg || !(m.reliefDepth > 0)) return false;
   const rec = reliefDataCache.get(m.reliefImg);
@@ -2607,13 +2636,15 @@ function applyReliefGeometry(g, m) {
   addAutoUv(g, m.reliefScale || 18);
   g.computeBoundingBox();
   if (!g.attributes.normal) g.computeVertexNormals();
-  const p = g.attributes.position, n = g.attributes.normal, uv = g.attributes.uv;
+  const p = g.attributes.position, n = g.attributes.normal, uv = g.attributes.uv, masks = new Float32Array(p.count);
   for (let i = 0; i < p.count; i++) {
     const x = p.getX(i), y = p.getY(i), z = p.getZ(i), mask = textureReliefMask(m, g.boundingBox, x, y, z);
     if (mask <= 0.0001) continue;
+    masks[i] = mask;
     const h = (reliefHeightSoft(rec.data, uv.getX(i), uv.getY(i), m.reliefSoft || 0) - 0.5) * 2 * m.reliefDepth * mask;
     p.setXYZ(i, p.getX(i) + n.getX(i) * h, p.getY(i) + n.getY(i) * h, p.getZ(i) + n.getZ(i) * h);
   }
+  smoothReliefGeometry(g, masks, Math.round(m.reliefGeomSmooth || 0));
   p.needsUpdate = true; g.computeVertexNormals(); g.computeBoundingBox();
   return true;
 }
@@ -4864,8 +4895,9 @@ const MF = [
     ['reliefFade', 'Suavizar borda', 0, 24, 0.5, 'mm', m => m.reliefImg],
     ['reliefScale', 'Tamanho da repetição', 3, 120, 0.5, 'mm', m => m.reliefImg],
     ['reliefDepth', 'Força do relevo', 0, 4, 0.05, 'mm', m => m.reliefImg],
-    ['reliefQuality', 'Qualidade da malha', 1, 5, 1, '', m => m.reliefImg],
+    ['reliefQuality', 'Qualidade da malha', 1, 9, 1, '', m => m.reliefImg],
     ['reliefSoft', 'Suavizar textura', 0, 3, 0.1, 'px', m => m.reliefImg],
+    ['reliefGeomSmooth', 'Suavizar malha', 0, 4, 1, '', m => m.reliefImg],
   ]],
 ];
 
@@ -4986,7 +5018,7 @@ function renderEditor() {
             m.reliefImg = r.result; m.reliefName = f.name;
             if (!(m.reliefDepth > 0)) m.reliefDepth = 0.55; if (!(m.reliefScale > 0)) m.reliefScale = 18;
             if (!(m.reliefH > 0)) m.reliefH = 82; if (!(m.reliefY >= 0)) m.reliefY = 50; if (!(m.reliefW > 0)) m.reliefW = 100; if (!(m.reliefFade >= 0)) m.reliefFade = 4;
-            if (!(m.reliefQuality > 0)) m.reliefQuality = 3; if (!(m.reliefSoft >= 0)) m.reliefSoft = 0.6;
+            if (!(m.reliefQuality > 0)) m.reliefQuality = 5; if (!(m.reliefSoft >= 0)) m.reliefSoft = 0.8; if (!(m.reliefGeomSmooth >= 0)) m.reliefGeomSmooth = 1;
             ensureReliefData(m.reliefImg).then(() => queueBuild()); renderEditorKeepScroll(); queueBuild();
           };
           r.readAsDataURL(f);
@@ -5002,15 +5034,16 @@ function renderEditor() {
         m.reliefH = 76;
         m.reliefW = 100;
         m.reliefFade = 5;
-        m.reliefQuality = 3;
+        m.reliefQuality = 5;
         m.reliefSoft = 0.8;
+        m.reliefGeomSmooth = 1;
         ensureReliefData(m.reliefImg).then(() => queueBuild());
         renderEditorKeepScroll();
         queueBuild();
       };
       rm.onclick = () => { m.reliefImg = ''; m.reliefName = ''; m.reliefDepth = 0; renderEditorKeepScroll(); queueBuild(); };
       row.append(up, mt, rm); grp.append(row);
-      const tip = document.createElement('div'); tip.className = 'tip'; tip.textContent = m.reliefImg ? `Textura: ${m.reliefName || 'imagem carregada'} · vira malha real no GLB/OBJ/STL. Aumente Qualidade da malha para padrões finos.` : 'Use uma textura preto e branco seamless: claro sobe, escuro afunda. O relevo vira vértice real no 3D.';
+      const tip = document.createElement('div'); tip.className = 'tip'; tip.textContent = m.reliefImg ? `Textura: ${m.reliefName || 'imagem carregada'} · vira malha real no GLB/OBJ/STL. Para acabamento fino, suba Qualidade da malha e use Suavizar malha.` : 'Use uma textura preto e branco seamless: claro sobe, escuro afunda. O relevo vira vértice real no 3D.';
       grp.append(tip);
     }
     for (const def of defs) {
@@ -5038,7 +5071,7 @@ function renderEditor() {
           syncSphereRadius(m, k === 'roundLock' && m.roundLock || ['W', 'D', 'h'].includes(k) && m.roundLock);
         }
         if (k === 'finish') { delete m.difus; delete m.ior; } // acabamento novo: difusão e IOR voltam ao dele
-        if (structural || ['rep', 'groove', 'ridges', 'own', 'labType', 'bpesc', 'finish', 'reliefY', 'reliefH', 'reliefW', 'reliefFade', 'reliefScale', 'reliefDepth', 'reliefQuality', 'reliefSoft'].includes(k) || (isSphereCap(m) && ['W', 'D', 'h', 'roundLock', 'sphereR'].includes(k))) renderEditorKeepScroll();
+        if (structural || ['rep', 'groove', 'ridges', 'own', 'labType', 'bpesc', 'finish', 'reliefY', 'reliefH', 'reliefW', 'reliefFade', 'reliefScale', 'reliefDepth', 'reliefQuality', 'reliefSoft', 'reliefGeomSmooth'].includes(k) || (isSphereCap(m) && ['W', 'D', 'h', 'roundLock', 'sphereR'].includes(k))) renderEditorKeepScroll();
         renderStack(); queueBuild();
       });
       if (show && !show(m)) el.classList.add('hidden');
