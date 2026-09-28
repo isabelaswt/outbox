@@ -505,7 +505,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-28.relevo-seamless-uv';
+const BUILD = '2026-09-28.relevo-sem-gargalo';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -4342,7 +4342,8 @@ function buildInto(product, S, explodeAmt = 0) {
     // dentro (a válvula) aparece embaçado pelo vidro, como na peça real.
     const capCav = g.userData.capCavity;
     if (g.userData.capOuter && isFrost(finM)) { const ex = g.userData.extras; g = g.userData.capOuter; if (ex) g.userData.extras = ex; }
-    applyReliefGeometry(g, ms);
+    const reliefSource = m0.kind === 'gargalo' ? m : ms;
+    applyReliefGeometry(g, reliefSource);
     const mesh = new THREE.Mesh(g, material(colM, finM, firstBody && thickBase(finM) ? { y: y0 + fundo } : null, thick, look));
     // Tampa de vidro que veste a válvula: as paredes da cavidade aparecem como as linhas
     // do vidro grosso dos dois lados da válvula (antes a cavidade sumia e parecia uma janela).
