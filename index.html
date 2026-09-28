@@ -455,7 +455,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-27.pescante-logico';
+const BUILD = '2026-09-28.premium-semijateado';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -2151,14 +2151,15 @@ function premiumScene() {
     const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ color: new THREE.Color(tint).multiplyScalar(k), side: THREE.DoubleSide }));
     m.position.set(...pos); m.lookAt(...look); sc.add(m);
   };
-  soft(1.1, 16, 14, [-6.5, 3, -2.5]);                 // faixa de contorno à esquerda (um pouco atrás)
-  soft(1.1, 16, 14, [6.5, 3, -2.5]);                  // faixa de contorno à direita
-  soft(7, 8, 6, [-7, 7, 7]);                          // principal macia, alto à esquerda
-  soft(10, 2.2, 7, [0, 11, 0.5], [0, 0, 0]);          // topo: ombro e tampa
-  soft(2.2, 12, 1.4, [3, 3, 10]);                     // reflexo vertical fino na frente (vida no vidro)
+  soft(0.9, 16, 18, [-7.5, 3, -0.8]);                 // faixa de contorno à esquerda (desenha a borda do vidro)
+  soft(0.9, 16, 18, [7.5, 3, -0.8]);                  // faixa de contorno à direita
+  soft(6, 7, 3.2, [-7, 7, 7]);                        // principal macia, alto à esquerda (fraca: contraste)
+  soft(10, 1.6, 8, [0, 11, 0.5], [0, 0, 0]);          // topo: ombro e tampa
+  soft(1.3, 14, 7, [2.6, 3, 10]);                     // faixa fina e forte na frente (o brilho vertical do vidro e do metal)
+  soft(0.6, 14, 4, [-3.2, 3, 10]);                    // segunda faixa, mais fina, do outro lado
   return sc;
 }
-const premiumEnv = pmrem.fromScene(premiumScene(), 0.01).texture;
+const premiumEnv = pmrem.fromScene(premiumScene(), 0.005).texture; // pouco desfoque: faixas nítidas
 scene.environment = roomEnv;
 // Luz padrão pensada para ler volume: ambiente baixo, luz principal lateral
 // forte e um contraluz frio do outro lado para recortar a silhueta.
@@ -2463,9 +2464,9 @@ function material(color, finish, band = null) {
   // PET semi-fosco: plástico colorido translúcido, acetinado; o que está dentro aparece
   // desfocado e escuro (peças opacas entram na imagem que o plástico embaça), sem véu leitoso.
   if (isFrost(finish)) { const semi = finish === 'vidroSemi', ps = finish === 'petSemi', pf = finish === 'petFosco' || ps; // semi: menos embaçado, brilho mais definido
-    m.roughness = semi ? 0.12 : ps ? 0.24 : pf ? 0.5 : 0.42; m.transmission = semi || ps ? 1 : pf ? 0.88 : 0.9; m.thickness = pf ? 1.5 : 6; m.ior = pf ? 1.45 : 1.5; m.depthWrite = !semi; // semi: as peças de dentro aparecem apagadas
-    m.sheen = semi ? 0.08 : ps ? 0.1 : pf ? 0.22 : 0.15; m.sheenRoughness = 0.45; m.sheenColor = new THREE.Color(color).lerp(new THREE.Color('#ffffff'), 0.5); m.specularIntensity = 1;
-    m.clearcoat = semi ? 0.4 : ps ? 0.15 : pf ? 0.06 : 0.18; m.clearcoatRoughness = semi ? 0.22 : ps ? 0.45 : pf ? 0.6 : 0.42; // brilho presente mas espalhado, sem cara de verniz
+    m.roughness = semi ? 0.27 : ps ? 0.24 : pf ? 0.5 : 0.42; m.transmission = semi ? 0.96 : ps ? 1 : pf ? 0.88 : 0.9; m.thickness = pf ? 1.5 : 6; m.ior = pf ? 1.45 : 1.5; m.depthWrite = !semi; // semi: as peças de dentro aparecem apagadas
+    m.sheen = semi ? 0.12 : ps ? 0.1 : pf ? 0.22 : 0.15; m.sheenRoughness = 0.45; m.sheenColor = new THREE.Color(color).lerp(new THREE.Color('#ffffff'), 0.5); m.specularIntensity = 1;
+    m.clearcoat = semi ? 0.3 : ps ? 0.15 : pf ? 0.06 : 0.18; m.clearcoatRoughness = semi ? 0.3 : ps ? 0.45 : pf ? 0.6 : 0.42; // brilho presente mas espalhado, sem cara de verniz
     m.onBeforeCompile = sh => { wallUniform(sh);
       if (band) bandVert(sh);
       sh.fragmentShader = sh.fragmentShader.replace('#include <transmission_fragment>', THREE.ShaderChunk.transmission_fragment
@@ -2473,13 +2474,13 @@ function material(color, finish, band = null) {
         .replace('material.thickness = thickness;', `float frEdge = pow(1.0 - abs(dot(normalize(vViewPosition), normal)), 1.1);
 \tmaterial.thickness = thickness * 0.35;`)
         .replace('totalDiffuse = mix( totalDiffuse, transmitted.rgb, material.transmission );',
-          `transmitted.rgb *= mix(1.0, ${semi ? '0.45' : pf ? '0.8' : '0.38'}, clamp(frEdge * (0.55 + uWall * 0.6), 0.0, 1.0))${band ? ' * mix(1.0, 0.62, ' + bandF(band.y) + ')' : ''}; // borda e fundo mais densos, mesmo tom
+          `transmitted.rgb *= mix(1.0, ${semi ? '0.4' : pf ? '0.8' : '0.38'}, clamp(frEdge * (0.55 + uWall * 0.6), 0.0, 1.0))${band ? ' * mix(1.0, 0.62, ' + bandF(band.y) + ')' : ''}; // borda e fundo mais densos, mesmo tom
 \ttotalDiffuse = mix( totalDiffuse, transmitted.rgb, material.transmission );`)
-        + '\n#if defined(USE_TRANSMISSION) && defined(USE_ENVMAP)\n totalDiffuse += material.diffuseColor * (transmitted.rgb / max(max(transmitted.r, max(transmitted.g, transmitted.b)), 0.05)) * getIBLIrradiance(-normal) * ' + (semi ? '0.45' : ps ? '0.0' : '0.8') + ' * pow(1.0 - frEdge, 1.5); // luz de trás acende o miolo, na cor do que está atrás\n#endif'); // só com transmissão (o PNG transparente desliga ela por um instante)
+        + '\n#if defined(USE_TRANSMISSION) && defined(USE_ENVMAP)\n totalDiffuse += material.diffuseColor * (transmitted.rgb / max(max(transmitted.r, max(transmitted.g, transmitted.b)), 0.05)) * getIBLIrradiance(-normal) * ' + (semi ? '0.62' : ps ? '0.0' : '0.8') + ' * pow(1.0 - frEdge, 1.5); // luz de trás acende o miolo, na cor do que está atrás\n#endif'); // só com transmissão (o PNG transparente desliga ela por um instante)
     };
-    m.customProgramCacheKey = () => (semi ? 'semi1' : ps ? 'pets1' : pf ? 'petf1' : 'jateado10') + wk + (band ? 'b' + band.y.toFixed(1) : ''); }
+    m.customProgramCacheKey = () => (semi ? 'semi2' : ps ? 'pets1' : pf ? 'petf1' : 'jateado10') + wk + (band ? 'b' + band.y.toFixed(1) : ''); }
   if (finish === 'metal') { m.metalness = 1; m.roughness = 0.3; } // um pouco menos espelhado: sem brilho piscando nas quinas
-  const grain = { fosco: 1, acetinado: 0.8, perolado: 0.6, vidroFosco: 1, vidroSemi: 0.5, petFosco: 0.8, petSemi: 0.5 }[finish];
+  const grain = { fosco: 1, acetinado: 0.8, perolado: 0.6, vidroFosco: 1, vidroSemi: 0.7, petFosco: 0.8, petSemi: 0.5 }[finish];
   if (grain) addGrain(m, grain);
   matCache.set(key, m);
   return m;
@@ -2591,6 +2592,8 @@ function renderScene() {
   // Qualquer ajuste de luz recalcula tudo (ambiente, sol/sombra e caixas): o que se vê
   // mexendo é exatamente o que é salvo e reaplicado depois.
   const ch = (k) => {
+    // Premium: foto de perfume pede fundo escuro (o vidro só ganha contraste contra o escuro)
+    if (k === 'luz' && S.scene.luz === 'premium') { S.bg = '#5a5249'; Object.assign(S.scene, { bgGrad: 'radial', bgEdge: '#131211' }); applyBackground(); }
     if (LIGHT_KEYS.includes(k)) applySceneLight(); buildStage(); if (k === 'cena') { renderScene(); fit(); } store.set('shape.autosave', S); req(); };
   field(f, S.scene, ['cena', 'Cenário', 'select', [['nenhum', 'Nenhum (só a sombra)'], ['pedestal', 'Pedestal redondo'], ['bloco', 'Bloco'],
     ['degraus', 'Degraus (vitrine)'], ['arco', 'Arco ao fundo'], ['infinito', 'Fundo infinito (estúdio)']]], ch);
@@ -3894,7 +3897,9 @@ function buildInto(product, S, explodeAmt = 0) {
     if (vestsValve(S, idx) && L[i - 1]?.idx === idx - 1) { // cavidade no tamanho da válvula (folga de 0,5 mm)
       const vg = sprayGeo(L[i - 1].m, L[i - 1].y0, { lo: true }); vg.computeBoundingBox(); const vb = vg.boundingBox;
       const vr = Math.max(Math.abs(vb.min.x), Math.abs(vb.max.x), Math.abs(vb.min.z), Math.abs(vb.max.z)) + 0.5;
-      const cut = cyl(vr, y0 - 1, Math.max(1, vb.max.y - L[i - 1].y0 + 1.5)); // altura da válvula (vale também explodido) if (m.ox) cut.translate(m.ox, 0, 0);
+      // altura da válvula (vale também explodido), mas a tampa mantém um topo fechado de 2 mm:
+      // válvula mais alta que a tampa virava um furo atravessando e a tampa parecia cortada
+      const cut = cyl(vr, y0 - 1, Math.max(1, Math.min(vb.max.y - L[i - 1].y0 + 1.5, m.h * Math.max(1, m.rep || 1) - 1))); if (m.ox) cut.translate(m.ox, 0, 0);
       const [outer, inner] = cutHole(g, cut); vg.dispose();
       const ni = x => { const y = x.index ? x.toNonIndexed() : x; for (const k in y.attributes) if (k !== 'position' && k !== 'normal') y.deleteAttribute(k); return y; };
       if (outer !== g) g = mergeGeometries([ni(outer), ni(inner)]) || g;
@@ -5184,7 +5189,7 @@ function applyLightingMode(mode) {
   } else if (mode === 'soft') {
     scene.environmentIntensity = 1.05 * boost; hemi.intensity = 0.55; sun.intensity = 0.85; sun.position.set(140, 360, 280);
   } else if (mode === 'premium') { // vidro/perfume: ambiente escuro com faixas; sol pouco, só para a sombra
-    scene.environment = premiumEnv; scene.environmentIntensity = 0.95 * boost; hemi.intensity = 0.03; sun.intensity = 0.7; sun.position.set(-240, 520, 200);
+    scene.environment = premiumEnv; scene.environmentIntensity = 1.05 * boost; hemi.intensity = 0.02; sun.intensity = 0.55; sun.position.set(-240, 520, 200);
   } else if (mode === 'contrast') {
     scene.environmentIntensity = 1.15 * boost; hemi.intensity = 0.18; sun.intensity = 2.1; sun.position.set(-180, 460, 220);
   } else if (mode === 'hdr' && HDR.env) {
