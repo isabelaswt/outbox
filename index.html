@@ -459,7 +459,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-28.cavidade-contorno';
+const BUILD = '2026-09-28.arrastar-lado';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -4272,6 +4272,32 @@ function renderLineup() {
   const g = $('#lineGap'); g.innerHTML = '';
   if (S.side.length) field(g, S, ['gap', 'Espaço entre os produtos', 0, 200, 1, 'mm'], () => { build(); fit(); });
 }
+// Arrastar um card da galeria para a cena: entra no lado a lado, à esquerda ou à direita
+// conforme onde foi solto (em relação ao meio do que já está na cena).
+{ let hint = null;
+  const hideHint = () => { hint?.remove(); hint = null; };
+  const showHint = right => {
+    if (!hint) { hint = document.createElement('div'); hint.style.cssText = 'position:absolute;top:0;bottom:0;width:50%;pointer-events:none;background:rgba(40,32,24,.06);border:2px dashed rgba(40,32,24,.35);border-radius:12px;display:grid;place-items:center;font-size:13px;color:#4a4036;z-index:3'; view.appendChild(hint); }
+    hint.style.left = right ? '50%' : '0'; hint.textContent = right ? 'Soltar à direita →' : '← Soltar à esquerda';
+  };
+  const midX = () => { // meio (na tela) do conjunto que já está na cena
+    const b = new THREE.Box3().setFromObject(product); sideRoot.children.forEach(g => b.union(new THREE.Box3().setFromObject(g)));
+    const r = view.getBoundingClientRect(); if (b.isEmpty()) return r.left + r.width / 2;
+    const c = b.getCenter(new THREE.Vector3()).project(cam); return r.left + (c.x + 1) / 2 * r.width;
+  };
+  const isCard = e => [...(e.dataTransfer?.types || [])].includes('text/x-outbox-card');
+  view.addEventListener('dragover', e => { if (!isCard(e)) return; e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; showHint(e.clientX >= midX()); });
+  view.addEventListener('dragleave', e => { if (!view.contains(e.relatedTarget)) hideHint(); });
+  view.addEventListener('drop', e => {
+    if (!isCard(e)) return; e.preventDefault(); hideHint();
+    let d; try { d = JSON.parse(e.dataTransfer.getData('text/x-outbox-card')); } catch { return; }
+    const src = d?.kind === 's' ? saved()[d.name] : PRESETS[d?.name]; if (!src) return;
+    const slots = [S.slot, ...S.side.map(it => it.slot)], right = e.clientX >= midX();
+    S.side.push(copyProduct(src, d.name, right ? Math.max(...slots) + 1 : Math.min(...slots) - 1));
+    renderLineup(); build(); fit(); toast(`${d.name} ${right ? 'à direita' : 'à esquerda'}`);
+  });
+  document.addEventListener('dragend', hideHint);
+}
 $('#lineAddBtn').onclick = () => {
   const v = $('#lineAdd').value, slot = Math.max(S.slot, ...S.side.map(it => it.slot)) + 1;
   const src = v === '__atual' ? S : v.startsWith('s:') ? saved()[v.slice(2)] : PRESETS[v];
@@ -5232,7 +5258,7 @@ function renderPresets() {
       card.innerHTML = `<img class="ph" alt=""><div>${name}</div>`;
       card.onclick = () => { loadState(st, name); };
       card.draggable = true; // arrastar para uma aba
-      card.ondragstart = e => { e.dataTransfer.setData('text/x-outbox-card', JSON.stringify({ name, kind })); e.dataTransfer.effectAllowed = 'move'; };
+      card.ondragstart = e => { e.dataTransfer.setData('text/x-outbox-card', JSON.stringify({ name, kind })); e.dataTransfer.effectAllowed = 'copyMove'; };
       gal.appendChild(card);
       queueThumb(card.querySelector('img'), st);
     }
