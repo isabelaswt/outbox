@@ -147,6 +147,7 @@ canvas{display:block;width:100%;height:100%;touch-action:none}
     <div class="row"><input type="text" id="projName" placeholder="Nome do projeto"></div>
     <div class="row">
       <button class="btn" id="savePreset">Salvar</button>
+      <button class="btn" id="stlGalBtn" title="Subir uma peça STL: entra no produto e fica na aba Uploads para reuso">+ STL</button>
       <button class="btn" id="delPreset">Excluir</button>
       <button class="btn" id="exportJson">JSON ↓</button>
       <button class="btn" id="importJsonBtn">JSON ↑</button>
@@ -374,10 +375,59 @@ function importedMeshBase(m) {
 function improveMesh(g, smooth) {
   const w = new THREE.BufferGeometry(); w.setAttribute('position', g.attributes.position); if (g.index) w.setIndex(g.index);
   let m = mergeVertices(w, 1e-4);
-  if (smooth) { m.computeBoundingBox(); const bs = m.boundingBox.getSize(new THREE.Vector3()), diag = bs.length();
-    refineGeometry(m, Math.max(0.3, diag / 110), -Infinity, Infinity, 1.2e6); }
+  if (smooth) { m.computeBoundingBox(); const diag = m.boundingBox.getSize(new THREE.Vector3()).length();
+    refineCreased(m, Math.max(0.3, diag / 110), 1.2e6); }
   m.deleteAttribute('normal');
   return toCreasedNormals(m, THREE.MathUtils.degToRad(38));
+}
+// Refino que respeita quinas: cada aresta longa é dividida e o ponto novo segue a curva
+// da superfície usando as normais "do lado" de cada face (normais com quina, como no
+// sombreamento). Numa quina viva (lateral × topo de um cilindro) cada face só curva no
+// próprio plano: o topo continua plano, a lateral arredonda, e nada estufa.
+function refineCreased(g, target, maxV, crease = THREE.MathUtils.degToRad(38)) {
+  let pos = Array.from(g.attributes.position.array), idx = Array.from(g.index.array);
+  const cosC = Math.cos(crease), t2 = target * target;
+  for (let it = 0; it < 12 && pos.length / 3 < maxV; it++) {
+    const F = idx.length / 3, V = pos.length / 3, fn = new Float64Array(F * 3);
+    for (let f = 0; f < F; f++) { const a = idx[f * 3] * 3, b = idx[f * 3 + 1] * 3, c = idx[f * 3 + 2] * 3;
+      const ux = pos[b] - pos[a], uy = pos[b + 1] - pos[a + 1], uz = pos[b + 2] - pos[a + 2], vx = pos[c] - pos[a], vy = pos[c + 1] - pos[a + 1], vz = pos[c + 2] - pos[a + 2];
+      fn[f * 3] = uy * vz - uz * vy; fn[f * 3 + 1] = uz * vx - ux * vz; fn[f * 3 + 2] = ux * vy - uy * vx; }
+    const cnt = new Uint32Array(V + 1); for (const v of idx) cnt[v + 1]++; for (let i = 0; i < V; i++) cnt[i + 1] += cnt[i];
+    const fill = cnt.slice(), vf = new Uint32Array(idx.length); for (let k = 0; k < idx.length; k++) vf[fill[idx[k]]++] = (k / 3) | 0;
+    const unit = f => { const x = fn[f * 3], y = fn[f * 3 + 1], z = fn[f * 3 + 2], l = Math.hypot(x, y, z) || 1; return [x / l, y / l, z / l]; };
+    const cornerN = (f, v) => { const [fx, fy, fz] = unit(f); let x = 0, y = 0, z = 0;
+      for (let k = cnt[v]; k < cnt[v + 1]; k++) { const g2 = vf[k], [gx, gy, gz] = unit(g2); if (fx * gx + fy * gy + fz * gz >= cosC) { x += fn[g2 * 3]; y += fn[g2 * 3 + 1]; z += fn[g2 * 3 + 2]; } }
+      const l = Math.hypot(x, y, z) || 1; return [x / l, y / l, z / l]; };
+    const need = (a, b) => { const dx = pos[b * 3] - pos[a * 3], dy = pos[b * 3 + 1] - pos[a * 3 + 1], dz = pos[b * 3 + 2] - pos[a * 3 + 2]; return dx * dx + dy * dy + dz * dz > t2; };
+    const key = (a, b) => a < b ? a * 1e7 + b : b * 1e7 + a;
+    const acc = new Map(); let any = false;
+    for (let f = 0; f < F; f++) for (let e = 0; e < 3; e++) { const a = idx[f * 3 + e], b = idx[f * 3 + (e + 1) % 3]; if (!need(a, b)) continue; any = true;
+      const na = cornerN(f, a), nb = cornerN(f, b), dx = pos[b * 3] - pos[a * 3], dy = pos[b * 3 + 1] - pos[a * 3 + 1], dz = pos[b * 3 + 2] - pos[a * 3 + 2];
+      const da = dx * na[0] + dy * na[1] + dz * na[2], db = dx * nb[0] + dy * nb[1] + dz * nb[2];
+      const o = [(nb[0] * db - na[0] * da) / 8, (nb[1] * db - na[1] * da) / 8, (nb[2] * db - na[2] * da) / 8];
+      const k = key(a, b); let r = acc.get(k); if (!r) { r = { a, b, o: [0, 0, 0], n: 0, f0: f, crease: false }; acc.set(k, r); }
+      else { const [p0, p1, p2] = unit(r.f0), [q0, q1, q2] = unit(f); if (p0 * q0 + p1 * q1 + p2 * q2 < cosC) r.crease = true; }
+      r.o[0] += o[0]; r.o[1] += o[1]; r.o[2] += o[2]; r.n++; }
+    if (!any) break;
+    const mid = new Map();
+    for (const [k, r] of acc) { const A = r.a * 3, B = r.b * 3, sc = r.crease ? 1 : 1 / r.n, L = Math.hypot(pos[B] - pos[A], pos[B + 1] - pos[A + 1], pos[B + 2] - pos[A + 2]);
+      let ox = r.o[0] * sc, oy = r.o[1] * sc, oz = r.o[2] * sc; const ol = Math.hypot(ox, oy, oz); if (ol > L * 0.25) { const t = L * 0.25 / ol; ox *= t; oy *= t; oz *= t; }
+      pos.push((pos[A] + pos[B]) / 2 + ox, (pos[A + 1] + pos[B + 1]) / 2 + oy, (pos[A + 2] + pos[B + 2]) / 2 + oz); mid.set(k, pos.length / 3 - 1); }
+    const out = [], M = (a, b) => mid.get(key(a, b)) ?? -1;
+    for (let f = 0; f < F; f++) { const a = idx[f * 3], b = idx[f * 3 + 1], c = idx[f * 3 + 2], m0 = M(a, b), m1 = M(b, c), m2 = M(c, a), s0 = m0 >= 0, s1 = m1 >= 0, s2 = m2 >= 0;
+      if (!s0 && !s1 && !s2) out.push(a, b, c);
+      else if (s0 && s1 && s2) out.push(a, m0, m2, m0, b, m1, m2, m1, c, m0, m1, m2);
+      else if (s0 && s1) out.push(m0, b, m1, a, m0, m1, a, m1, c);
+      else if (s1 && s2) out.push(m1, c, m2, a, b, m1, a, m1, m2);
+      else if (s2 && s0) out.push(a, m0, m2, m0, b, c, m0, c, m2);
+      else if (s0) out.push(a, m0, c, m0, b, c);
+      else if (s1) out.push(a, b, m1, a, m1, c);
+      else out.push(a, b, m2, m2, b, c); }
+    idx = out;
+  }
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setIndex(pos.length / 3 > 65535 ? new THREE.Uint32BufferAttribute(idx, 1) : new THREE.Uint16BufferAttribute(idx, 1));
+  g.deleteAttribute('normal'); g.clearGroups();
 }
 // Low-poly: poucos triângulos para o tamanho (arestas longas).
 function stlIsLowPoly(g) {
@@ -527,7 +577,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-29.uploads-stl';
+const BUILD = '2026-09-29.uploads-stl2';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -5097,7 +5147,7 @@ const MF = [
     MESH(['meshRotX', 'Girar X', -180, 180, 1, '°']),
     MESH(['meshRotY', 'Girar Y', -180, 180, 1, '°']),
     MESH(['meshRotZ', 'Girar Z', -180, 180, 1, '°']),
-    MESH(['meshSmooth', 'Melhorar malha (refina e arredonda STL low-poly)', 'check']),
+    MESH(['meshSmooth', 'Arredondar malha low-poly (refina a geometria; pode ondular em peças com quinas)', 'check']),
   ]],
   // Gomos: contorno em lóbulos (nuvem, canelado), em grupo próprio.
   ['Gomos', [
@@ -5914,13 +5964,14 @@ CATS.forEach(([label, keys]) => {
   $('#addRows').appendChild(row);
 });
 $('#importStlBtn').onclick = () => $('#importStl').click();
+$('#stlGalBtn').onclick = () => $('#importStl').click(); // o mesmo, ao lado de Salvar
 // Põe um STL no produto como peça (logo acima da selecionada). Low-poly já entra com a
 // malha melhorada (dá para desligar em "Melhorar malha").
 function addStlModule(buf, name) {
   const geo = stlLoader.parse(buf); geo.computeBoundingBox();
   const b = geo.boundingBox, W = r1(Math.max(1, b.max.x - b.min.x)), h = r1(Math.max(1, b.max.y - b.min.y)), D = r1(Math.max(1, b.max.z - b.min.z));
   const low = stlIsLowPoly(geo); geo.dispose?.();
-  const at = sel + unitLen(sel), m = { ...BASE, uid: newUid(), type: 'stl', kind: 'mesh', name, W, D, h, meshData: bytesToB64(buf), meshRotX: 0, meshRotY: 0, meshRotZ: 0, meshSmooth: low,
+  const at = sel + unitLen(sel), m = { ...BASE, uid: newUid(), type: 'stl', kind: 'mesh', name, W, D, h, meshData: bytesToB64(buf), meshRotX: 0, meshRotY: 0, meshRotZ: 0, meshSmooth: false,
     own: true, color: S.color || BEIGE, finish: S.finish || 'fosco', vol: false, pesc: false, bpesc: false };
   S.modules.splice(at, 0, m);
   sel = at; renderStack(); renderEditor(); build(); fit();
@@ -5934,8 +5985,7 @@ async function refreshStlUploads() {
   try { stlUploads = (await api('uploads.php?a=list&kind=stl')).files || []; galleryKey = ''; renderPresets(); } catch {}
 }
 function stlThumb(m) { // miniatura da peça sozinha (mesmo desenho da galeria)
-  return new Promise(res => { const img = new Image(); queueThumb(img, { color: m.color, finish: m.finish, modules: [{ ...m, own: false }] });
-    let n = 0; const t = setInterval(() => { if (img.src || ++n > 100) { clearInterval(t); res(img.src || ''); } }, 100); });
+  try { return Promise.resolve(thumbOf({ color: m.color, finish: m.finish, modules: [{ ...m, own: false }] }) || ''); } catch { return Promise.resolve(''); }
 }
 async function uploadStl(buf, name, m) {
   const CH = 768 * 1024, bytes = new Uint8Array(buf), n = Math.ceil(bytes.length / CH), thumb = await stlThumb(m);
@@ -5947,7 +5997,7 @@ async function uploadStl(buf, name, m) {
 }
 async function useStlUpload(f) {
   try { toast(`Abrindo ${f.name}…`); const r = await fetch(`api/uploads.php?a=file&id=${f.id}`, { credentials: 'same-origin' }); if (!r.ok) throw 0;
-    const { low } = addStlModule(await r.arrayBuffer(), f.name); toast(`${f.name} adicionado${low ? ' (malha low-poly melhorada)' : ''}`); }
+    const { low } = addStlModule(await r.arrayBuffer(), f.name); toast(`${f.name} adicionado${low ? ' (low-poly: sombreamento suavizado)' : ''}`); }
   catch { toast('Não consegui abrir esse upload'); }
 }
 $('#importStl').onchange = async e => {
@@ -5957,7 +6007,7 @@ $('#importStl').onchange = async e => {
   try {
     const buf = await f.arrayBuffer(), name = f.name.replace(/\.stl$/i, '') || 'STL importado';
     added = addStlModule(buf, name);
-    toast(`STL importado: ${name}${added.low ? ' · malha low-poly melhorada' : ''}`);
+    toast(`STL importado: ${name}${added.low ? ' · low-poly: sombreamento suavizado (dá para arredondar a geometria no grupo STL)' : ''}`);
     if (cloud) { try { await uploadStl(buf, name, added.m); toast(`${name} guardado em Uploads para reuso`); } catch { toast(`${name} importado, mas não consegui guardar em Uploads`); } }
   } catch (err) {
     console.error(err); if (!added) toast('Não consegui ler esse STL');
