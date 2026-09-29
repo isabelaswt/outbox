@@ -407,7 +407,7 @@ const BASE = {
   // pescante do corpo (quando não há válvula na pilha)
   bpesc: true, bpescV: 2, bpescD: 4, bpescGap: 3, bpescCurve: 0, bpescWave: 0, bpescMola: false,
   // líquido dentro do corpo
-  liq: false, liqLevel: 80, liqColor: '#c9a45c', liqType: 'cremoso', liqClear: 60, liqSize: 9, liqColor2: '#ffffff',
+  liq: false, liqLevel: 80, liqColor: '#c9a45c', liqType: 'cremoso', liqClear: 60, liqInset: 0, liqSize: 9, liqColor2: '#ffffff',
   // sistema de abertura da tampa: flip-top (dobradiça na linha) ou disc-top.
   topType: 'nenhum', openPct: 0, lidSide: 'cima', lidOver: 0, aba: false, orifD: 4, discD: 36, discDip: 4, discDimple: 1.2, discRise: 0,
   // bisnaga: tubo que achata até a solda mantendo o perímetro.
@@ -4205,7 +4205,8 @@ const FILL_SOLIDS = {
 function seeded(str) { let h = 2166136261; for (const ch of String(str)) h = Math.imul(h ^ ch.charCodeAt(0), 16777619);
   return () => { h += 0x6D2B79F5; let t = h; t = Math.imul(t ^ t >>> 15, t | 1); t ^= t + Math.imul(t ^ t >>> 7, t | 61); return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
 function solidFill(m, y0, levelAbs, lift) {
-  const T = FILL_SOLIDS[m.liqType], inner = offsetInner(m, y0, S.wall + 0.3, lift); if (!inner) return [];
+  const reliefGap = m.reliefImg && m.reliefDepth > 0 ? Math.max(0.8, m.reliefDepth * 1.6 + 0.35) : 0;
+  const T = FILL_SOLIDS[m.liqType], inner = offsetInner(m, y0, S.wall + 0.3 + reliefGap, lift); if (!inner) return [];
   const b = inner.boundingBox, level = levelAbs ?? b.min.y + (b.max.y - b.min.y) * clamp(m.liqLevel, 0, 100) / 100;
   if (level <= b.min.y + 0.05) { inner.dispose(); return []; }
   inner.computeBoundsTree();
@@ -4296,7 +4297,9 @@ function liquidMeshes(m, y0, levelAbs, lift = S.wall) {
   // parece ir até a borda (como na foto); a faixa vazia de parede ficava falsa.
   // O fundo grosso continua aparecendo embaixo.
   const glassBody = isGlass(m.own ? m.finish : S.finish);
-  const inner = offsetInner(m, y0, glassBody ? Math.max(0.35, S.wall - 0.9) : S.wall + 0.3, lift); if (!inner) return []; // parede grossa: faixa de vidro em volta do líquido
+  const reliefGap = m.reliefImg && m.reliefDepth > 0 ? Math.max(0.8, m.reliefDepth * 1.6 + 0.35) : 0;
+  const inset = (glassBody ? Math.max(0.35, S.wall - 0.9) : S.wall + 0.3) + reliefGap + Math.max(0, m.liqInset || 0);
+  const inner = offsetInner(m, y0, inset, lift); if (!inner) return []; // parede grossa: faixa de vidro em volta do líquido
   inner.computeBoundingBox();
   const b = inner.boundingBox, level = levelAbs ?? b.min.y + (b.max.y - b.min.y) * clamp(m.liqLevel, 0, 100) / 100;
   if (level <= b.min.y + 0.05) { inner.dispose(); return []; } // cópia acima do nível: vazia
@@ -5468,6 +5471,7 @@ function renderBodyLiquid(ed, m) {
     if (m.liqType === 'transparente') field(grp, m, ['liqClear', 'Transparência', 0, 95, 1, '%'], ch);
     if (solid) field(grp, m, ['liqSize', 'Tamanho da peça', 1, 40, 0.5, 'mm'], ch);
     field(grp, m, ['liqLevel', 'Nível', 0, 100, 1, '%'], ch);
+    if (!solid) field(grp, m, ['liqInset', 'Afastar da parede', 0, 8, 0.1, 'mm'], ch);
     field(grp, m, ['liqColor', 'Cor do conteúdo', 'color'], ch);
     if (solid && m.liqType !== 'comprimidos') field(grp, m, ['liqColor2', m.liqType === 'pilulas' ? 'Cor da outra metade' : 'Segunda cor (mistura)', 'color'], ch);
   }
