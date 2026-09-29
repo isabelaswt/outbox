@@ -429,6 +429,38 @@ function refineCreased(g, target, maxV, crease = THREE.MathUtils.degToRad(38)) {
   g.setIndex(pos.length / 3 > 65535 ? new THREE.Uint32BufferAttribute(idx, 1) : new THREE.Uint16BufferAttribute(idx, 1));
   g.deleteAttribute('normal'); g.clearGroups();
 }
+// STL → peça editável: fatia a peça em muitas alturas e mede cada fatia (meia-largura,
+// meia-profundidade, quanto a seção é quadrada e o deslocamento do centro). Vira um módulo
+// "perfil", o mesmo dos corpos medidos: ganha largura/altura, cantos, gomos, frisos,
+// relevo, rótulo, líquido… A seção fica redonda/oval/quadrada arredondada (detalhes que
+// não são desse tipo — letras, recortes — ficam de fora).
+function stlToProfile(m) {
+  const g = importedMeshGeo({ ...m, ox: 0 }, 0); if (!g) return null;
+  g.computeBoundingBox(); const bb = g.boundingBox, H = bb.max.y - bb.min.y; if (!(H > 0.5)) return null;
+  const p = g.attributes.position, N = clamp(Math.round(H / 0.7), 40, 220), xs = Array.from({ length: N + 1 }, () => []);
+  const ys = i => bb.min.y + clamp(i / N, 0.002, 0.998) * H;
+  for (let t = 0; t < p.count; t += 3) {
+    const P = [0, 1, 2].map(k => [p.getX(t + k), p.getY(t + k), p.getZ(t + k)]);
+    const y0 = Math.min(P[0][1], P[1][1], P[2][1]), y1 = Math.max(P[0][1], P[1][1], P[2][1]);
+    const i0 = Math.max(0, Math.ceil((y0 - bb.min.y) / H * N - 1)), i1 = Math.min(N, Math.floor((y1 - bb.min.y) / H * N + 1));
+    for (let i = i0; i <= i1; i++) { const y = ys(i); if (y < y0 || y > y1) continue;
+      for (let e = 0; e < 3; e++) { const A = P[e], B = P[(e + 1) % 3]; if ((A[1] - y) * (B[1] - y) > 0 || A[1] === B[1]) continue;
+        const f = (y - A[1]) / (B[1] - A[1]); xs[i].push(A[0] + (B[0] - A[0]) * f, A[2] + (B[2] - A[2]) * f); } } }
+  const rows = [];
+  for (let i = 0; i <= N; i++) { const q = xs[i]; if (q.length < 6) continue;
+    let x0 = 1e9, x1 = -1e9, z0 = 1e9, z1 = -1e9; for (let k = 0; k < q.length; k += 2) { x0 = Math.min(x0, q[k]); x1 = Math.max(x1, q[k]); z0 = Math.min(z0, q[k + 1]); z1 = Math.max(z1, q[k + 1]); }
+    const cx = (x0 + x1) / 2, cz = (z0 + z1) / 2, a = Math.max(0.05, (x1 - x0) / 2), b = Math.max(0.05, (z1 - z0) / 2);
+    let sq = 0; for (let k = 0; k < q.length; k += 2) sq = Math.max(sq, Math.min(Math.abs(q[k] - cx) / a, Math.abs(q[k + 1] - cz) / b));
+    // |x/a|^n + |z/b|^n = 1 na diagonal: 2·s^n = 1 → n = ln 2 / −ln s (elipse: s ≈ 0,707 → n = 2)
+    const n = sq >= 0.995 ? 12 : clamp(Math.LN2 / -Math.log(Math.max(0.5, sq)), 2, 12);
+    rows.push([(ys(i) - bb.min.y) / H, a, b, n, cx, cz]); }
+  g.dispose();
+  if (rows.length < 4) return null;
+  const W = 2 * Math.max(...rows.map(r => r[1])), D = 2 * Math.max(...rows.map(r => r[2]));
+  rows[0][0] = 0; rows[rows.length - 1][0] = 1;
+  const prof = rows.map(([t, a, b, n, cx, cz]) => [+t.toFixed(4), +(a / (W / 2)).toFixed(4), +(b / (D / 2)).toFixed(4), +n.toFixed(2), +cx.toFixed(2), +cz.toFixed(2)]);
+  return { W: r1(W), D: r1(D), h: r1(H), prof: cleanProf(prof) };
+}
 // Low-poly: poucos triângulos para o tamanho (arestas longas).
 function stlIsLowPoly(g) {
   const p = g.attributes.position, n = g.index ? g.index.count / 3 : p.count / 3; g.computeBoundingBox();
@@ -577,7 +609,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-29.uploads-stl2';
+const BUILD = '2026-09-29.stl-editavel';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -1973,7 +2005,7 @@ function moduleGeo(m0, y0, opts = {}) {
       const nr = Math.max(0, m.neckR - (inset ? S.wall : 0));
       if (a > nr) a -= (a - nr) * k; if (b > nr) b -= (b - nr) * k; n = n + (2 - n) * k;
     }
-    return { y: y0 + lift + ly, ly, a: Math.max(a - g, 0.05), b: Math.max(b - g, 0.05), n, cx: q.cx * (1 - (sh && ly > sh.y0 ? clamp((ly - sh.y0) / sh.L, 0, 1) : 0)), cz: q.cz * (1 - (sh && ly > sh.y0 ? clamp((ly - sh.y0) / sh.L, 0, 1) : 0)) };
+    return { y: y0 + lift + ly, ly, a: Math.max(a - g, 0.05), b: Math.max(b - g, 0.05), n, cx: q.cx * (1 - (sh && ly > sh.y0 ? clamp((ly - sh.y0) / sh.L, 0, 1) : 0)), cz: q.cz * (1 - (sh && ly > sh.y0 ? clamp((ly - sh.y0) / sh.L, 0, 1) : 0)), lobes: m.lobes | 0, lobeK: m.lobes >= 3 ? clamp(m.lobeD / (Math.min(m.W, m.D) / 2), 0, 0.9) : 0 }; // gomos também nas peças de perfil (STL convertido, corpos medidos)
   });
   if (!lo && !inset) for (const b of m.ribs || []) kmax = Math.max(kmax, b.k || 0);
   if (rings.length < 2) return null;
@@ -5151,8 +5183,8 @@ const MF = [
   ]],
   // Gomos: contorno em lóbulos (nuvem, canelado), em grupo próprio.
   ['Gomos', [
-    G(['lobes', 'Quantidade de gomos (0 = sem)', 0, 32, 1, '']),
-    G(['lobeD', 'Profundidade do vale', 0.2, 20, 0.1, 'mm', m => m.lobes >= 3]),
+    GP(['lobes', 'Quantidade de gomos (0 = sem)', 0, 32, 1, '']),
+    GP(['lobeD', 'Profundidade do vale', 0.2, 20, 0.1, 'mm', m => m.lobes >= 3]),
   ]],
   // Repetição tem grupo próprio: empilha cópias da peça (ondas, anéis).
   ['Repetição', [
@@ -5434,6 +5466,21 @@ function renderEditor() {
       const b = document.createElement('button'); b.className = 'btn'; b.textContent = 'Espelhar ←→';
       b.onclick = () => { [m.rTL, m.rTR, m.rBL, m.rBR, m.ox] = [m.rTR, m.rTL, m.rBR, m.rBL, -m.ox]; renderEditorKeepScroll(); queueBuild(); };
       grp.appendChild(b);
+    }
+    if (title === 'STL' && m.kind === 'mesh') {
+      const b = document.createElement('button'); b.className = 'btn'; b.textContent = 'Converter em peça editável';
+      b.title = 'Vira um módulo de perfil: ganha largura/altura, cantos, gomos, frisos, relevo, rótulo e líquido como as outras peças';
+      b.onclick = () => {
+        const r = stlToProfile(m); if (!r) return toast('Não consegui ler o formato dessa peça');
+        const i = S.modules.indexOf(m), body = i === 0 || S.modules.slice(0, i).every(q => q.hidden);
+        const nm = { ...BASE, uid: newUid(), name: `${m.name} (editável)`, type: 'revolve', kind: 'perfil', smoothProf: true, vol: body, pesc: false, bpesc: false,
+          rBot: 0, rTop: 0, W: r.W, D: r.D, W0: r.W, h: r.h, prof: r.prof, ribs: [], own: m.own, color: m.color, finish: m.finish, ox: m.ox || 0 };
+        S.logos = (S.logos || []).filter(L => L.uid !== m.uid); S.modules[i] = nm; sel = i;
+        renderAll(); build(); toast(`${m.name}: agora é uma peça editável (${r.W} × ${r.h} mm) · Ctrl+Z desfaz`);
+      };
+      grp.appendChild(b);
+      const tip = document.createElement('div'); tip.className = 'tip'; tip.textContent = 'Converter lê o contorno da peça (redondo, oval ou quadrado arredondado) e cria uma peça do OUTBOX com todos os controles. Detalhes que não seguem o contorno (letras, recortes) ficam de fora.';
+      grp.appendChild(tip);
     }
     if (title === 'Relevo por textura') {
       const row = document.createElement('div'); row.className = 'row actions';
