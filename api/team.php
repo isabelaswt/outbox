@@ -1,5 +1,5 @@
 <?php
-// Equipe (só administradores): lista, convida, gera link de senha e remove.
+// Equipe (só administradores): lista, convida, renomeia, gera link de senha e remove.
 require __DIR__ . '/_lib.php';
 start_session();
 $me = need_admin();
@@ -32,6 +32,17 @@ if ($a === 'link') {
   $s->execute([$id]);
   if (!$s->fetch()) out(['error' => 'user'], 404);
   out(['token' => new_pass_token($id)]);
+}
+
+// Troca o nome de alguém da equipe (o que aparece no painel e no topo do OUTBOX).
+if ($a === 'rename') {
+  $in = need_post();
+  $id = (int)($in['id'] ?? 0);
+  $name = trim((string)($in['name'] ?? ''));
+  if ($name === '' || mb_strlen($name) > 120) out(['error' => 'name'], 400);
+  $s = db()->prepare('UPDATE users SET name = ? WHERE id = ?');
+  $s->execute([$name, $id]);
+  out(['ok' => true, 'name' => $name]);
 }
 
 if ($a === 'remove') {
