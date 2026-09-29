@@ -507,7 +507,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-28.relevo-preview-leve';
+const BUILD = '2026-09-28.normal-bump-converter';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -2695,6 +2695,54 @@ async function imageToDisplacement(src) {
   }
   cx.putImageData(out, 0, 0);
   return cv.toDataURL('image/png');
+}
+async function normalMapToDisplacement(src) {
+  const img = await imageFromUrl(src), max = 1024;
+  const sc = Math.min(1, max / Math.max(img.naturalWidth || img.width, img.naturalHeight || img.height));
+  const w = Math.max(8, Math.round((img.naturalWidth || img.width) * sc)), h = Math.max(8, Math.round((img.naturalHeight || img.height) * sc));
+  const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+  const cx = cv.getContext('2d', { willReadFrequently: true }); cx.drawImage(img, 0, 0, w, h);
+  const raw = cx.getImageData(0, 0, w, h), rp = raw.data;
+  const row = new Float32Array(w * h), col = new Float32Array(w * h), vals = new Float32Array(w * h), sorted = new Float32Array(w * h);
+  const grad = (i) => {
+    const r = rp[i] / 255 * 2 - 1, g = rp[i + 1] / 255 * 2 - 1, b = Math.max(0.18, rp[i + 2] / 255);
+    return [r / b, -g / b];
+  };
+  for (let y = 0; y < h; y++) {
+    let acc = 0, base = y * w;
+    row[base] = 0;
+    for (let x = 1; x < w; x++) {
+      const [gx0] = grad((base + x - 1) * 4), [gx1] = grad((base + x) * 4);
+      acc += (gx0 + gx1) * 0.5 / w; row[base + x] = acc;
+    }
+    const drift = row[base + w - 1];
+    for (let x = 0; x < w; x++) row[base + x] -= drift * x / Math.max(1, w - 1);
+  }
+  for (let x = 0; x < w; x++) {
+    let acc = 0;
+    col[x] = 0;
+    for (let y = 1; y < h; y++) {
+      const [, gy0] = grad(((y - 1) * w + x) * 4), [, gy1] = grad((y * w + x) * 4);
+      acc += (gy0 + gy1) * 0.5 / h; col[y * w + x] = acc;
+    }
+    const drift = col[(h - 1) * w + x];
+    for (let y = 0; y < h; y++) col[y * w + x] -= drift * y / Math.max(1, h - 1);
+  }
+  for (let i = 0, j = 0; i < vals.length; i++, j += 4) {
+    const lum = (rp[j] * 0.2126 + rp[j + 1] * 0.7152 + rp[j + 2] * 0.0722) / 255;
+    const chroma = ((rp[j] - rp[j + 1]) / 255) * 0.12;
+    vals[i] = sorted[i] = row[i] * 0.5 + col[i] * 0.5 + (lum - 0.5) * 0.18 + chroma;
+  }
+  sorted.sort();
+  const lo = sorted[Math.floor(sorted.length * 0.015)], hi = sorted[Math.floor(sorted.length * 0.985)], span = Math.max(0.0001, hi - lo);
+  const out = cx.createImageData(w, h), op = out.data;
+  for (let i = 0, j = 0; i < vals.length; i++, j += 4) {
+    let v = clamp((vals[i] - lo) / span, 0, 1);
+    v = smooth(0, 1, v);
+    const c = Math.round(clamp(v, 0, 1) * 255); op[j] = op[j + 1] = op[j + 2] = c; op[j + 3] = 255;
+  }
+  cx.putImageData(out, 0, 0);
+  return await cleanDisplacementMap(cv.toDataURL('image/png'), 0.8);
 }
 async function cleanDisplacementMap(src, blur = 1.6) {
   const img = await imageFromUrl(src), max = 1536;
@@ -5148,6 +5196,7 @@ function renderEditor() {
       const row = document.createElement('div'); row.className = 'row actions';
       const up = document.createElement('button'); up.className = 'btn sm'; up.textContent = m.reliefImg ? 'Trocar textura' : 'Subir textura seamless';
       const conv = document.createElement('button'); conv.className = 'btn sm'; conv.textContent = 'Converter imagem em relevo';
+      const normal = document.createElement('button'); normal.className = 'btn sm'; normal.textContent = 'Converter normal/bump';
       const mt = document.createElement('button'); mt.className = 'btn sm'; mt.textContent = 'Matelassê losangos';
       const clean = document.createElement('button'); clean.className = 'btn sm'; clean.textContent = 'Limpar mapa';
       const soft = document.createElement('button'); soft.className = 'btn sm'; soft.textContent = 'Acabamento suave';
@@ -5169,6 +5218,31 @@ function renderEditor() {
             if (!(m.reliefPreviewQ > 0)) m.reliefPreviewQ = 2; if (!(m.reliefQuality > 0)) m.reliefQuality = 7; if (!(m.reliefSoft >= 0)) m.reliefSoft = 8; if (!(m.reliefGeomSmooth >= 0)) m.reliefGeomSmooth = 4;
             ensureReliefData(m.reliefImg).then(() => queueBuild()); renderEditorKeepScroll(); queueBuild();
           } catch (e) { console.warn(e); toast('Não consegui limpar esse mapa'); renderEditorKeepScroll(); }
+        };
+        inp.click();
+      };
+      normal.onclick = () => {
+        const inp = document.createElement('input'); inp.type = 'file'; inp.accept = 'image/png,image/jpeg,image/webp';
+        inp.onchange = async () => {
+          const f = inp.files[0]; if (!f) return;
+          normal.disabled = true; normal.textContent = 'Convertendo...';
+          try {
+            const src = await new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = () => rej(r.error); r.readAsDataURL(f); });
+            m.reliefImg = await normalMapToDisplacement(src);
+            m.reliefName = `${f.name} → normal/bump convertido`;
+            m.reliefTile = 'repeat';
+            m.reliefFit = 'wrap';
+            m.reliefWarp = 0;
+            if (!(m.reliefDepth > 0)) m.reliefDepth = 0.42; if (!(m.reliefScale > 0)) m.reliefScale = 18;
+            if (!(m.reliefH > 0)) m.reliefH = 82; if (!(m.reliefY >= 0)) m.reliefY = 50; if (!(m.reliefW > 0)) m.reliefW = 100; if (!(m.reliefFade >= 0)) m.reliefFade = 4;
+            m.reliefQuality = Math.max(m.reliefQuality || 0, 7);
+            m.reliefPreviewQ = Math.max(m.reliefPreviewQ || 0, 2);
+            m.reliefSoft = Math.max(m.reliefSoft || 0, 3);
+            m.reliefGeomSmooth = Math.max(m.reliefGeomSmooth || 0, 2);
+            ensureReliefData(m.reliefImg).then(() => queueBuild());
+            toast('Normal/bump convertido em displacement e salvo no projeto');
+            renderEditorKeepScroll(); queueBuild();
+          } catch (e) { console.warn(e); toast('Não consegui converter esse normal/bump'); renderEditorKeepScroll(); }
         };
         inp.click();
       };
@@ -5241,8 +5315,8 @@ function renderEditor() {
         renderEditorKeepScroll(); queueBuild();
       };
       rm.onclick = () => { m.reliefImg = ''; m.reliefName = ''; m.reliefDepth = 0; renderEditorKeepScroll(); queueBuild(); };
-      row.append(up, conv, mt, clean, soft, rm); grp.append(row);
-      const tip = document.createElement('div'); tip.className = 'tip'; tip.textContent = m.reliefImg ? `Textura: ${m.reliefName || 'imagem carregada'} · Preview da malha deixa a tela leve; Qualidade no download 3D vale só para GLB/OBJ/STL.` : 'Suba um displacement pronto ou converta uma imagem comum. Claro sobe, escuro afunda; o mapa convertido fica salvo dentro do projeto.';
+      row.append(up, conv, normal, mt, clean, soft, rm); grp.append(row);
+      const tip = document.createElement('div'); tip.className = 'tip'; tip.textContent = m.reliefImg ? `Textura: ${m.reliefName || 'imagem carregada'} · Preview da malha deixa a tela leve; Qualidade no download 3D vale só para GLB/OBJ/STL.` : 'Suba displacement pronto, imagem comum ou normal/bump colorido. A ferramenta salva tudo como mapa de altura no projeto.';
       grp.append(tip);
     }
     for (const def of defs) {
