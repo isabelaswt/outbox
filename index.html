@@ -509,7 +509,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-29.textura-1024';
+const BUILD = '2026-09-29.repetir-tamanho';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -5356,7 +5356,7 @@ function renderEditor() {
             const note = await reliefSizeNote(src);
             toast((kind === 'normal' ? 'Normal map detectado: convertido em mapa de altura' : kind === 'color' ? 'Imagem comum: convertida pela luminância (para relevo fiel, prefira displacement em cinza)' : 'Displacement em cinza aplicado') + (note ? ` · ${note}` : ''));
             m.reliefTile = 'repeat';
-            m.reliefFit = 'wrap';
+            m.reliefFit = 'tile'; // padrão: repetir por tamanho (mm)
             m.reliefWarp = 0;
             if (!(m.reliefDepth > 0)) m.reliefDepth = 0.55; if (!(m.reliefScale > 0)) m.reliefScale = 18;
             if (!(m.reliefH > 0)) m.reliefH = 82; if (!(m.reliefY >= 0)) m.reliefY = 50; if (!(m.reliefW > 0)) m.reliefW = 100; if (!(m.reliefFade >= 0)) m.reliefFade = 4;
@@ -5376,7 +5376,7 @@ function renderEditor() {
             m.reliefImg = await normalMapToDisplacement(src);
             m.reliefName = `${f.name} → normal/bump convertido`;
             m.reliefTile = 'repeat';
-            m.reliefFit = 'wrap';
+            m.reliefFit = 'tile';
             m.reliefWarp = 0;
             if (!(m.reliefDepth > 0)) m.reliefDepth = 0.42; if (!(m.reliefScale > 0)) m.reliefScale = 18;
             if (!(m.reliefH > 0)) m.reliefH = 82; if (!(m.reliefY >= 0)) m.reliefY = 50; if (!(m.reliefW > 0)) m.reliefW = 100; if (!(m.reliefFade >= 0)) m.reliefFade = 4;
@@ -5401,7 +5401,7 @@ function renderEditor() {
             m.reliefImg = await imageToDisplacement(src);
             m.reliefName = `${f.name} → displacement`;
             m.reliefTile = 'repeat';
-            m.reliefFit = 'wrap';
+            m.reliefFit = 'tile';
             m.reliefWarp = 0;
             if (!(m.reliefDepth > 0)) m.reliefDepth = 0.55; if (!(m.reliefScale > 0)) m.reliefScale = 18;
             if (!(m.reliefH > 0)) m.reliefH = 82; if (!(m.reliefY >= 0)) m.reliefY = 50; if (!(m.reliefW > 0)) m.reliefW = 100; if (!(m.reliefFade >= 0)) m.reliefFade = 4;
