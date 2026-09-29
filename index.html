@@ -474,7 +474,7 @@ function stlToProfile(m) {
     if (R[i].empty !== R[i - 1].empty) { cut.add(i); continue; }
     if (R[i].empty) continue;
     const jv = jump(i - 1, i), before = i >= 2 ? jump(i - 2, i - 1) : 0, after = i + 1 < R.length ? jump(i, i + 1) : 0;
-    if (jv > step && before < jv * 0.35 && after < jv * 0.35) cut.add(i);
+    if (jv > step && after < jv * 0.35 && (before < jv * 0.35 || jv > step * 3)) cut.add(i); // degrau (também no fim de um topo arredondado que cai para o gargalo)
     if ((R[i].ribK > 0) !== (R[i - 1].ribK > 0)) cut.add(i);
   }
   for (let i = 3; i < R.length - 3; i++) { if (R[i].empty) continue; const w = R[i].a; // sulco: estreita e volta a alargar em poucos mm
@@ -501,6 +501,51 @@ function stlToProfile(m) {
   for (let k = 1; k < out.length; k++) { const prev = out[k - 1], gapV = out[k].y0 - (prev.y0 + prev.h);
     if (gapV < H / N * 2.5) { prev.h = r1(out[k].y0 - prev.y0); out[k].gapBelow = 0; } else out[k].gapBelow = r1(gapV); }
   return out.length ? out : null;
+}
+// Trechos do STL → peças da biblioteca (o que o OUTBOX já tem), em vez de formas novas:
+// corpo reto/plano com cantos, afunilamento, barriga, frisos e Repetição para trechos
+// iguais seguidos; no topo, gargalo padrão e válvula spray/pump ou sobretampa.
+function stlPartsToLibrary(parts, asBody) {
+  const maxW = Math.max(...parts.map(r => Math.max(r.W, r.D)));
+  let top = parts.length; // fechamento: partes estreitas contínuas a partir do topo
+  while (top > 1 && Math.max(parts[top - 1].W, parts[top - 1].D) < maxW * 0.62) top--;
+  const bodyParts = parts.slice(0, top), clos = parts.slice(top);
+  const med = arr => { const a = [...arr].sort((x, y) => x - y); return a[Math.floor(a.length / 2)]; };
+  const info = r => { const P = r.prof, aMax = Math.max(...P.map(q => q[1])), full = q => q[1] >= aMax * 0.993;
+    const i0 = P.findIndex(full), i1 = P.length - 1 - [...P].reverse().findIndex(full);
+    const rBot = clamp(P[Math.max(0, i0)][0] * r.h, 0, Math.min(r.h / 2, Math.min(r.W, r.D) / 2)), rTop = clamp((1 - P[Math.max(0, i1)][0]) * r.h, 0, Math.min(r.h / 2, Math.min(r.W, r.D) / 2));
+    const at = t => { let k = 0; while (k < P.length - 1 && P[k + 1][0] < t) k++; return P[k][1]; };
+    const tB = Math.min(0.45, rBot / r.h + 0.03), tT = Math.max(0.55, 1 - rTop / r.h - 0.03), aB = at(tB), aT = at(tT), aM = at(0.5);
+    return { rBot, rTop, n: med(P.map(q => q[3])), taper: Math.abs(aT / aB - 1) > 0.04 ? Math.round(aT / aB * 100) : 100,
+      bulge: (aM - (aB + aT) / 2) * r.W / 2 > 1 ? r1((aM - (aB + aT) / 2) * r.W / 2) : 0, cx: med(P.map(q => q[4])) };
+  };
+  const same = (x, y) => Math.abs(x.W - y.W) / x.W < 0.06 && Math.abs(x.D - y.D) / x.D < 0.06 && Math.abs(x.h - y.h) / x.h < 0.12 && !y.gapBelow;
+  const mods = []; let first = true;
+  for (let k = 0; k < bodyParts.length;) {
+    let j = k + 1; while (j < bodyParts.length && same(bodyParts[k], bodyParts[j])) j++;
+    const r = bodyParts[k], f = info(r), round = Math.abs(r.W - r.D) / r.W < 0.08 && f.n < 2.4, band = r.ribs[0];
+    const mm = M(round ? 'reto' : 'plano', { name: bodyParts.length > j - k ? `Corpo ${mods.length + 1}` : 'Corpo', W: r.W, D: round ? r.W : r.D,
+      n: round ? 2 : r1(clamp(f.n, 2, 8)), h: r.h, rBot: r1(f.rBot), rTop: r1(f.rTop), taper: f.taper, bulge: f.bulge, bulgePos: 50,
+      rep: j - k, repGap: 0, gap: r.gapBelow || 0, vol: asBody && first, pesc: false });
+    if (band && band.y1 - band.y0 > r.h * 0.5) Object.assign(mm, { ridges: band.k, ridgeD: band.d });
+    mods.push(mm); first = false; k = j;
+  }
+  if (clos.length) {
+    const neckP = clos[0], std = Object.keys(NECKS).sort((a, b) => Math.abs(NECKS[a].W - Math.min(neckP.W, neckP.D)) - Math.abs(NECKS[b].W - Math.min(neckP.W, neckP.D)))[0];
+    const rest = clos.slice(1);
+    if (neckP.h <= 25 && Math.min(neckP.W, neckP.D) < maxW * 0.5) mods.push(NECK(std));
+    else rest.unshift(neckP);
+    if (rest.length >= 2 && Math.min(rest[rest.length - 1].W, rest[rest.length - 1].D) < Math.min(rest[0].W, rest[0].D) * 0.95) {
+      // degraus estreitando para cima: virola + cabeça = válvula; cabeça deslocada = pump com bico
+      const off = rest.some(r => Math.abs(info(r).cx) > 2.5), v = M(off ? 'locao' : 'spray');
+      scaleModule(v, Math.min(rest[0].W, rest[0].D) / collarOf(v));
+      mods.push(v);
+    } else if (rest.length) {
+      const r = rest.reduce((x, y) => (x.h > y.h ? x : y)), f = info(r), H = rest.reduce((t, q) => t + q.h, 0);
+      mods.push(M('sobretampa', { name: 'Tampa', W: r.W, D: r.D, n: r1(clamp(f.n, 2, 8)), h: r1(H), rBot: r1(Math.min(f.rBot, 3)), rTop: r1(f.rTop) }));
+    }
+  }
+  return mods;
 }
 // Low-poly: poucos triângulos para o tamanho (arestas longas).
 function stlIsLowPoly(g) {
@@ -650,7 +695,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-29.stl-modulos';
+const BUILD = '2026-09-29.stl-biblioteca';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -5509,22 +5554,29 @@ function renderEditor() {
       grp.appendChild(b);
     }
     if (title === 'STL' && m.kind === 'mesh') {
-      const b = document.createElement('button'); b.className = 'btn'; b.textContent = 'Converter em peças editáveis';
-      b.title = 'Lê o STL, separa em módulos (degraus, vãos, sulcos, faixas de frisos) e cria peças do OUTBOX com todos os controles';
-      b.onclick = () => {
+      const convert = lib => {
         const parts = stlToProfile(m); if (!parts) return toast('Não consegui ler o formato dessa peça');
         const i = S.modules.indexOf(m), base = i === 0 || S.modules.slice(0, i).every(q => q.hidden);
-        const tallest = parts.reduce((k, r, j) => r.h > parts[k].h ? j : k, 0);
-        const role = j => parts.length === 1 ? m.name : j === 0 ? 'Base' : j === parts.length - 1 ? 'Topo' : parts.length === 3 ? 'Corpo' : `Parte ${j + 1}`;
-        const mods = parts.map((r, j) => ({ ...BASE, uid: newUid(), name: `${role(j)}${r.ribs.length ? ' com frisos' : ''} (${m.name})`, type: 'revolve', kind: 'perfil', smoothProf: true,
-          vol: base && j === tallest, pesc: false, bpesc: false, rBot: 0, rTop: 0, W: r.W, D: r.D, W0: r.W, h: r.h, prof: r.prof, ribs: r.ribs, gap: r.gapBelow || 0,
-          own: m.own, color: m.color, finish: m.finish, ox: m.ox || 0 }));
-        S.logos = (S.logos || []).filter(L => L.uid !== m.uid); S.modules.splice(i, 1, ...mods); sel = i + tallest;
+        let mods;
+        if (lib) mods = stlPartsToLibrary(parts, base).map(q => ({ ...q, own: m.own, color: m.color, finish: m.finish, ox: m.ox || 0 }));
+        else { const tallest = parts.reduce((k, r, j) => r.h > parts[k].h ? j : k, 0);
+          const role = j => parts.length === 1 ? m.name : j === 0 ? 'Base' : j === parts.length - 1 ? 'Topo' : parts.length === 3 ? 'Corpo' : `Parte ${j + 1}`;
+          mods = parts.map((r, j) => ({ ...BASE, uid: newUid(), name: `${role(j)}${r.ribs.length ? ' com frisos' : ''} (${m.name})`, type: 'revolve', kind: 'perfil', smoothProf: true,
+            vol: base && j === tallest, pesc: false, bpesc: false, rBot: 0, rTop: 0, W: r.W, D: r.D, W0: r.W, h: r.h, prof: r.prof, ribs: r.ribs, gap: r.gapBelow || 0,
+            own: m.own, color: m.color, finish: m.finish, ox: m.ox || 0 })); }
+        S.logos = (S.logos || []).filter(L => L.uid !== m.uid); S.modules.splice(i, 1, ...mods); sel = i;
         renderAll(); build();
-        toast(`${m.name}: ${mods.length === 1 ? 'virou uma peça editável' : `separado em ${mods.length} peças editáveis`}${mods.some(q => q.ribs.length) ? ' (frisos detectados)' : ''} · Ctrl+Z desfaz`);
+        toast(`${m.name} → ${mods.map(q => q.name + (q.rep > 1 ? ` (×${q.rep})` : '')).join(' + ')} · Ctrl+Z desfaz`);
       };
+      const b = document.createElement('button'); b.className = 'btn pri'; b.textContent = 'Converter em peças da biblioteca';
+      b.title = 'Reconhece corpo (com repetição), gargalo, válvula ou tampa e monta com as peças do OUTBOX';
+      b.onclick = () => convert(true);
+      const b2 = document.createElement('button'); b2.className = 'btn'; b2.textContent = 'Converter fiel ao contorno';
+      b2.title = 'Peças de perfil que copiam o contorno do STL (quando a forma não existe na biblioteca)';
+      b2.onclick = () => convert(false);
+      grp.appendChild(b2);
       grp.appendChild(b);
-      const tip = document.createElement('div'); tip.className = 'tip'; tip.textContent = 'Converter lê o contorno da peça (redondo, oval ou quadrado arredondado), separa em módulos onde há degrau, vão, sulco ou faixa de frisos, e cria peças do OUTBOX com todos os controles. Detalhes que não seguem o contorno (letras, recortes) ficam de fora.';
+      const tip = document.createElement('div'); tip.className = 'tip'; tip.textContent = 'Da biblioteca: reconhece o corpo (trechos iguais viram Repetição), o gargalo e a válvula spray/pump ou tampa, e monta com as peças do OUTBOX. Fiel ao contorno: copia a forma do STL em peças de perfil (para formas que não existem na biblioteca). Detalhes fora do contorno (letras, recortes) ficam de fora.';
       grp.appendChild(tip);
     }
     if (title === 'Relevo por textura') {
