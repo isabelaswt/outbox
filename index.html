@@ -4276,8 +4276,11 @@ function solidFill(m, y0, levelAbs, lift) {
   im.userData.liquid = true; im.name = 'recheio';
   return [im];
 }
+function withoutRelief(m) {
+  return { ...m, reliefImg: '', reliefName: '', reliefDepth: 0 };
+}
 function offsetInner(m, y0, inset, lift) {
-  const g0 = moduleGeo(m, y0, { lo: false }); if (!g0) return null;
+  const g0 = moduleGeo(withoutRelief(m), y0, { lo: false }); if (!g0) return null;
   const g = g0.index ? g0 : g0; if (!g.attributes.normal) g.computeVertexNormals();
   const p = g.attributes.position.array, n = g.attributes.normal.array, yb = y0 + lift;
   for (let i = 0; i < p.length; i += 3) {
