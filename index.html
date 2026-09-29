@@ -509,7 +509,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-29.repetir-tamanho';
+const BUILD = '2026-09-29.padroes-relevo';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -2810,6 +2810,10 @@ async function classifyReliefImage(src) {
 // cinza. Mesma nitidez e mesmo peso em qualquer projeto, e o ladrilho quadrado casa com a
 // repetição (que usa o mesmo tamanho em mm na largura e na altura).
 const RELIEF_PX = 1024;
+// [arquivo, nome, tamanho da repetição (mm = um ladrilho de 1024 px), força (mm)]
+const RELIEF_PRESETS = [['bolinhas', 'Bolinhas', 40, 0.6], ['canelado', 'Canelado vertical', 36, 0.5], ['ondas', 'Ondas', 50, 0.8],
+  ['matelasse', 'Matelassê', 48, 0.9], ['diamante', 'Diamante facetado', 36, 0.7], ['escamas', 'Escamas', 40, 0.6], ['trama', 'Trama (tecido)', 32, 0.4],
+  ['colmeia', 'Colmeia', 40, 0.5], ['organico', 'Orgânico (água / pedra)', 60, 0.8], ['diagonal', 'Linhas diagonais', 40, 0.4]];
 async function cleanDisplacementMap(src, blur = 1.6) {
   const img = await imageFromUrl(src), w = RELIEF_PX, h = RELIEF_PX;
   const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
@@ -5463,7 +5467,23 @@ function renderEditor() {
       // simples por padrão: subir (o tipo é detectado), padrão pronto e remover; as conversões
       // forçadas e os acabamentos ficam nos ajustes avançados
       [conv, normal, clean, soft].forEach(b => b.classList.toggle('hidden', !m.reliefAdv));
-      row.append(up, mt, conv, normal, clean, soft, rm); grp.append(row);
+      // Padrões prontos (assets/relevo, 1024 × 1024 em cinza, seamless): servem de exemplo de
+      // como preparar uma textura e já vêm com tamanho da repetição e força calibrados.
+      const pre = document.createElement('select'); pre.style.maxWidth = '170px';
+      pre.innerHTML = '<option value="">Padrões prontos…</option>' + RELIEF_PRESETS.map(([k, n]) => `<option value="${k}">${n}</option>`).join('');
+      pre.onchange = async () => {
+        const P = RELIEF_PRESETS.find(x => x[0] === pre.value); if (!P) return;
+        try {
+          const blob = await (await fetch(`assets/relevo/${P[0]}.png`)).blob();
+          const src = await new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = () => rej(r.error); r.readAsDataURL(blob); });
+          m.reliefImg = await cleanDisplacementMap(src, 0);
+          Object.assign(m, { reliefName: P[1], reliefTile: 'repeat', reliefFit: 'tile', reliefWarp: 0, reliefScale: P[2], reliefDepth: P[3], reliefU: 0, reliefV: 0 });
+          if (!(m.reliefH > 0)) m.reliefH = 82; if (!(m.reliefY >= 0)) m.reliefY = 50; if (!(m.reliefW > 0)) m.reliefW = 100; if (!(m.reliefFade >= 0)) m.reliefFade = 4;
+          ensureReliefData(m.reliefImg).then(() => queueBuild()); renderEditorKeepScroll(); queueBuild();
+        } catch { toast('Não consegui abrir esse padrão'); }
+      };
+      mt.classList.add('hidden'); // o matelassê está na lista de padrões prontos
+      row.append(up, pre, mt, conv, normal, clean, soft, rm); grp.append(row);
       const tip = document.createElement('div'); tip.className = 'tip'; tip.textContent = m.reliefImg ? `Textura: ${m.reliefName || 'imagem carregada'} (1024 × 1024) · Preview da malha deixa a tela leve; Qualidade no download 3D vale só para GLB/OBJ/STL.` : 'Padrão: imagem quadrada 1024 × 1024 px, seamless (outros tamanhos são ajustados). Suba displacement pronto (cinza: branco = alto, preto = baixo), imagem comum ou normal/bump colorido: o tipo é detectado e tudo vira mapa de altura salvo no projeto. Para relevo físico em OBJ/STL o melhor é displacement em cinza; normal map é convertido, mas é feito para render.';
       grp.append(tip);
     }
