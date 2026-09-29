@@ -53,6 +53,8 @@ input[type=color]{width:44px;height:24px;border:1px solid var(--line);border-rad
 select,input[type=text]{font:inherit;font-size:12px;border:1px solid var(--line);border-radius:7px;padding:5px 7px;background:var(--soft);color:var(--ink);width:100%}
 .row{display:flex;gap:6px;align-items:center;margin:6px 0}
 .row>*{flex:1}
+.row.actions{flex-wrap:wrap;align-items:stretch}
+.row.actions .btn{flex:1 1 132px;min-width:0;white-space:normal;line-height:1.15}
 .btn{font:inherit;font-size:12px;border:1px solid var(--line);background:var(--soft);border-radius:7px;padding:6px 9px;cursor:pointer;color:var(--ink);white-space:nowrap}
 .btn:hover{border-color:#cfcac2}
 .btn.pri{background:var(--ink);color:#fff;border-color:var(--ink)}
@@ -166,6 +168,7 @@ canvas{display:block;width:100%;height:100%;touch-action:none}
     <div class="stack" id="stack"></div>
     <div class="tip">Inserir acima do módulo selecionado:</div>
     <div id="addRows"></div>
+    <div class="row"><button class="btn pri sm" id="importStlBtn" style="flex:1">+ STL</button><input type="file" id="importStl" accept=".stl,model/stl" class="hidden"></div>
     <div class="edit" id="editor"></div>
   </details>
 
@@ -307,6 +310,7 @@ import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { RectAreaLightUniformsLib } from 'three/addons/lights/RectAreaLightUniformsLib.js';
 import { RGBELoader } from 'three/addons/loaders/RGBELoader.js';
+import { STLLoader } from 'three/addons/loaders/STLLoader.js';
 import { GLTFExporter } from 'three/addons/exporters/GLTFExporter.js';
 import { STLExporter } from 'three/addons/exporters/STLExporter.js';
 import { OBJExporter } from 'three/addons/exporters/OBJExporter.js';
@@ -335,6 +339,49 @@ const store = {
   get(k, d) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch { return d; } },
   set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} },
 };
+const bytesToB64 = buf => {
+  const u = new Uint8Array(buf); let s = '';
+  for (let i = 0; i < u.length; i += 0x8000) s += String.fromCharCode(...u.subarray(i, i + 0x8000));
+  return btoa(s);
+};
+const b64ToBuf = b64 => {
+  const s = atob(b64), u = new Uint8Array(s.length);
+  for (let i = 0; i < s.length; i++) u[i] = s.charCodeAt(i);
+  return u.buffer;
+};
+const stlLoader = new STLLoader(), meshCache = new Map();
+function importedMeshBase(m) {
+  if (!m.meshData) return null;
+  let g = meshCache.get(m.meshData);
+  if (!g) {
+    g = stlLoader.parse(b64ToBuf(m.meshData));
+    if (g.index) g = g.toNonIndexed();
+    g.deleteAttribute('uv');
+    if (!g.attributes.normal) g.computeVertexNormals();
+    g.computeBoundingBox();
+    const b = g.boundingBox, sx = b.max.x - b.min.x || 1, sy = b.max.y - b.min.y || 1, sz = b.max.z - b.min.z || 1;
+    g.translate(-(b.min.x + b.max.x) / 2, -b.min.y, -(b.min.z + b.max.z) / 2);
+    g.userData.src = { W: sx, h: sy, D: sz };
+    g.computeVertexNormals(); g.computeBoundingBox();
+    meshCache.set(m.meshData, g);
+  }
+  return g.clone();
+}
+function importedMeshGeo(m, y0) {
+  const g = importedMeshBase(m); if (!g) return null;
+  const src = meshCache.get(m.meshData)?.userData.src || { W: m.W || 1, h: m.h || 1, D: m.D || 1 };
+  g.scale((m.W || src.W) / src.W, (m.h || src.h) / src.h, (m.D || src.D) / src.D);
+  const cx = 0, cy = (m.h || src.h) / 2, cz = 0;
+  g.translate(-cx, -cy, -cz);
+  g.rotateX((m.meshRotX || 0) * Math.PI / 180);
+  g.rotateY((m.meshRotY || 0) * Math.PI / 180);
+  g.rotateZ((m.meshRotZ || 0) * Math.PI / 180);
+  g.translate(cx, cy, cz);
+  g.computeBoundingBox();
+  g.translate(m.ox || 0, y0 - g.boundingBox.min.y, 0);
+  g.computeVertexNormals(); g.computeBoundingBox();
+  return g;
+}
 
 // ───────────────────────── módulos ─────────────────────────
 const BASE = {
@@ -344,6 +391,7 @@ const BASE = {
   notch: false, notchLock: true, notchY: 12, notchW: 20, notchH: 8, notchD: 2, notchP: 2,
   ridges: 0, ridgeD: 0.6, lobes: 0, lobeD: 3,
   labType: 'nenhum', labH: 50, labY: 50, labW: 40, labColor: '#ffffff', labFinish: 'fosco', labImg: '', labImgB: '', labInk: false, labInkColor: '#1c1c1c', labInkFinish: 'metal',
+  reliefImg: '', reliefName: '', reliefScale: 18, reliefDepth: 0, reliefY: 50, reliefH: 82, reliefW: 100, reliefFade: 4, reliefQuality: 3, reliefPreviewQ: 2, reliefSoft: 1.2, reliefGeomSmooth: 2, reliefTile: 'repeat', reliefFit: 'tile', reliefU: 0, reliefV: 0, reliefWarp: 0,
   own: false, color: '#e8dcc6', finish: 'fosco', vol: false,
   // kind 'giro': seção girando no eixo; 'placa': silhueta frontal extrudada na profundidade.
   kind: 'giro', ox: 0, rTL: 6, rTR: 6, rBL: 6, rBR: 6, rEdge: 3, chamfer: false,
@@ -359,7 +407,7 @@ const BASE = {
   // pescante do corpo (quando não há válvula na pilha)
   bpesc: true, bpescV: 2, bpescD: 4, bpescGap: 3, bpescCurve: 0, bpescWave: 0, bpescMola: false,
   // líquido dentro do corpo
-  liq: false, liqLevel: 80, liqColor: '#c9a45c', liqType: 'cremoso', liqClear: 60, liqSize: 9, liqColor2: '#ffffff',
+  liq: false, liqLevel: 80, liqColor: '#c9a45c', liqType: 'cremoso', liqClear: 60, liqInset: 0, liqSize: 9, liqColor2: '#ffffff',
   // sistema de abertura da tampa: flip-top (dobradiça na linha) ou disc-top.
   topType: 'nenhum', openPct: 0, lidSide: 'cima', lidOver: 0, aba: false, orifD: 4, discD: 36, discDip: 4, discDimple: 1.2, discRise: 0,
   // bisnaga: tubo que achata até a solda mantendo o perímetro.
@@ -459,7 +507,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-28.renomear';
+const BUILD = '2026-09-29.relevo-merge';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -544,6 +592,7 @@ function profSamples(m, lo) {
     const yt = h - notchTop(m), y0n = m.notchUp ? yt : yt - m.notchH - 1, y1n = m.notchUp ? yt + m.notchH + 1 : yt;
     for (let y = y0n; y <= y1n; y += 0.12) S.push(y); S.push(yt + 0.03, yt - 0.03);
   }
+  addReliefSamples(m, S, lo);
   ribSamples(m, S);
   const top = h - Math.max(0, m.cutTop || 0); S.push(top); // corte do topo (rosca trocada por gargalo ajustável)
   const sz = shoulderZone(m); if (sz) for (let i = 0; i <= (lo ? 6 : 24); i++) S.push(sz.y0 + sz.L * i / (lo ? 6 : 24));
@@ -1025,8 +1074,26 @@ function ySamples(m, rB, rT, lo) {
     const yt = h - notchTop(m), y0n = m.notchUp ? yt : yt - m.notchH - 1, y1n = m.notchUp ? yt + m.notchH + 1 : yt;
     for (let y = y0n; y <= y1n; y += 0.12) S.push(y); S.push(yt + 0.03, yt - 0.03);
   }
+  addReliefSamples(m, S, lo);
   if (!lo) ribSamples(m, S);
   return [...new Set(S.filter(y => y >= 0 && y <= h).map(y => +y.toFixed(3)))].sort((a, b) => a - b);
+}
+function reliefAreaLocal(m) {
+  const h = Math.max(0.1, m.h || 1), mid = clamp(m.reliefY ?? 50, 0, 100) / 100 * h, hh = clamp(m.reliefH ?? 82, 1, 100) / 100 * h / 2;
+  return { y0: clamp(mid - hh, 0, h), y1: clamp(mid + hh, 0, h), fade: clamp(m.reliefFade ?? 4, 0, h / 2) };
+}
+let export3dQuality = false;
+function reliefMeshQuality(m) {
+  return clamp(export3dQuality ? (m.reliefQuality || 3) : (m.reliefPreviewQ || 2), 1, 9);
+}
+function addReliefSamples(m, S, lo) {
+  if (lo || !m.reliefImg || !(m.reliefDepth > 0)) return;
+  const { y0, y1, fade } = reliefAreaLocal(m), span = y1 - y0;
+  if (span <= 0.2) return;
+  const q = reliefMeshQuality(m);
+  const step = clamp((m.reliefScale || 18) / (8 + q * 10), 0.07, 1.2);
+  for (let y = y0; y <= y1; y += step) S.push(y);
+  [0, 0.2, 0.5, 1, fade].forEach(e => { if (e >= 0) S.push(y0 + e, y1 - e); });
 }
 // Anéis extras onde as faixas de frisos começam e terminam (bordas nítidas).
 function ribSamples(m, S) {
@@ -1793,6 +1860,7 @@ function slabGeo(m0, y0, { inset = 0, lift = 0, lo = false } = {}) {
 
 // inset/lift geram o volume interno (parede e fundo) para a capacidade.
 function moduleGeo(m0, y0, opts = {}) {
+  if (m0.kind === 'mesh') return opts.inset ? null : importedMeshGeo(m0, y0);
   if (isSphereCap(m0)) {
     m0 = { ...m0 };
     syncSphereRadius(m0, m0.roundLock);
@@ -1831,9 +1899,10 @@ function moduleGeo(m0, y0, opts = {}) {
   });
   if (!lo && !inset) for (const b of m.ribs || []) kmax = Math.max(kmax, b.k || 0);
   if (rings.length < 2) return null;
-  const saddle = !inset && m.topType === 'disc' && m.discDip > 0;
-  const detailed = !lo && (m.notch || m.ridges > 0 || saddle || kmax > 0 || logoQuality);
-  const seg = lo ? 64 : kmax ? clamp(kmax * 12, 384, 2000) : logoQuality ? 960 : m.notch ? 720 : detailed ? 384 : 200;
+  const saddle = !inset && m.topType === 'disc' && m.discDip > 0, reliefDetailed = !inset && !!m.reliefImg && m.reliefDepth > 0;
+  const detailed = !lo && (m.notch || m.ridges > 0 || saddle || kmax > 0 || logoQuality || reliefDetailed);
+  const reliefSeg = reliefDetailed ? clamp(360 + reliefMeshQuality(m) * 220, 520, 2600) : 720;
+  const seg = lo ? 64 : kmax ? clamp(kmax * 12, 384, 2000) : logoQuality ? 960 : reliefDetailed ? reliefSeg : m.notch ? 720 : detailed ? 384 : 200;
   const disp = detailed ? (x, ly, z, th, r) => {
     // Faixas de frisos (medidas no original ou criadas no editor).
     const tu = (kmax || m.ridges > 0) ? arcTheta(r, th) : th; // frisos com espaçamento igual no contorno
@@ -1949,9 +2018,9 @@ function discTopGeo(m, y0, ang, lo) {
 }
 
 function signedVolume(g, signed = false) {
-  const p = g.attributes.position.array, idx = g.index.array; let v = 0;
-  for (let i = 0; i < idx.length; i += 3) {
-    const a = idx[i] * 3, b = idx[i + 1] * 3, c = idx[i + 2] * 3;
+  const p = g.attributes.position.array, idx = g.index?.array; let v = 0, n = idx ? idx.length / 3 : p.length / 9;
+  for (let i = 0; i < n; i++) {
+    const a = (idx ? idx[i * 3] : i * 3) * 3, b = (idx ? idx[i * 3 + 1] : i * 3 + 1) * 3, c = (idx ? idx[i * 3 + 2] : i * 3 + 2) * 3;
     v += p[a] * (p[b + 1] * p[c + 2] - p[b + 2] * p[c + 1])
        - p[a + 1] * (p[b] * p[c + 2] - p[b + 2] * p[c])
        + p[a + 2] * (p[b] * p[c + 1] - p[b + 1] * p[c]);
@@ -2461,6 +2530,299 @@ function applyHand() {
 }
 
 const matCache = new Map();
+const reliefDataCache = new Map();
+function ensureReliefData(src) {
+  if (!src) return Promise.resolve(null);
+  const cur = reliefDataCache.get(src);
+  if (cur?.data) return Promise.resolve(cur.data);
+  if (cur?.promise) return cur.promise;
+  const promise = new Promise(res => {
+    const img = new Image();
+    img.onload = () => {
+      const cv = document.createElement('canvas');
+      cv.width = img.naturalWidth || img.width; cv.height = img.naturalHeight || img.height;
+      const cx = cv.getContext('2d'); cx.drawImage(img, 0, 0);
+      const data = { w: cv.width, h: cv.height, px: cx.getImageData(0, 0, cv.width, cv.height).data };
+      reliefDataCache.set(src, { data }); res(data);
+    };
+    img.onerror = () => { reliefDataCache.delete(src); res(null); };
+    img.src = src;
+  });
+  reliefDataCache.set(src, { promise });
+  return promise;
+}
+const reliefUvArcCache = new Map();
+function reliefArcFraction(a, b, th) {
+  const key = `${Math.round(a * 10)}:${Math.round(b * 10)}`;
+  let tab = reliefUvArcCache.get(key);
+  if (!tab) {
+    const N = 720, cum = new Float32Array(N + 1); let total = 0, px = a, pz = 0;
+    for (let i = 1; i <= N; i++) {
+      const t = i / N * TAU, x = a * Math.cos(t), z = b * Math.sin(t);
+      total += Math.hypot(x - px, z - pz); cum[i] = total; px = x; pz = z;
+    }
+    tab = { N, cum, total }; reliefUvArcCache.set(key, tab);
+  }
+  const u = ((th % TAU) + TAU) % TAU, f = u / TAU * tab.N, i = Math.floor(f), k = f - i;
+  return ((tab.cum[i] + (tab.cum[i + 1] - tab.cum[i]) * k) / tab.total + 1) % 1;
+}
+function reliefAreaY(m, b) {
+  const H = Math.max(0.1, b.max.y - b.min.y), mid = b.min.y + clamp(m.reliefY ?? 50, 0, 100) / 100 * H, hh = clamp(m.reliefH ?? 82, 1, 100) / 100 * H / 2;
+  return [mid - hh, mid + hh];
+}
+function addAutoUv(g, m) {
+  if (!g || !g.attributes.position) return;
+  g.computeBoundingBox();
+  const b = g.boundingBox, p = g.attributes.position, uv = [];
+  const cx = (b.min.x + b.max.x) / 2, cz = (b.min.z + b.max.z) / 2;
+  const a = Math.max(0.5, (b.max.x - b.min.x) / 2), c = Math.max(0.5, (b.max.z - b.min.z) / 2);
+  const repeatMm = Math.max(0.1, m.reliefScale || 18);
+  const around = Math.max(1, Math.round(perim(a, c) / repeatMm));
+  const fit = m.reliefFit || 'tile';
+  const areaW = clamp(m.reliefW ?? 100, 1, 100);
+  const half = Math.PI * areaW / 100;
+  const [y0, y1] = reliefAreaY(m, b);
+  const areaH = Math.max(0.1, y1 - y0);
+  for (let i = 0; i < p.count; i++) {
+    const x = p.getX(i) - cx, y = p.getY(i), z = p.getZ(i) - cz;
+    // Parametriza pela distância percorrida na seção elíptica, não pelo ângulo.
+    // Isso mantém a textura proporcional em corpos ovais/quadrados arredondados.
+    const th = Math.atan2(x / a, z / c) + Math.PI; // costura no verso (-Z)
+    const arcU = reliefArcFraction(a, c, th);
+    const frontA = Math.atan2(x, z);
+    const areaU = (frontA + half) / Math.max(0.001, half * 2);
+    const u = fit === 'wrap' && areaW < 99.9 ? areaU : arcU;
+    uv.push(fit === 'wrap' ? u : u * around, fit === 'wrap' ? (y - y0) / areaH : (y - b.min.y) / repeatMm);
+  }
+  g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+}
+function reliefCoord(t, mode) {
+  if (mode === 'mirror' || mode === 'organic') {
+    const k = Math.floor(t), f = t - k;
+    return Math.abs(k % 2) === 1 ? 1 - f : f;
+  }
+  return ((t % 1) + 1) % 1;
+}
+function reliefHeight(info, u, v, mode = 'repeat', warp = 0) {
+  if (!info) return 0.5;
+  if (mode === 'organic' && warp > 0) {
+    const w = warp / 100;
+    u += Math.sin(v * TAU * 1.73 + Math.sin(u * TAU * 0.67)) * 0.055 * w;
+    v += Math.sin(u * TAU * 1.31 + Math.cos(v * TAU * 0.58)) * 0.045 * w;
+  }
+  u = reliefCoord(u, mode); v = reliefCoord(v, mode);
+  const x = u * (info.w - 1), y = (1 - v) * (info.h - 1), x0 = Math.floor(x), y0 = Math.floor(y);
+  const mirrored = mode === 'mirror' || mode === 'organic';
+  const x1 = mirrored ? Math.min(x0 + 1, info.w - 1) : (x0 + 1) % info.w;
+  const y1 = mirrored ? Math.min(y0 + 1, info.h - 1) : (y0 + 1) % info.h;
+  const fx = x - x0, fy = y - y0, lum = (xx, yy) => { const i = (yy * info.w + xx) * 4; return (info.px[i] * 0.2126 + info.px[i + 1] * 0.7152 + info.px[i + 2] * 0.0722) / 255; };
+  const a = lum(x0, y0) * (1 - fx) + lum(x1, y0) * fx, b = lum(x0, y1) * (1 - fx) + lum(x1, y1) * fx;
+  return a * (1 - fy) + b * fy;
+}
+function reliefHeightSoft(info, u, v, soft = 0, mode = 'repeat', warp = 0) {
+  if (!(soft > 0.01)) return reliefHeight(info, u, v, mode, warp);
+  const r = soft / Math.max(info.w, info.h), rad = soft > 8 ? 3 : soft > 3 ? 2 : 1;
+  let sum = 0, wt = 0;
+  for (let y = -rad; y <= rad; y++) for (let x = -rad; x <= rad; x++) {
+    const d2 = x * x + y * y, w = Math.exp(-d2 / Math.max(1, rad * rad * 0.72));
+    sum += reliefHeight(info, u + x * r / rad, v + y * r / rad, mode, warp) * w;
+    wt += w;
+  }
+  return sum / wt;
+}
+function makeMatelasseTexture() {
+  const N = 512, cv = document.createElement('canvas'); cv.width = cv.height = N;
+  const cx = cv.getContext('2d'), img = cx.createImageData(N, N), px = img.data;
+  for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
+    const u = x / N, v = y / N;
+    const a = Math.abs((((u + v) % 1) + 1) % 1 - 0.5);
+    const b = Math.abs((((u - v) % 1) + 1) % 1 - 0.5);
+    const line = Math.min(a, b) * 2; // 0 na costura diagonal, 1 no centro do losango
+    const groove = smooth(0.035, 0.18, line);
+    const pillow = Math.pow(Math.sin(Math.PI * Math.min(a, b) * 2), 0.5) * Math.pow(Math.sin(Math.PI * Math.max(a, b) * 2), 0.25);
+    const h = clamp(0.32 + groove * 0.4 + pillow * 0.28, 0, 1);
+    const i = (y * N + x) * 4, c = Math.round(h * 255);
+    px[i] = px[i + 1] = px[i + 2] = c; px[i + 3] = 255;
+  }
+  cx.putImageData(img, 0, 0);
+  return cv.toDataURL('image/png');
+}
+function imageFromUrl(src) {
+  return new Promise((res, rej) => {
+    const img = new Image();
+    img.onload = () => res(img);
+    img.onerror = rej;
+    img.src = src;
+  });
+}
+async function imageToDisplacement(src) {
+  const img = await imageFromUrl(src), max = 1024;
+  const sc = Math.min(1, max / Math.max(img.naturalWidth || img.width, img.naturalHeight || img.height));
+  const w = Math.max(8, Math.round((img.naturalWidth || img.width) * sc)), h = Math.max(8, Math.round((img.naturalHeight || img.height) * sc));
+  const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+  const cx = cv.getContext('2d', { willReadFrequently: true });
+  cx.drawImage(img, 0, 0, w, h);
+  const raw = cx.getImageData(0, 0, w, h), gray = cx.createImageData(w, h), gp = gray.data, rp = raw.data;
+  const lum = new Float32Array(w * h);
+  for (let i = 0, j = 0; i < lum.length; i++, j += 4) {
+    const v = (rp[j] * 0.2126 + rp[j + 1] * 0.7152 + rp[j + 2] * 0.0722) / 255;
+    lum[i] = v; const c = Math.round(v * 255); gp[j] = gp[j + 1] = gp[j + 2] = c; gp[j + 3] = 255;
+  }
+  const gcv = document.createElement('canvas'); gcv.width = w; gcv.height = h;
+  const gcx = gcv.getContext('2d', { willReadFrequently: true }); gcx.putImageData(gray, 0, 0);
+  const bcv = document.createElement('canvas'); bcv.width = w; bcv.height = h;
+  const bcx = bcv.getContext('2d', { willReadFrequently: true });
+  bcx.filter = `blur(${clamp(Math.min(w, h) * 0.04, 8, 42)}px)`;
+  bcx.drawImage(gcv, 0, 0);
+  const bp = bcx.getImageData(0, 0, w, h).data, vals = new Float32Array(w * h), sorted = new Float32Array(w * h);
+  for (let i = 0, j = 0; i < vals.length; i++, j += 4) {
+    const base = bp[j] / 255;
+    const v = clamp(0.5 + (lum[i] - base) * 1.85 + (lum[i] - 0.5) * 0.18, 0, 1);
+    vals[i] = sorted[i] = v;
+  }
+  sorted.sort();
+  const lo = sorted[Math.floor(sorted.length * 0.01)], hi = sorted[Math.floor(sorted.length * 0.99)], span = Math.max(0.01, hi - lo);
+  const out = cx.createImageData(w, h), op = out.data;
+  for (let i = 0, j = 0; i < vals.length; i++, j += 4) {
+    let v = clamp((vals[i] - lo) / span, 0, 1);
+    v = smooth(0, 1, v);
+    v = clamp(0.5 + (v - 0.5) * 1.25, 0, 1);
+    vals[i] = v;
+  }
+  for (let y = 0, j = 0; y < h; y++) for (let x = 0; x < w; x++, j += 4) {
+    const v = vals[y * w + x];
+    const c = Math.round(clamp(v, 0, 1) * 255); op[j] = op[j + 1] = op[j + 2] = c; op[j + 3] = 255;
+  }
+  cx.putImageData(out, 0, 0);
+  return cv.toDataURL('image/png');
+}
+async function normalMapToDisplacement(src) {
+  const img = await imageFromUrl(src), max = 1024;
+  const sc = Math.min(1, max / Math.max(img.naturalWidth || img.width, img.naturalHeight || img.height));
+  const w = Math.max(8, Math.round((img.naturalWidth || img.width) * sc)), h = Math.max(8, Math.round((img.naturalHeight || img.height) * sc));
+  const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+  const cx = cv.getContext('2d', { willReadFrequently: true }); cx.drawImage(img, 0, 0, w, h);
+  const raw = cx.getImageData(0, 0, w, h), rp = raw.data;
+  const row = new Float32Array(w * h), col = new Float32Array(w * h), vals = new Float32Array(w * h), sorted = new Float32Array(w * h);
+  const grad = (i) => {
+    const r = rp[i] / 255 * 2 - 1, g = rp[i + 1] / 255 * 2 - 1, b = Math.max(0.18, rp[i + 2] / 255);
+    return [r / b, -g / b];
+  };
+  for (let y = 0; y < h; y++) {
+    let acc = 0, base = y * w;
+    row[base] = 0;
+    for (let x = 1; x < w; x++) {
+      const [gx0] = grad((base + x - 1) * 4), [gx1] = grad((base + x) * 4);
+      acc += (gx0 + gx1) * 0.5 / w; row[base + x] = acc;
+    }
+    const drift = row[base + w - 1];
+    for (let x = 0; x < w; x++) row[base + x] -= drift * x / Math.max(1, w - 1);
+  }
+  for (let x = 0; x < w; x++) {
+    let acc = 0;
+    col[x] = 0;
+    for (let y = 1; y < h; y++) {
+      const [, gy0] = grad(((y - 1) * w + x) * 4), [, gy1] = grad((y * w + x) * 4);
+      acc += (gy0 + gy1) * 0.5 / h; col[y * w + x] = acc;
+    }
+    const drift = col[(h - 1) * w + x];
+    for (let y = 0; y < h; y++) col[y * w + x] -= drift * y / Math.max(1, h - 1);
+  }
+  for (let i = 0, j = 0; i < vals.length; i++, j += 4) {
+    const lum = (rp[j] * 0.2126 + rp[j + 1] * 0.7152 + rp[j + 2] * 0.0722) / 255;
+    const chroma = ((rp[j] - rp[j + 1]) / 255) * 0.12;
+    vals[i] = sorted[i] = row[i] * 0.5 + col[i] * 0.5 + (lum - 0.5) * 0.18 + chroma;
+  }
+  sorted.sort();
+  const lo = sorted[Math.floor(sorted.length * 0.015)], hi = sorted[Math.floor(sorted.length * 0.985)], span = Math.max(0.0001, hi - lo);
+  const out = cx.createImageData(w, h), op = out.data;
+  for (let i = 0, j = 0; i < vals.length; i++, j += 4) {
+    let v = clamp((vals[i] - lo) / span, 0, 1);
+    v = smooth(0, 1, v);
+    const c = Math.round(clamp(v, 0, 1) * 255); op[j] = op[j + 1] = op[j + 2] = c; op[j + 3] = 255;
+  }
+  cx.putImageData(out, 0, 0);
+  return await cleanDisplacementMap(cv.toDataURL('image/png'), 0.8);
+}
+async function cleanDisplacementMap(src, blur = 1.6) {
+  const img = await imageFromUrl(src), max = 1536;
+  const sc = Math.min(1, max / Math.max(img.naturalWidth || img.width, img.naturalHeight || img.height));
+  const w = Math.max(8, Math.round((img.naturalWidth || img.width) * sc)), h = Math.max(8, Math.round((img.naturalHeight || img.height) * sc));
+  const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+  const cx = cv.getContext('2d', { willReadFrequently: true }); cx.drawImage(img, 0, 0, w, h);
+  const raw = cx.getImageData(0, 0, w, h), gray = cx.createImageData(w, h), gp = gray.data, rp = raw.data;
+  for (let i = 0, j = 0; i < w * h; i++, j += 4) {
+    const c = Math.round(rp[j] * 0.2126 + rp[j + 1] * 0.7152 + rp[j + 2] * 0.0722);
+    gp[j] = gp[j + 1] = gp[j + 2] = c; gp[j + 3] = 255;
+  }
+  cx.putImageData(gray, 0, 0);
+  if (blur > 0) {
+    const tmp = document.createElement('canvas'); tmp.width = w; tmp.height = h;
+    const tx = tmp.getContext('2d'); tx.filter = `blur(${blur}px)`; tx.drawImage(cv, 0, 0);
+    cx.clearRect(0, 0, w, h); cx.drawImage(tmp, 0, 0);
+  }
+  return cv.toDataURL('image/png');
+}
+function textureReliefMask(m, b, x, y, z) {
+  const H = Math.max(0.1, b.max.y - b.min.y), [y0, y1] = reliefAreaY(m, b), fade = Math.max(0.001, Math.min(m.reliefFade ?? 4, H / 2));
+  let mask = smooth(y0, y0 + fade, y) * (1 - smooth(y1 - fade, y1, y));
+  const w = clamp(m.reliefW ?? 100, 1, 100);
+  if (w < 99.9) {
+    const half = Math.PI * w / 100, a = Math.atan2(x, z), da = Math.abs(((a + Math.PI) % TAU + TAU) % TAU - Math.PI);
+    const af = Math.min(half * 0.35, Math.max(0.03, fade / Math.max(1, Math.max(b.max.x - b.min.x, b.max.z - b.min.z))));
+    mask *= 1 - smooth(Math.max(0, half - af), half, da);
+  }
+  return clamp(mask, 0, 1);
+}
+function smoothReliefGeometry(g, masks, passes = 0) {
+  if (!(passes > 0) || !g.index || !g.attributes.position) return;
+  const p = g.attributes.position, idx = g.index.array, nb = Array.from({ length: p.count }, () => new Set());
+  for (let i = 0; i < idx.length; i += 3) {
+    const a = idx[i], b = idx[i + 1], c = idx[i + 2];
+    nb[a].add(b).add(c); nb[b].add(a).add(c); nb[c].add(a).add(b);
+  }
+  const arr = p.array, base = new Float32Array(arr);
+  for (let pass = 0; pass < passes; pass++) {
+    const src = new Float32Array(arr);
+    for (let i = 0; i < p.count; i++) {
+      const m = masks[i] || 0, list = nb[i];
+      if (m <= 0.02 || !list.size) continue;
+      let ax = 0, ay = 0, az = 0, n = 0;
+      for (const j of list) {
+        const jm = masks[j] || 0; if (jm <= 0.02) continue;
+        const o = j * 3; ax += src[o]; ay += src[o + 1]; az += src[o + 2]; n++;
+      }
+      if (!n) continue;
+      const o = i * 3, keep = 0.18, s = Math.min(0.32, 0.08 + 0.05 * passes) * m;
+      arr[o] = src[o] * (1 - s) + (ax / n) * s;
+      arr[o + 1] = src[o + 1] * (1 - s) + (ay / n) * s;
+      arr[o + 2] = src[o + 2] * (1 - s) + (az / n) * s;
+      arr[o] = arr[o] * (1 - keep) + base[o] * keep;
+      arr[o + 1] = arr[o + 1] * (1 - keep) + base[o + 1] * keep;
+      arr[o + 2] = arr[o + 2] * (1 - keep) + base[o + 2] * keep;
+    }
+  }
+}
+function applyReliefGeometry(g, m) {
+  if (!m.reliefImg || !(m.reliefDepth > 0)) return false;
+  const rec = reliefDataCache.get(m.reliefImg);
+  if (!rec?.data) { ensureReliefData(m.reliefImg).then(() => queueBuild()); return false; }
+  addAutoUv(g, m);
+  g.computeBoundingBox();
+  if (!g.attributes.normal) g.computeVertexNormals();
+  const p = g.attributes.position, n = g.attributes.normal, uv = g.attributes.uv, masks = new Float32Array(p.count);
+  for (let i = 0; i < p.count; i++) {
+    const x = p.getX(i), y = p.getY(i), z = p.getZ(i), mask = textureReliefMask(m, g.boundingBox, x, y, z);
+    if (mask <= 0.0001) continue;
+    masks[i] = mask;
+    const u = uv.getX(i) + (m.reliefU || 0) / 100, v = uv.getY(i) + (m.reliefV || 0) / 100;
+    const h = (reliefHeightSoft(rec.data, u, v, m.reliefSoft || 0, m.reliefTile || 'repeat', m.reliefWarp || 0) - 0.5) * 2 * m.reliefDepth * mask;
+    p.setXYZ(i, p.getX(i) + n.getX(i) * h, p.getY(i) + n.getY(i) * h, p.getZ(i) + n.getZ(i) * h);
+  }
+  smoothReliefGeometry(g, masks, Math.round(m.reliefGeomSmooth || 0));
+  p.needsUpdate = true; g.computeVertexNormals(); g.computeBoundingBox();
+  return true;
+}
 const insertMat = new THREE.MeshStandardMaterial({ color: '#ececea', roughness: 0.35 });
 // Sobretampa transparente (pump de bisnaga): por fora de tudo, então pode ser transparente comum.
 const clearMat = new THREE.MeshPhysicalMaterial({ color: '#f6f7f5', roughness: 0.12, transparent: true, opacity: 0.22, depthWrite: false, clearcoat: 1 });
@@ -3891,7 +4253,8 @@ const FILL_SOLIDS = {
 function seeded(str) { let h = 2166136261; for (const ch of String(str)) h = Math.imul(h ^ ch.charCodeAt(0), 16777619);
   return () => { h += 0x6D2B79F5; let t = h; t = Math.imul(t ^ t >>> 15, t | 1); t ^= t + Math.imul(t ^ t >>> 7, t | 61); return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
 function solidFill(m, y0, levelAbs, lift) {
-  const T = FILL_SOLIDS[m.liqType], inner = offsetInner(m, y0, S.wall + 0.3, lift); if (!inner) return [];
+  const reliefGap = m.reliefImg && m.reliefDepth > 0 ? Math.max(0.8, m.reliefDepth * 1.6 + 0.35) : 0;
+  const T = FILL_SOLIDS[m.liqType], inner = offsetInner(m, y0, S.wall + 0.3 + reliefGap, lift); if (!inner) return [];
   const b = inner.boundingBox, level = levelAbs ?? b.min.y + (b.max.y - b.min.y) * clamp(m.liqLevel, 0, 100) / 100;
   if (level <= b.min.y + 0.05) { inner.dispose(); return []; }
   inner.computeBoundsTree();
@@ -3962,8 +4325,11 @@ function solidFill(m, y0, levelAbs, lift) {
   im.userData.liquid = true; im.name = 'recheio';
   return [im];
 }
+function withoutRelief(m) {
+  return { ...m, reliefImg: '', reliefName: '', reliefDepth: 0 };
+}
 function offsetInner(m, y0, inset, lift) {
-  const g0 = moduleGeo(m, y0, { lo: false }); if (!g0) return null;
+  const g0 = moduleGeo(withoutRelief(m), y0, { lo: false }); if (!g0) return null;
   const g = g0.index ? g0 : g0; if (!g.attributes.normal) g.computeVertexNormals();
   const p = g.attributes.position.array, n = g.attributes.normal.array, yb = y0 + lift;
   for (let i = 0; i < p.length; i += 3) {
@@ -3979,7 +4345,9 @@ function liquidMeshes(m, y0, levelAbs, lift = S.wall) {
   // parece ir até a borda (como na foto); a faixa vazia de parede ficava falsa.
   // O fundo grosso continua aparecendo embaixo.
   const glassBody = isGlass(m.own ? m.finish : S.finish);
-  const inner = offsetInner(m, y0, glassBody ? Math.max(0.35, S.wall - 0.9) : S.wall + 0.3, lift); if (!inner) return []; // parede grossa: faixa de vidro em volta do líquido
+  const reliefGap = m.reliefImg && m.reliefDepth > 0 ? Math.max(0.8, m.reliefDepth * 1.6 + 0.35) : 0;
+  const inset = (glassBody ? Math.max(0.35, S.wall - 0.9) : S.wall + 0.3) + reliefGap + Math.max(0, m.liqInset || 0);
+  const inner = offsetInner(m, y0, inset, lift); if (!inner) return []; // parede grossa: faixa de vidro em volta do líquido
   inner.computeBoundingBox();
   const b = inner.boundingBox, level = levelAbs ?? b.min.y + (b.max.y - b.min.y) * clamp(m.liqLevel, 0, 100) / 100;
   if (level <= b.min.y + 0.05) { inner.dispose(); return []; } // cópia acima do nível: vazia
@@ -4154,6 +4522,8 @@ function buildInto(product, S, explodeAmt = 0) {
     // dentro (a válvula) aparece embaçado pelo vidro, como na peça real.
     const capCav = g.userData.capCavity;
     if (g.userData.capOuter && isFrost(finM)) { const ex = g.userData.extras; g = g.userData.capOuter; if (ex) g.userData.extras = ex; }
+    const reliefSource = m0.kind === 'gargalo' ? m : ms;
+    applyReliefGeometry(g, reliefSource);
     const mesh = new THREE.Mesh(g, material(colM, finM, firstBody && thickBase(finM) ? { y: y0 + fundo } : null, thick, look));
     // Tampa de vidro que veste a válvula: as paredes da cavidade aparecem como as linhas
     // do vidro grosso dos dois lados da válvula (antes a cavidade sumia e parecia uma janela).
@@ -4505,6 +4875,7 @@ const isBody = m => m.vol || categoryOf(m)?.[0] === 'Corpo';
 const valveHasPesc = () => S.modules.some(v => v.kind === 'spray' && v.pesc && !isWand(v));
 const GT = d => { const a = padDef(d), prev = a[6]; a[6] = m => (m.kind === 'giro' || m.kind === 'perfil') && !isBody(m) && (!prev || prev(m)); return a; };
 const G = d => only('giro', d), P = d => only('placa', d), B = d => only('bisnaga', d), N = d => only('gargalo', d);
+const MESH = d => only('mesh', d);
 const notK = (kinds, d) => { const a = padDef(d); a[6] = m => !kinds.includes(m.kind); return a; };
 const K = d => only('spray', d), isType = t => m => m.sprayType === t;
 const isWand = m => m.sprayType === 'gotas' || m.sprayType === 'gloss'; // tubo da própria tampa, não pescante
@@ -4530,6 +4901,11 @@ const MF = [
     GP(['sphereR', 'Raio da esfera', 0, 150, 0.5, 'mm', isSphereCap]),
     N(['neckStd', 'Padrão do acabamento (aprox.)', 'select', [...Object.keys(NECKS).map(k => [k, k]), ['livre', 'Livre']]]),
     N(['W', 'Diâmetro da rosca (T)', 8, 120, 0.1, 'mm']),
+  ]],
+  ['STL', [
+    MESH(['meshRotX', 'Girar X', -180, 180, 1, '°']),
+    MESH(['meshRotY', 'Girar Y', -180, 180, 1, '°']),
+    MESH(['meshRotZ', 'Girar Z', -180, 180, 1, '°']),
   ]],
   // Gomos: contorno em lóbulos (nuvem, canelado), em grupo próprio.
   ['Gomos', [
@@ -4694,6 +5070,23 @@ const MF = [
     ['difus', 'Difusão (0 = liso/polido, 100 = bem difuso)', 0, 100, 1, '%', m => m.own, m => presetDif(m.finish)],
     ['ior', 'IOR do vidro (1,0 ar · 1,33 água · 1,5 vidro · 2,4 diamante)', 1, 2.4, 0.01, '', m => m.own && isGlass(m.finish), m => presetIor(m.finish)],
   ]],
+  ['Relevo por textura', [
+    ['reliefY', 'Centro da área', 0, 100, 1, '%', m => m.reliefImg],
+    ['reliefH', 'Altura da área', 1, 100, 1, '%', m => m.reliefImg],
+    ['reliefW', 'Largura da volta', 1, 100, 1, '%', m => m.reliefImg],
+    ['reliefFade', 'Suavizar borda', 0, 24, 0.5, 'mm', m => m.reliefImg],
+    ['reliefTile', 'Repetição', 'select', [['repeat', 'Repetir seamless'], ['mirror', 'Espelhar sem corte'], ['organic', 'Orgânico sem grade']], m => m.reliefImg],
+    ['reliefFit', 'Como encaixar', 'select', [['wrap', 'Encaixar na área'], ['tile', 'Repetir por tamanho']], m => m.reliefImg],
+    ['reliefU', 'Deslocar padrão X', -100, 100, 1, '%', m => m.reliefImg],
+    ['reliefV', 'Deslocar padrão Y', -100, 100, 1, '%', m => m.reliefImg],
+    ['reliefWarp', 'Quebrar grade', 0, 100, 1, '%', m => m.reliefImg && m.reliefTile === 'organic'],
+    ['reliefScale', 'Tamanho da repetição', 3, 120, 0.5, 'mm', m => m.reliefImg && (m.reliefFit || 'tile') === 'tile'],
+    ['reliefDepth', 'Força do relevo', 0, 4, 0.02, 'mm', m => m.reliefImg],
+    ['reliefPreviewQ', 'Preview da malha', 1, 5, 1, '', m => m.reliefImg],
+    ['reliefQuality', 'Qualidade no download 3D', 1, 9, 1, '', m => m.reliefImg],
+    ['reliefSoft', 'Suavizar textura', 0, 32, 0.5, 'px', m => m.reliefImg],
+    ['reliefGeomSmooth', 'Suavizar malha', 0, 12, 1, '', m => m.reliefImg],
+  ]],
 ];
 
 let rebuildQueued = false;
@@ -4787,7 +5180,8 @@ function renderEditor() {
   for (const [title, defs] of MF) {
     if (title === 'Rótulo') continue; // fica no painel do logotipo (renderLabelBox)
     const ribsHere = title === 'Frisos' && (m.kind === 'giro' || m.kind === 'perfil');
-    if (!ribsHere && !defs.some(d => !d[6] || d[6](m))) continue;
+    const reliefHere = title === 'Relevo por textura';
+    if (!ribsHere && !reliefHere && !defs.some(d => !d[6] || d[6](m))) continue;
     // Grupo recolhível; lembra quais ficaram abertos.
     const grp = document.createElement('details'); grp.className = 'grp'; grp.open = !!openG[title] || (title === 'Gomos' && m.lobes >= 3);
     grp.innerHTML = `<summary>${title}</summary>`;
@@ -4797,6 +5191,133 @@ function renderEditor() {
       const b = document.createElement('button'); b.className = 'btn'; b.textContent = 'Espelhar ←→';
       b.onclick = () => { [m.rTL, m.rTR, m.rBL, m.rBR, m.ox] = [m.rTR, m.rTL, m.rBR, m.rBL, -m.ox]; renderEditorKeepScroll(); queueBuild(); };
       grp.appendChild(b);
+    }
+    if (title === 'Relevo por textura') {
+      const row = document.createElement('div'); row.className = 'row actions';
+      const up = document.createElement('button'); up.className = 'btn sm'; up.textContent = m.reliefImg ? 'Trocar textura' : 'Subir textura seamless';
+      const conv = document.createElement('button'); conv.className = 'btn sm'; conv.textContent = 'Converter imagem em relevo';
+      const normal = document.createElement('button'); normal.className = 'btn sm'; normal.textContent = 'Converter normal/bump';
+      const mt = document.createElement('button'); mt.className = 'btn sm'; mt.textContent = 'Matelassê losangos';
+      const clean = document.createElement('button'); clean.className = 'btn sm'; clean.textContent = 'Limpar mapa';
+      const soft = document.createElement('button'); soft.className = 'btn sm'; soft.textContent = 'Acabamento suave';
+      const rm = document.createElement('button'); rm.className = 'btn sm'; rm.textContent = 'Remover'; rm.classList.toggle('hidden', !m.reliefImg);
+      up.onclick = () => {
+        const inp = document.createElement('input'); inp.type = 'file'; inp.accept = 'image/png,image/jpeg,image/webp';
+        inp.onchange = async () => {
+          const f = inp.files[0]; if (!f) return;
+          up.disabled = true; up.textContent = 'Limpando...';
+          try {
+            const src = await new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = () => rej(r.error); r.readAsDataURL(f); });
+            m.reliefImg = await cleanDisplacementMap(src, f.type === 'image/jpeg' ? 2.2 : 1.2);
+            m.reliefName = `${f.name} → mapa limpo`;
+            m.reliefTile = 'repeat';
+            m.reliefFit = 'wrap';
+            m.reliefWarp = 0;
+            if (!(m.reliefDepth > 0)) m.reliefDepth = 0.55; if (!(m.reliefScale > 0)) m.reliefScale = 18;
+            if (!(m.reliefH > 0)) m.reliefH = 82; if (!(m.reliefY >= 0)) m.reliefY = 50; if (!(m.reliefW > 0)) m.reliefW = 100; if (!(m.reliefFade >= 0)) m.reliefFade = 4;
+            if (!(m.reliefPreviewQ > 0)) m.reliefPreviewQ = 2; if (!(m.reliefQuality > 0)) m.reliefQuality = 7; if (!(m.reliefSoft >= 0)) m.reliefSoft = 8; if (!(m.reliefGeomSmooth >= 0)) m.reliefGeomSmooth = 4;
+            ensureReliefData(m.reliefImg).then(() => queueBuild()); renderEditorKeepScroll(); queueBuild();
+          } catch (e) { console.warn(e); toast('Não consegui limpar esse mapa'); renderEditorKeepScroll(); }
+        };
+        inp.click();
+      };
+      normal.onclick = () => {
+        const inp = document.createElement('input'); inp.type = 'file'; inp.accept = 'image/png,image/jpeg,image/webp';
+        inp.onchange = async () => {
+          const f = inp.files[0]; if (!f) return;
+          normal.disabled = true; normal.textContent = 'Convertendo...';
+          try {
+            const src = await new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = () => rej(r.error); r.readAsDataURL(f); });
+            m.reliefImg = await normalMapToDisplacement(src);
+            m.reliefName = `${f.name} → normal/bump convertido`;
+            m.reliefTile = 'repeat';
+            m.reliefFit = 'wrap';
+            m.reliefWarp = 0;
+            if (!(m.reliefDepth > 0)) m.reliefDepth = 0.42; if (!(m.reliefScale > 0)) m.reliefScale = 18;
+            if (!(m.reliefH > 0)) m.reliefH = 82; if (!(m.reliefY >= 0)) m.reliefY = 50; if (!(m.reliefW > 0)) m.reliefW = 100; if (!(m.reliefFade >= 0)) m.reliefFade = 4;
+            m.reliefQuality = Math.max(m.reliefQuality || 0, 7);
+            m.reliefPreviewQ = Math.max(m.reliefPreviewQ || 0, 2);
+            m.reliefSoft = Math.max(m.reliefSoft || 0, 3);
+            m.reliefGeomSmooth = Math.max(m.reliefGeomSmooth || 0, 2);
+            ensureReliefData(m.reliefImg).then(() => queueBuild());
+            toast('Normal/bump convertido em displacement e salvo no projeto');
+            renderEditorKeepScroll(); queueBuild();
+          } catch (e) { console.warn(e); toast('Não consegui converter esse normal/bump'); renderEditorKeepScroll(); }
+        };
+        inp.click();
+      };
+      conv.onclick = () => {
+        const inp = document.createElement('input'); inp.type = 'file'; inp.accept = 'image/png,image/jpeg,image/webp';
+        inp.onchange = async () => {
+          const f = inp.files[0]; if (!f) return;
+          conv.disabled = true; conv.textContent = 'Convertendo...';
+          try {
+            const src = await new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = () => rej(r.error); r.readAsDataURL(f); });
+            m.reliefImg = await imageToDisplacement(src);
+            m.reliefName = `${f.name} → displacement`;
+            m.reliefTile = 'repeat';
+            m.reliefFit = 'wrap';
+            m.reliefWarp = 0;
+            if (!(m.reliefDepth > 0)) m.reliefDepth = 0.55; if (!(m.reliefScale > 0)) m.reliefScale = 18;
+            if (!(m.reliefH > 0)) m.reliefH = 82; if (!(m.reliefY >= 0)) m.reliefY = 50; if (!(m.reliefW > 0)) m.reliefW = 100; if (!(m.reliefFade >= 0)) m.reliefFade = 4;
+            m.reliefQuality = Math.max(m.reliefQuality || 0, 7);
+            m.reliefPreviewQ = Math.max(m.reliefPreviewQ || 0, 2);
+            m.reliefSoft = Math.max(m.reliefSoft || 0, 8);
+            m.reliefGeomSmooth = Math.max(m.reliefGeomSmooth || 0, 4);
+            ensureReliefData(m.reliefImg).then(() => queueBuild());
+            toast('Imagem convertida em displacement e salva no projeto');
+            renderEditorKeepScroll(); queueBuild();
+          } catch (e) { console.warn(e); toast('Não consegui converter essa imagem'); renderEditorKeepScroll(); }
+        };
+        inp.click();
+      };
+      mt.onclick = () => {
+        m.reliefImg = makeMatelasseTexture();
+        m.reliefName = 'Matelassê losangos';
+        m.reliefTile = 'repeat';
+        m.reliefFit = 'tile';
+        m.reliefScale = 38;
+        m.reliefDepth = 1.05;
+        m.reliefY = 50;
+        m.reliefH = 76;
+        m.reliefW = 100;
+        m.reliefFade = 5;
+        m.reliefQuality = 5;
+        m.reliefPreviewQ = 2;
+        m.reliefSoft = 0.8;
+        m.reliefGeomSmooth = 1;
+        ensureReliefData(m.reliefImg).then(() => queueBuild());
+        renderEditorKeepScroll();
+        queueBuild();
+      };
+      clean.onclick = async () => {
+        if (!m.reliefImg) return toast('Suba um mapa primeiro');
+        clean.disabled = true; clean.textContent = 'Limpando...';
+        try {
+          m.reliefImg = await cleanDisplacementMap(m.reliefImg, 2.4);
+          m.reliefName = `${m.reliefName || 'mapa'} → limpo`;
+          m.reliefSoft = Math.max(m.reliefSoft || 0, 10);
+          m.reliefGeomSmooth = Math.max(m.reliefGeomSmooth || 0, 5);
+          ensureReliefData(m.reliefImg).then(() => queueBuild());
+          toast('Mapa limpo e salvo no projeto');
+          renderEditorKeepScroll(); queueBuild();
+        } catch (e) { console.warn(e); toast('Não consegui limpar esse mapa'); renderEditorKeepScroll(); }
+      };
+      soft.onclick = () => {
+        if (!m.reliefImg) return toast('Suba ou converta uma textura primeiro');
+        m.reliefDepth = Math.min(m.reliefDepth || 0.28, 0.28);
+        m.reliefQuality = Math.max(m.reliefQuality || 0, 8);
+        m.reliefPreviewQ = Math.min(m.reliefPreviewQ || 2, 2);
+        m.reliefSoft = Math.max(m.reliefSoft || 0, 10);
+        m.reliefGeomSmooth = Math.max(m.reliefGeomSmooth || 0, 5);
+        m.reliefFade = Math.max(m.reliefFade || 0, 8);
+        m.reliefWarp = m.reliefTile === 'organic' ? Math.max(m.reliefWarp || 0, 35) : 0;
+        renderEditorKeepScroll(); queueBuild();
+      };
+      rm.onclick = () => { m.reliefImg = ''; m.reliefName = ''; m.reliefDepth = 0; renderEditorKeepScroll(); queueBuild(); };
+      row.append(up, conv, normal, mt, clean, soft, rm); grp.append(row);
+      const tip = document.createElement('div'); tip.className = 'tip'; tip.textContent = m.reliefImg ? `Textura: ${m.reliefName || 'imagem carregada'} · Preview da malha deixa a tela leve; Qualidade no download 3D vale só para GLB/OBJ/STL.` : 'Suba displacement pronto, imagem comum ou normal/bump colorido. A ferramenta salva tudo como mapa de altura no projeto.';
+      grp.append(tip);
     }
     for (const def of defs) {
       const show = def[6];
@@ -4823,7 +5344,7 @@ function renderEditor() {
           syncSphereRadius(m, k === 'roundLock' && m.roundLock || ['W', 'D', 'h'].includes(k) && m.roundLock);
         }
         if (k === 'finish') { delete m.difus; delete m.ior; } // acabamento novo: difusão e IOR voltam ao dele
-        if (structural || ['rep', 'groove', 'ridges', 'own', 'labType', 'bpesc', 'finish'].includes(k) || (isSphereCap(m) && ['W', 'D', 'h', 'roundLock', 'sphereR'].includes(k))) renderEditorKeepScroll();
+        if (structural || ['rep', 'groove', 'ridges', 'own', 'labType', 'bpesc', 'finish', 'reliefY', 'reliefH', 'reliefW', 'reliefFade', 'reliefTile', 'reliefFit', 'reliefU', 'reliefV', 'reliefWarp', 'reliefScale', 'reliefDepth', 'reliefPreviewQ', 'reliefQuality', 'reliefSoft', 'reliefGeomSmooth'].includes(k) || (isSphereCap(m) && ['W', 'D', 'h', 'roundLock', 'sphereR'].includes(k))) renderEditorKeepScroll();
         renderStack(); queueBuild();
       });
       if (show && !show(m)) el.classList.add('hidden');
@@ -5024,6 +5545,7 @@ function renderBodyLiquid(ed, m) {
     if (m.liqType === 'transparente') field(grp, m, ['liqClear', 'Transparência', 0, 95, 1, '%'], ch);
     if (solid) field(grp, m, ['liqSize', 'Tamanho da peça', 1, 40, 0.5, 'mm'], ch);
     field(grp, m, ['liqLevel', 'Nível', 0, 100, 1, '%'], ch);
+    if (!solid) field(grp, m, ['liqInset', 'Afastar da parede', 0, 8, 0.1, 'mm'], ch);
     field(grp, m, ['liqColor', 'Cor do conteúdo', 'color'], ch);
     if (solid && m.liqType !== 'comprimidos') field(grp, m, ['liqColor2', m.liqType === 'pilulas' ? 'Cor da outra metade' : 'Segunda cor (mistura)', 'color'], ch);
   }
@@ -5033,7 +5555,7 @@ const typeOf = m => m.type || Object.keys(LIB).find(k => LIB[k].name === m.name)
 function categoryOf(m) {
   const t = typeOf(m), c = CATS.find(([, keys]) => keys.includes(t));
   if (c) return c;
-  const label = m.kind === 'spray' ? 'Válvula' : m.kind === 'gargalo' || ['octogono', 'cubo', 'piramide', 'prisma'].includes(t) ? 'Peça de encaixe' : m.vol ? 'Corpo' : 'Tampa';
+  const label = m.kind === 'spray' ? 'Válvula' : m.kind === 'mesh' || m.kind === 'gargalo' || ['octogono', 'cubo', 'piramide', 'prisma'].includes(t) ? 'Peça de encaixe' : m.vol ? 'Corpo' : 'Tampa';
   return CATS.find(([l]) => l === label);
 }
 // Medidas que acompanham a escala da peça (em mm).
@@ -5173,6 +5695,24 @@ CATS.forEach(([label, keys]) => {
   };
   $('#addRows').appendChild(row);
 });
+$('#importStlBtn').onclick = () => $('#importStl').click();
+$('#importStl').onchange = async e => {
+  const f = e.target.files[0]; e.target.value = ''; if (!f) return;
+  if (f.size > 8 * 1024 * 1024 && !confirm('Esse STL é grande e pode deixar o projeto salvo pesado. Importar mesmo assim?')) return;
+  try {
+    const buf = await f.arrayBuffer(), geo = stlLoader.parse(buf);
+    geo.computeBoundingBox();
+    const b = geo.boundingBox, W = r1(Math.max(1, b.max.x - b.min.x)), h = r1(Math.max(1, b.max.y - b.min.y)), D = r1(Math.max(1, b.max.z - b.min.z));
+    geo.dispose?.();
+    const at = sel + unitLen(sel), name = f.name.replace(/\.stl$/i, '') || 'STL importado';
+    S.modules.splice(at, 0, { ...BASE, uid: newUid(), type: 'stl', kind: 'mesh', name, W, D, h, meshData: bytesToB64(buf), meshRotX: 0, meshRotY: 0, meshRotZ: 0,
+      own: true, color: S.color || BEIGE, finish: S.finish || 'fosco', vol: false, pesc: false, bpesc: false });
+    sel = at; renderStack(); renderEditor(); build(); fit();
+    toast(`STL importado: ${name}`);
+  } catch (err) {
+    console.error(err); toast('Não consegui ler esse STL');
+  }
+};
 $('#colorAll').onclick = () => { S.modules.forEach(m => m.own = false); renderStack(); renderEditor(); build(); };
 
 // ───────────────────────── modelos (presets) ─────────────────────────
@@ -5619,44 +6159,41 @@ $('#dlPng').onclick = () => {
   renderer.setPixelRatio(pr); renderer.setSize(size.x, size.y, false); req();
   fetch(data).then(r => r.blob()).then(b => download(b, fname('png')));
 };
-// Subtração booleana (A − B) para a exportação: a parte de A fora de B + as faces
-// de B dentro de A. Lenta demais para a tela; no arquivo vale a espera.
-function csgSub(a, b) {
-  const [outer, inner] = cutHole(a, b); b.dispose?.();
-  if (outer === a) return a;
-  const ni = x => { const y = x.index ? x.toNonIndexed() : x; for (const k in y.attributes) if (k !== 'position' && k !== 'normal') y.deleteAttribute(k); return y; };
-  return mergeGeometries([ni(outer), ni(inner)]) || a;
+const collectReliefSources = st => [...(st.modules || []), ...(st.side || []).flatMap(it => it.modules || [])].map(m => m.reliefImg).filter(Boolean);
+async function ensureReliefsForExport() {
+  const srcs = [...new Set(collectReliefSources(S))];
+  if (!srcs.length) return;
+  await Promise.all(srcs.map(ensureReliefData));
 }
-// Frasco oco de verdade no arquivo: corpo em casca (parede, fundo grosso no vidro,
-// abertura até o gargalo) e gargalo furado. Os efeitos só de tela ficam de fora.
+function cloneForExport(o) {
+  const c = o.clone(true);
+  c.traverse(q => {
+    if (q.geometry) q.geometry = q.geometry.clone();
+    if (q.material) q.material = Array.isArray(q.material) ? q.material.map(m => m.clone()) : q.material.clone();
+  });
+  return c;
+}
+// Export 3D leve: usa as mesmas malhas visíveis da cena. A casca/parede real por
+// CSG deixou GLB/OBJ/STL grandes e lentos demais; a espessura segue como aparência.
 async function exportRoot(scale) {
-  toast('Montando o frasco oco para o arquivo…'); await new Promise(r => setTimeout(r, 60));
-  const root = new THREE.Group(); root.name = S.name || 'embalagem';
-  const L = layout(S), vols = L.filter(e => e.m.vol), floor = vols.length ? Math.min(...vols.map(e => e.y0)) : 0;
-  for (const o of product.children) {
-    if (o.name === 'cavidade' || o.name === 'boca' || o.userData.liquid) continue;
-    const c = o.clone();
-    if (o.isMesh && o.userData.main) {
-      const idx = o.userData.idx, m0 = S.modules[idx], y0 = o.userData.y0, e = L.find(x => x.idx === idx && Math.abs(x.y0 - y0) < 0.01);
-      try {
-        if (m0?.vol && e) {
-          const fin = m0.own ? m0.finish : S.finish, first = Math.abs(y0 - floor) < 0.01;
-          const lift = first && thickBase(fin) ? Math.max(S.wall, m0.fundo ?? 6) : S.wall;
-          let g = o.geometry.clone();
-          const gi = moduleGeo(e.m, y0, { inset: S.wall, lift, lo: false }); if (gi) g = csgSub(g, gi);
-          const nk = S.modules[idx + 1], last = !L.some(x => x.idx === idx && x.y0 > y0 + 0.01);
-          if (nk?.kind === 'gargalo' && last) g = csgSub(g, cyl(neckBore(nk), y0 + e.m.h * 0.5, e.m.h * 0.5 + 2));
-          c.geometry = g;
-        } else if (m0?.kind === 'gargalo') {
-          c.geometry = csgSub(o.geometry.clone(), cyl(neckBore(m0), y0 - (m0.embed || 0) - 2, m0.h + (m0.embed || 0) + 4));
-        }
-      } catch (err) { console.warn('casca: ficou maciço', err); }
+  toast('Montando arquivo 3D em qualidade de download…'); await new Promise(r => setTimeout(r, 30));
+  await ensureReliefsForExport();
+  export3dQuality = true;
+  try {
+    build();
+    await new Promise(r => requestAnimationFrame(r));
+    const root = new THREE.Group(); root.name = S.name || 'embalagem';
+    for (const o of product.children) {
+      if (o.name === 'cavidade' || o.name === 'boca' || o.userData.liquid) continue;
+      root.add(cloneForExport(o));
     }
-    root.add(c);
+    sideRoot.children.forEach(g => root.add(cloneForExport(g))); // produtos ao lado, já na posição
+    root.scale.setScalar(scale); root.updateMatrixWorld(true);
+    return root;
+  } finally {
+    export3dQuality = false;
+    build();
   }
-  sideRoot.children.forEach(g => root.add(g.clone())); // produtos ao lado, já na posição
-  root.scale.setScalar(scale); root.updateMatrixWorld(true);
-  return root;
 }
 $('#dlGlb').onclick = () => {
   exportRoot(0.001).then(r => new GLTFExporter().parse(r, buf => download(new Blob([buf], { type: 'model/gltf-binary' }), fname('glb')),
