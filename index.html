@@ -507,7 +507,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-29.relevo-merge';
+const BUILD = '2026-09-29.relevo-simples';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -2696,53 +2696,73 @@ async function imageToDisplacement(src) {
   cx.putImageData(out, 0, 0);
   return cv.toDataURL('image/png');
 }
+// FFT 2D (radix 2, no lugar) para integrar normal map.
+function fft1(re, im, n, inv) {
+  for (let i = 1, j = 0; i < n; i++) { let b = n >> 1; for (; j & b; b >>= 1) j ^= b; j ^= b; if (i < j) { [re[i], re[j]] = [re[j], re[i]]; [im[i], im[j]] = [im[j], im[i]]; } }
+  for (let len = 2; len <= n; len <<= 1) {
+    const a = (inv ? 2 : -2) * Math.PI / len, wr = Math.cos(a), wi = Math.sin(a);
+    for (let i = 0; i < n; i += len) { let cr = 1, ci = 0;
+      for (let k = 0; k < len / 2; k++) { const u = i + k, v = u + len / 2, tr = re[v] * cr - im[v] * ci, ti = re[v] * ci + im[v] * cr;
+        re[v] = re[u] - tr; im[v] = im[u] - ti; re[u] += tr; im[u] += ti; const nr = cr * wr - ci * wi; ci = cr * wi + ci * wr; cr = nr; } }
+  }
+  if (inv) for (let i = 0; i < n; i++) { re[i] /= n; im[i] /= n; }
+}
+function fft2(re, im, w, h, inv) {
+  const rr = new Float64Array(Math.max(w, h)), ri = new Float64Array(Math.max(w, h));
+  for (let y = 0; y < h; y++) { const o = y * w; for (let x = 0; x < w; x++) { rr[x] = re[o + x]; ri[x] = im[o + x]; } fft1(rr, ri, w, inv); for (let x = 0; x < w; x++) { re[o + x] = rr[x]; im[o + x] = ri[x]; } }
+  for (let x = 0; x < w; x++) { for (let y = 0; y < h; y++) { rr[y] = re[y * w + x]; ri[y] = im[y * w + x]; } fft1(rr, ri, h, inv); for (let y = 0; y < h; y++) { re[y * w + x] = rr[y]; im[y * w + x] = ri[y]; } }
+}
+const pow2 = v => 2 ** Math.round(Math.log2(Math.max(8, v)));
+// Normal map (RGB) → mapa de altura. As normais dão a inclinação em cada ponto
+// (R = inclinação em X, G = em Y); a altura sai integrando esse campo inteiro de uma
+// vez (Frankot-Chellappa, no domínio de frequência). É periódico: textura seamless
+// continua fechando sem corte. A convenção do verde (OpenGL / DirectX) é descoberta
+// sozinha: o sinal certo é o que deixa o campo integrável (rotacional ~ zero).
 async function normalMapToDisplacement(src) {
-  const img = await imageFromUrl(src), max = 1024;
-  const sc = Math.min(1, max / Math.max(img.naturalWidth || img.width, img.naturalHeight || img.height));
-  const w = Math.max(8, Math.round((img.naturalWidth || img.width) * sc)), h = Math.max(8, Math.round((img.naturalHeight || img.height) * sc));
+  const img = await imageFromUrl(src), iw = img.naturalWidth || img.width, ih = img.naturalHeight || img.height;
+  const sc = Math.min(1, 1024 / Math.max(iw, ih)), w = Math.min(1024, pow2(iw * sc)), h = Math.min(1024, pow2(ih * sc));
   const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
   const cx = cv.getContext('2d', { willReadFrequently: true }); cx.drawImage(img, 0, 0, w, h);
-  const raw = cx.getImageData(0, 0, w, h), rp = raw.data;
-  const row = new Float32Array(w * h), col = new Float32Array(w * h), vals = new Float32Array(w * h), sorted = new Float32Array(w * h);
-  const grad = (i) => {
-    const r = rp[i] / 255 * 2 - 1, g = rp[i + 1] / 255 * 2 - 1, b = Math.max(0.18, rp[i + 2] / 255);
-    return [r / b, -g / b];
-  };
-  for (let y = 0; y < h; y++) {
-    let acc = 0, base = y * w;
-    row[base] = 0;
-    for (let x = 1; x < w; x++) {
-      const [gx0] = grad((base + x - 1) * 4), [gx1] = grad((base + x) * 4);
-      acc += (gx0 + gx1) * 0.5 / w; row[base + x] = acc;
-    }
-    const drift = row[base + w - 1];
-    for (let x = 0; x < w; x++) row[base + x] -= drift * x / Math.max(1, w - 1);
+  const rp = cx.getImageData(0, 0, w, h).data, N = w * h, P = new Float64Array(N), Q = new Float64Array(N);
+  for (let i = 0, j = 0; i < N; i++, j += 4) {
+    const nx = rp[j] / 127.5 - 1, ny = rp[j + 1] / 127.5 - 1, nz = Math.max(0.2, rp[j + 2] / 127.5 - 1);
+    P[i] = clamp(-nx / nz, -5, 5); Q[i] = clamp(ny / nz, -5, 5); // eixo Y da imagem cresce para baixo
   }
-  for (let x = 0; x < w; x++) {
-    let acc = 0;
-    col[x] = 0;
-    for (let y = 1; y < h; y++) {
-      const [, gy0] = grad(((y - 1) * w + x) * 4), [, gy1] = grad((y * w + x) * 4);
-      acc += (gy0 + gy1) * 0.5 / h; col[y * w + x] = acc;
-    }
-    const drift = col[(h - 1) * w + x];
-    for (let y = 0; y < h; y++) col[y * w + x] -= drift * y / Math.max(1, h - 1);
+  let cPlus = 0, cMinus = 0; // rotacional dp/dy − s·dq/dx para os dois sinais do verde
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    const i = y * w + x, dpy = P[((y + 1) % h) * w + x] - P[i], dqx = Q[y * w + (x + 1) % w] - Q[i];
+    cPlus += (dpy - dqx) ** 2; cMinus += (dpy + dqx) ** 2;
   }
-  for (let i = 0, j = 0; i < vals.length; i++, j += 4) {
-    const lum = (rp[j] * 0.2126 + rp[j + 1] * 0.7152 + rp[j + 2] * 0.0722) / 255;
-    const chroma = ((rp[j] - rp[j + 1]) / 255) * 0.12;
-    vals[i] = sorted[i] = row[i] * 0.5 + col[i] * 0.5 + (lum - 0.5) * 0.18 + chroma;
+  const flip = cMinus < cPlus; // verde invertido (DirectX)
+  const Pi = new Float64Array(N), Qi = new Float64Array(N);
+  if (flip) for (let i = 0; i < N; i++) Q[i] = -Q[i];
+  fft2(P, Pi, w, h, false); fft2(Q, Qi, w, h, false);
+  const Hr = new Float64Array(N), Hi = new Float64Array(N);
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    const i = y * w + x, u = x <= w / 2 ? x : x - w, v = y <= h / 2 ? y : y - h, wx = TAU * u / w, wy = TAU * v / h, d = wx * wx + wy * wy;
+    if (!d) continue;
+    // H = (−j·wx·P − j·wy·Q) / (wx² + wy²)
+    Hr[i] = (wx * Pi[i] + wy * Qi[i]) / d; Hi[i] = (-wx * P[i] - wy * Q[i]) / d;
   }
-  sorted.sort();
-  const lo = sorted[Math.floor(sorted.length * 0.015)], hi = sorted[Math.floor(sorted.length * 0.985)], span = Math.max(0.0001, hi - lo);
+  fft2(Hr, Hi, w, h, true);
+  const sorted = Float64Array.from(Hr).sort(), lo = sorted[Math.floor(N * 0.005)], hi = sorted[Math.floor(N * 0.995)], span = Math.max(1e-9, hi - lo);
   const out = cx.createImageData(w, h), op = out.data;
-  for (let i = 0, j = 0; i < vals.length; i++, j += 4) {
-    let v = clamp((vals[i] - lo) / span, 0, 1);
-    v = smooth(0, 1, v);
-    const c = Math.round(clamp(v, 0, 1) * 255); op[j] = op[j + 1] = op[j + 2] = c; op[j + 3] = 255;
-  }
+  for (let i = 0, j = 0; i < N; i++, j += 4) { const c = Math.round(clamp((Hr[i] - lo) / span, 0, 1) * 255); op[j] = op[j + 1] = op[j + 2] = c; op[j + 3] = 255; }
   cx.putImageData(out, 0, 0);
-  return await cleanDisplacementMap(cv.toDataURL('image/png'), 0.8);
+  normalMapToDisplacement.lastFlip = flip;
+  return await cleanDisplacementMap(cv.toDataURL('image/png'), 0.5);
+}
+// Que tipo de imagem subiu: normal map (fundo azul-lilás, média ≈ 128,128,255),
+// displacement pronto (cinza) ou imagem comum (colorida).
+async function classifyReliefImage(src) {
+  const img = await imageFromUrl(src), cv = document.createElement('canvas'); cv.width = cv.height = 96;
+  const cx = cv.getContext('2d', { willReadFrequently: true }); cx.drawImage(img, 0, 0, 96, 96);
+  const d = cx.getImageData(0, 0, 96, 96).data; let r = 0, g = 0, b = 0, sat = 0, blueish = 0; const n = d.length / 4;
+  for (let j = 0; j < d.length; j += 4) { r += d[j]; g += d[j + 1]; b += d[j + 2];
+    sat += Math.max(d[j], d[j + 1], d[j + 2]) - Math.min(d[j], d[j + 1], d[j + 2]); if (d[j + 2] > 170 && d[j + 2] >= d[j] && d[j + 2] >= d[j + 1]) blueish++; }
+  r /= n * 255; g /= n * 255; b /= n * 255; sat /= n * 255;
+  if (blueish / n > 0.8 && b > 0.72 && Math.abs(r - 0.5) < 0.14 && Math.abs(g - 0.5) < 0.14) return 'normal';
+  return sat < 0.06 ? 'gray' : 'color';
 }
 async function cleanDisplacementMap(src, blur = 1.6) {
   const img = await imageFromUrl(src), max = 1536;
@@ -2811,12 +2831,21 @@ function applyReliefGeometry(g, m) {
   g.computeBoundingBox();
   if (!g.attributes.normal) g.computeVertexNormals();
   const p = g.attributes.position, n = g.attributes.normal, uv = g.attributes.uv, masks = new Float32Array(p.count);
+  // Antisserrilhado: a malha só consegue mostrar detalhe do tamanho do espaço entre os
+  // vértices. Detalhe menor que isso virava listras finas e ondas falsas (aliasing); o
+  // mapa é filtrado na medida da malha (mais fino no download 3D, que tem mais vértices).
+  const bb = g.boundingBox, q = reliefMeshQuality(m), seg = clamp(360 + q * 220, 520, 2600);
+  const ra = Math.max(0.5, (bb.max.x - bb.min.x) / 2), rc = Math.max(0.5, (bb.max.z - bb.min.z) / 2), tileMm = Math.max(0.1, m.reliefScale || 18);
+  const [ay0, ay1] = reliefAreaY(m, bb), ringMm = clamp(tileMm / (8 + q * 10), 0.07, 1.2), wrap = (m.reliefFit || 'tile') === 'wrap';
+  const tu = wrap ? rec.data.w / Math.max(1, seg * clamp(m.reliefW ?? 100, 1, 100) / 100) : rec.data.w * Math.max(1, Math.round(perim(ra, rc) / tileMm)) / seg;
+  const tv = rec.data.h * ringMm / (wrap ? Math.max(0.1, ay1 - ay0) : tileMm);
+  const soft = Math.max(m.reliefSoft || 0, Math.min(24, Math.max(tu, tv) * 0.75));
   for (let i = 0; i < p.count; i++) {
     const x = p.getX(i), y = p.getY(i), z = p.getZ(i), mask = textureReliefMask(m, g.boundingBox, x, y, z);
     if (mask <= 0.0001) continue;
     masks[i] = mask;
     const u = uv.getX(i) + (m.reliefU || 0) / 100, v = uv.getY(i) + (m.reliefV || 0) / 100;
-    const h = (reliefHeightSoft(rec.data, u, v, m.reliefSoft || 0, m.reliefTile || 'repeat', m.reliefWarp || 0) - 0.5) * 2 * m.reliefDepth * mask;
+    const h = (reliefHeightSoft(rec.data, u, v, soft, m.reliefTile || 'repeat', m.reliefWarp || 0) - 0.5) * 2 * m.reliefDepth * mask;
     p.setXYZ(i, p.getX(i) + n.getX(i) * h, p.getY(i) + n.getY(i) * h, p.getZ(i) + n.getZ(i) * h);
   }
   smoothReliefGeometry(g, masks, Math.round(m.reliefGeomSmooth || 0));
@@ -5075,17 +5104,18 @@ const MF = [
     ['reliefH', 'Altura da área', 1, 100, 1, '%', m => m.reliefImg],
     ['reliefW', 'Largura da volta', 1, 100, 1, '%', m => m.reliefImg],
     ['reliefFade', 'Suavizar borda', 0, 24, 0.5, 'mm', m => m.reliefImg],
-    ['reliefTile', 'Repetição', 'select', [['repeat', 'Repetir seamless'], ['mirror', 'Espelhar sem corte'], ['organic', 'Orgânico sem grade']], m => m.reliefImg],
-    ['reliefFit', 'Como encaixar', 'select', [['wrap', 'Encaixar na área'], ['tile', 'Repetir por tamanho']], m => m.reliefImg],
-    ['reliefU', 'Deslocar padrão X', -100, 100, 1, '%', m => m.reliefImg],
-    ['reliefV', 'Deslocar padrão Y', -100, 100, 1, '%', m => m.reliefImg],
-    ['reliefWarp', 'Quebrar grade', 0, 100, 1, '%', m => m.reliefImg && m.reliefTile === 'organic'],
+    ['reliefTile', 'Repetição', 'select', [['repeat', 'Repetir seamless'], ['mirror', 'Espelhar sem corte'], ['organic', 'Orgânico sem grade']], null, null, m => m.reliefImg && m.reliefAdv],
+    ['reliefFit', 'Como encaixar', 'select', [['wrap', 'Encaixar na área'], ['tile', 'Repetir por tamanho']], null, null, m => m.reliefImg],
+    ['reliefU', 'Deslocar padrão X', -100, 100, 1, '%', m => m.reliefImg && m.reliefAdv],
+    ['reliefV', 'Deslocar padrão Y', -100, 100, 1, '%', m => m.reliefImg && m.reliefAdv],
+    ['reliefWarp', 'Quebrar grade', 0, 100, 1, '%', m => m.reliefImg && m.reliefAdv && m.reliefTile === 'organic'],
     ['reliefScale', 'Tamanho da repetição', 3, 120, 0.5, 'mm', m => m.reliefImg && (m.reliefFit || 'tile') === 'tile'],
     ['reliefDepth', 'Força do relevo', 0, 4, 0.02, 'mm', m => m.reliefImg],
-    ['reliefPreviewQ', 'Preview da malha', 1, 5, 1, '', m => m.reliefImg],
-    ['reliefQuality', 'Qualidade no download 3D', 1, 9, 1, '', m => m.reliefImg],
-    ['reliefSoft', 'Suavizar textura', 0, 32, 0.5, 'px', m => m.reliefImg],
-    ['reliefGeomSmooth', 'Suavizar malha', 0, 12, 1, '', m => m.reliefImg],
+    ['reliefPreviewQ', 'Preview da malha', 1, 5, 1, '', m => m.reliefImg && m.reliefAdv],
+    ['reliefQuality', 'Qualidade no download 3D', 1, 9, 1, '', m => m.reliefImg && m.reliefAdv],
+    ['reliefSoft', 'Suavizar textura', 0, 32, 0.5, 'px', m => m.reliefImg && m.reliefAdv],
+    ['reliefGeomSmooth', 'Suavizar malha', 0, 12, 1, '', m => m.reliefImg && m.reliefAdv],
+    ['reliefAdv', 'Ajustes avançados', 'check', null, null, null, m => m.reliefImg],
   ]],
 ];
 
@@ -5194,7 +5224,7 @@ function renderEditor() {
     }
     if (title === 'Relevo por textura') {
       const row = document.createElement('div'); row.className = 'row actions';
-      const up = document.createElement('button'); up.className = 'btn sm'; up.textContent = m.reliefImg ? 'Trocar textura' : 'Subir textura seamless';
+      const up = document.createElement('button'); up.className = 'btn sm'; up.textContent = m.reliefImg ? 'Trocar textura' : 'Subir textura (detecta o tipo)';
       const conv = document.createElement('button'); conv.className = 'btn sm'; conv.textContent = 'Converter imagem em relevo';
       const normal = document.createElement('button'); normal.className = 'btn sm'; normal.textContent = 'Converter normal/bump';
       const mt = document.createElement('button'); mt.className = 'btn sm'; mt.textContent = 'Matelassê losangos';
@@ -5208,8 +5238,12 @@ function renderEditor() {
           up.disabled = true; up.textContent = 'Limpando...';
           try {
             const src = await new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = () => rej(r.error); r.readAsDataURL(f); });
-            m.reliefImg = await cleanDisplacementMap(src, f.type === 'image/jpeg' ? 2.2 : 1.2);
-            m.reliefName = `${f.name} → mapa limpo`;
+            // detecta o tipo: normal/bump colorido vira altura integrando as normais; imagem
+            // comum vira altura pela luminância; displacement cinza entra direto (só limpa ruído)
+            const kind = await classifyReliefImage(src);
+            m.reliefImg = kind === 'normal' ? await normalMapToDisplacement(src) : kind === 'color' ? await imageToDisplacement(src) : await cleanDisplacementMap(src, f.type === 'image/jpeg' ? 2.2 : 1.2);
+            m.reliefName = `${f.name} → ${kind === 'normal' ? `normal map convertido${normalMapToDisplacement.lastFlip ? ' (verde DirectX)' : ''}` : kind === 'color' ? 'imagem convertida' : 'displacement'}`;
+            toast(kind === 'normal' ? 'Normal map detectado: convertido em mapa de altura' : kind === 'color' ? 'Imagem comum: convertida pela luminância (para relevo fiel, prefira displacement em cinza)' : 'Displacement em cinza aplicado');
             m.reliefTile = 'repeat';
             m.reliefFit = 'wrap';
             m.reliefWarp = 0;
@@ -5315,8 +5349,11 @@ function renderEditor() {
         renderEditorKeepScroll(); queueBuild();
       };
       rm.onclick = () => { m.reliefImg = ''; m.reliefName = ''; m.reliefDepth = 0; renderEditorKeepScroll(); queueBuild(); };
-      row.append(up, conv, normal, mt, clean, soft, rm); grp.append(row);
-      const tip = document.createElement('div'); tip.className = 'tip'; tip.textContent = m.reliefImg ? `Textura: ${m.reliefName || 'imagem carregada'} · Preview da malha deixa a tela leve; Qualidade no download 3D vale só para GLB/OBJ/STL.` : 'Suba displacement pronto, imagem comum ou normal/bump colorido. A ferramenta salva tudo como mapa de altura no projeto.';
+      // simples por padrão: subir (o tipo é detectado), padrão pronto e remover; as conversões
+      // forçadas e os acabamentos ficam nos ajustes avançados
+      [conv, normal, clean, soft].forEach(b => b.classList.toggle('hidden', !m.reliefAdv));
+      row.append(up, mt, conv, normal, clean, soft, rm); grp.append(row);
+      const tip = document.createElement('div'); tip.className = 'tip'; tip.textContent = m.reliefImg ? `Textura: ${m.reliefName || 'imagem carregada'} · Preview da malha deixa a tela leve; Qualidade no download 3D vale só para GLB/OBJ/STL.` : 'Suba displacement pronto (cinza: branco = alto, preto = baixo), imagem comum ou normal/bump colorido: o tipo é detectado e tudo vira mapa de altura salvo no projeto. Para relevo físico em OBJ/STL o melhor é displacement em cinza; normal map é convertido, mas é feito para render.';
       grp.append(tip);
     }
     for (const def of defs) {
@@ -5331,6 +5368,7 @@ function renderEditor() {
         // Ligar o entalhe sem linha de abertura cria a linha junto.
         if (k === 'notch' && m.notch && !(m.groove > 0)) m.groove = r1(Math.min(12, m.h * 0.35));
         if (k === 'topType' && m.topType === 'flip' && !(m.groove > 0)) m.groove = r1(Math.min(12, m.h * 0.35));
+        if (k === 'reliefAdv') return renderEditorKeepScroll(); // mostra/esconde os ajustes avançados do relevo
         if (k === 'neckStd' && NECKS[m.neckStd]) Object.assign(m, NECKS[m.neckStd], { D: NECKS[m.neckStd].W });
         if ((m.kind === 'gargalo' || m.kind === 'spray') && k === 'W') m.D = m.W;
         // Um pescante só por frasco: os controles do corpo e os da válvula mexem no
@@ -6422,7 +6460,7 @@ $('#varBtn').onclick = () => {
 };
 $('#genDice').onclick = () => { $('#genSeed').value = Math.floor(Math.random() * 99999) + 1; runGen(); };
 
-window.OUTBOX = { get ao() { return { aoP, aoO, GTAOPass }; }, CS, COAT_U, get hdr() { return HDR; }, ensureHdr, moduleGeo, exportRoot, get S() { return S; }, get swapScroll() { return swapScroll; }, product, layout, scene, sun, stage, ground, renderer, areaKey, areaFill, hemi, detailShow, applyLogos, build, render: () => renderFrame(), get cam() { return cam; } };
+window.OUTBOX = { get ao() { return { aoP, aoO, GTAOPass }; }, CS, COAT_U, relief: { normalMapToDisplacement, classifyReliefImage, imageToDisplacement }, get hdr() { return HDR; }, ensureHdr, moduleGeo, exportRoot, get S() { return S; }, get swapScroll() { return swapScroll; }, product, layout, scene, sun, stage, ground, renderer, areaKey, areaFill, hemi, detailShow, applyLogos, build, render: () => renderFrame(), get cam() { return cam; } };
 
 buildDraftPresets();
 resize();
