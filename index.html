@@ -437,7 +437,7 @@ function refineCreased(g, target, maxV, crease = THREE.MathUtils.degToRad(38)) {
 function stlToProfile(m) {
   const g = importedMeshGeo({ ...m, ox: 0 }, 0); if (!g) return null;
   g.computeBoundingBox(); const bb = g.boundingBox, H = bb.max.y - bb.min.y; if (!(H > 0.5)) return null;
-  const p = g.attributes.position, N = clamp(Math.round(H / 0.7), 40, 220), xs = Array.from({ length: N + 1 }, () => []);
+  const p = g.attributes.position, N = clamp(Math.round(H / 0.5), 40, 320), xs = Array.from({ length: N + 1 }, () => []);
   const ys = i => bb.min.y + clamp(i / N, 0.002, 0.998) * H;
   for (let t = 0; t < p.count; t += 3) {
     const P = [0, 1, 2].map(k => [p.getX(t + k), p.getY(t + k), p.getZ(t + k)]);
@@ -446,20 +446,61 @@ function stlToProfile(m) {
     for (let i = i0; i <= i1; i++) { const y = ys(i); if (y < y0 || y > y1) continue;
       for (let e = 0; e < 3; e++) { const A = P[e], B = P[(e + 1) % 3]; if ((A[1] - y) * (B[1] - y) > 0 || A[1] === B[1]) continue;
         const f = (y - A[1]) / (B[1] - A[1]); xs[i].push(A[0] + (B[0] - A[0]) * f, A[2] + (B[2] - A[2]) * f); } } }
+  g.dispose();
   const rows = [];
-  for (let i = 0; i <= N; i++) { const q = xs[i]; if (q.length < 6) continue;
+  for (let i = 0; i <= N; i++) { const q = xs[i], y = ys(i) - bb.min.y; if (q.length < 6) { rows.push({ y, empty: true }); continue; }
     let x0 = 1e9, x1 = -1e9, z0 = 1e9, z1 = -1e9; for (let k = 0; k < q.length; k += 2) { x0 = Math.min(x0, q[k]); x1 = Math.max(x1, q[k]); z0 = Math.min(z0, q[k + 1]); z1 = Math.max(z1, q[k + 1]); }
     const cx = (x0 + x1) / 2, cz = (z0 + z1) / 2, a = Math.max(0.05, (x1 - x0) / 2), b = Math.max(0.05, (z1 - z0) / 2);
     let sq = 0; for (let k = 0; k < q.length; k += 2) sq = Math.max(sq, Math.min(Math.abs(q[k] - cx) / a, Math.abs(q[k + 1] - cz) / b));
-    // |x/a|^n + |z/b|^n = 1 na diagonal: 2·s^n = 1 → n = ln 2 / −ln s (elipse: s ≈ 0,707 → n = 2)
     const n = sq >= 0.995 ? 12 : clamp(Math.LN2 / -Math.log(Math.max(0.5, sq)), 2, 12);
-    rows.push([(ys(i) - bb.min.y) / H, a, b, n, cx, cz]); }
-  g.dispose();
-  if (rows.length < 4) return null;
-  const W = 2 * Math.max(...rows.map(r => r[1])), D = 2 * Math.max(...rows.map(r => r[2]));
-  rows[0][0] = 0; rows[rows.length - 1][0] = 1;
-  const prof = rows.map(([t, a, b, n, cx, cz]) => [+t.toFixed(4), +(a / (W / 2)).toFixed(4), +(b / (D / 2)).toFixed(4), +n.toFixed(2), +cx.toFixed(2), +cz.toFixed(2)]);
-  return { W: r1(W), D: r1(D), h: r1(H), prof: cleanProf(prof) };
+    // Frisos verticais (serrilhado): raio por ângulo menos a média móvel; as voltas contam os frisos.
+    const A = 180, rr = new Float64Array(A).fill(-1);
+    for (let k = 0; k < q.length; k += 2) { const dx = q[k] - cx, dz = q[k + 1] - cz, bi = Math.floor((Math.atan2(dz, dx) + Math.PI) / TAU * A) % A; rr[bi] = Math.max(rr[bi], Math.hypot(dx, dz)); }
+    let cov = 0; for (let k = 0; k < A; k++) if (rr[k] >= 0) cov++;
+    let ribK = 0, ribD = 0;
+    if (cov > A * 0.85) {
+      for (let k = 0; k < A; k++) if (rr[k] < 0) rr[k] = rr[(k + A - 1) % A];
+      const res = new Float64Array(A); for (let k = 0; k < A; k++) { let s2 = 0; for (let w = -6; w <= 6; w++) s2 += rr[(k + w + A) % A]; res[k] = rr[k] - s2 / 13; }
+      let cr = 0; for (let k = 0; k < A; k++) if ((res[k] > 0) !== (res[(k + 1) % A] > 0)) cr++;
+      const srt = Float64Array.from(res).sort(), amp = srt[Math.floor(A * 0.9)] - srt[Math.floor(A * 0.1)];
+      if (cr / 2 >= 10 && amp > 0.15) { ribK = Math.round(cr / 2); ribD = amp; }
+    }
+    rows.push({ y, a, b, n, cx, cz, ribK, ribD }); }
+  // Onde a peça se divide em módulos: degrau (a largura pula de uma fatia para a outra, com
+  // as vizinhas quase retas), vão (fatias vazias), sulco entre partes e início/fim de frisos.
+  const R = rows, cut = new Set(), step = Math.max(0.7, Math.max(...R.filter(r => !r.empty).map(r => Math.max(r.a, r.b))) * 0.04);
+  const jump = (i, j) => (R[i].empty || R[j].empty) ? 0 : Math.max(Math.abs(R[j].a - R[i].a), Math.abs(R[j].b - R[i].b));
+  for (let i = 1; i < R.length; i++) {
+    if (R[i].empty !== R[i - 1].empty) { cut.add(i); continue; }
+    if (R[i].empty) continue;
+    const jv = jump(i - 1, i), before = i >= 2 ? jump(i - 2, i - 1) : 0, after = i + 1 < R.length ? jump(i, i + 1) : 0;
+    if (jv > step && before < jv * 0.35 && after < jv * 0.35) cut.add(i);
+    if ((R[i].ribK > 0) !== (R[i - 1].ribK > 0)) cut.add(i);
+  }
+  for (let i = 3; i < R.length - 3; i++) { if (R[i].empty) continue; const w = R[i].a; // sulco: estreita e volta a alargar em poucos mm
+    if ([1, 2, 3].every(k => !R[i - k].empty && !R[i + k].empty) && w < R[i - 3].a - 0.8 && w < R[i + 3].a - 0.8 && w <= R[i - 1].a && w <= R[i + 1].a) cut.add(i); }
+  const idx = [0, ...[...cut].sort((a, b) => a - b), R.length];
+  let segs = [];
+  for (let k = 0; k < idx.length - 1; k++) { const part = R.slice(idx[k], idx[k + 1]).filter(r => !r.empty); if (part.length) segs.push(part); }
+  // trechos muito baixos (< 2,5 mm) juntam com o vizinho de largura mais parecida
+  for (let changed = true; changed && segs.length > 1;) { changed = false;
+    for (let k = 0; k < segs.length; k++) { const s0 = segs[k], hh = s0[s0.length - 1].y - s0[0].y;
+      if (hh >= 2.5) continue; const wA = s0[0].a, prev = segs[k - 1], next = segs[k + 1];
+      const into = !prev ? k + 1 : !next ? k - 1 : Math.abs(prev[prev.length - 1].a - wA) <= Math.abs(next[0].a - wA) ? k - 1 : k + 1;
+      segs[into] = into < k ? [...segs[into], ...s0] : [...s0, ...segs[into]]; segs.splice(k, 1); changed = true; break; } }
+  const out = segs.map(part => {
+    const yA = part[0].y, yB = part[part.length - 1].y, hh = Math.max(0.5, yB - yA);
+    const W = 2 * Math.max(...part.map(r => r.a)), D = 2 * Math.max(...part.map(r => r.b));
+    const raw = part.map(r => [(r.y - yA) / hh, r.a / (W / 2), r.b / (D / 2), r.n, r.cx, r.cz, r.ribK, r.ribD]);
+    raw[0][0] = 0; raw[raw.length - 1][0] = 1;
+    const prof = cleanProf(raw.map(r => r.map(v => +(+v).toFixed(4))));
+    return { W: r1(W), D: r1(D), h: r1(hh), prof, ribs: ribBands(raw, hh), gapBelow: 0, y0: yA };
+  });
+  // peças que se tocam no STL ficam coladas (o espaço de uma fatia entre elas não é vão);
+  // vão de verdade (fatias vazias entre as partes) vira o espaçamento do módulo
+  for (let k = 1; k < out.length; k++) { const prev = out[k - 1], gapV = out[k].y0 - (prev.y0 + prev.h);
+    if (gapV < H / N * 2.5) { prev.h = r1(out[k].y0 - prev.y0); out[k].gapBelow = 0; } else out[k].gapBelow = r1(gapV); }
+  return out.length ? out : null;
 }
 // Low-poly: poucos triângulos para o tamanho (arestas longas).
 function stlIsLowPoly(g) {
@@ -609,7 +650,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-29.stl-editavel';
+const BUILD = '2026-09-29.stl-modulos';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -5468,18 +5509,22 @@ function renderEditor() {
       grp.appendChild(b);
     }
     if (title === 'STL' && m.kind === 'mesh') {
-      const b = document.createElement('button'); b.className = 'btn'; b.textContent = 'Converter em peça editável';
-      b.title = 'Vira um módulo de perfil: ganha largura/altura, cantos, gomos, frisos, relevo, rótulo e líquido como as outras peças';
+      const b = document.createElement('button'); b.className = 'btn'; b.textContent = 'Converter em peças editáveis';
+      b.title = 'Lê o STL, separa em módulos (degraus, vãos, sulcos, faixas de frisos) e cria peças do OUTBOX com todos os controles';
       b.onclick = () => {
-        const r = stlToProfile(m); if (!r) return toast('Não consegui ler o formato dessa peça');
-        const i = S.modules.indexOf(m), body = i === 0 || S.modules.slice(0, i).every(q => q.hidden);
-        const nm = { ...BASE, uid: newUid(), name: `${m.name} (editável)`, type: 'revolve', kind: 'perfil', smoothProf: true, vol: body, pesc: false, bpesc: false,
-          rBot: 0, rTop: 0, W: r.W, D: r.D, W0: r.W, h: r.h, prof: r.prof, ribs: [], own: m.own, color: m.color, finish: m.finish, ox: m.ox || 0 };
-        S.logos = (S.logos || []).filter(L => L.uid !== m.uid); S.modules[i] = nm; sel = i;
-        renderAll(); build(); toast(`${m.name}: agora é uma peça editável (${r.W} × ${r.h} mm) · Ctrl+Z desfaz`);
+        const parts = stlToProfile(m); if (!parts) return toast('Não consegui ler o formato dessa peça');
+        const i = S.modules.indexOf(m), base = i === 0 || S.modules.slice(0, i).every(q => q.hidden);
+        const tallest = parts.reduce((k, r, j) => r.h > parts[k].h ? j : k, 0);
+        const role = j => parts.length === 1 ? m.name : j === 0 ? 'Base' : j === parts.length - 1 ? 'Topo' : parts.length === 3 ? 'Corpo' : `Parte ${j + 1}`;
+        const mods = parts.map((r, j) => ({ ...BASE, uid: newUid(), name: `${role(j)}${r.ribs.length ? ' com frisos' : ''} (${m.name})`, type: 'revolve', kind: 'perfil', smoothProf: true,
+          vol: base && j === tallest, pesc: false, bpesc: false, rBot: 0, rTop: 0, W: r.W, D: r.D, W0: r.W, h: r.h, prof: r.prof, ribs: r.ribs, gap: r.gapBelow || 0,
+          own: m.own, color: m.color, finish: m.finish, ox: m.ox || 0 }));
+        S.logos = (S.logos || []).filter(L => L.uid !== m.uid); S.modules.splice(i, 1, ...mods); sel = i + tallest;
+        renderAll(); build();
+        toast(`${m.name}: ${mods.length === 1 ? 'virou uma peça editável' : `separado em ${mods.length} peças editáveis`}${mods.some(q => q.ribs.length) ? ' (frisos detectados)' : ''} · Ctrl+Z desfaz`);
       };
       grp.appendChild(b);
-      const tip = document.createElement('div'); tip.className = 'tip'; tip.textContent = 'Converter lê o contorno da peça (redondo, oval ou quadrado arredondado) e cria uma peça do OUTBOX com todos os controles. Detalhes que não seguem o contorno (letras, recortes) ficam de fora.';
+      const tip = document.createElement('div'); tip.className = 'tip'; tip.textContent = 'Converter lê o contorno da peça (redondo, oval ou quadrado arredondado), separa em módulos onde há degrau, vão, sulco ou faixa de frisos, e cria peças do OUTBOX com todos os controles. Detalhes que não seguem o contorno (letras, recortes) ficam de fora.';
       grp.appendChild(tip);
     }
     if (title === 'Relevo por textura') {
