@@ -509,7 +509,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-29.padroes-relevo';
+const BUILD = '2026-09-29.sombra-justa';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -2392,8 +2392,10 @@ function renderFrame() { if (frameHook) frameHook(); else renderMain(); }
 // "assenta" a peça) e uma larga e clara em volta (a penumbra difusa da softbox). Segue o
 // formato real da base e das partes que ficam perto do chão, e não uma caixa.
 const CS = (() => {
-  const N = 256, opt = { type: THREE.HalfFloatType, depthBuffer: false };
-  const rtA = new THREE.WebGLRenderTarget(N, N, { type: THREE.HalfFloatType }), rtB = new THREE.WebGLRenderTarget(N, N, opt),
+  // 8 bits (RGBA comum): renderizável em qualquer navegador/placa; em ponto flutuante,
+  // onde não era suportado, a máscara saía "lixo" e virava um quadrado cinza no chão
+  const N = 256, opt = { type: THREE.UnsignedByteType, depthBuffer: false };
+  const rtA = new THREE.WebGLRenderTarget(N, N, { type: THREE.UnsignedByteType }), rtB = new THREE.WebGLRenderTarget(N, N, opt),
     rtT = new THREE.WebGLRenderTarget(N, N, opt), rtW = new THREE.WebGLRenderTarget(N, N, opt), rtO = new THREE.WebGLRenderTarget(N, N, opt);
   const cam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1); cam.up.set(0, 0, 1);
   const hU = { uC: { value: 2 }, uA: { value: 40 } };
@@ -2423,10 +2425,13 @@ void main() { vec4 c = vec4(0.0); float wt = 0.0; float r = ceil(s * 2.5);
   for (int i = -48; i <= 48; i++) { float x = float(i); if (abs(x) > r) continue;
     float w = exp(-0.5 * x * x / (s * s)); c += texture2D(t, vUv + d * x) * w; wt += w; }
   gl_FragColor = c / wt; }` });
-  const comb = new THREE.ShaderMaterial({ uniforms: { tT: { value: rtT.texture }, tW: { value: rtW.texture }, kT: { value: 0.72 }, kW: { value: 0.5 } }, depthTest: false, depthWrite: false,
+  const comb = new THREE.ShaderMaterial({ uniforms: { tT: { value: rtT.texture }, tW: { value: rtW.texture }, kT: { value: 0.7 }, kW: { value: 0.38 } }, depthTest: false, depthWrite: false,
     vertexShader: 'varying vec2 vUv; void main() { vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }',
     fragmentShader: `uniform sampler2D tT; uniform sampler2D tW; uniform float kT; uniform float kW; varying vec2 vUv;
-void main() { float a = 1.0 - (1.0 - texture2D(tT, vUv).r * kT) * (1.0 - texture2D(tW, vUv).g * kW); gl_FragColor = vec4(a); }` });
+void main() { float a = 1.0 - (1.0 - texture2D(tT, vUv).r * kT) * (1.0 - texture2D(tW, vUv).g * kW);
+  // some sempre antes da borda do quadrado: nunca aparece a quina do plano no chão
+  float e = min(min(vUv.x, 1.0 - vUv.x), min(vUv.y, 1.0 - vUv.y));
+  gl_FragColor = vec4(a * smoothstep(0.0, 0.14, e)); }` });
   const quad = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), blur); quad.frustumCulled = false; quadScene.add(quad);
   const geo = new THREE.PlaneGeometry(1, 1), uv = geo.attributes.uv; for (let i = 0; i < uv.count; i++) uv.setY(i, 1 - uv.getY(i));
   const mesh = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: '#2a2118', alphaMap: rtO.texture, transparent: true, depthWrite: false, toneMapped: false, polygonOffset: true, polygonOffsetFactor: -1 }));
@@ -2439,8 +2444,8 @@ void main() { float a = 1.0 - (1.0 - texture2D(tT, vUv).r * kT) * (1.0 - texture
     const b = new THREE.Box3().setFromObject(product); sideRoot.children.forEach(g => b.union(new THREE.Box3().setFromObject(g)));
     if (b.isEmpty() || b.max.y <= 0) return;
     const w = b.max.x - b.min.x, d = b.max.z - b.min.z, F = Math.max(w, d, 1), H = b.max.y;
-    const sw = clamp(F * 0.26, 4, 90), half = F / 2 + sw * 3, px = N / (2 * half); // desfoque largo (mm) e mm → pixel
-    const st = clamp(F * 0.035, 0.8, 8);
+    const sw = clamp(F * 0.1, 2, 30), half = F / 2 + sw * 3.5, px = N / (2 * half); // penumbra justa na base (larga demais virava um disco no chão)
+    const st = clamp(F * 0.02, 0.6, 5);
     const cx = (b.min.x + b.max.x) / 2, cz = (b.min.z + b.max.z) / 2;
     Object.assign(cam, { left: -half, right: half, top: half, bottom: -half, near: 0, far: H + 2 }); cam.updateProjectionMatrix();
     cam.position.set(cx, -0.5, cz); cam.lookAt(cx, 1, cz); cam.updateMatrixWorld();
