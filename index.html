@@ -509,7 +509,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-29.qualidade-vista';
+const BUILD = '2026-09-29.textura-1024';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -2736,7 +2736,7 @@ async function imageToDisplacement(src) {
     const c = Math.round(clamp(v, 0, 1) * 255); op[j] = op[j + 1] = op[j + 2] = c; op[j + 3] = 255;
   }
   cx.putImageData(out, 0, 0);
-  return cv.toDataURL('image/png');
+  return await cleanDisplacementMap(cv.toDataURL('image/png'), 0); // padrão 1024 × 1024
 }
 // FFT 2D (radix 2, no lugar) para integrar normal map.
 function fft1(re, im, n, inv) {
@@ -2806,12 +2806,14 @@ async function classifyReliefImage(src) {
   if (blueish / n > 0.8 && b > 0.72 && Math.abs(r - 0.5) < 0.14 && Math.abs(g - 0.5) < 0.14) return 'normal';
   return sat < 0.06 ? 'gray' : 'color';
 }
+// Tamanho padrão de toda textura de relevo salva no projeto: quadrada, 1024 × 1024 px, em
+// cinza. Mesma nitidez e mesmo peso em qualquer projeto, e o ladrilho quadrado casa com a
+// repetição (que usa o mesmo tamanho em mm na largura e na altura).
+const RELIEF_PX = 1024;
 async function cleanDisplacementMap(src, blur = 1.6) {
-  const img = await imageFromUrl(src), max = 1536;
-  const sc = Math.min(1, max / Math.max(img.naturalWidth || img.width, img.naturalHeight || img.height));
-  const w = Math.max(8, Math.round((img.naturalWidth || img.width) * sc)), h = Math.max(8, Math.round((img.naturalHeight || img.height) * sc));
+  const img = await imageFromUrl(src), w = RELIEF_PX, h = RELIEF_PX;
   const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
-  const cx = cv.getContext('2d', { willReadFrequently: true }); cx.drawImage(img, 0, 0, w, h);
+  const cx = cv.getContext('2d', { willReadFrequently: true }); cx.imageSmoothingQuality = 'high'; cx.drawImage(img, 0, 0, w, h);
   const raw = cx.getImageData(0, 0, w, h), gray = cx.createImageData(w, h), gp = gray.data, rp = raw.data;
   for (let i = 0, j = 0; i < w * h; i++, j += 4) {
     const c = Math.round(rp[j] * 0.2126 + rp[j + 1] * 0.7152 + rp[j + 2] * 0.0722);
@@ -2824,6 +2826,13 @@ async function cleanDisplacementMap(src, blur = 1.6) {
     cx.clearRect(0, 0, w, h); cx.drawImage(tmp, 0, 0);
   }
   return cv.toDataURL('image/png');
+}
+// Avisa o que foi ajustado para o padrão (não quadrada / pequena / grande).
+async function reliefSizeNote(src) {
+  const img = await imageFromUrl(src), w = img.naturalWidth || img.width, h = img.naturalHeight || img.height, notes = [];
+  if (Math.abs(w / h - 1) > 0.02) notes.push(`não era quadrada (${w}×${h}): ajustada para 1:1`);
+  if (Math.max(w, h) < 512) notes.push('pequena: ampliada (pode ficar macia)');
+  return notes.join(' · ');
 }
 function textureReliefMask(m, b, x, y, z) {
   const H = Math.max(0.1, b.max.y - b.min.y), [y0, y1] = reliefAreaY(m, b), fade = Math.max(0.001, Math.min(m.reliefFade ?? 4, H / 2));
@@ -5344,7 +5353,8 @@ function renderEditor() {
             const kind = await classifyReliefImage(src);
             m.reliefImg = kind === 'normal' ? await normalMapToDisplacement(src) : kind === 'color' ? await imageToDisplacement(src) : await cleanDisplacementMap(src, f.type === 'image/jpeg' ? 2.2 : 1.2);
             m.reliefName = `${f.name} → ${kind === 'normal' ? `normal map convertido${normalMapToDisplacement.lastFlip ? ' (verde DirectX)' : ''}` : kind === 'color' ? 'imagem convertida' : 'displacement'}`;
-            toast(kind === 'normal' ? 'Normal map detectado: convertido em mapa de altura' : kind === 'color' ? 'Imagem comum: convertida pela luminância (para relevo fiel, prefira displacement em cinza)' : 'Displacement em cinza aplicado');
+            const note = await reliefSizeNote(src);
+            toast((kind === 'normal' ? 'Normal map detectado: convertido em mapa de altura' : kind === 'color' ? 'Imagem comum: convertida pela luminância (para relevo fiel, prefira displacement em cinza)' : 'Displacement em cinza aplicado') + (note ? ` · ${note}` : ''));
             m.reliefTile = 'repeat';
             m.reliefFit = 'wrap';
             m.reliefWarp = 0;
@@ -5454,7 +5464,7 @@ function renderEditor() {
       // forçadas e os acabamentos ficam nos ajustes avançados
       [conv, normal, clean, soft].forEach(b => b.classList.toggle('hidden', !m.reliefAdv));
       row.append(up, mt, conv, normal, clean, soft, rm); grp.append(row);
-      const tip = document.createElement('div'); tip.className = 'tip'; tip.textContent = m.reliefImg ? `Textura: ${m.reliefName || 'imagem carregada'} · Preview da malha deixa a tela leve; Qualidade no download 3D vale só para GLB/OBJ/STL.` : 'Suba displacement pronto (cinza: branco = alto, preto = baixo), imagem comum ou normal/bump colorido: o tipo é detectado e tudo vira mapa de altura salvo no projeto. Para relevo físico em OBJ/STL o melhor é displacement em cinza; normal map é convertido, mas é feito para render.';
+      const tip = document.createElement('div'); tip.className = 'tip'; tip.textContent = m.reliefImg ? `Textura: ${m.reliefName || 'imagem carregada'} (1024 × 1024) · Preview da malha deixa a tela leve; Qualidade no download 3D vale só para GLB/OBJ/STL.` : 'Padrão: imagem quadrada 1024 × 1024 px, seamless (outros tamanhos são ajustados). Suba displacement pronto (cinza: branco = alto, preto = baixo), imagem comum ou normal/bump colorido: o tipo é detectado e tudo vira mapa de altura salvo no projeto. Para relevo físico em OBJ/STL o melhor é displacement em cinza; normal map é convertido, mas é feito para render.';
       grp.append(tip);
     }
     for (const def of defs) {
@@ -6561,7 +6571,7 @@ $('#varBtn').onclick = () => {
 };
 $('#genDice').onclick = () => { $('#genSeed').value = Math.floor(Math.random() * 99999) + 1; runGen(); };
 
-window.OUTBOX = { get ao() { return { aoP, aoO, GTAOPass }; }, CS, COAT_U, relief: { normalMapToDisplacement, classifyReliefImage, imageToDisplacement }, get hdr() { return HDR; }, ensureHdr, moduleGeo, exportRoot, get S() { return S; }, get swapScroll() { return swapScroll; }, product, layout, scene, sun, stage, ground, renderer, areaKey, areaFill, hemi, detailShow, applyLogos, build, render: () => renderFrame(), get cam() { return cam; } };
+window.OUTBOX = { get ao() { return { aoP, aoO, GTAOPass }; }, CS, COAT_U, relief: { normalMapToDisplacement, classifyReliefImage, imageToDisplacement, cleanDisplacementMap, reliefSizeNote }, get hdr() { return HDR; }, ensureHdr, moduleGeo, exportRoot, get S() { return S; }, get swapScroll() { return swapScroll; }, product, layout, scene, sun, stage, ground, renderer, areaKey, areaFill, hemi, detailShow, applyLogos, build, render: () => renderFrame(), get cam() { return cam; } };
 
 buildDraftPresets();
 resize();
