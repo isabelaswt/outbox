@@ -316,7 +316,7 @@ import { STLLoader } from 'three/addons/loaders/STLLoader.js';
 import { GLTFExporter } from 'three/addons/exporters/GLTFExporter.js';
 import { STLExporter } from 'three/addons/exporters/STLExporter.js';
 import { OBJExporter } from 'three/addons/exporters/OBJExporter.js';
-import { mergeGeometries, mergeVertices } from 'three/addons/utils/BufferGeometryUtils.js';
+import { mergeGeometries, mergeVertices, toCreasedNormals } from 'three/addons/utils/BufferGeometryUtils.js';
 import { DecalGeometry } from 'three/addons/geometries/DecalGeometry.js';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
@@ -354,24 +354,42 @@ const b64ToBuf = b64 => {
 const stlLoader = new STLLoader(), meshCache = new Map();
 function importedMeshBase(m) {
   if (!m.meshData) return null;
-  let g = meshCache.get(m.meshData);
+  const ck = m.meshData + (m.meshSmooth ? '|s' : '');
+  let g = meshCache.get(ck);
   if (!g) {
     g = stlLoader.parse(b64ToBuf(m.meshData));
-    if (g.index) g = g.toNonIndexed();
-    g.deleteAttribute('uv');
-    if (!g.attributes.normal) g.computeVertexNormals();
+    g = improveMesh(g, !!m.meshSmooth);
     g.computeBoundingBox();
     const b = g.boundingBox, sx = b.max.x - b.min.x || 1, sy = b.max.y - b.min.y || 1, sz = b.max.z - b.min.z || 1;
     g.translate(-(b.min.x + b.max.x) / 2, -b.min.y, -(b.min.z + b.max.z) / 2);
     g.userData.src = { W: sx, h: sy, D: sz };
-    g.computeVertexNormals(); g.computeBoundingBox();
-    meshCache.set(m.meshData, g);
+    g.computeBoundingBox();
+    meshCache.set(ck, g);
   }
   return g.clone();
 }
+// STL: solda os vértices (o STL vem com cada triângulo solto) e sombreia com quinas: curvas
+// lisas, arestas vivas continuam vivas (antes tudo saía facetado). Low-poly: a malha é
+// refinada seguindo a curvatura (as curvas ficam redondas de verdade, não só no sombreado).
+function improveMesh(g, smooth) {
+  const w = new THREE.BufferGeometry(); w.setAttribute('position', g.attributes.position); if (g.index) w.setIndex(g.index);
+  let m = mergeVertices(w, 1e-4);
+  if (smooth) { m.computeBoundingBox(); const bs = m.boundingBox.getSize(new THREE.Vector3()), diag = bs.length();
+    refineGeometry(m, Math.max(0.3, diag / 110), -Infinity, Infinity, 1.2e6); }
+  m.deleteAttribute('normal');
+  return toCreasedNormals(m, THREE.MathUtils.degToRad(38));
+}
+// Low-poly: poucos triângulos para o tamanho (arestas longas).
+function stlIsLowPoly(g) {
+  const p = g.attributes.position, n = g.index ? g.index.count / 3 : p.count / 3; g.computeBoundingBox();
+  const diag = g.boundingBox.getSize(new THREE.Vector3()).length(); let sum = 0, k = 0;
+  for (let t = 0; t < Math.min(n, 4000); t++) { const i = g.index ? g.index.getX(t * 3) : t * 3, j = g.index ? g.index.getX(t * 3 + 1) : t * 3 + 1;
+    sum += Math.hypot(p.getX(i) - p.getX(j), p.getY(i) - p.getY(j), p.getZ(i) - p.getZ(j)); k++; }
+  return n < 60000 && sum / Math.max(1, k) > diag / 70;
+}
 function importedMeshGeo(m, y0) {
   const g = importedMeshBase(m); if (!g) return null;
-  const src = meshCache.get(m.meshData)?.userData.src || { W: m.W || 1, h: m.h || 1, D: m.D || 1 };
+  const src = meshCache.get(m.meshData + (m.meshSmooth ? '|s' : ''))?.userData.src || { W: m.W || 1, h: m.h || 1, D: m.D || 1 };
   g.scale((m.W || src.W) / src.W, (m.h || src.h) / src.h, (m.D || src.D) / src.D);
   const cx = 0, cy = (m.h || src.h) / 2, cz = 0;
   g.translate(-cx, -cy, -cz);
@@ -381,7 +399,7 @@ function importedMeshGeo(m, y0) {
   g.translate(cx, cy, cz);
   g.computeBoundingBox();
   g.translate(m.ox || 0, y0 - g.boundingBox.min.y, 0);
-  g.computeVertexNormals(); g.computeBoundingBox();
+  g.computeBoundingBox(); // normais já vêm certas (escala e giro as transformam); recalcular facetava de novo
   return g;
 }
 
@@ -509,7 +527,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-29.sombra-sol-curta';
+const BUILD = '2026-09-29.uploads-stl';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -2912,8 +2930,13 @@ function smoothReliefGeometry(g, masks, passes = 0) {
 function refineForRelief(g, m) {
   if (!g.attributes.position || (g.groups?.length > 1)) return;
   g.computeBoundingBox();
-  const target = reliefRingMm(m) * 1.5, t2 = target * target, maxV = export3dQuality ? 3.5e6 : 7e5;
-  const [ya, yb] = reliefAreaY(m, g.boundingBox), fade = Math.max(0.5, m.reliefFade ?? 4), lo = ya - 1, hi = yb + 1;
+  const [ya, yb] = reliefAreaY(m, g.boundingBox);
+  refineGeometry(g, reliefRingMm(m) * 1.5, ya - 1, yb + 1, export3dQuality ? 3.5e6 : 7e5);
+}
+// Divide as arestas maiores que "target" (na faixa de altura lo..hi) até a malha ficar
+// regular; usado no relevo e para melhorar STL low-poly.
+function refineGeometry(g, target, lo = -Infinity, hi = Infinity, maxV = 7e5) {
+  const t2 = target * target;
   let w = new THREE.BufferGeometry(); w.setAttribute('position', g.attributes.position.clone()); if (g.index) w.setIndex(g.index.clone());
   w = mergeVertices(w, 1e-4); w.computeVertexNormals();
   const pos = Array.from(w.attributes.position.array), nor = Array.from(w.attributes.normal.array); let idx = Array.from(w.index.array);
@@ -5074,6 +5097,7 @@ const MF = [
     MESH(['meshRotX', 'Girar X', -180, 180, 1, '°']),
     MESH(['meshRotY', 'Girar Y', -180, 180, 1, '°']),
     MESH(['meshRotZ', 'Girar Z', -180, 180, 1, '°']),
+    MESH(['meshSmooth', 'Melhorar malha (refina e arredonda STL low-poly)', 'check']),
   ]],
   // Gomos: contorno em lóbulos (nuvem, canelado), em grupo próprio.
   ['Gomos', [
@@ -5890,21 +5914,53 @@ CATS.forEach(([label, keys]) => {
   $('#addRows').appendChild(row);
 });
 $('#importStlBtn').onclick = () => $('#importStl').click();
+// Põe um STL no produto como peça (logo acima da selecionada). Low-poly já entra com a
+// malha melhorada (dá para desligar em "Melhorar malha").
+function addStlModule(buf, name) {
+  const geo = stlLoader.parse(buf); geo.computeBoundingBox();
+  const b = geo.boundingBox, W = r1(Math.max(1, b.max.x - b.min.x)), h = r1(Math.max(1, b.max.y - b.min.y)), D = r1(Math.max(1, b.max.z - b.min.z));
+  const low = stlIsLowPoly(geo); geo.dispose?.();
+  const at = sel + unitLen(sel), m = { ...BASE, uid: newUid(), type: 'stl', kind: 'mesh', name, W, D, h, meshData: bytesToB64(buf), meshRotX: 0, meshRotY: 0, meshRotZ: 0, meshSmooth: low,
+    own: true, color: S.color || BEIGE, finish: S.finish || 'fosco', vol: false, pesc: false, bpesc: false };
+  S.modules.splice(at, 0, m);
+  sel = at; renderStack(); renderEditor(); build(); fit();
+  return { m, low };
+}
+// Uploads da equipe (api/uploads.php): STL guardado no banco, com miniatura, para reusar
+// em qualquer projeto pela aba "Uploads" da galeria.
+let stlUploads = []; // [{ id, name, size, thumb }]
+async function refreshStlUploads() {
+  if (!cloud) return;
+  try { stlUploads = (await api('uploads.php?a=list&kind=stl')).files || []; galleryKey = ''; renderPresets(); } catch {}
+}
+function stlThumb(m) { // miniatura da peça sozinha (mesmo desenho da galeria)
+  return new Promise(res => { const img = new Image(); queueThumb(img, { color: m.color, finish: m.finish, modules: [{ ...m, own: false }] });
+    let n = 0; const t = setInterval(() => { if (img.src || ++n > 100) { clearInterval(t); res(img.src || ''); } }, 100); });
+}
+async function uploadStl(buf, name, m) {
+  const CH = 768 * 1024, bytes = new Uint8Array(buf), n = Math.ceil(bytes.length / CH), thumb = await stlThumb(m);
+  const b64 = u8 => { let s = ''; for (let i = 0; i < u8.length; i += 32768) s += String.fromCharCode.apply(null, u8.subarray(i, i + 32768)); return btoa(s); };
+  const { id } = await api('uploads.php?a=start', { kind: 'stl', name, size: bytes.length, chunks: n, thumb });
+  for (let i = 0; i < n; i++) { await api('uploads.php?a=chunk', { id, i, data: b64(bytes.subarray(i * CH, (i + 1) * CH)) }); if (n > 2) toast(`Guardando ${name}… ${Math.round((i + 1) / n * 100)}%`); }
+  await api('uploads.php?a=finish', { id });
+  await refreshStlUploads();
+}
+async function useStlUpload(f) {
+  try { toast(`Abrindo ${f.name}…`); const r = await fetch(`api/uploads.php?a=file&id=${f.id}`, { credentials: 'same-origin' }); if (!r.ok) throw 0;
+    const { low } = addStlModule(await r.arrayBuffer(), f.name); toast(`${f.name} adicionado${low ? ' (malha low-poly melhorada)' : ''}`); }
+  catch { toast('Não consegui abrir esse upload'); }
+}
 $('#importStl').onchange = async e => {
   const f = e.target.files[0]; e.target.value = ''; if (!f) return;
   if (f.size > 8 * 1024 * 1024 && !confirm('Esse STL é grande e pode deixar o projeto salvo pesado. Importar mesmo assim?')) return;
+  let added;
   try {
-    const buf = await f.arrayBuffer(), geo = stlLoader.parse(buf);
-    geo.computeBoundingBox();
-    const b = geo.boundingBox, W = r1(Math.max(1, b.max.x - b.min.x)), h = r1(Math.max(1, b.max.y - b.min.y)), D = r1(Math.max(1, b.max.z - b.min.z));
-    geo.dispose?.();
-    const at = sel + unitLen(sel), name = f.name.replace(/\.stl$/i, '') || 'STL importado';
-    S.modules.splice(at, 0, { ...BASE, uid: newUid(), type: 'stl', kind: 'mesh', name, W, D, h, meshData: bytesToB64(buf), meshRotX: 0, meshRotY: 0, meshRotZ: 0,
-      own: true, color: S.color || BEIGE, finish: S.finish || 'fosco', vol: false, pesc: false, bpesc: false });
-    sel = at; renderStack(); renderEditor(); build(); fit();
-    toast(`STL importado: ${name}`);
+    const buf = await f.arrayBuffer(), name = f.name.replace(/\.stl$/i, '') || 'STL importado';
+    added = addStlModule(buf, name);
+    toast(`STL importado: ${name}${added.low ? ' · malha low-poly melhorada' : ''}`);
+    if (cloud) { try { await uploadStl(buf, name, added.m); toast(`${name} guardado em Uploads para reuso`); } catch { toast(`${name} importado, mas não consegui guardar em Uploads`); } }
   } catch (err) {
-    console.error(err); toast('Não consegui ler esse STL');
+    console.error(err); if (!added) toast('Não consegui ler esse STL');
   }
 };
 $('#colorAll').onclick = () => { S.modules.forEach(m => m.own = false); renderStack(); renderEditor(); build(); };
@@ -5958,7 +6014,7 @@ function queueThumb(img, st) {
 // escolher um modelo apenas move o destaque, sem recarregar miniaturas.
 let galleryKey = '';
 // Abas da galeria: grupo de cada modelo pelo tipo de fechamento (os salvos têm a aba deles).
-const GAL_TABS = ['Todos', 'Frascos', 'Potes', 'Perfumes', 'Pump e gatilho', 'Conta-gotas', 'Bisnagas', 'Beauty', 'Salvos'];
+const GAL_TABS = ['Todos', 'Frascos', 'Potes', 'Perfumes', 'Pump e gatilho', 'Conta-gotas', 'Bisnagas', 'Beauty', 'Salvos', 'Uploads'];
 // abas antigas que viraram outras (escolhas já gravadas continuam valendo)
 const GAL_OLD = { Sticks: 'Beauty', 'Conta-gotas e gloss': 'Conta-gotas', Tampas: 'Frascos', 'Pump e spray': 'Pump e gatilho' };
 function galGroup(st, name, kind) {
@@ -5994,6 +6050,7 @@ function renderPresets() {
       e.preventDefault(); tabs.querySelectorAll('.chip').forEach(x => x.classList.remove('drop'));
       const t = e.target.closest('.chip')?.dataset.tab; let d; try { d = JSON.parse(e.dataTransfer.getData('text/x-outbox-card')); } catch { return; }
       if (!t || !d?.name) return;
+      if (t === 'Uploads') return toast('Uploads mostra os STL enviados; arraste para outra aba');
       const auto = ['Todos', 'Salvos'].includes(t);
       if (d.kind === 'b' && cloud) { // vale para a equipe toda
         try { teamAba = (await api('settings.php?a=setEntry', { k: 'galAba', name: d.name, value: auto ? '' : t })).value; }
@@ -6010,7 +6067,7 @@ function renderPresets() {
     };
   }
   tabs?.querySelectorAll('.chip').forEach(c => c.classList.toggle('on', c.dataset.tab === galTab));
-  const key = galTab + '#' + Object.keys(PRESETS).join('|') + '#' + Object.keys(sv).join('|') + '#' + JSON.stringify(baseAbas()) + Object.values(sv).map(v => v.aba || '').join('|');
+  const key = galTab + '#' + stlUploads.map(f => f.id).join(',') + '#' + Object.keys(PRESETS).join('|') + '#' + Object.keys(sv).join('|') + '#' + JSON.stringify(baseAbas()) + Object.values(sv).map(v => v.aba || '').join('|');
   if (key === galleryKey && gal.children.length) {
     gal.querySelectorAll('.card').forEach(c => c.classList.toggle('on', c.title === S.name));
     return;
@@ -6033,6 +6090,20 @@ function renderPresets() {
     }
   };
   const inTab = kind => ([n, st]) => galTab === 'Todos' || galGroup(st, n, kind) === galTab;
+  if (galTab === 'Uploads') { // peças STL da equipe: clicar põe a peça no produto aberto
+    const h = document.createElement('h4'); h.textContent = cloud ? 'STL enviados (clique para usar no produto)' : 'Entre na conta para ver os uploads'; gal.appendChild(h);
+    for (const f of stlUploads) {
+      const card = document.createElement('div'); card.className = 'card'; card.title = f.name; card.style.position = 'relative';
+      card.innerHTML = `<img class="ph" alt=""><div></div><button class="b" title="Excluir dos uploads" style="position:absolute;top:4px;right:4px;border:0;background:rgba(255,255,255,.85);border-radius:6px;cursor:pointer">✕</button>`;
+      card.querySelector('div').textContent = f.name; if (f.thumb) card.querySelector('img').src = f.thumb;
+      card.onclick = e => { if (e.target.closest('button')) return; useStlUpload(f); };
+      card.querySelector('button').onclick = async () => { if (!confirm(`Excluir "${f.name}" dos uploads da equipe?`)) return;
+        try { await api('uploads.php?a=delete', { id: f.id }); await refreshStlUploads(); toast('Upload excluído'); } catch { toast('Não consegui excluir'); } };
+      gal.appendChild(card);
+    }
+    if (cloud && !stlUploads.length) gal.insertAdjacentHTML('beforeend', '<h4>Nenhum STL ainda: use "+ STL" na pilha de peças</h4>');
+    gal.scrollTop = keepTop; return;
+  }
   if (galTab !== 'Salvos') section('Modelos base', Object.entries(PRESETS).filter(inTab('b')), 'b');
   if (galTab === 'Todos' || galTab === 'Salvos') section(cloud ? 'Meus modelos' : 'Salvos', Object.entries(sv), 's');
   else section(cloud ? 'Meus modelos' : 'Salvos', Object.entries(sv).filter(inTab('s')), 's');
@@ -6687,6 +6758,7 @@ async function signedIn(user) {
   catch { toast('Não consegui carregar seus modelos'); }
   try { teamAba = (await api('settings.php?a=get&k=galAba')).value || {}; } catch { teamAba = null; } // abas da equipe
   refreshHdrList(); // HDR/EXR da equipe
+  refreshStlUploads(); // STL da equipe (aba Uploads)
   galleryKey = ''; renderPresets();
   if (user.is_admin) { $('#teamBox').classList.remove('hidden'); renderTeam(); }
 }

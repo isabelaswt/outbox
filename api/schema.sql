@@ -56,3 +56,23 @@ CREATE TABLE IF NOT EXISTS hdr_chunks (
   data MEDIUMBLOB NOT NULL,
   PRIMARY KEY (file_id, idx)
 ) ENGINE=InnoDB;
+
+-- Uploads da equipe (peças STL para reuso na aba Uploads da galeria), em pedaços.
+CREATE TABLE IF NOT EXISTS upload_files (
+  id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  kind VARCHAR(16) NOT NULL,
+  name VARCHAR(190) NOT NULL,
+  size INT UNSIGNED NOT NULL,
+  chunks INT UNSIGNED NOT NULL,
+  thumb MEDIUMTEXT NULL,
+  complete TINYINT(1) NOT NULL DEFAULT 0,
+  user_id INT UNSIGNED NOT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  KEY (kind, name)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+CREATE TABLE IF NOT EXISTS upload_chunks (
+  file_id INT UNSIGNED NOT NULL,
+  idx INT UNSIGNED NOT NULL,
+  data MEDIUMBLOB NOT NULL,
+  PRIMARY KEY (file_id, idx)
+) ENGINE=InnoDB;
