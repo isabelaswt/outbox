@@ -509,7 +509,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-29.sombra-qualidade';
+const BUILD = '2026-09-29.sombra-sol-curta';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -2368,6 +2368,25 @@ const baseLight = { area: 0, env: roomEnv, envI: 1, envRot: scene.environmentRot
 const ground = new THREE.Mesh(new THREE.PlaneGeometry(6000, 6000), new THREE.ShadowMaterial({ opacity: 0.16 }));
 ground.rotation.x = -Math.PI / 2; ground.position.y = -0.05; ground.receiveShadow = true;
 scene.add(ground);
+// A sombra do sol no chão some aos poucos longe do produto: perto da base ela dá peso,
+// mas a cauda comprida, vista quase rente ao chão, virava um risco solto (mancha) ao lado.
+const GROUND_U = { c: { value: new THREE.Vector2() }, e: { value: new THREE.Vector2(1, 1) }, L: { value: 40 } };
+ground.material.onBeforeCompile = sh => {
+  sh.uniforms.uGc = GROUND_U.c; sh.uniforms.uGe = GROUND_U.e; sh.uniforms.uGL = GROUND_U.L;
+  sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec2 vGxz;')
+    .replace('#include <project_vertex>', '#include <project_vertex>\nvGxz = (modelMatrix * vec4(transformed, 1.0)).xz;');
+  sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying vec2 vGxz; uniform vec2 uGc; uniform vec2 uGe; uniform float uGL;')
+    .replace('gl_FragColor = vec4( color, opacity * ( 1.0 - getShadowMask() ) );',
+      'float gd = length(max(abs(vGxz - uGc) - uGe, 0.0)); // distância até a base (0 embaixo do produto)\n\tgl_FragColor = vec4( color, opacity * ( 1.0 - getShadowMask() ) * (1.0 - smoothstep(0.0, uGL, gd)) * (1.0 - 0.35 * smoothstep(0.0, uGL * 0.5, gd)) );');
+};
+ground.material.customProgramCacheKey = () => 'chaoFade';
+function updateGroundFade() {
+  const b = new THREE.Box3(); [product, ...sideRoot.children].forEach(g => g.traverseVisible(o => { if (o.isMesh) b.union(new THREE.Box3().setFromObject(o)); }));
+  if (b.isEmpty()) return;
+  GROUND_U.c.value.set((b.min.x + b.max.x) / 2, (b.min.z + b.max.z) / 2);
+  GROUND_U.e.value.set((b.max.x - b.min.x) / 2, (b.max.z - b.min.z) / 2);
+  GROUND_U.L.value = clamp(b.max.y * 0.09, 5, 22); // até onde a sombra vai (mm), pela altura do produto
+}
 
 const grid = new THREE.GridHelper(800, 80, 0xb9b3aa, 0xd9d4cc);
 grid.rotation.x = Math.PI / 2; grid.position.set(0, 400, -400); grid.visible = false;
@@ -2477,6 +2496,7 @@ let composer = null, rPass = null, aoP = null, aoO = null, aoR = 0;
 const LOG_U = { near: { value: 1 }, far: { value: 20000 } };
 function renderMain() {
   const sc = S?.scene || {};
+  updateGroundFade();
   CS.update(sc.ao !== false);
   if (sc.oclusao === false) { renderer.render(scene, cam); return; }
   const ds = renderer.getDrawingBufferSize(new THREE.Vector2());
