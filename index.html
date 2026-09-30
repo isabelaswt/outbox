@@ -688,14 +688,15 @@ const LIB = {
 const newUid = () => Math.random().toString(36).slice(2, 10);
 const M = (type, o = {}) => ({ ...BASE, ...LIB[type], type, uid: newUid(), ...o });
 
-// Cor única da plataforma: bege.
+// Cor única da plataforma: bege. Todo modelo pronto sai em bege (corpo e peças), nunca na cor
+// da foto de referência.
 const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // ───────────────────────── Draft (reconstruída) ─────────────────────────
 // Produtos da Draft (draft.work) refeitos como módulos paramétricos: o perfil
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-30.afunilar';
+const BUILD = '2026-09-30.bege';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -901,16 +902,16 @@ const PRESETS = {
       actW: 22, headH: 12, armT: 7, armW: 10, nozzleL: 28, droop: 0 })] },
   // Referência Simple Organic (sabonete líquido): corpo plano que abre de leve para cima,
   // cantos de baixo bem redondos, ombro justo, e pump branco de luva alta com bico longo reto.
-  'Plano + pump luva (sabonete)': { color: '#cbbab3', finish: 'fosco', modules: [
+  'Plano + pump luva (sabonete)': { color: BEIGE, finish: 'fosco', modules: [
     M('plano', { name: 'Corpo plano', W: 70, D: 46, n: 3, h: 93, taper: 107, rBot: 15, rTop: 8 }), NECK('24/410'),
     M('pump', { name: 'Pump luva alta', W: 25, D: 25, h: 27, ridges: 0, collarR: 0.8, stemD: 7, stemH: 1.5,
-      actW: 21, headH: 11, armT: 6, armW: 9, nozzleL: 24, droop: 0, own: true, color: '#f5f5f2', finish: 'acetinado' })] },
+      actW: 21, headH: 11, armT: 6, armW: 9, nozzleL: 24, droop: 0  })] },
   // Referência Mantecorp (gel de limpeza): cilindro alto e fino, ombro arredondado curto e
   // pump branco de luva larga com bico longo.
-  'Cilindro alto + pump (gel)': { color: '#5f9d6d', finish: 'acetinado', modules: [
+  'Cilindro alto + pump (gel)': { color: BEIGE, finish: 'fosco', modules: [
     M('reto', { name: 'Corpo cilindro alto', W: 50, D: 50, h: 198, rBot: 3, rTop: 7 }), NECK('24/410'),
     M('pump', { name: 'Pump luva larga', W: 28, D: 28, h: 30, ridges: 0, collarR: 0.8, stemD: 7, stemH: 1.5,
-      actW: 22, headH: 11, armT: 6, armW: 9, nozzleL: 30, droop: 0, own: true, color: '#f5f5f2', finish: 'acetinado' })] },
+      actW: 22, headH: 11, armT: 6, armW: 9, nozzleL: 30, droop: 0  })] },
   // Referência Candeur: cilindro com ombro inclinado reto e pump de haste alta com bico fino curvo.
   'Ombro inclinado + pump fino': { color: BEIGE, finish: 'fosco', modules: [
     M('reto', { W: 62, D: 62, h: 92, rBot: 4, rTop: 0 }), M('cone', { name: 'Ombro inclinado', W: 62, D: 62, h: 20, taper: 60, rBot: 0, rTop: 3 }),
