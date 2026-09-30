@@ -573,7 +573,7 @@ function importedMeshGeo(m, y0) {
 
 // ───────────────────────── módulos ─────────────────────────
 const BASE = {
-  name: 'Módulo', W: 50, D: 50, n: 2, sides: 0, sideR: 0.1, h: 40, taper: 100, bulge: 0, bulgePos: 50,
+  name: 'Módulo', W: 50, D: 50, n: 2, sides: 0, sideR: 0.1, h: 40, taper: 100, taperB: 100, bulge: 0, bulgePos: 50,
   rBot: 2, rTop: 2, rBotW: 0, rTopW: 0, gap: 0, rep: 1, repGap: 0, veste: true, fundo: 6,
   groove: 0, grooveD: 0.6,
   notch: false, notchLock: true, notchY: 12, notchW: 20, notchH: 8, notchD: 2, notchP: 2,
@@ -695,7 +695,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-30.pump-sabonete';
+const BUILD = '2026-09-30.afunilar';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -762,7 +762,9 @@ function profAt(m, ly) {
       return 0.5 * (2 * p1 + (-p0 + p2) * f + (2 * p0 - 5 * p1 + 4 * p2 - p3) * f2 + (-p0 + 3 * p1 - 3 * p2 + p3) * f3);
     })() : lin(k);
   }
-  return { a: L(1) * m.W / 2, b: L(2) * m.D / 2, n: clamp(L(3), 2, 12), cx: L(4) * sc, cz: L(5) * sc };
+  // afunilar em cima / embaixo também nas peças de perfil (STL convertido, corpos medidos)
+  const tf = (1 + ((m.taper ?? 100) / 100 - 1) * t) * (1 + ((m.taperB ?? 100) / 100 - 1) * (1 - t));
+  return { a: L(1) * m.W / 2 * tf, b: L(2) * m.D / 2 * tf, n: clamp(L(3), 2, 12), cx: L(4) * sc, cz: L(5) * sc };
 }
 // Zona do ombro que fecha até o gargalo (frasco da Draft com rosca trocada).
 function shoulderZone(m) {
@@ -1239,7 +1241,7 @@ function sectionAt(m, y, rB, rT) {
   const h = m.h, t = h > 0 ? y / h : 0;
   const pp = clamp(m.bulgePos / 100, 0.05, 0.95);
   const u = t < pp ? 0.5 * t / pp : 0.5 + 0.5 * (t - pp) / (1 - pp);
-  const sc = 1 + (m.taper / 100 - 1) * t + (m.bulge / 100) * Math.sin(Math.PI * clamp(u, 0, 1));
+  const sc = (1 + (m.taper / 100 - 1) * t + (m.bulge / 100) * Math.sin(Math.PI * clamp(u, 0, 1))) * (1 + ((m.taperB ?? 100) / 100 - 1) * (1 - t)); // taperB: largura embaixo
   let a = Math.max(m.W / 2 * sc, 0.1), b = Math.max(m.D / 2 * sc, 0.1);
   // Raio na altura (rB/rT) e recuo na largura (rBotW/rTopW; 0 = igual ao raio).
   let r = 0, f = 0;
@@ -5293,7 +5295,8 @@ const MF = [
     G(['n', 'Seção: oval → retângulo', 2, 10, 0.1, '']),
     G(['sides', 'Lados retos (0 = redondo)', 0, 12, 1, '']),
     G(['sideR', 'Cantos dos lados: vivo → redondo', 0, 0.9, 0.01, '']),
-    G(['taper', 'Topo em relação à base', 10, 250, 1, '%']),
+    GP(['taper', 'Largura em cima (afunilar / abrir)', 10, 250, 1, '%']),
+    GP(['taperB', 'Largura embaixo (afunilar / abrir)', 10, 250, 1, '%']),
     G(['bulge', 'Barriga (− cintura)', -35, 40, 0.5, '%']),
     G(['bulgePos', 'Altura da barriga', 5, 95, 1, '%']),
     B(['flatStart', 'Começa a achatar em', 0, 90, 1, '%']),
