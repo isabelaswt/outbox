@@ -1,5 +1,5 @@
 <?php
-// Uploads da equipe (hoje: peças STL), guardados no banco para reuso em qualquer projeto:
+// Uploads da equipe (peças STL e texturas de relevo), guardados no banco para reuso em qualquer projeto:
 // aparecem na aba "Uploads" da galeria de modelos. Mesmo esquema dos HDR: o arquivo vai
 // em pedaços (cabe no limite de envio do servidor e no max_allowed_packet do MySQL).
 require __DIR__ . '/_lib.php';
@@ -9,7 +9,7 @@ session_write_close();
 $a = $_GET['a'] ?? '';
 const UP_MAX = 100 * 1024 * 1024; // 100 MB
 const UP_CHUNK = 1024 * 1024;
-const UP_KINDS = ['stl'];
+const UP_KINDS = ['stl', 'relief'];
 
 db()->exec('CREATE TABLE IF NOT EXISTS upload_files (
   id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,

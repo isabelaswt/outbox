@@ -696,7 +696,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-10-01.mantecorp';
+const BUILD = '2026-10-01.texturas-equipe';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -5784,8 +5784,16 @@ function renderEditor() {
       // Padrões prontos (assets/relevo, 1024 × 1024 em cinza, seamless): servem de exemplo de
       // como preparar uma textura e já vêm com tamanho da repetição e força calibrados.
       const pre = document.createElement('select'); pre.style.maxWidth = '170px';
-      pre.innerHTML = '<option value="">Padrões prontos…</option>' + RELIEF_PRESETS.map(([k, n]) => `<option value="${k}">${n}</option>`).join('');
+      const esc = t => String(t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+      pre.innerHTML = '<option value="">Padrões prontos…</option><optgroup label="Exemplos">' + RELIEF_PRESETS.map(([k, n]) => `<option value="${k}">${n}</option>`).join('') + '</optgroup>' +
+        (reliefLib.length ? '<optgroup label="Salvas pela equipe">' + reliefLib.map(f => `<option value="u:${f.id}">${esc(f.name)}</option>`).join('') + '</optgroup>' : '');
       pre.onchange = async () => {
+        if (pre.value.startsWith('u:')) {
+          const f = reliefLib.find(x => 'u:' + x.id === pre.value); if (!f) return;
+          try { toast(`Abrindo ${f.name}…`); await loadReliefFromLib(m, f); ensureReliefData(m.reliefImg).then(() => queueBuild()); renderEditorKeepScroll(); queueBuild(); }
+          catch { toast('Não consegui abrir essa textura'); }
+          return;
+        }
         const P = RELIEF_PRESETS.find(x => x[0] === pre.value); if (!P) return;
         try {
           const blob = await (await fetch(`assets/relevo/${P[0]}.png`)).blob();
@@ -5797,7 +5805,23 @@ function renderEditor() {
         } catch { toast('Não consegui abrir esse padrão'); }
       };
       mt.classList.add('hidden'); // o matelassê está na lista de padrões prontos
-      row.append(up, pre, mt, conv, normal, clean, soft, rm); grp.append(row);
+      // Biblioteca da equipe: salvar a textura atual (com os ajustes) ou excluir uma salva.
+      const save = document.createElement('button'); save.className = 'btn sm'; save.textContent = 'Salvar na biblioteca';
+      save.classList.toggle('hidden', !m.reliefImg || !cloud);
+      save.onclick = async () => {
+        const name = (prompt('Nome da textura na biblioteca da equipe:', (m.reliefName || 'Textura').replace(/ → .*/, '')) || '').trim(); if (!name) return;
+        if (reliefLib.some(f => f.name === name) && !confirm(`Já existe "${name}" na biblioteca. Substituir?`)) return;
+        try { toast('Salvando textura…'); await saveReliefToLib(m, name); m.reliefName = name; toast(`Textura salva: ${name} (aparece em Padrões prontos)`); renderEditorKeepScroll(); }
+        catch { toast('Não consegui salvar a textura'); }
+      };
+      const libF = reliefLib.find(f => f.name === m.reliefName);
+      const del = document.createElement('button'); del.className = 'btn sm'; del.textContent = 'Excluir da biblioteca'; del.classList.toggle('hidden', !libF);
+      del.onclick = async () => {
+        if (!libF || !confirm(`Excluir "${libF.name}" da biblioteca da equipe? (o frasco atual continua com a textura)`)) return;
+        try { await api('uploads.php?a=delete', { id: libF.id }); await refreshReliefLib(); toast('Textura excluída da biblioteca'); renderEditorKeepScroll(); }
+        catch { toast('Não consegui excluir'); }
+      };
+      row.append(up, pre, save, del, mt, conv, normal, clean, soft, rm); grp.append(row);
       const tip = document.createElement('div'); tip.className = 'tip'; tip.textContent = m.reliefImg ? `Textura: ${m.reliefName || 'imagem carregada'} (1024 × 1024) · Preview da malha deixa a tela leve; Qualidade no download 3D vale só para GLB/OBJ/STL.` : 'Padrão: imagem quadrada 1024 × 1024 px, seamless (outros tamanhos são ajustados). Suba displacement pronto (cinza: branco = alto, preto = baixo), imagem comum ou normal/bump colorido: o tipo é detectado e tudo vira mapa de altura salvo no projeto. Para relevo físico em OBJ/STL o melhor é displacement em cinza; normal map é convertido, mas é feito para render.';
       grp.append(tip);
     }
@@ -6202,12 +6226,38 @@ async function refreshStlUploads() {
 function stlThumb(m) { // miniatura da peça sozinha (mesmo desenho da galeria)
   try { return Promise.resolve(thumbOf({ color: m.color, finish: m.finish, modules: [{ ...m, own: false }] }) || ''); } catch { return Promise.resolve(''); }
 }
-async function uploadStl(buf, name, m) {
-  const CH = 768 * 1024, bytes = new Uint8Array(buf), n = Math.ceil(bytes.length / CH), thumb = await stlThumb(m);
+// Envio genérico em pedaços para a biblioteca da equipe (uploads.php).
+async function uploadTeamFile(kind, bytes, name, thumb) {
+  const CH = 768 * 1024, n = Math.ceil(bytes.length / CH);
   const b64 = u8 => { let s = ''; for (let i = 0; i < u8.length; i += 32768) s += String.fromCharCode.apply(null, u8.subarray(i, i + 32768)); return btoa(s); };
-  const { id } = await api('uploads.php?a=start', { kind: 'stl', name, size: bytes.length, chunks: n, thumb });
+  const { id } = await api('uploads.php?a=start', { kind, name, size: bytes.length, chunks: n, thumb });
   for (let i = 0; i < n; i++) { await api('uploads.php?a=chunk', { id, i, data: b64(bytes.subarray(i * CH, (i + 1) * CH)) }); if (n > 2) toast(`Guardando ${name}… ${Math.round((i + 1) / n * 100)}%`); }
   await api('uploads.php?a=finish', { id });
+}
+// Texturas de relevo da equipe: mapa de altura + ajustes (tamanho, força, repetição),
+// guardados no banco para reaproveitar em qualquer frasco.
+const RELIEF_KEEP = ['reliefScale', 'reliefDepth', 'reliefTile', 'reliefFit', 'reliefWarp', 'reliefSoft', 'reliefGeomSmooth', 'reliefFade'];
+let reliefLib = []; // [{ id, name, size, thumb }]
+async function refreshReliefLib() {
+  if (!cloud) return;
+  try { reliefLib = (await api('uploads.php?a=list&kind=relief')).files || []; } catch {}
+}
+async function saveReliefToLib(m, name) {
+  const img = new Image(); img.src = m.reliefImg; await img.decode();
+  const c = document.createElement('canvas'); c.width = c.height = 96; c.getContext('2d').drawImage(img, 0, 0, 96, 96);
+  const data = { img: m.reliefImg }; RELIEF_KEEP.forEach(k => data[k] = m[k]);
+  await uploadTeamFile('relief', new TextEncoder().encode(JSON.stringify(data)), name, c.toDataURL('image/png'));
+  await refreshReliefLib();
+}
+async function loadReliefFromLib(m, f) {
+  const r = await fetch(`api/uploads.php?a=file&id=${f.id}`, { credentials: 'same-origin' }); if (!r.ok) throw 0;
+  const d = await r.json();
+  m.reliefImg = d.img; m.reliefName = f.name; RELIEF_KEEP.forEach(k => { if (d[k] !== undefined) m[k] = d[k]; });
+  m.reliefU = 0; m.reliefV = 0;
+  if (!(m.reliefH > 0)) m.reliefH = 82; if (!(m.reliefY >= 0)) m.reliefY = 50; if (!(m.reliefW > 0)) m.reliefW = 100;
+}
+async function uploadStl(buf, name, m) {
+  await uploadTeamFile('stl', new Uint8Array(buf), name, await stlThumb(m));
   await refreshStlUploads();
 }
 async function useStlUpload(f) {
@@ -7024,6 +7074,7 @@ async function signedIn(user) {
   try { teamAba = (await api('settings.php?a=get&k=galAba')).value || {}; } catch { teamAba = null; } // abas da equipe
   refreshHdrList(); // HDR/EXR da equipe
   refreshStlUploads(); // STL da equipe (aba Uploads)
+  refreshReliefLib(); // texturas de relevo da equipe
   galleryKey = ''; renderPresets();
   if (user.is_admin) { $('#teamBox').classList.remove('hidden'); renderTeam(); }
 }
