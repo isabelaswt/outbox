@@ -696,7 +696,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-10-01.ombro-reto';
+const BUILD = '2026-10-01.ombro-reto2';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -754,9 +754,10 @@ const shoulderCache = new WeakMap();
 function profShoulder(P) {
   let z = shoulderCache.get(P); if (z !== undefined) return z;
   const aMax = Math.max(...P.map(r => Math.min(r[1], r[2])));
-  let i0 = -1; P.forEach((r, i) => { if (Math.min(r[1], r[2]) >= aMax * 0.995) i0 = i; });
+  let i0 = -1; P.forEach((r, i) => { if (Math.min(r[1], r[2]) >= aMax * 0.9995) i0 = i; }); // parede ainda na largura cheia (sem degrau)
   let i1 = i0;
-  while (i1 < P.length - 1 && Math.min(P[i1 + 1][1], P[i1 + 1][2]) < Math.min(P[i1][1], P[i1][2]) - 0.01) i1++;
+  const w = i => Math.min(P[i][1], P[i][2]); // anda enquanto o ombro fecha (no começo a queda é sutil)
+  while (i1 < P.length - 1 && w(i1 + 1) < w(i1) - (w(i1) > aMax * 0.95 ? 0.0001 : 0.01)) i1++;
   z = i0 >= 0 && i1 > i0 && P[i0][0] > 0.4 ? { t0: P[i0][0], t1: P[i1][0] } : null;
   shoulderCache.set(P, z); return z;
 }
@@ -769,7 +770,7 @@ function shoulderT(m, t) {
   return t < tS ? z.t0 : z.t0 + (t - tS) / sc;
 }
 function profAt(m, ly) {
-  const P = m.prof, t = shoulderT(m, clamp(ly / m.h, 0, 1));
+  const P = m.prof, tY = clamp(ly / m.h, 0, 1), t = shoulderT(m, tY); // tY: altura real (afunilar), t: onde ler o perfil
   let i = 0; while (i < P.length - 2 && P[i + 1][0] < t) i++;
   const A = P[i], B = P[i + 1] || A, f = B[0] > A[0] ? clamp((t - A[0]) / (B[0] - A[0]), 0, 1) : 0;
   let L = k => (A[k] ?? 0) + ((B[k] ?? 0) - (A[k] ?? 0)) * f;
@@ -784,7 +785,7 @@ function profAt(m, ly) {
     })() : lin(k);
   }
   // afunilar em cima / embaixo também nas peças de perfil (STL convertido, corpos medidos)
-  const tf = (1 + ((m.taper ?? 100) / 100 - 1) * t) * (1 + ((m.taperB ?? 100) / 100 - 1) * (1 - t));
+  const tf = (1 + ((m.taper ?? 100) / 100 - 1) * tY) * (1 + ((m.taperB ?? 100) / 100 - 1) * (1 - tY));
   return { a: L(1) * m.W / 2 * tf, b: L(2) * m.D / 2 * tf, n: clamp(L(3), 2, 12), cx: L(4) * sc, cz: L(5) * sc };
 }
 // Zona do ombro que fecha até o gargalo (frasco da Draft com rosca trocada).
