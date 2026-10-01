@@ -573,7 +573,7 @@ function importedMeshGeo(m, y0) {
 
 // ───────────────────────── módulos ─────────────────────────
 const BASE = {
-  name: 'Módulo', W: 50, D: 50, n: 2, sides: 0, sideR: 0.1, h: 40, taper: 100, taperB: 100, bulge: 0, bulgePos: 50,
+  name: 'Módulo', W: 50, D: 50, n: 2, sides: 0, sideR: 0.1, h: 40, taper: 100, taperB: 100, shoulderK: 0, bulge: 0, bulgePos: 50,
   rBot: 2, rTop: 2, rBotW: 0, rTopW: 0, gap: 0, rep: 1, repGap: 0, veste: true, fundo: 6,
   groove: 0, grooveD: 0.6,
   notch: false, notchLock: true, notchY: 12, notchW: 20, notchH: 8, notchD: 2, notchP: 2,
@@ -696,7 +696,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-09-30.bege';
+const BUILD = '2026-10-01.ombro-reto';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -748,8 +748,28 @@ for (const [id, d] of Object.entries(PERFIS)) {
 // centro x, centro z, frisos, prof. do friso] em frações de W/D/h. Passa pelo
 // mesmo motor das peças redondas/ovais, então linha, entalhe, flip-top,
 // disc-top e frisos valem aqui também.
+// Ombro do perfil medido: do fim da parede (largura máxima) até onde o ombro para de
+// fechar (começo do gargalo/degrau). Guardado por perfil (a tabela não muda).
+const shoulderCache = new WeakMap();
+function profShoulder(P) {
+  let z = shoulderCache.get(P); if (z !== undefined) return z;
+  const aMax = Math.max(...P.map(r => Math.min(r[1], r[2])));
+  let i0 = -1; P.forEach((r, i) => { if (Math.min(r[1], r[2]) >= aMax * 0.995) i0 = i; });
+  let i1 = i0;
+  while (i1 < P.length - 1 && Math.min(P[i1 + 1][1], P[i1 + 1][2]) < Math.min(P[i1][1], P[i1][2]) - 0.01) i1++;
+  z = i0 >= 0 && i1 > i0 && P[i0][0] > 0.4 ? { t0: P[i0][0], t1: P[i1][0] } : null;
+  shoulderCache.set(P, z); return z;
+}
+// "Ombro: curvo → reto": a curva do ombro fica mais baixa (a parede sobe reta até
+// perto do topo); em 100% vira quina. O degrau/gargalo medido acima fica igual.
+function shoulderT(m, t) {
+  const k = clamp((m.shoulderK || 0) / 100, 0, 1), z = k > 0 && profShoulder(m.prof);
+  if (!z || t <= z.t0 || t >= z.t1) return t;
+  const sc = Math.max(0.03, 1 - k), tS = z.t1 - (z.t1 - z.t0) * sc;
+  return t < tS ? z.t0 : z.t0 + (t - tS) / sc;
+}
 function profAt(m, ly) {
-  const P = m.prof, t = clamp(ly / m.h, 0, 1);
+  const P = m.prof, t = shoulderT(m, clamp(ly / m.h, 0, 1));
   let i = 0; while (i < P.length - 2 && P[i + 1][0] < t) i++;
   const A = P[i], B = P[i + 1] || A, f = B[0] > A[0] ? clamp((t - A[0]) / (B[0] - A[0]), 0, 1) : 0;
   let L = k => (A[k] ?? 0) + ((B[k] ?? 0) - (A[k] ?? 0)) * f;
@@ -785,6 +805,9 @@ function profSamples(m, lo) {
   }
   addReliefSamples(m, S, lo);
   ribSamples(m, S);
+  const z = m.shoulderK > 0 && profShoulder(m.prof); // ombro reto: amostras na curva comprimida
+  if (z) { const sc = Math.max(0.03, 1 - m.shoulderK / 100), tS = z.t1 - (z.t1 - z.t0) * sc, nz = lo ? 8 : 32;
+    S.push(z.t0 * h); for (let i = 0; i <= nz; i++) S.push(h * (tS + (z.t1 - tS) * (1 - Math.cos(i / nz * Math.PI)) / 2)); }
   const top = h - Math.max(0, m.cutTop || 0); S.push(top); // corte do topo (rosca trocada por gargalo ajustável)
   const sz = shoulderZone(m); if (sz) for (let i = 0; i <= (lo ? 6 : 24); i++) S.push(sz.y0 + sz.L * i / (lo ? 6 : 24));
   return [...new Set(S.filter(y => y >= 0 && y <= top).map(y => +y.toFixed(3)))].sort((a, b) => a - b);
@@ -5307,6 +5330,7 @@ const MF = [
     GB(['rBot', 'Raio embaixo', 0, 150, 0.5, 'mm', m => !isSphereCap(m)]),
     GP(['rBotW', 'Embaixo: recuo lateral (0 = igual)', 0, 100, 0.5, 'mm', m => m.rBot > 0 && !isSphereCap(m)]),
     GP(['rTop', 'Raio em cima', 0, 150, 0.5, 'mm', m => !isSphereCap(m)]),
+    only('perfil', ['shoulderK', 'Ombro: curvo → reto', 0, 100, 1, '%', m => !!(m.prof && profShoulder(m.prof))]),
     GP(['rTopW', 'Em cima: recuo lateral (0 = igual)', 0, 100, 0.5, 'mm', m => m.rTop > 0 && !isSphereCap(m)]),
     P(['rTL', 'Canto superior esquerdo', 0, 150, 0.5, 'mm']),
     P(['rTR', 'Canto superior direito', 0, 150, 0.5, 'mm']),
