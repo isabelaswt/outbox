@@ -696,7 +696,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-10-01.ombro-reto2';
+const BUILD = '2026-10-01.mantecorp';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -1048,6 +1048,31 @@ const PRESETS = {
   'Frasco pump': { color: BEIGE, finish: 'fosco', modules: [
     M('placa', { name: 'Corpo placa', W: 76, D: 44, h: 87, rTL: 10, rTR: 10, rBL: 10, rBR: 10, rEdge: 5, chamfer: false }),
     NECK('24/410'), M('pump')] },
+  // Linha Mantecorp (referência de formas; cor sempre bege). Pump do shampoo: luva lisa
+  // alta, haste grossa, cabeça em bloco e bico longo reto que só desce na ponta.
+  'Shampoo 400 ml + pump (Mantecorp)': { color: BEIGE, finish: 'fosco', modules: [
+    M('plano', { name: 'Corpo shampoo', W: 74, D: 46, n: 3.2, h: 182, rBot: 9, rTop: 24 }), NECK('28/410'),
+    M('pump', { name: 'Pump luva + bico reto', W: 33, D: 33, h: 19, ridges: 0, collarR: 1.2, stemD: 18, stemH: 14,
+      actW: 30, headH: 15, armT: 9, armW: 14, nozzleL: 30, droop: 8, droopK: 6 })] },
+  'Bisnaga condicionador 200 ml': { color: BEIGE, finish: 'fosco', modules: [
+    M('tampaBisnaga', { name: 'Tampa flip oval', W: 46, D: 34, n: 2.6, h: 30, rBot: 6, rTop: 3, groove: 20 }),
+    M('bisnaga', { name: 'Bisnaga condicionador', W: 50, D: 50, h: 150, rBot: 4.3 })] },
+  'Bisnaga máscara 200 ml': { color: BEIGE, finish: 'fosco', modules: [
+    M('tampaBisnaga', { name: 'Tampa flip oval', W: 48, D: 35, n: 2.6, h: 30, rBot: 6, rTop: 3, groove: 20 }),
+    M('bisnaga', { name: 'Bisnaga máscara', W: 54, D: 54, h: 148, rBot: 4.3 })] },
+  'Óleo de limpeza 190 ml + pump': { color: BEIGE, finish: 'fosco', modules: [
+    M('reto', { name: 'Corpo óleo', W: 44, D: 44, h: 128, rBot: 3, rTop: 9 }), NECK('24/410'),
+    M('pump', { name: 'Pump bico longo', W: 26, D: 26, h: 15, ridges: 0, collarR: 1, stemD: 8, stemH: 13,
+      actW: 21, headH: 10, armT: 5.5, armW: 9, nozzleL: 26, droop: 3, droopK: 4 })] },
+  'Bisnaga protetor 200 ml': { color: BEIGE, finish: 'fosco', modules: [
+    M('tampaBisnaga', { name: 'Tampa flip oval larga', W: 50, D: 36, n: 2.6, h: 32, rBot: 6, rTop: 3, groove: 21 }),
+    M('bisnaga', { name: 'Bisnaga protetor', W: 56, D: 56, h: 146, rBot: 4.3 })] },
+  'Bisnaga 40 ml': { color: BEIGE, finish: 'fosco', modules: [
+    M('tampaBisnaga', { name: 'Tampa flip pequena', W: 30, D: 24, n: 2.6, h: 22, rBot: 4, rTop: 2, groove: 14 }),
+    M('bisnaga', { name: 'Bisnaga 40 ml', W: 34, D: 34, h: 88, rBot: 3 })] },
+  'Bastão labial FPS': { color: BEIGE, finish: 'fosco', modules: [
+    M('plano', { name: 'Corpo bastão', W: 21, D: 17, n: 3.6, h: 50, rBot: 2, rTop: 0.6 }),
+    M('flip', { name: 'Tampa bastão', W: 21.4, D: 17.4, n: 3.6, h: 17, taper: 100, rBot: 0.4, rTop: 4, groove: 0, topType: 'nenhum' })] },
   'Oval flip-top 250 ml': { color: BEIGE, finish: 'fosco', modules: [
     M('plano', { W: 61, D: 37, n: 3.4, h: 138.5, rBot: 16.6, rTop: 9.2, bulge: 3, bulgePos: 30 }), NECK('24/410'),
     M('flip')] },
@@ -1705,7 +1730,7 @@ function sprayGeo(m, y0, { lo = false } = {}) {
     head.push(ring(m.actW, m.headH, yH, { rBot: 0.8, rTop: Math.min(1.8, m.headH * 0.3), groove: m.headH * 0.22, grooveD: 0.25 }));
     const N = lo ? 10 : 36, seg = lo ? 16 : 40, bill = [], x0 = R * 0.3, x1 = R + m.nozzleL, yc = yH + m.headH * 0.58;
     for (let i = 0; i <= N; i++) {
-      const t = i / N, x = x0 + (x1 - x0) * t, a = m.armW / 2 * (1 - 0.12 * t), b = m.armT / 2 * (1 - 0.1 * t), cy = yc - m.droop * Math.pow(t, 1.6), rg = [];
+      const t = i / N, x = x0 + (x1 - x0) * t, a = m.armW / 2 * (1 - 0.12 * t), b = m.armT / 2 * (1 - 0.1 * t), cy = yc - m.droop * Math.pow(t, m.droopK || 1.6), rg = [];
       for (let j = 0; j < seg; j++) { const [zz, yy] = sp(a, b, 3.2, j / seg * TAU); rg.push([x, cy + yy, zz]); }
       bill.push(rg);
     }
@@ -5389,6 +5414,7 @@ const MF = [
     K(['armT', 'Espessura', 1.5, 15, 0.1, 'mm', m => ['lamina', 'draftpump', 'pato'].includes(m.sprayType)]),
     K(['outletD', 'Furo de saída', 0.5, 8, 0.1, 'mm', m => ['lamina', 'draftpump'].includes(m.sprayType)]),
     K(['droop', 'Queda na ponta (− sobe)', -10, 15, 0.5, 'mm', m => ['locao', 'lamina', 'draftpump', 'pato'].includes(m.sprayType)]),
+    K(['droopK', 'Queda: curva longa → só na ponta', 1, 8, 0.1, '', m => m.sprayType === 'pato', 1.6]),
     K(['dir', 'Direção (giro)', -180, 180, 1, '°']),
   ]],
   ['Mola e pescante', [
@@ -5595,6 +5621,10 @@ function renderEditor() {
       grp.appendChild(b);
     }
     if (title === 'STL' && m.kind === 'mesh') {
+      // STL: girar, malha e converter ficam juntos, aberto e logo abaixo das medidas.
+      const med = [...ed.querySelectorAll('.grp')].find(g => g.querySelector('summary').textContent === 'Medidas');
+      if (med) med.after(grp);
+      grp.open = openG.STL !== false;
       const convert = lib => {
         const parts = stlToProfile(m); if (!parts) return toast('Não consegui ler o formato dessa peça');
         const i = S.modules.indexOf(m), base = i === 0 || S.modules.slice(0, i).every(q => q.hidden);
