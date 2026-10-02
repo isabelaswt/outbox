@@ -84,6 +84,7 @@ select,input[type=text]{font:inherit;font-size:12px;border:1px solid var(--line)
 .chip{border:1px solid var(--line);border-radius:999px;padding:3px 9px;font-size:11px;cursor:pointer;background:var(--soft);color:#444;user-select:none}
 .chip:hover{border-color:#bdb8b0}
 .chip.on{background:var(--ink);border-color:var(--ink);color:#fff}
+.matChip{display:inline-flex;align-items:center;gap:5px;margin:0 4px 4px 0}.matChip img{width:12px;height:12px;border-radius:50%;border:1px solid rgba(0,0,0,.15)}.matChip b{font-weight:400;opacity:.45;margin-left:2px}.matChip b:hover{opacity:1}
 .chip.drop{border-color:var(--ink);box-shadow:0 0 0 2px var(--ink) inset}
 .gen-l{font-size:10.5px;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);font-weight:600;margin-top:6px}
 .card .ph{width:100%;aspect-ratio:9/11;display:block;object-fit:contain;border-radius:6px;background:linear-gradient(180deg,#fff,#f1efeb)}
@@ -696,7 +697,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-10-02.um-stl';
+const BUILD = '2026-10-02.materiais';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -5650,6 +5651,7 @@ function renderEditor() {
       const tip = document.createElement('div'); tip.className = 'tip'; tip.textContent = 'Da biblioteca: reconhece o corpo (trechos iguais viram Repetição), o gargalo e a válvula spray/pump ou tampa, e monta com as peças do OUTBOX. Fiel ao contorno: copia a forma do STL em peças de perfil (para formas que não existem na biblioteca). Detalhes fora do contorno (letras, recortes) ficam de fora.';
       grp.appendChild(tip);
     }
+    if (title === 'Cor') matRow(grp, m, d => { if (d) m.own = true; renderEditorKeepScroll(); if (d) { renderStack(); queueBuild(); } });
     if (title === 'Relevo por textura') {
       const row = document.createElement('div'); row.className = 'row actions';
       const up = document.createElement('button'); up.className = 'btn sm'; up.textContent = m.reliefImg ? 'Trocar textura' : 'Subir textura (detecta o tipo)';
@@ -6178,6 +6180,7 @@ function renderGlobal() {
   field(lf, S, ['finish', 'Acabamento geral', 'finish'], () => { delete S.difus; delete S.ior; renderGlobal(); queueBuild(); });
   field(lf, S, ['difus', 'Difusão (0 = liso/polido, 100 = bem difuso)', 0, 100, 1, '%', null, o => presetDif(o.finish)], queueBuild);
   if (isGlass(S.finish)) field(lf, S, ['ior', 'IOR do vidro (1,0 ar · 1,33 água · 1,5 vidro · 2,4 diamante)', 1, 2.4, 0.01, '', null, o => presetIor(o.finish)], queueBuild);
+  matRow(lf, S, d => { renderGlobal(); if (d) { renderStack(); queueBuild(); } });
   $('#projName').value = S.name;
 }
 
@@ -6254,6 +6257,58 @@ async function loadReliefFromLib(m, f) {
   m.reliefImg = d.img; m.reliefName = f.name; RELIEF_KEEP.forEach(k => { if (d[k] !== undefined) m[k] = d[k]; });
   m.reliefU = 0; m.reliefV = 0;
   if (!(m.reliefH > 0)) m.reliefH = 82; if (!(m.reliefY >= 0)) m.reliefY = 50; if (!(m.reliefW > 0)) m.reliefW = 100;
+}
+// Materiais da equipe: cor + acabamento + difusão + IOR com nome ("vidro verde fosco"),
+// guardados no banco para aplicar em qualquer frasco ou peça.
+const MAT_KEYS = ['color', 'finish', 'difus', 'ior'];
+let matLib = []; // [{ id, name, size, thumb }]
+async function refreshMatLib() {
+  if (!cloud) return;
+  try { matLib = (await api('uploads.php?a=list&kind=material')).files || []; } catch {}
+}
+async function saveMatToLib(o, name) {
+  const c = document.createElement('canvas'); c.width = c.height = 16; const x = c.getContext('2d');
+  x.fillStyle = o.color || BEIGE; x.fillRect(0, 0, 16, 16);
+  const data = {}; MAT_KEYS.forEach(k => { if (o[k] !== undefined) data[k] = o[k]; });
+  await uploadTeamFile('material', new TextEncoder().encode(JSON.stringify(data)), name, c.toDataURL('image/png'));
+  await refreshMatLib();
+}
+// Linha "Materiais salvos": bolinhas com nome (clique aplica, ✕ exclui) + salvar o atual.
+function matRow(box, o, apply) {
+  const wrap = document.createElement('div'); wrap.className = 'matRow';
+  const esc = t => String(t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+  if (matLib.length) {
+    const lab = document.createElement('div'); lab.className = 'tip'; lab.textContent = 'Materiais salvos (clique para aplicar):'; wrap.appendChild(lab);
+    for (const f of matLib) {
+      const ch = document.createElement('span'); ch.className = 'chip matChip'; ch.title = `Aplicar ${f.name}`;
+      ch.innerHTML = `${f.thumb ? `<img src="${f.thumb}" alt="">` : ''}${esc(f.name)}<b title="Excluir da biblioteca">✕</b>`;
+      ch.onclick = async e => {
+        if (e.target.tagName === 'B') {
+          if (!confirm(`Excluir o material "${f.name}" da biblioteca da equipe?`)) return;
+          try { await api('uploads.php?a=delete', { id: f.id }); await refreshMatLib(); toast('Material excluído'); apply(null); } catch { toast('Não consegui excluir'); }
+          return;
+        }
+        try {
+          const r = await fetch(`api/uploads.php?a=file&id=${f.id}`, { credentials: 'same-origin' }); if (!r.ok) throw 0;
+          const d = await r.json(); delete o.difus; delete o.ior;
+          MAT_KEYS.forEach(k => { if (d[k] !== undefined) o[k] = d[k]; });
+          apply(d); toast(`Material: ${f.name}`);
+        } catch { toast('Não consegui abrir esse material'); }
+      };
+      wrap.appendChild(ch);
+    }
+  }
+  if (cloud) {
+    const b = document.createElement('button'); b.className = 'btn sm'; b.textContent = 'Salvar material (cor + acabamento)';
+    b.onclick = async () => {
+      const fin = (FINISHES.find(f => f[0] === o.finish) || [, ''])[1].toLowerCase();
+      const name = (prompt('Nome do material (ex.: vidro verde fosco):', fin) || '').trim(); if (!name) return;
+      if (matLib.some(f => f.name === name) && !confirm(`Já existe "${name}". Substituir?`)) return;
+      try { await saveMatToLib(o, name); toast(`Material salvo: ${name}`); apply(null); } catch { toast('Não consegui salvar o material'); }
+    };
+    const row = document.createElement('div'); row.className = 'row'; row.appendChild(b); wrap.appendChild(row);
+  }
+  box.appendChild(wrap);
 }
 async function uploadStl(buf, name, m) {
   await uploadTeamFile('stl', new Uint8Array(buf), name, await stlThumb(m));
@@ -7074,6 +7129,7 @@ async function signedIn(user) {
   refreshHdrList(); // HDR/EXR da equipe
   refreshStlUploads(); // STL da equipe (aba Uploads)
   refreshReliefLib(); // texturas de relevo da equipe
+  refreshMatLib().then(() => { renderGlobal(); renderEditorKeepScroll(); }); // materiais da equipe
   galleryKey = ''; renderPresets();
   if (user.is_admin) { $('#teamBox').classList.remove('hidden'); renderTeam(); }
 }

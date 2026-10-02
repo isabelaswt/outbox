@@ -44,6 +44,7 @@ Teste local com PHP: `php -S 127.0.0.1:8767 -t .` e um `api/config.php` apontand
 - Pescante translucido quando aplicavel; bisnaga nao usa pescante.
 - Logo/SVG aplicado na superficie com relevo para fora ou para dentro, com melhoria para suavizar serrilhado em curvas.
 - Texturas de relevo salvas na biblioteca da equipe (banco), com tamanho e força, para reaproveitar em outros frascos.
+- Materiais da equipe (cor + acabamento + difusão + IOR) salvos com nome, para aplicar no produto ou numa peça.
 - Lado a lado arrastando: solte um card da galeria na cena, a esquerda ou a direita do que ja esta nela.
 - HDR ou EXR para iluminar preview e PNG exportado, com controle de rotacao e intensidade; ficam guardados no banco para a equipe toda (em pedacos, api/hdr.php) e o projeto reabre com o seu.
 - Sombra de contato de estudio: linha escura onde o produto encosta e penumbra larga e difusa em volta, seguindo o formato real da base (vidro projeta sombra mais clara).
