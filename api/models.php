@@ -12,11 +12,23 @@ function clean_name($n): string {
   return $n;
 }
 
+// Miniatura de cada modelo (a lista mostra só nome, data e miniatura; o modelo inteiro
+// só desce quando é aberto). A coluna nasce no primeiro uso em instalações antigas.
+if (!db()->query("SHOW COLUMNS FROM models LIKE 'thumb'")->fetch()) db()->exec('ALTER TABLE models ADD COLUMN thumb MEDIUMTEXT NULL');
+
 if ($a === 'list') {
-  $s = db()->prepare('SELECT name, data FROM models WHERE user_id = ? ORDER BY updated_at DESC');
+  $s = db()->prepare('SELECT name, thumb, updated_at FROM models WHERE user_id = ? ORDER BY updated_at DESC');
   $s->execute([$u['id']]);
-  $rows = array_map(fn($r) => ['name' => $r['name'], 'data' => json_decode($r['data'], true)], $s->fetchAll());
+  $rows = array_map(fn($r) => ['name' => $r['name'], 'thumb' => $r['thumb'] ?: '', 'updated' => $r['updated_at']], $s->fetchAll());
   out(['models' => $rows]);
+}
+
+if ($a === 'get') {
+  $s = db()->prepare('SELECT data FROM models WHERE user_id = ? AND name = ?');
+  $s->execute([$u['id'], clean_name($_GET['name'] ?? '')]);
+  $d = $s->fetchColumn();
+  if ($d === false) out(['error' => 'not found'], 404);
+  out(['data' => json_decode($d, true)]);
 }
 
 if ($a === 'save') {
@@ -24,8 +36,11 @@ if ($a === 'save') {
   $name = clean_name($in['name'] ?? '');
   $data = json_encode($in['data'] ?? null, JSON_UNESCAPED_UNICODE);
   if (!is_array($in['data'] ?? null) || strlen($data) > $MAX) out(['error' => 'data'], 400);
-  db()->prepare('INSERT INTO models (user_id, name, data) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE data = VALUES(data), updated_at = NOW()')
-    ->execute([$u['id'], $name, $data]);
+  $thumb = (string)($in['thumb'] ?? '');
+  if ($thumb !== '' && (strlen($thumb) > 400000 || !str_starts_with($thumb, 'data:image/'))) $thumb = '';
+  // sem miniatura nova (autosave), fica a que já estava
+  db()->prepare('INSERT INTO models (user_id, name, data, thumb) VALUES (?, ?, ?, ?) ON DUPLICATE KEY UPDATE data = VALUES(data), thumb = COALESCE(VALUES(thumb), thumb), updated_at = NOW()')
+    ->execute([$u['id'], $name, $data, $thumb !== '' ? $thumb : null]);
   out(['ok' => true]);
 }
 

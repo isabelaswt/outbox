@@ -85,6 +85,13 @@ select,input[type=text]{font:inherit;font-size:12px;border:1px solid var(--line)
 .chip:hover{border-color:#bdb8b0}
 .chip.on{background:var(--ink);border-color:var(--ink);color:#fff}
 .matChip{display:inline-flex;align-items:center;gap:5px;margin:0 4px 4px 0}.matChip img{width:12px;height:12px;border-radius:50%;border:1px solid rgba(0,0,0,.15)}.matChip b{font-weight:400;opacity:.45;margin-left:2px}.matChip b:hover{opacity:1}
+.openDlg{position:fixed;inset:0;background:rgba(20,16,12,.35);z-index:30;display:grid;place-items:center;padding:24px}
+.openBox{background:#fff;border-radius:14px;width:min(860px,100%);max-height:82vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.25)}
+.openHead{display:flex;gap:10px;align-items:center;padding:14px 16px;border-bottom:1px solid var(--line)}
+.openHead input{flex:1}
+.openGrid{overflow:auto;padding:12px 16px;display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px;align-content:start}
+.openGrid h4{grid-column:1/-1;margin:6px 0 0}
+.openGrid small{display:block;font-size:10px;opacity:.55}
 .chip.drop{border-color:var(--ink);box-shadow:0 0 0 2px var(--ink) inset}
 .gen-l{font-size:10.5px;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);font-weight:600;margin-top:6px}
 .card .ph{width:100%;aspect-ratio:9/11;display:block;object-fit:contain;border-radius:6px;background:linear-gradient(180deg,#fff,#f1efeb)}
@@ -147,6 +154,7 @@ canvas{display:block;width:100%;height:100%;touch-action:none}
     <div class="gallery" id="gallery"></div>
     <div class="row"><input type="text" id="projName" placeholder="Nome do projeto"></div>
     <div class="row">
+      <button class="btn" id="openSaved" title="Abrir um projeto salvo (só ele é carregado)">Abrir…</button>
       <button class="btn" id="savePreset">Salvar</button>
       <button class="btn" id="stlGalBtn" title="Subir uma peça STL: entra no produto e fica na aba Uploads para reuso">+ STL</button>
       <button class="btn" id="delPreset">Excluir</button>
@@ -700,7 +708,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-10-02.sem-travadas';
+const BUILD = '2026-10-02.abrir-projeto';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -5103,7 +5111,7 @@ function renderLineup() {
     if (i >= 0) r.onclick = () => editSide(i);
     box.append(r);
   });
-  const sv = saved(), opts = [['__atual', 'Cópia deste produto'], ...Object.keys(PRESETS).map(k => [k, k]), ...Object.keys(sv).map(k => ['s:' + k, k + ' (salvo)'])];
+  const opts = [['__atual', 'Cópia deste produto'], ...Object.keys(PRESETS).map(k => [k, k]), ...savedNames().filter(k => !k.endsWith(' (autosave)')).map(k => ['s:' + k, k + ' (salvo)'])];
   $('#lineAdd').innerHTML = opts.map(([v, l]) => `<option value="${v.replace(/"/g, '&quot;')}">${l.replace(/</g, '&lt;')}</option>`).join('');
   const g = $('#lineGap'); g.innerHTML = '';
   if (S.side.length) field(g, S, ['gap', 'Espaço entre os produtos', 0, 200, 1, 'mm'], () => { build(); fit(); });
@@ -5124,19 +5132,20 @@ function renderLineup() {
   const isCard = e => [...(e.dataTransfer?.types || [])].includes('text/x-outbox-card');
   view.addEventListener('dragover', e => { if (!isCard(e)) return; e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; showHint(e.clientX >= midX()); });
   view.addEventListener('dragleave', e => { if (!view.contains(e.relatedTarget)) hideHint(); });
-  view.addEventListener('drop', e => {
+  view.addEventListener('drop', async e => {
     if (!isCard(e)) return; e.preventDefault(); hideHint();
     let d; try { d = JSON.parse(e.dataTransfer.getData('text/x-outbox-card')); } catch { return; }
-    const src = d?.kind === 's' ? saved()[d.name] : PRESETS[d?.name]; if (!src) return;
-    const slots = [S.slot, ...S.side.map(it => it.slot)], right = e.clientX >= midX();
+    const right = e.clientX >= midX();
+    let src; try { src = d?.kind === 's' ? await getSaved(d.name) : PRESETS[d?.name]; } catch { return; } if (!src) return;
+    const slots = [S.slot, ...S.side.map(it => it.slot)];
     S.side.push(copyProduct(src, d.name, right ? Math.max(...slots) + 1 : Math.min(...slots) - 1));
     renderLineup(); build(); fit(); toast(`${d.name} ${right ? 'à direita' : 'à esquerda'}`);
   });
   document.addEventListener('dragend', hideHint);
 }
-$('#lineAddBtn').onclick = () => {
+$('#lineAddBtn').onclick = async () => {
   const v = $('#lineAdd').value, slot = Math.max(S.slot, ...S.side.map(it => it.slot)) + 1;
-  const src = v === '__atual' ? S : v.startsWith('s:') ? saved()[v.slice(2)] : PRESETS[v];
+  let src; try { src = v === '__atual' ? S : v.startsWith('s:') ? await getSaved(v.slice(2)) : PRESETS[v]; } catch { return toast('Não consegui abrir esse salvo'); }
   if (!src) return;
   S.side.push(copyProduct(src, v === '__atual' ? `${S.name} (cópia)` : v.replace(/^s:/, ''), slot));
   renderLineup(); build(); fit();
@@ -6352,8 +6361,58 @@ $('#importStl').onchange = async e => {
 $('#colorAll').onclick = () => { S.modules.forEach(m => m.own = false); renderStack(); renderEditor(); build(); };
 
 // ───────────────────────── modelos (presets) ─────────────────────────
-let cloud = null; // modelos da conta; null = sem login, salva só no navegador
+let cloud = null; // modelos da conta já abertos (cache); null = sem login, salva só no navegador
+// Lista leve dos modelos da conta (nome, data, miniatura): o modelo inteiro só é baixado
+// quando alguém abre (antes o login baixava e desenhava todos de uma vez).
+let cloudList = [];
 const saved = () => cloud ?? store.get('shape.presets', {});
+const savedNames = () => cloud ? cloudList.map(x => x.name) : Object.keys(store.get('shape.presets', {}));
+async function getSaved(name) {
+  if (!cloud) return store.get('shape.presets', {})[name];
+  if (!(name in cloud)) cloud[name] = (await api('models.php?a=get&name=' + encodeURIComponent(name))).data;
+  return cloud[name];
+}
+async function refreshCloudList() {
+  if (!cloud) return;
+  try { cloudList = (await api('models.php?a=list')).models || []; } catch {}
+  renderLineup(); galleryKey = ''; renderPresets();
+}
+// Popup "Abrir": procura e abre um projeto salvo (só esse é baixado).
+function openSavedDialog() {
+  const items = cloud ? cloudList : Object.keys(store.get('shape.presets', {})).map(name => ({ name, thumb: '', updated: '' }));
+  const ov = document.createElement('div'); ov.className = 'openDlg';
+  ov.innerHTML = `<div class="openBox"><div class="openHead"><b>Abrir projeto</b><input type="search" placeholder="Procurar pelo nome…"><button class="btn sm">Fechar</button></div><div class="openGrid"></div></div>`;
+  const grid = ov.querySelector('.openGrid'), q = ov.querySelector('input');
+  const close = () => { ov.remove(); document.removeEventListener('keydown', esc); };
+  const esc = e => { if (e.key === 'Escape') close(); };
+  const draw = () => {
+    const f = q.value.trim().toLowerCase(), list = items.filter(x => !f || x.name.toLowerCase().includes(f));
+    const main = list.filter(x => !x.name.endsWith(AUTO_TAG)), auto = list.filter(x => x.name.endsWith(AUTO_TAG));
+    grid.innerHTML = '';
+    const sec = (title, arr) => {
+      if (!arr.length) return; const h = document.createElement('h4'); h.textContent = title; grid.appendChild(h);
+      for (const it of arr) {
+        const c = document.createElement('div'); c.className = 'card' + (it.name === fileName() ? ' on' : ''); c.title = it.name;
+        c.innerHTML = `<img class="ph" alt=""><div></div><small></small>`;
+        if (it.thumb) c.querySelector('img').src = it.thumb;
+        c.querySelector('div').textContent = it.name;
+        c.querySelector('small').textContent = it.updated ? new Date(it.updated.replace(' ', 'T')).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '';
+        c.onclick = async () => {
+          c.classList.add('on'); toast(`Abrindo ${it.name}…`);
+          try { const st = await getSaved(it.name); if (!st) throw 0; close(); loadState(st, it.name); toast(`Aberto: ${it.name}`); }
+          catch { toast('Não consegui abrir esse projeto'); }
+        };
+        grid.appendChild(c);
+      }
+    };
+    sec('Projetos', main); sec('Cópias automáticas (autosave)', auto);
+    if (!list.length) grid.innerHTML = `<h4>${items.length ? 'Nada com esse nome' : 'Nenhum projeto salvo ainda: use Salvar'}</h4>`;
+  };
+  q.oninput = draw; ov.querySelector('button').onclick = close;
+  ov.onclick = e => { if (e.target === ov) close(); };
+  document.addEventListener('keydown', esc);
+  document.body.appendChild(ov); draw(); q.focus();
+}
 // Galeria: cada modelo com miniatura 3D, gerada num renderizador pequeno à
 // parte, uma por vez para não travar a tela.
 const TW = 180, TH = 220;
@@ -6459,7 +6518,7 @@ function renderPresets() {
     };
   }
   tabs?.querySelectorAll('.chip').forEach(c => c.classList.toggle('on', c.dataset.tab === galTab));
-  const key = galTab + '#' + stlUploads.map(f => f.id).join(',') + '#' + Object.keys(PRESETS).join('|') + '#' + Object.keys(sv).join('|') + '#' + JSON.stringify(baseAbas()) + Object.values(sv).map(v => v.aba || '').join('|');
+  const key = galTab + '#' + stlUploads.map(f => f.id).join(',') + '#' + Object.keys(PRESETS).join('|') + '#' + savedNames().join('|') + '#' + JSON.stringify(baseAbas()) + Object.values(sv).map(v => v.aba || '').join('|');
   if (key === galleryKey && gal.children.length) {
     gal.querySelectorAll('.card').forEach(c => c.classList.toggle('on', c.title === fileName()));
     return;
@@ -6497,8 +6556,13 @@ function renderPresets() {
     gal.scrollTop = keepTop; return;
   }
   if (galTab !== 'Salvos') section('Modelos base', Object.entries(PRESETS).filter(inTab('b')), 'b');
-  if (galTab === 'Todos' || galTab === 'Salvos') section(cloud ? 'Meus modelos' : 'Salvos', Object.entries(sv), 's');
-  else section(cloud ? 'Meus modelos' : 'Salvos', Object.entries(sv).filter(inTab('s')), 's');
+  if (cloud) { // da conta: nada de baixar todos; mostra o botão do popup
+    if (galTab === 'Todos' || galTab === 'Salvos') {
+      const h = document.createElement('h4'); h.textContent = `Meus modelos (${cloudList.length})`; gal.appendChild(h);
+      const b = document.createElement('button'); b.className = 'btn'; b.style.gridColumn = '1/-1'; b.textContent = 'Abrir projeto salvo…'; b.onclick = openSavedDialog; gal.appendChild(b);
+    }
+  } else if (galTab === 'Todos' || galTab === 'Salvos') section('Salvos', Object.entries(sv), 's');
+  else if (!cloud) section('Salvos', Object.entries(sv).filter(inTab('s')), 's');
   if (!gal.children.length) gal.innerHTML = '<h4>Nada nesta aba ainda</h4>';
   gal.scrollTop = keepTop;
 
@@ -6524,12 +6588,14 @@ $('#newProduct').onclick = () => {
   renderAll(); build(); fit(); saveStatus('');
   toast('Produto novo: monte e salve com um nome');
 };
+$('#openSaved').onclick = openSavedDialog;
 $('#projName').oninput = e => { S.file = e.target.value; if (!S.side.length) S.name = e.target.value; saveLocalSoon(); };
 $('#savePreset').onclick = async () => {
   const name = fileName().trim() || 'Sem nome'; S.file = name;
   if (cloud) {
-    try { await api('models.php?a=save', { name, data: S }); } catch (e) { return toast(e.status === 401 ? 'Sua sessão expirou: entre de novo' : 'Não consegui salvar'); }
-    cloud[name] = structuredClone(S);
+    let thumb = ''; try { thumb = thumbOf(S) || ''; } catch {}
+    try { await api('models.php?a=save', { name, data: S, thumb }); } catch (e) { return toast(e.status === 401 ? 'Sua sessão expirou: entre de novo' : 'Não consegui salvar'); }
+    cloud[name] = structuredClone(S); refreshCloudList();
   } else { const sv = saved(); sv[name] = structuredClone(S); store.set('shape.presets', sv); }
   galleryKey = ''; renderPresets(); toast(`Salvo: ${name}`); // miniatura do salvo é refeita
   saveStatus(`Salvo às ${hhmm()}. A cada 5 min, uma cópia de segurança vai para "${name} (autosave)".`);
@@ -6549,7 +6615,7 @@ async function autoSave() {
   if (js === lastAuto || (sv[base] && JSON.stringify({ ...sv[base], file: slot }) === js)) return; // nada mudou
   autoBusy = true;
   try {
-    if (cloud) { await api('models.php?a=save', { name: slot, data }); cloud[slot] = data; }
+    if (cloud) { await api('models.php?a=save', { name: slot, data }); cloud[slot] = data; if (!cloudList.some(x => x.name === slot)) refreshCloudList(); }
     else { sv[slot] = data; store.set('shape.presets', sv); }
     lastAuto = js; galleryKey = ''; renderPresets();
     saveStatus(`Autosave às ${hhmm()} em "${slot}" (o salvo original não foi alterado).`);
@@ -6559,10 +6625,11 @@ async function autoSave() {
 setInterval(autoSave, 5 * 60000);
 window.addEventListener('beforeunload', () => { autoSave(); });
 $('#delPreset').onclick = async () => {
-  const fn = fileName(), sv = saved(); if (!sv[fn]) return toast('Esse nome não está entre os salvos');
+  const fn = fileName(); if (!savedNames().includes(fn)) return toast('Esse nome não está entre os salvos');
+  if (!confirm(`Excluir "${fn}" dos salvos?`)) return; const sv = saved();
   if (cloud) {
     try { await api('models.php?a=delete', { name: fn }); } catch (e) { return toast(e.status === 401 ? 'Sua sessão expirou: entre de novo' : 'Não consegui excluir'); }
-    delete cloud[fn];
+    delete cloud[fn]; cloudList = cloudList.filter(x => x.name !== fn);
   } else { delete sv[fn]; store.set('shape.presets', sv); }
   galleryKey = ''; renderPresets(); toast(`Excluído: ${fn}`);
 };
@@ -7177,7 +7244,7 @@ async function signedIn(user) {
   if (Object.keys(local).length && !store.get(flag, false)) {
     try { const { imported } = await api('models.php?a=import', { items: local }); store.set(flag, true); if (imported) toast(`${imported} modelo(s) deste navegador foram para a sua conta`); } catch {}
   }
-  try { cloud = Object.fromEntries((await api('models.php?a=list')).models.map(x => [x.name, x.data])); }
+  try { cloudList = (await api('models.php?a=list')).models || []; renderLineup(); } // só a lista (nome, data, miniatura)
   catch { toast('Não consegui carregar seus modelos'); }
   try { teamAba = (await api('settings.php?a=get&k=galAba')).value || {}; } catch { teamAba = null; } // abas da equipe
   refreshHdrList(); // HDR/EXR da equipe
