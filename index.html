@@ -341,6 +341,7 @@ const TAU = Math.PI * 2;
 const clamp = (v, a, b) => Math.min(Math.max(v, a), b);
 const smooth = (a, b, x) => { const t = clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
 const r1 = v => Math.round(v * 10) / 10;
+let localT = 0; // gravação adiada da cópia no navegador (saveLocalSoon)
 const store = {
   get(k, d) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch { return d; } },
   set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} },
@@ -699,7 +700,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-10-02.arquivo-inteiro';
+const BUILD = '2026-10-02.sem-travadas';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -3565,7 +3566,7 @@ function renderScene() {
     // Macia: fundo claro quente quase liso. Lateral: cinza com a mancha de luz à esquerda.
     if (k === 'luz' && S.scene.luz === 'macia') { S.bg = '#e7e2d9'; Object.assign(S.scene, { bgGrad: 'vertical', bgEdge: '#d8d1c5' }); applyBackground(); }
     if (k === 'luz' && S.scene.luz === 'lateral') { S.bg = '#efebe4'; Object.assign(S.scene, { bgGrad: 'lateral', bgEdge: '#9b9285' }); applyBackground(); } // quente e claro (cinza pesado demais)
-    if (LIGHT_KEYS.includes(k)) applySceneLight(); buildStage(); if (k === 'cena') { renderScene(); fit(); } store.set('shape.autosave', S); req(); };
+    if (LIGHT_KEYS.includes(k)) applySceneLight(); buildStage(); if (k === 'cena') { renderScene(); fit(); } saveLocalSoon(); req(); };
   field(f, S.scene, ['cena', 'Cenário', 'select', [['nenhum', 'Nenhum (só a sombra)'], ['pedestal', 'Pedestal redondo'], ['bloco', 'Bloco'],
     ['degraus', 'Degraus (vitrine)'], ['arco', 'Arco ao fundo'], ['infinito', 'Fundo infinito (estúdio)']]], ch);
   if (S.scene.cena !== 'nenhum') field(f, S.scene, ['cenaCor', 'Cor do cenário', 'color'], ch);
@@ -3586,7 +3587,7 @@ function renderScene() {
   field(f, S.scene, ['luzSoft', 'Maciez (− marcada, + macia)', 0, 100, 1, ''], ch);
   const rb = document.createElement('div'); rb.className = 'row';
   rb.innerHTML = '<button class="btn">Voltar a luz ao padrão</button>';
-  rb.querySelector('button').onclick = () => { Object.assign(S.scene, { luzRot: 0, luzInt: 100, luzCon: 50, luzAlt: 0, luzKey: 100, luzFill: 100, luzSoft: 50 }); renderScene(); applySceneLight(); buildStage(); store.set('shape.autosave', S); req(); };
+  rb.querySelector('button').onclick = () => { Object.assign(S.scene, { luzRot: 0, luzInt: 100, luzCon: 50, luzAlt: 0, luzKey: 100, luzFill: 100, luzSoft: 50 }); renderScene(); applySceneLight(); buildStage(); saveLocalSoon(); req(); };
   f.appendChild(rb);
   // Minhas luzes: a luz escolhida + girar/intensidade/contraste + cor do fundo, com nome.
   const mine = store.get('shape.lights', {}), names = Object.keys(mine);
@@ -3620,15 +3621,15 @@ function renderScene() {
   const hsel = hl.querySelector('select'), hbs = [...hl.querySelectorAll('button')];
   hbs.at(-1).onclick = () => $('#hdrFile').click();
   if (hsel) {
-    hbs[0].onclick = () => { S.scene.luz = 'hdr'; S.scene.hdrName = hsel.value; renderScene(); applySceneLight(); store.set('shape.autosave', S); req(); };
+    hbs[0].onclick = () => { S.scene.luz = 'hdr'; S.scene.hdrName = hsel.value; renderScene(); applySceneLight(); saveLocalSoon(); req(); };
     hbs[1].onclick = async () => { const n = hsel.value; if (!confirm(`Excluir "${n}" do servidor? Some para a equipe toda.`)) return;
       try { await api('hdr.php?a=delete', { name: n }); await refreshHdrList(); toast('HDR excluído'); } catch { toast('Não consegui excluir'); } };
   }
   f.appendChild(hl);
   field(f, S.scene, ['ao', 'Sombra de contato (o produto pesa na superfície)', 'check'], ch);
   field(f, S, ['bg', 'Fundo da cena', 'color'], queueBuild);
-  field(f, S.scene, ['bgGrad', 'Fundo em degradê', 'select', [['nenhum', 'Liso'], ['radial', 'Radial (centro claro, bordas escuras)'], ['vertical', 'Vertical (claro em cima)'], ['lateral', 'Lateral (luz projetada da esquerda)']]], () => { renderScene(); applyBackground(); store.set('shape.autosave', S); });
-  if (S.scene.bgGrad && S.scene.bgGrad !== 'nenhum') field(f, S.scene, ['bgEdge', 'Cor da borda do degradê', 'color'], () => { applyBackground(); store.set('shape.autosave', S); });
+  field(f, S.scene, ['bgGrad', 'Fundo em degradê', 'select', [['nenhum', 'Liso'], ['radial', 'Radial (centro claro, bordas escuras)'], ['vertical', 'Vertical (claro em cima)'], ['lateral', 'Lateral (luz projetada da esquerda)']]], () => { renderScene(); applyBackground(); saveLocalSoon(); });
+  if (S.scene.bgGrad && S.scene.bgGrad !== 'nenhum') field(f, S.scene, ['bgEdge', 'Cor da borda do degradê', 'color'], () => { applyBackground(); saveLocalSoon(); });
 }
 // Vídeo: o produto gira no prato (360° ou vai e volta) com câmera e luz fixas, ou
 // inclinado no ar (artístico); o canvas é gravado.
@@ -4054,9 +4055,13 @@ function build() {
   scheduleLogos();
   applyBackground();
   updateStats();
-  store.set('shape.autosave', S);
+  saveLocalSoon();
   req();
 }
+// Cópia no navegador (para recarregar a página sem perder nada): só quando a mão
+// para de mexer. Gravar o projeto inteiro a cada quadro do slider dava as travadas.
+function saveLocalSoon() { clearTimeout(localT); localT = setTimeout(() => store.set('shape.autosave', S), 1200); }
+addEventListener('pagehide', () => { clearTimeout(localT); store.set('shape.autosave', S); });
 
 // ───────────────────────── logotipo em relevo ─────────────────────────
 // O navegador desenha o SVG (furos e sobreposições sempre certos) e o relevo
@@ -4536,7 +4541,7 @@ function renderLogos() {
     const [rp, rm] = el.querySelectorAll('button');
     rp.onclick = () => startPlacing(L);
     rm.onclick = () => { S.logos.splice(i, 1); renderLogos(); build(); };
-    const ch = (k, structural) => { if (structural) renderLogos(); store.set('shape.autosave', S); scheduleLogosOrBuild(L); };
+    const ch = (k, structural) => { if (structural) renderLogos(); saveLocalSoon(); scheduleLogosOrBuild(L); };
     field(el, L, ['size', 'Largura do logo', 3, 200, 0.5, 'mm'], ch);
     field(el, L, ['rot', 'Rotação', -180, 180, 1, '°'], ch);
     field(el, L, ['depth', 'Relevo (− cava para dentro, + sai para fora)', -4, 4, 0.1, 'mm'], ch);
@@ -4841,9 +4846,19 @@ function liquidMeshes(m, y0, levelAbs, lift = S.wall) {
 // Cada montagem guarda o estado; mudanças seguidas (arrastar um slider) viram
 // um passo só.
 let hist = [], hi = -1, lastRec = 0, restoring = false;
+// Histórico leve: textos grandes (imagens de rótulo/relevo, STL em base64, SVG) entram
+// uma vez numa tabela e o histórico guarda só a referência. Antes cada mexida no
+// slider copiava o projeto inteiro (MBs) e 100 cópias assim travavam o navegador.
+const BIG = new Map(), BIG_BACK = new Map(), BIG_TAG = '\u0000big:';
+const packJSON = st => JSON.stringify(st, (k, v) => {
+  if (typeof v !== 'string' || v.length < 4096) return v;
+  let id = BIG.get(v); if (id === undefined) { id = BIG.size; BIG.set(v, id); BIG_BACK.set(id, v); }
+  return BIG_TAG + id;
+});
+const unpackJSON = js => JSON.parse(js, (k, v) => typeof v === 'string' && v.startsWith(BIG_TAG) ? BIG_BACK.get(+v.slice(BIG_TAG.length)) ?? '' : v);
 function record() {
   if (restoring) return;
-  const cur = JSON.stringify(S), now = performance.now();
+  const cur = packJSON(S), now = performance.now();
   if (hist[hi] === cur) return;
   if (hi > 0 && now - lastRec < 600 && hist.length - 1 === hi && hi === coalesceFrom) hist[hi] = cur;
   else { hist = hist.slice(0, hi + 1); hist.push(cur); hi = hist.length - 1; coalesceFrom = hi; if (hist.length > 100) { hist.shift(); hi--; coalesceFrom = hi; } }
@@ -4852,7 +4867,7 @@ function record() {
 let coalesceFrom = -1;
 function restore(json) {
   restoring = true;
-  S = normalize(JSON.parse(json)); sel = clamp(sel, 0, S.modules.length - 1);
+  S = normalize(unpackJSON(json)); sel = clamp(sel, 0, S.modules.length - 1);
   renderAll(); build();
   restoring = false; coalesceFrom = -1; updateUndoBtns();
 }
@@ -5228,7 +5243,7 @@ canvas.addEventListener('pointerup', e => {
     const lp = product.worldToLocal(hit.point.clone()); // produto inclinado no cenário: guarda de pé
     Object.assign(placing, { uid, rep: hit.object.userData.rep || 0, p: [lp.x - ox, lp.y - y0, lp.z], n: hit.face.normal.toArray() });
     stopPlacing();
-    renderLogos(); store.set('shape.autosave', S); build();
+    renderLogos(); saveLocalSoon(); build();
     return;
   }
   const hit = ray.intersectObjects(product.children)[0], sh = ray.intersectObject(sideRoot, true)[0];
@@ -5585,7 +5600,7 @@ function renderEditor() {
   const top = document.createElement('div');
   top.innerHTML = `<h3>Módulo selecionado</h3><div class="row"><input type="text" value=""></div>`;
   const nm = top.querySelector('input'); nm.value = m.name;
-  nm.oninput = () => { m.name = nm.value; renderStack(); store.set('shape.autosave', S); };
+  nm.oninput = () => { m.name = nm.value; renderStack(); saveLocalSoon(); };
   ed.appendChild(top);
   renderSwap(ed, m);
   if (isSphereCap(m)) {
@@ -6436,7 +6451,7 @@ function renderPresets() {
       else {
         const sv = saved(), st = sv[d.name]; if (!st) return;
         if (auto) delete st.aba; else st.aba = t;
-        if (fileName() === d.name) { if (auto) delete S.aba; else S.aba = t; store.set('shape.autosave', S); }
+        if (fileName() === d.name) { if (auto) delete S.aba; else S.aba = t; saveLocalSoon(); }
         if (cloud) { try { await api('models.php?a=save', { name: d.name, data: st }); } catch { return toast('Não consegui mudar a aba'); } }
         else store.set('shape.presets', sv);
       }
@@ -6509,7 +6524,7 @@ $('#newProduct').onclick = () => {
   renderAll(); build(); fit(); saveStatus('');
   toast('Produto novo: monte e salve com um nome');
 };
-$('#projName').oninput = e => { S.file = e.target.value; if (!S.side.length) S.name = e.target.value; store.set('shape.autosave', S); };
+$('#projName').oninput = e => { S.file = e.target.value; if (!S.side.length) S.name = e.target.value; saveLocalSoon(); };
 $('#savePreset').onclick = async () => {
   const name = fileName().trim() || 'Sem nome'; S.file = name;
   if (cloud) {
@@ -6745,7 +6760,7 @@ async function ensureHdr(name) {
 $('#hdrFile').onchange = async e => {
   const f = e.target.files[0]; if (!f) return; e.target.value = '';
   if (!(await loadHdr(f, f.name))) return;
-  S.scene = { ...sceneOf(), luz: 'hdr', hdrName: f.name }; renderScene(); applySceneLight(); store.set('shape.autosave', S); req(); // HDR carregado vira a luz da cena
+  S.scene = { ...sceneOf(), luz: 'hdr', hdrName: f.name }; renderScene(); applySceneLight(); saveLocalSoon(); req(); // HDR carregado vira a luz da cena
   const kind = /\.exr$/i.test(f.name) ? 'EXR' : 'HDR';
   if (!cloud) return toast(`${kind} carregado (entre na conta para guardar no servidor)`);
   try { await uploadHdr(f, f.name); toast(`${kind} guardado para a equipe: ${f.name}`); }
