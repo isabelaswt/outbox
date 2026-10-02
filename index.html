@@ -170,7 +170,7 @@ canvas{display:block;width:100%;height:100%;touch-action:none}
     <div class="stack" id="stack"></div>
     <div class="tip">Inserir acima do módulo selecionado:</div>
     <div id="addRows"></div>
-    <div class="row"><button class="btn pri sm" id="importStlBtn" style="flex:1">+ STL</button><input type="file" id="importStl" accept=".stl,model/stl" class="hidden"></div>
+    <input type="file" id="importStl" accept=".stl,model/stl" class="hidden">
     <div class="edit" id="editor"></div>
   </details>
 
@@ -696,7 +696,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-10-01.texturas-equipe';
+const BUILD = '2026-10-02.um-stl';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -6202,8 +6202,7 @@ CATS.forEach(([label, keys]) => {
   };
   $('#addRows').appendChild(row);
 });
-$('#importStlBtn').onclick = () => $('#importStl').click();
-$('#stlGalBtn').onclick = () => $('#importStl').click(); // o mesmo, ao lado de Salvar
+$('#stlGalBtn').onclick = () => $('#importStl').click(); // único botão de subir STL (ao lado de Salvar)
 // Põe um STL no produto como peça (logo acima da selecionada). Low-poly já entra com a
 // malha melhorada (dá para desligar em "Melhorar malha").
 function addStlModule(buf, name) {
@@ -6416,7 +6415,7 @@ function renderPresets() {
         try { await api('uploads.php?a=delete', { id: f.id }); await refreshStlUploads(); toast('Upload excluído'); } catch { toast('Não consegui excluir'); } };
       gal.appendChild(card);
     }
-    if (cloud && !stlUploads.length) gal.insertAdjacentHTML('beforeend', '<h4>Nenhum STL ainda: use "+ STL" na pilha de peças</h4>');
+    if (cloud && !stlUploads.length) gal.insertAdjacentHTML('beforeend', '<h4>Nenhum STL ainda: use "+ STL" ao lado de Salvar</h4>');
     gal.scrollTop = keepTop; return;
   }
   if (galTab !== 'Salvos') section('Modelos base', Object.entries(PRESETS).filter(inTab('b')), 'b');
