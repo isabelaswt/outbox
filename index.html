@@ -250,6 +250,8 @@ canvas{display:block;width:100%;height:100%;touch-action:none}
     <input type="file" id="hdrFile" accept=".hdr,.exr,image/vnd.radiance,image/x-exr" class="hidden">
     <label class="chk"><input type="checkbox" id="pngTransp" checked> Fundo transparente</label>
     <label class="chk"><input type="checkbox" id="pngShadow" checked> Incluir sombra</label>
+    <div class="row"><select id="pngSplit" title="Um PNG por produto da fileira, cada um enquadrado nele">
+      <option value="tudo">Tudo numa imagem</option><option value="produtos">Cada produto separado (lado a lado)</option></select></div>
     <div class="row"><button class="btn pri" id="dlPng">Baixar PNG</button></div>
     <h3>3D</h3>
     <div class="row">
@@ -697,7 +699,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-10-02.materiais';
+const BUILD = '2026-10-02.arquivo-inteiro';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -1206,7 +1208,7 @@ function normalize(s) {
   s.logos ??= [];
   // Lado a lado: outros produtos da linha (cada um com o próprio modelo e cor).
   s.slot ??= 0; s.gap ??= 25;
-  s.side = (s.side || []).map(it => { const n = normalize({ wall: s.wall, bg: s.bg, ...it, side: [] }); delete n.side; delete n.gap; return n; });
+  s.side = (s.side || []).map(it => { const n = normalize({ wall: s.wall, bg: s.bg, ...it, side: [] }); delete n.side; delete n.gap; delete n.file; return n; });
   // Peças em malha (versão antiga da Draft) não existem mais.
   s.modules = (s.modules || []).filter(m => m.kind !== 'malha').map(m => ({ ...m, color: unpink(m.color) })).map(m => ({ ...BASE, uid: newUid(), ...m, ...(m.sprayType === 'pump' ? { sprayType: 'locao' } : m.sprayType === 'foamInc' ? { sprayType: 'foam' } : m.sprayType === 'foam' && m.actW > 20 ? { actW: 15, actH: 24, nozzleL: 2.6 } : {}) }));
   s.modules.forEach(m => {
@@ -6181,7 +6183,7 @@ function renderGlobal() {
   field(lf, S, ['difus', 'Difusão (0 = liso/polido, 100 = bem difuso)', 0, 100, 1, '%', null, o => presetDif(o.finish)], queueBuild);
   if (isGlass(S.finish)) field(lf, S, ['ior', 'IOR do vidro (1,0 ar · 1,33 água · 1,5 vidro · 2,4 diamante)', 1, 2.4, 0.01, '', null, o => presetIor(o.finish)], queueBuild);
   matRow(lf, S, d => { renderGlobal(); if (d) { renderStack(); queueBuild(); } });
-  $('#projName').value = S.name;
+  $('#projName').value = fileName();
 }
 
 function renderAll() { renderStack(); renderEditor(); renderGlobal(); renderPresets(); renderLogos(); renderLineup(); renderScene(); applySceneLight(); }
@@ -6357,13 +6359,19 @@ function thumbOf(st) {
   const key = thumbKey(st);
   if (thumbCache.has(key)) return thumbCache.get(key);
   const g = new THREE.Group(); thumbScene.add(g);
-  buildInto(g, normalize(structuredClone(st)));
+  const ns = normalize(structuredClone(st));
+  if (ns.side?.length) { // arquivo com lado a lado: a miniatura mostra todos os produtos na ordem
+    const all = [{ slot: ns.slot || 0, it: ns }, ...ns.side.map(it => ({ slot: it.slot || 0, it }))].sort((a, b) => a.slot - b.slot);
+    let x = 0;
+    for (const e of all) { const sg = new THREE.Group(); buildInto(sg, e.it, 0); const bb = new THREE.Box3().setFromObject(sg); if (bb.isEmpty()) continue;
+      sg.position.x = x - bb.min.x; x += bb.max.x - bb.min.x + (ns.gap || 25); g.add(sg); }
+  } else buildInto(g, ns);
   const b = new THREE.Box3().setFromObject(g), sz = b.getSize(new THREE.Vector3()), c = b.getCenter(new THREE.Vector3());
   const dist = (Math.max(sz.y, sz.x / (TW / TH)) * 0.5 * 1.18) / Math.tan(THREE.MathUtils.degToRad(13)) + Math.max(sz.x, sz.z) / 2;
   thumbCam.position.copy(c).addScaledVector(new THREE.Vector3(0.75, 0.3, 1).normalize(), dist); thumbCam.lookAt(c);
   thumbR.render(thumbScene, thumbCam);
   const url = thumbR.domElement.toDataURL('image/png');
-  g.children.forEach(o => o.geometry.dispose()); thumbScene.remove(g);
+  g.traverse(o => o.geometry?.dispose()); thumbScene.remove(g);
   thumbCache.set(key, url);
   return url;
 }
@@ -6428,7 +6436,7 @@ function renderPresets() {
       else {
         const sv = saved(), st = sv[d.name]; if (!st) return;
         if (auto) delete st.aba; else st.aba = t;
-        if (S.name === d.name) { if (auto) delete S.aba; else S.aba = t; store.set('shape.autosave', S); }
+        if (fileName() === d.name) { if (auto) delete S.aba; else S.aba = t; store.set('shape.autosave', S); }
         if (cloud) { try { await api('models.php?a=save', { name: d.name, data: st }); } catch { return toast('Não consegui mudar a aba'); } }
         else store.set('shape.presets', sv);
       }
@@ -6438,7 +6446,7 @@ function renderPresets() {
   tabs?.querySelectorAll('.chip').forEach(c => c.classList.toggle('on', c.dataset.tab === galTab));
   const key = galTab + '#' + stlUploads.map(f => f.id).join(',') + '#' + Object.keys(PRESETS).join('|') + '#' + Object.keys(sv).join('|') + '#' + JSON.stringify(baseAbas()) + Object.values(sv).map(v => v.aba || '').join('|');
   if (key === galleryKey && gal.children.length) {
-    gal.querySelectorAll('.card').forEach(c => c.classList.toggle('on', c.title === S.name));
+    gal.querySelectorAll('.card').forEach(c => c.classList.toggle('on', c.title === fileName()));
     return;
   }
   galleryKey = key;
@@ -6448,7 +6456,7 @@ function renderPresets() {
     const h = document.createElement('h4'); h.textContent = title; gal.appendChild(h);
     for (const [name, st] of entries) {
       const card = document.createElement('div');
-      card.className = 'card' + (S.name === name ? ' on' : '');
+      card.className = 'card' + (fileName() === name ? ' on' : '');
       card.title = name;
       card.innerHTML = `<img class="ph" alt=""><div>${name}</div>`;
       card.onclick = () => { loadState(st, name); };
@@ -6480,11 +6488,14 @@ function renderPresets() {
   gal.scrollTop = keepTop;
 
 }
+// Nome do arquivo (o que vai na galeria e no Salvar) é do arquivo inteiro, com todos os
+// produtos do lado a lado; S.name é o nome do produto em edição (muda ao clicar em outro).
+const fileName = () => S.file ?? S.name ?? '';
 function loadState(s, name) {
   // Abre exatamente como foi salvo: com o lado a lado dele, ou sem nenhum (antes o
   // lado a lado da tela ficava grudado em todo modelo aberto).
   S = normalize(structuredClone({ wall: S.wall, bg: S.bg, side: [], ...s }));
-  if (name) S.name = name;
+  if (name) { S.file = name; if (!S.side.length) S.name = name; } // arquivo = tudo o que está nele (todos os produtos)
   store.set('shape.openGroups', {}); // produto aberto: grupos de controles começam fechados
   sel = 0; renderAll(); build(); fit();
 }
@@ -6494,13 +6505,13 @@ $('#newProduct').onclick = () => {
   if (!confirm('Começar um produto novo do zero?\n\nO produto atual e o lado a lado saem da tela. O que já foi salvo continua na galeria.')) return;
   const base = PRESETS[Object.keys(PRESETS)[0]];
   S = normalize(structuredClone({ wall: S.wall, bg: S.bg, scene: S.scene, ...base, side: [], logos: [], name: '' }));
-  S.name = ''; sel = 0; lastAuto = ''; store.set('shape.openGroups', {});
+  S.name = ''; S.file = ''; sel = 0; lastAuto = ''; store.set('shape.openGroups', {});
   renderAll(); build(); fit(); saveStatus('');
   toast('Produto novo: monte e salve com um nome');
 };
-$('#projName').oninput = e => { S.name = e.target.value; store.set('shape.autosave', S); };
+$('#projName').oninput = e => { S.file = e.target.value; if (!S.side.length) S.name = e.target.value; store.set('shape.autosave', S); };
 $('#savePreset').onclick = async () => {
-  const name = (S.name || '').trim() || 'Sem nome';
+  const name = fileName().trim() || 'Sem nome'; S.file = name;
   if (cloud) {
     try { await api('models.php?a=save', { name, data: S }); } catch (e) { return toast(e.status === 401 ? 'Sua sessão expirou: entre de novo' : 'Não consegui salvar'); }
     cloud[name] = structuredClone(S);
@@ -6518,9 +6529,9 @@ let lastAuto = '';
 const AUTO_TAG = ' (autosave)';
 async function autoSave() {
   if (autoBusy || spinning) return;
-  const base = (S.name || '').trim().replace(/ \(autosave\)$/, '') || 'Sem nome', slot = base + AUTO_TAG, sv = saved();
-  const data = { ...structuredClone(S), name: slot }, js = JSON.stringify(data);
-  if (js === lastAuto || (sv[base] && JSON.stringify({ ...sv[base], name: slot }) === js)) return; // nada mudou
+  const base = fileName().trim().replace(/ \(autosave\)$/, '') || 'Sem nome', slot = base + AUTO_TAG, sv = saved();
+  const data = { ...structuredClone(S), file: slot }, js = JSON.stringify(data);
+  if (js === lastAuto || (sv[base] && JSON.stringify({ ...sv[base], file: slot }) === js)) return; // nada mudou
   autoBusy = true;
   try {
     if (cloud) { await api('models.php?a=save', { name: slot, data }); cloud[slot] = data; }
@@ -6533,12 +6544,12 @@ async function autoSave() {
 setInterval(autoSave, 5 * 60000);
 window.addEventListener('beforeunload', () => { autoSave(); });
 $('#delPreset').onclick = async () => {
-  const sv = saved(); if (!sv[S.name]) return toast('Esse nome não está entre os salvos');
+  const fn = fileName(), sv = saved(); if (!sv[fn]) return toast('Esse nome não está entre os salvos');
   if (cloud) {
-    try { await api('models.php?a=delete', { name: S.name }); } catch (e) { return toast(e.status === 401 ? 'Sua sessão expirou: entre de novo' : 'Não consegui excluir'); }
-    delete cloud[S.name];
-  } else { delete sv[S.name]; store.set('shape.presets', sv); }
-  galleryKey = ''; renderPresets(); toast(`Excluído: ${S.name}`);
+    try { await api('models.php?a=delete', { name: fn }); } catch (e) { return toast(e.status === 401 ? 'Sua sessão expirou: entre de novo' : 'Não consegui excluir'); }
+    delete cloud[fn];
+  } else { delete sv[fn]; store.set('shape.presets', sv); }
+  galleryKey = ''; renderPresets(); toast(`Excluído: ${fn}`);
 };
 $('#exportJson').onclick = () => download(new Blob([JSON.stringify(S, null, 2)], { type: 'application/json' }), fname('json'));
 $('#importJsonBtn').onclick = () => $('#importJson').click();
@@ -6611,7 +6622,7 @@ $('#refFile').onchange = e => {
 $('#refClear').onclick = () => { refMat.map?.dispose(); refMat.map = null; updateRef(); };
 
 // ───────────────────────── exportação ─────────────────────────
-const fname = ext => `${(S.name || 'embalagem').trim().replace(/[^\w\-À-ú ]+/g, '').replace(/\s+/g, '_') || 'embalagem'}.${ext}`;
+const fname = ext => `${(fileName() || 'embalagem').trim().replace(/[^\w\-À-ú ]+/g, '').replace(/\s+/g, '_') || 'embalagem'}.${ext}`;
 function download(blob, name) {
   const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name;
   document.body.appendChild(a); a.click(); a.remove();
@@ -6766,8 +6777,8 @@ $('#dlPng').onclick = () => {
     const cx = c.getContext('2d'); cx.imageSmoothingEnabled = true; cx.imageSmoothingQuality = 'high';
     cx.drawImage(renderer.domElement, 0, 0, w, h); return c;
   };
-  let out;
-  if (!transp) out = shot();
+  const capture = () => { let out;
+  if (!transp) out = shot(keep.bg);
   else {
     // Fundo transparente de verdade. A cor vem da imagem normal (vidro com a cor
     // que se vê na tela); a transparência vem de duas imagens com o vidro sólido,
@@ -6788,10 +6799,38 @@ $('#dlPng').onclick = () => {
     }
     cB.getContext('2d').putImageData(iB, 0, 0); out = cB;
   }
-  const data = out.toDataURL('image/png');
+  return out; };
+  // Produtos separados: cada produto da fileira (lado a lado) numa imagem própria.
+  const split = $('#pngSplit').value, layers = [];
+  if (split === 'tudo') layers.push(['', null]);
+  else {
+    const meshes = []; [product, sideRoot].forEach(r => r.traverse(o => { if (o.isMesh) meshes.push([o, o.visible]); }));
+    const only = keepFn => meshes.forEach(([o, v]) => { o.visible = v && keepFn(o); });
+    const inside = (o, root) => { for (let q = o; q; q = q.parent) if (q === root) return true; return false; };
+    const sets = [[S.name || 'produto', o => inside(o, product)]];
+    sideRoot.children.forEach((g, i) => sets.push([S.side[i]?.name || `produto ${i + 2}`, o => inside(o, g)]));
+    // cada imagem enquadra o próprio produto, no mesmo ângulo da tela
+    const camKeep = { pos: cam.position.clone(), q: cam.quaternion.clone(), half: orthoHalf, zoom: ortho.zoom };
+    const dir = cam.getWorldDirection(new THREE.Vector3()).negate(), aspect = w / h;
+    for (const [nm, fn] of sets) {
+      only(fn); if (!meshes.some(([o]) => o.visible)) continue; // produto sem malha visível
+      const bb = new THREE.Box3(); meshes.forEach(([o]) => { if (o.visible) bb.union(new THREE.Box3().setFromObject(o)); });
+      const sz = bb.getSize(new THREE.Vector3()), c = bb.getCenter(new THREE.Vector3()), vis = Math.max(sz.y, sz.x / aspect, sz.z / aspect);
+      if (cam === persp) cam.position.copy(c).addScaledVector(dir, (vis * 0.5 * 1.15) / Math.tan(THREE.MathUtils.degToRad(persp.fov / 2)) + Math.max(sz.x, sz.z) / 2);
+      else { const hh = vis * 0.5 * 1.2; Object.assign(ortho, { left: -hh * aspect, right: hh * aspect, top: hh, bottom: -hh, zoom: 1 }); ortho.updateProjectionMatrix(); cam.position.copy(c).addScaledVector(dir, 3000); }
+      cam.lookAt(c); cam.updateMatrixWorld();
+      layers.push([nm, capture()]);
+    }
+    meshes.forEach(([o, v]) => { o.visible = v; });
+    cam.position.copy(camKeep.pos); cam.quaternion.copy(camKeep.q); orthoHalf = camKeep.half; ortho.zoom = camKeep.zoom; cam.updateMatrixWorld();
+  }
+  if (split === 'tudo') layers[0][1] = capture();
   grid.visible = keep.grid; refMesh.visible = keep.ref; scene.background = keep.bg; ground.visible = keep.ground; setLighting(keep.light); applySceneLight();
-  renderer.setPixelRatio(pr); renderer.setSize(size.x, size.y, false); req();
-  fetch(data).then(r => r.blob()).then(b => download(b, fname('png')));
+  renderer.setPixelRatio(pr); renderer.setSize(size.x, size.y, false); resize(); req(); // resize refaz a projeção (o enquadramento por produto mexe nela)
+  const base = fname('png').replace(/\.png$/, ''), safe = t => String(t).normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().replace(/[^\w\- ]+/g, '').replace(/\s+/g, '_'); // sem acento: nome do arquivo não se perde
+  // vários arquivos: um de cada vez (o navegador pode pedir para permitir downloads múltiplos)
+  layers.forEach(([nm, c], k) => setTimeout(() => c.toBlob(b => download(b, nm ? `${base}_${String(k + 1).padStart(2, '0')}_${safe(nm)}.png` : `${base}.png`), 'image/png'), k * 450));
+  if (layers.length > 1) toast(`${layers.length} PNGs, um por produto`);
 };
 const collectReliefSources = st => [...(st.modules || []), ...(st.side || []).flatMap(it => it.modules || [])].map(m => m.reliefImg).filter(Boolean);
 async function ensureReliefsForExport() {
@@ -7043,7 +7082,7 @@ function varyOne(seed, base, amt) {
 }
 $('#varBtn').onclick = () => {
   const seed = Math.round(+$('#genSeed').value || 1), n = +[...genSel.qtd][0] || 9, amt = +document.querySelector('#varAmt .chip.on')?.dataset.v || 0.7;
-  const base = structuredClone(S), nm = (S.name || 'Projeto').replace(/ \(autosave\)$/, '');
+  const base = structuredClone(S), nm = (fileName() || 'Projeto').replace(/ \(autosave\)$/, '');
   const grid = $('#genGrid'); grid.innerHTML = '';
   for (let i = 0; i < n; i++) {
     let r; try { r = varyOne(seed * 7919 + i * 104729, base, amt); } catch (e) { console.error(e); continue; }
