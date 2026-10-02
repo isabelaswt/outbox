@@ -708,7 +708,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-10-02.abrir-projeto';
+const BUILD = '2026-10-02.precieux';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -984,6 +984,12 @@ const PRESETS = {
     M('reto', { W: 42, D: 42, h: 96, rBot: 3, rTop: 4 }), NECK('20/410'),
     M('nuvem')] },
   // Referência Mojoki: cilindro reto e bola grande de tampa.
+  // Referência Précieux: frasco baixo canelado (vidro) com ombro arredondado, bola sobre
+  // o gargalo e tampa alta canelada de topo reto. Cor sempre bege.
+  'Précieux': { color: BEIGE, finish: 'fosco', modules: [
+    M('reto', { name: 'Corpo canelado', W: 55, D: 55, h: 60, rBot: 3, rTop: 7, lobes: 28, lobeD: 1.1 }), NECK('18/410'),
+    M('esfera', { name: 'Bola', W: 49, D: 49, h: 49, rBot: 24.5, rTop: 24.5, sphereR: 24.5, groove: 0, topType: 'nenhum', gap: -7 }),
+    M('canelado', { name: 'Tampa canelada', W: 35, D: 35, h: 50, rBot: 1, rTop: 2, lobes: 18, lobeD: 1.3, gap: -1.5 })] },
   'Cilindro + bola': { color: BEIGE, finish: 'fosco', modules: [
     M('reto', { W: 40, D: 40, h: 96, rBot: 2, rTop: 3 }), NECK('18/410'),
     M('esfera', { W: 42, D: 42, h: 42, rBot: 21, rTop: 21, sphereR: 21, groove: 0, topType: 'nenhum' })] },
