@@ -44,6 +44,15 @@ if ($a === 'save') {
   out(['ok' => true]);
 }
 
+// Só a miniatura (preenche as que faltam sem mexer na data do modelo).
+if ($a === 'thumb') {
+  $in = need_post();
+  $thumb = (string)($in['thumb'] ?? '');
+  if ($thumb === '' || strlen($thumb) > 400000 || !str_starts_with($thumb, 'data:image/')) out(['error' => 'thumb'], 400);
+  db()->prepare('UPDATE models SET thumb = ?, updated_at = updated_at WHERE user_id = ? AND name = ?')->execute([$thumb, $u['id'], clean_name($in['name'] ?? '')]);
+  out(['ok' => true]);
+}
+
 if ($a === 'delete') {
   $in = need_post();
   db()->prepare('DELETE FROM models WHERE user_id = ? AND name = ?')->execute([$u['id'], clean_name($in['name'] ?? '')]);

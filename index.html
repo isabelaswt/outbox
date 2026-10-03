@@ -708,7 +708,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-10-02.precieux';
+const BUILD = '2026-10-03.miniaturas';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -6383,6 +6383,14 @@ async function refreshCloudList() {
   try { cloudList = (await api('models.php?a=list')).models || []; } catch {}
   renderLineup(); galleryKey = ''; renderPresets();
 }
+// Miniatura que falta (modelos salvos antes da lista leve): desenha e manda só ela.
+async function fillThumb(it, st) {
+  if (!cloud || it.thumb || !st) return '';
+  let t = ''; try { t = thumbOf(st) || ''; } catch {}
+  if (!t) return '';
+  try { await api('models.php?a=thumb', { name: it.name, thumb: t }); it.thumb = t; } catch { return ''; }
+  return t;
+}
 // Popup "Abrir": procura e abre um projeto salvo (só esse é baixado).
 function openSavedDialog() {
   const items = cloud ? cloudList : Object.keys(store.get('shape.presets', {})).map(name => ({ name, thumb: '', updated: '' }));
@@ -6405,13 +6413,30 @@ function openSavedDialog() {
         c.querySelector('small').textContent = it.updated ? new Date(it.updated.replace(' ', 'T')).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '';
         c.onclick = async () => {
           c.classList.add('on'); toast(`Abrindo ${it.name}…`);
-          try { const st = await getSaved(it.name); if (!st) throw 0; close(); loadState(st, it.name); toast(`Aberto: ${it.name}`); }
+          try { const st = await getSaved(it.name); if (!st) throw 0; close(); loadState(st, it.name); toast(`Aberto: ${it.name}`); setTimeout(() => fillThumb(it, st), 600); }
           catch { toast('Não consegui abrir esse projeto'); }
         };
         grid.appendChild(c);
       }
     };
     sec('Projetos', main); sec('Cópias automáticas (autosave)', auto);
+    const miss = cloud ? items.filter(x => !x.thumb) : [];
+    if (miss.length) {
+      const b = document.createElement('button'); b.className = 'btn sm'; b.style.gridColumn = '1/-1';
+      b.textContent = `Gerar as miniaturas que faltam (${miss.length})`;
+      b.onclick = async () => { // um por vez: baixa, desenha, guarda a miniatura e solta o modelo da memória
+        b.disabled = true; let k = 0;
+        for (const it of miss) {
+          if (!ov.isConnected) break;
+          b.textContent = `Gerando miniaturas… ${++k}/${miss.length}`;
+          try { const had = it.name in cloud, st = await getSaved(it.name); await fillThumb(it, st); if (!had && it.name !== fileName()) delete cloud[it.name]; } catch {}
+          const img = [...grid.querySelectorAll('.card')].find(c => c.title === it.name)?.querySelector('img'); if (img && it.thumb) img.src = it.thumb;
+          await new Promise(r => setTimeout(r, 30));
+        }
+        if (ov.isConnected) draw();
+      };
+      grid.prepend(b);
+    }
     if (!list.length) grid.innerHTML = `<h4>${items.length ? 'Nada com esse nome' : 'Nenhum projeto salvo ainda: use Salvar'}</h4>`;
   };
   q.oninput = draw; ov.querySelector('button').onclick = close;
