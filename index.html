@@ -52,6 +52,7 @@ input[type=range]{width:100%;accent-color:var(--accent);margin:3px 0 0}
 input[type=color]{width:44px;height:24px;border:1px solid var(--line);border-radius:6px;padding:0;background:none}
 select,input[type=text]{font:inherit;font-size:12px;border:1px solid var(--line);border-radius:7px;padding:5px 7px;background:var(--soft);color:var(--ink);width:100%}
 .row{display:flex;gap:6px;align-items:center;margin:6px 0}
+.row.fileBtns{display:grid;grid-template-columns:repeat(3,1fr)}.row.fileBtns .btn{padding-left:4px;padding-right:4px;white-space:nowrap}
 .row>*{flex:1}
 .row.actions{flex-wrap:wrap;align-items:stretch}
 .row.actions .btn{flex:1 1 132px;min-width:0;white-space:normal;line-height:1.15}
@@ -153,7 +154,7 @@ canvas{display:block;width:100%;height:100%;touch-action:none}
     <div class="chips" id="galTabs"></div>
     <div class="gallery" id="gallery"></div>
     <div class="row"><input type="text" id="projName" placeholder="Nome do projeto"></div>
-    <div class="row">
+    <div class="row fileBtns">
       <button class="btn" id="openSaved" title="Abrir um projeto salvo (só ele é carregado)">Abrir…</button>
       <button class="btn" id="savePreset">Salvar</button>
       <button class="btn" id="stlGalBtn" title="Subir uma peça STL: entra no produto e fica na aba Uploads para reuso">+ STL</button>
@@ -708,7 +709,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-10-03.miniaturas';
+const BUILD = '2026-10-03.botoes';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
