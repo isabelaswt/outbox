@@ -710,7 +710,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-10-03.excluir';
+const BUILD = '2026-10-03.fileira-fixa';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -5090,7 +5090,11 @@ const LINE_KEYS = ['name', 'color', 'finish', 'modules', 'logos', 'slot'];
 function editSide(i) {
   const it = S.side[i], cur = {};
   LINE_KEYS.forEach(k => { cur[k] = S[k]; S[k] = it[k]; });
+  // O produto escolhido passa a ficar na origem e a fileira inteira anda junto: a câmera
+  // anda o mesmo tanto, então na tela nada sai do lugar (antes tudo pulava para o lado).
+  const dx = sideRoot.children[i]?.position.x || 0;
   cur.wall = S.wall; S.side[i] = cur; sel = 0; renderAll(); build();
+  if (dx) { cam.position.x -= dx; controls.target.x -= dx; controls.update(); req(); }
 }
 function copyProduct(src, name, slot) {
   const st = normalize(structuredClone({ wall: S.wall, bg: S.bg, ...src, side: [] })), ids = new Map();
