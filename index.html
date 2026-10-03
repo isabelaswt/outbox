@@ -93,6 +93,7 @@ select,input[type=text]{font:inherit;font-size:12px;border:1px solid var(--line)
 .openGrid{overflow:auto;padding:12px 16px;display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px;align-content:start}
 .openGrid h4{grid-column:1/-1;margin:6px 0 0}
 .openGrid small{display:block;font-size:10px;opacity:.55}
+.openGrid .card{position:relative}.openGrid .del{position:absolute;top:6px;right:6px;border:0;background:rgba(255,255,255,.9);border-radius:6px;cursor:pointer;padding:2px 6px;opacity:.7}.openGrid .del:hover{opacity:1;color:#b00}
 .chip.drop{border-color:var(--ink);box-shadow:0 0 0 2px var(--ink) inset}
 .gen-l{font-size:10.5px;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);font-weight:600;margin-top:6px}
 .card .ph{width:100%;aspect-ratio:9/11;display:block;object-fit:contain;border-radius:6px;background:linear-gradient(180deg,#fff,#f1efeb)}
@@ -709,7 +710,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-10-03.botoes';
+const BUILD = '2026-10-03.excluir';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -6408,7 +6409,16 @@ function openSavedDialog() {
       if (!arr.length) return; const h = document.createElement('h4'); h.textContent = title; grid.appendChild(h);
       for (const it of arr) {
         const c = document.createElement('div'); c.className = 'card' + (it.name === fileName() ? ' on' : ''); c.title = it.name;
-        c.innerHTML = `<img class="ph" alt=""><div></div><small></small>`;
+        c.innerHTML = `<img class="ph" alt=""><div></div><small></small><button class="del" title="Excluir este projeto">✕</button>`;
+        c.querySelector('.del').onclick = async e => {
+          e.stopPropagation();
+          if (!confirm(`Excluir "${it.name}" dos salvos? Não dá para desfazer.`)) return;
+          try {
+            if (cloud) { await api('models.php?a=delete', { name: it.name }); delete cloud[it.name]; cloudList = cloudList.filter(x => x.name !== it.name); }
+            else { const sv = store.get('shape.presets', {}); delete sv[it.name]; store.set('shape.presets', sv); }
+          } catch (er) { return toast(er.status === 401 ? 'Sua sessão expirou: entre de novo' : 'Não consegui excluir'); }
+          items.splice(items.indexOf(it), 1); draw(); galleryKey = ''; renderPresets(); renderLineup(); toast(`Excluído: ${it.name}`);
+        };
         if (it.thumb) c.querySelector('img').src = it.thumb;
         c.querySelector('div').textContent = it.name;
         c.querySelector('small').textContent = it.updated ? new Date(it.updated.replace(' ', 'T')).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '';
@@ -6657,13 +6667,13 @@ async function autoSave() {
 setInterval(autoSave, 5 * 60000);
 window.addEventListener('beforeunload', () => { autoSave(); });
 $('#delPreset').onclick = async () => {
-  const fn = fileName(); if (!savedNames().includes(fn)) return toast('Esse nome não está entre os salvos');
+  const fn = fileName(); if (!savedNames().includes(fn)) { toast('Esse aberto não é um salvo: exclua pelo ✕ no Abrir…'); return openSavedDialog(); }
   if (!confirm(`Excluir "${fn}" dos salvos?`)) return; const sv = saved();
   if (cloud) {
     try { await api('models.php?a=delete', { name: fn }); } catch (e) { return toast(e.status === 401 ? 'Sua sessão expirou: entre de novo' : 'Não consegui excluir'); }
     delete cloud[fn]; cloudList = cloudList.filter(x => x.name !== fn);
   } else { delete sv[fn]; store.set('shape.presets', sv); }
-  galleryKey = ''; renderPresets(); toast(`Excluído: ${fn}`);
+  galleryKey = ''; renderPresets(); renderLineup(); toast(`Excluído: ${fn}`);
 };
 $('#exportJson').onclick = () => download(new Blob([JSON.stringify(S, null, 2)], { type: 'application/json' }), fname('json'));
 $('#importJsonBtn').onclick = () => $('#importJson').click();
