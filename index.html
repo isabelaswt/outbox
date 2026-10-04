@@ -710,7 +710,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-10-04.miniaturas2';
+const BUILD = '2026-10-04.sol-premium';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -1454,10 +1454,16 @@ function lobeF(N, k) {
 }
 
 function loft(rings, seg, disp, uniform = false) {
+  // Gomos: a malha tem um vértice exatamente em cada vale (a quina entre gomos). Sem
+  // isso o vale caía entre vértices, em lugar diferente a cada faixa, e no vidro
+  // aparecia um tracejado ao longo dos vales perto da borda.
+  const NL = rings.reduce((n, r) => Math.max(n, r.lobes >= 3 && r.lobeK > 0 ? r.lobes | 0 : 0), 0);
+  let off = 0;
+  if (NL && !uniform) { seg = Math.ceil(seg / NL) * NL; off = (Math.PI / 2 + Math.PI / NL) % (TAU / seg); }
   const pts = rings.map(r => {
     const out = new Array(seg);
     for (let j = 0; j < seg; j++) {
-      const th = uniform ? invArc(r, j / seg * TAU) : j / seg * TAU;
+      const th = uniform ? invArc(r, j / seg * TAU) : j / seg * TAU + off;
       let [x, z] = r.sides >= 3 ? polyPt(r.a, r.b, r.sides, r.round, th) : sp(r.a, r.b, r.n, th);
       if (r.lobes >= 3 && r.lobeK > 0) { const f = lobeF(r.lobes, r.lobeK)(th); x *= f; z *= f; }
       let dy = 0;
@@ -2655,7 +2661,9 @@ function updateGroundFade() {
   if (b.isEmpty()) return;
   GROUND_U.c.value.set((b.min.x + b.max.x) / 2, (b.min.z + b.max.z) / 2);
   GROUND_U.e.value.set((b.max.x - b.min.x) / 2, (b.max.z - b.min.z) / 2);
-  GROUND_U.L.value = clamp(b.max.y * 0.09, 5, 22); // até onde a sombra vai (mm), pela altura do produto
+  // até onde a sombra vai (mm), pela altura do produto; na luz Sol a sombra comprida é o
+  // próprio efeito (foto de sol de fim de tarde), então ela vai longe
+  GROUND_U.L.value = S.scene?.luz === 'sol' ? clamp(b.max.y * 1.8, 40, 600) : clamp(b.max.y * 0.09, 5, 22);
 }
 
 const grid = new THREE.GridHelper(800, 80, 0xb9b3aa, 0xd9d4cc);
@@ -3391,6 +3399,18 @@ const wallUniform = sh => { sh.uniforms.uWall = WALL_U; sh.fragmentShader = 'uni
 // Difusão e IOR escolhidos à mão (sem escolha: o do acabamento). Difusão 0–100% = aspereza 0–0,8.
 const FIN_ROUGH = { fosco: 0.55, acetinado: 0.3, brilho: 0.14, perolado: 0.3, vidro: 0.05, pet: 0.08, vidroSemi: 0.27, vidroFosco: 0.42, petFosco: 0.5, petSemi: 0.24, metal: 0.3 };
 const presetDif = f => Math.round((FIN_ROUGH[f] ?? 0.5) / 0.8 * 100), presetIor = f => (String(f).startsWith('pet') ? 1.45 : 1.5);
+// Profundidade (na câmera) do eixo da peça de vidro que está sendo desenhada; a malha
+// atualiza antes de desenhar (ver glassAxis).
+const GLASS_AXIS = { value: -1e9 };
+const _ga = new THREE.Vector3();
+function glassAxis(mesh) {
+  mesh.onBeforeRender = (r, sc, camera, geo) => {
+    if (!geo.boundingSphere) geo.computeBoundingSphere();
+    _ga.copy(geo.boundingSphere.center).applyMatrix4(mesh.matrixWorld).applyMatrix4(camera.matrixWorldInverse);
+    GLASS_AXIS.value = _ga.z;
+  };
+  mesh.onAfterRender = () => { GLASS_AXIS.value = -1e9; }; // outras malhas com o mesmo material não são cortadas
+}
 function material(color, finish, band = null, thick, look = null) {
   if (band && !isGlass(finish)) band = null;
   // Espessura da parede entra no vidro/PET (borda mais densa quanto mais grossa) por um
@@ -3485,6 +3505,19 @@ function material(color, finish, band = null, thick, look = null) {
   if (look?.ior != null && m.transmission > 0) m.ior = clamp(look.ior, 1, 2.4); // refração: quanto maior, mais o vidro distorce o que está atrás
   const grain = { fosco: 1, acetinado: 0.8, perolado: 0.6, vidroFosco: 1, vidroSemi: 0.7, petFosco: 0.8, petSemi: 0.5 }[finish];
   if (grain) addGrain(m, grain);
+  // Vidro que não grava profundidade: nos gomos, faces da metade de trás do frasco ficam
+  // de frente para a câmera (os lados dos vales) e eram desenhadas por cima da parede da
+  // frente, em pedaços (o tracejado perto da borda). Só a metade da frente desenha; o que
+  // está atrás aparece pela transmissão, como antes.
+  if (m.transmission > 0 && !m.depthWrite) {
+    const prev = m.onBeforeCompile, pk = m.customProgramCacheKey;
+    m.onBeforeCompile = (sh, r) => { prev?.call(m, sh, r); sh.uniforms.uAxisZ = GLASS_AXIS;
+      sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying float vGlassZ;')
+        .replace('#include <project_vertex>', '#include <project_vertex>\n\tvGlassZ = mvPosition.z;');
+      sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying float vGlassZ; uniform float uAxisZ;')
+        .replace('void main() {', 'void main() {\n\tif (vGlassZ < uAxisZ) discard; // metade de trás: fica para a transmissão'); };
+    m.customProgramCacheKey = () => (pk ? pk.call(m) : '') + '|meiaFrente';
+  }
   matCache.set(key, m);
   return m;
 }
@@ -3578,7 +3611,13 @@ function renderScene() {
   // mexendo é exatamente o que é salvo e reaplicado depois.
   const ch = (k) => {
     // Premium: foto de perfume pede fundo escuro (o vidro só ganha contraste contra o escuro)
-    if (k === 'luz' && S.scene.luz === 'premium') { S.bg = '#5a5249'; Object.assign(S.scene, { bgGrad: 'radial', bgEdge: '#131211' }); applyBackground(); }
+    // Ao sair do Premium o fundo escuro dele não fica: volta o fundo de antes (se não foi mexido).
+    if (k === 'luz' && S.scene.luz === 'premium') { if (!S.scene.preBg) S.scene.preBg = { bg: S.bg, bgGrad: S.scene.bgGrad, bgEdge: S.scene.bgEdge }; S.bg = '#5a5249'; Object.assign(S.scene, { bgGrad: 'radial', bgEdge: '#131211' }); applyBackground(); }
+    else if (k === 'luz' && S.bg === '#5a5249' && S.scene.bgEdge === '#131211') {
+      const pb = S.scene.preBg || { bg: '#f1f0ed', bgGrad: 'nenhum', bgEdge: '#b9b7b2' };
+      S.bg = pb.bg; Object.assign(S.scene, { bgGrad: pb.bgGrad || 'nenhum', bgEdge: pb.bgEdge || '#b9b7b2' }); applyBackground();
+    }
+    if (k === 'luz' && S.scene.luz !== 'premium') delete S.scene.preBg;
     // Macia: fundo claro quente quase liso. Lateral: cinza com a mancha de luz à esquerda.
     if (k === 'luz' && S.scene.luz === 'macia') { S.bg = '#e7e2d9'; Object.assign(S.scene, { bgGrad: 'vertical', bgEdge: '#d8d1c5' }); applyBackground(); }
     if (k === 'luz' && S.scene.luz === 'lateral') { S.bg = '#efebe4'; Object.assign(S.scene, { bgGrad: 'lateral', bgEdge: '#9b9285' }); applyBackground(); } // quente e claro (cinza pesado demais)
@@ -4972,6 +5011,7 @@ function buildInto(product, S, explodeAmt = 0) {
     const reliefSource = m0.kind === 'gargalo' ? m : ms;
     applyReliefGeometry(g, reliefSource);
     const mesh = new THREE.Mesh(g, material(colM, finM, firstBody && thickBase(finM) ? { y: y0 + fundo } : null, thick, look));
+    if (mesh.material.transmission > 0 && !mesh.material.depthWrite) glassAxis(mesh);
     // Tampa de vidro que veste a válvula: as paredes da cavidade aparecem como as linhas
     // do vidro grosso dos dois lados da válvula (antes a cavidade sumia e parecia uma janela).
     if (g.userData.capCavity && isGlass(finM) && !isFrost(finM)) { // jateado/fosco: a cavidade fica embaçada no próprio vidro, sem linha nítida
@@ -6841,6 +6881,7 @@ function applyLightingMode(mode) {
   } else { // estúdio claro (padrão): caixa de luz de área + ambiente de estúdio
     scene.environment = refEnv; scene.environmentIntensity = 0.5 * boost; hemi.intensity = 0.08; sun.intensity = 0.5; sun.position.set(220, 520, 260);
   }
+  sun.color.set(mode === 'sol' ? '#ffdcae' : '#ffffff'); // sol de fim de tarde: luz dourada
   // quanto mais a luz vem das caixas de área (e menos do ambiente), mais o reflexo do estúdio no verniz precisa de reforço
   COAT_U.value = { macia: 7, lateral: 3.5, studio: 3, produto: 3.5, janela: 3.5, recorte: 3.5, faixa: 1.8 }[mode] ?? 1;
   areaOn = ['studio', 'faixa', 'janela', 'recorte', 'produto', 'macia', 'lateral'].includes(mode) ? 1 : 0;
