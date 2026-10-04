@@ -710,7 +710,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-10-04.sol-premium';
+const BUILD = '2026-10-04.vidro-ordenado';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -3404,12 +3404,35 @@ const presetDif = f => Math.round((FIN_ROUGH[f] ?? 0.5) / 0.8 * 100), presetIor 
 const GLASS_AXIS = { value: -1e9 };
 const _ga = new THREE.Vector3();
 function glassAxis(mesh) {
-  mesh.onBeforeRender = (r, sc, camera, geo) => {
+  const f = (r, sc, camera, geo) => {
     if (!geo.boundingSphere) geo.computeBoundingSphere();
     _ga.copy(geo.boundingSphere.center).applyMatrix4(mesh.matrixWorld).applyMatrix4(camera.matrixWorldInverse);
     GLASS_AXIS.value = _ga.z;
+    sortBackToFront(mesh, geo, camera);
   };
+  f.glass = true; mesh.onBeforeRender = f;
   mesh.onAfterRender = () => { GLASS_AXIS.value = -1e9; }; // outras malhas com o mesmo material não são cortadas
+}
+// Vidro sem profundidade: o último triângulo desenhado fica por cima. Ordena os
+// triângulos de trás para frente pela câmera (só quando ela muda de direção), assim o
+// mais perto sempre vence e os vales dos gomos não viram tracejado.
+const _cam = new THREE.Vector3(), _inv = new THREE.Matrix4();
+function sortBackToFront(mesh, geo, camera) {
+  const I = geo.index; if (!I || I.count > 900000) return;
+  _inv.copy(mesh.matrixWorld).invert(); _cam.setFromMatrixPosition(camera.matrixWorld).applyMatrix4(_inv);
+  const u = geo.userData, last = u.sortCam;
+  if (last && last.distanceToSquared(_cam) < Math.max(1, last.lengthSq() * 0.0004)) return; // mexeu pouco: mantém
+  const n = I.count / 3;
+  if (!u.sortTri) { // centro de cada triângulo e o índice original (uma vez)
+    const P = geo.attributes.position, src = I.array.slice(), c = new Float32Array(n * 3);
+    for (let t = 0; t < n; t++) for (let k = 0; k < 3; k++) { const v = src[3 * t + k]; c[3 * t] += P.getX(v) / 3; c[3 * t + 1] += P.getY(v) / 3; c[3 * t + 2] += P.getZ(v) / 3; }
+    u.sortTri = { src, c, d: new Float32Array(n), ord: new Uint32Array(n) };
+  }
+  const { src, c, d, ord } = u.sortTri;
+  for (let t = 0; t < n; t++) { const dx = c[3 * t] - _cam.x, dy = c[3 * t + 1] - _cam.y, dz = c[3 * t + 2] - _cam.z; d[t] = dx * dx + dy * dy + dz * dz; ord[t] = t; }
+  ord.sort((a, b) => d[b] - d[a]); // longe primeiro
+  const A = I.array; for (let t = 0; t < n; t++) { const o = ord[t] * 3; A[3 * t] = src[o]; A[3 * t + 1] = src[o + 1]; A[3 * t + 2] = src[o + 2]; }
+  I.needsUpdate = true; u.sortCam = (last || new THREE.Vector3()).copy(_cam);
 }
 function material(color, finish, band = null, thick, look = null) {
   if (band && !isGlass(finish)) band = null;
@@ -3509,17 +3532,22 @@ function material(color, finish, band = null, thick, look = null) {
   // de frente para a câmera (os lados dos vales) e eram desenhadas por cima da parede da
   // frente, em pedaços (o tracejado perto da borda). Só a metade da frente desenha; o que
   // está atrás aparece pela transmissão, como antes.
-  if (m.transmission > 0 && !m.depthWrite) {
-    const prev = m.onBeforeCompile, pk = m.customProgramCacheKey;
-    m.onBeforeCompile = (sh, r) => { prev?.call(m, sh, r); sh.uniforms.uAxisZ = GLASS_AXIS;
-      sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying float vGlassZ;')
-        .replace('#include <project_vertex>', '#include <project_vertex>\n\tvGlassZ = mvPosition.z;');
-      sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying float vGlassZ; uniform float uAxisZ;')
-        .replace('void main() {', 'void main() {\n\tif (vGlassZ < uAxisZ) discard; // metade de trás: fica para a transmissão'); };
-    m.customProgramCacheKey = () => (pk ? pk.call(m) : '') + '|meiaFrente';
-  }
+  halfFront(m);
   matCache.set(key, m);
   return m;
+}
+function halfFront(m) {
+  if (m.transmission > 0 && !m.depthWrite && !m.userData.meiaFrente) {
+    m.userData.meiaFrente = true; m.needsUpdate = true;
+    const prev = m.onBeforeCompile, pk = m.customProgramCacheKey;
+    m.onBeforeCompile = (sh, r) => { prev?.call(m, sh, r); sh.uniforms.uAxisZ = GLASS_AXIS;
+      // só paredes laterais (normal deitada): tampo, fundo e a superfície do líquido ficam inteiros
+      sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying float vGlassZ; varying float vGlassNy;')
+        .replace('#include <project_vertex>', '#include <project_vertex>\n\tvGlassZ = mvPosition.z; vGlassNy = normalize(mat3(modelMatrix) * objectNormal).y;');
+      sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying float vGlassZ; varying float vGlassNy; uniform float uAxisZ;')
+        .replace('void main() {', 'void main() {\n\tif (vGlassZ < uAxisZ && abs(vGlassNy) < 0.6) discard; // parede da metade de trás: fica para a transmissão'); };
+    m.customProgramCacheKey = () => (pk ? pk.call(m) : '') + '|meiaFrente';
+  }
 }
 
 // ───────────────────────── apresentação ─────────────────────────
@@ -4104,6 +4132,8 @@ function build() {
   buildInto(product, S, explode ? 18 : 0);
   applyLabelsTo(product, S);
   buildLineup();
+  // líquido transparente e qualquer outra peça que transmite: mesma regra do vidro (sem tracejado)
+  [product, sideRoot].forEach(r => r.traverse(o => { const mt = o.material; if (!o.isMesh || Array.isArray(mt) || !(mt?.transmission > 0) || mt.depthWrite) return; halfFront(mt); if (!o.onBeforeRender?.glass) glassAxis(o); }));
   buildStage();
   record();
   { const sc = S.scene; if (sc?.luz === 'hdr' && sc.hdrName && sc.hdrName !== HDR.name) setTimeout(() => ensureHdr(sc.hdrName), 0); } // HDR guardado do projeto aberto
