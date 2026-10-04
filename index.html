@@ -710,7 +710,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-10-04.salvos-na-galeria';
+const BUILD = '2026-10-04.miniaturas2';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -6400,17 +6400,23 @@ async function fillThumb(it, st) {
 }
 // Galeria: miniatura que falta é feita aos poucos, uma por vez, e guardada no servidor.
 const cloudThumbQ = []; let cloudThumbBusy = false;
-function queueCloudThumb(it, img) {
-  cloudThumbQ.push([it, img]); if (cloudThumbBusy) return; cloudThumbBusy = true;
+function queueCloudThumb(it) {
+  if (it.queued || it.tried) return; it.queued = true; // cada projeto entra na fila uma vez só
+  cloudThumbQ.push(it); if (cloudThumbBusy) return; cloudThumbBusy = true;
+  let tabsChanged = false;
   const next = async () => {
-    const job = cloudThumbQ.shift(); if (!job) { cloudThumbBusy = false; return; }
-    const [x, im] = job; x.tried = true; // uma tentativa só (um modelo com erro não fica em loop)
-    if ((!x.thumb || !x.tab) && im.isConnected) { try { const had = x.name in cloud, st = await getSaved(x.name); await fillThumb(x, st); if (!had && x.name !== fileName()) delete cloud[x.name]; } catch {} }
-    if (x.thumb && im.isConnected) im.src = x.thumb;
-    if (!cloudThumbQ.length) { galleryKey = ''; renderPresets(); } // abas que acabaram de ser descobertas
-    setTimeout(next, 120);
+    const x = cloudThumbQ.shift();
+    if (!x) { cloudThumbBusy = false; if (tabsChanged) { galleryKey = ''; renderPresets(); } return; }
+    // Não depende do card ainda estar na tela: a galeria se redesenha várias vezes no
+    // login, e antes isso fazia a fila pular todos (e nenhuma miniatura aparecia).
+    const tab0 = x.tab;
+    try { const had = x.name in cloud, st = await getSaved(x.name); await fillThumb(x, st); if (!had && x.name !== fileName()) delete cloud[x.name]; } catch {}
+    if (!x.thumb) x.tried = true; // deu erro: não tenta de novo nesta sessão
+    if (x.tab !== tab0) tabsChanged = true;
+    if (x.thumb) document.querySelectorAll('.card').forEach(c => { if (c.title === x.name) { const im = c.querySelector('img'); if (im && !im.src) im.src = x.thumb; } });
+    setTimeout(next, 80);
   };
-  setTimeout(next, 400);
+  setTimeout(next, 300);
 }
 // Popup "Abrir": procura e abre um projeto salvo (só esse é baixado).
 function openSavedDialog() {
@@ -6623,7 +6629,7 @@ function renderPresets() {
     for (const it of list) {
       const card = document.createElement('div'); card.className = 'card' + (fileName() === it.name ? ' on' : ''); card.title = it.name;
       card.innerHTML = '<img class="ph" alt=""><div></div>'; card.querySelector('div').textContent = it.name;
-      const img = card.querySelector('img'); if (it.thumb) img.src = it.thumb; if ((!it.thumb || !it.tab) && !it.tried) queueCloudThumb(it, img); // falta miniatura ou aba: feita uma vez
+      const img = card.querySelector('img'); if (it.thumb) img.src = it.thumb; if (!it.thumb || !it.tab) queueCloudThumb(it); // falta miniatura ou aba: feita uma vez
       card.onclick = async () => { try { toast(`Abrindo ${it.name}…`); const st = await getSaved(it.name); loadState(st, it.name); } catch { toast('Não consegui abrir esse projeto'); } };
       card.draggable = true;
       card.ondragstart = e => { e.dataTransfer.setData('text/x-outbox-card', JSON.stringify({ name: it.name, kind: 's' })); e.dataTransfer.effectAllowed = 'copyMove'; };
