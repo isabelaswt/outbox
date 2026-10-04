@@ -710,7 +710,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-10-03.fileira-fixa';
+const BUILD = '2026-10-04.salvos-na-galeria';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -6391,11 +6391,26 @@ async function refreshCloudList() {
 }
 // Miniatura que falta (modelos salvos antes da lista leve): desenha e manda só ela.
 async function fillThumb(it, st) {
-  if (!cloud || it.thumb || !st) return '';
-  let t = ''; try { t = thumbOf(st) || ''; } catch {}
+  if (!cloud || (it.thumb && it.tab) || !st) return '';
+  let t = it.thumb || ''; if (!t) try { t = thumbOf(st) || ''; } catch {}
   if (!t) return '';
-  try { await api('models.php?a=thumb', { name: it.name, thumb: t }); it.thumb = t; } catch { return ''; }
+  const tab = galGroup(st, it.name, 's');
+  try { await api('models.php?a=thumb', { name: it.name, thumb: t, tab }); it.thumb = t; it.tab = tab; } catch { return ''; }
   return t;
+}
+// Galeria: miniatura que falta é feita aos poucos, uma por vez, e guardada no servidor.
+const cloudThumbQ = []; let cloudThumbBusy = false;
+function queueCloudThumb(it, img) {
+  cloudThumbQ.push([it, img]); if (cloudThumbBusy) return; cloudThumbBusy = true;
+  const next = async () => {
+    const job = cloudThumbQ.shift(); if (!job) { cloudThumbBusy = false; return; }
+    const [x, im] = job; x.tried = true; // uma tentativa só (um modelo com erro não fica em loop)
+    if ((!x.thumb || !x.tab) && im.isConnected) { try { const had = x.name in cloud, st = await getSaved(x.name); await fillThumb(x, st); if (!had && x.name !== fileName()) delete cloud[x.name]; } catch {} }
+    if (x.thumb && im.isConnected) im.src = x.thumb;
+    if (!cloudThumbQ.length) { galleryKey = ''; renderPresets(); } // abas que acabaram de ser descobertas
+    setTimeout(next, 120);
+  };
+  setTimeout(next, 400);
 }
 // Popup "Abrir": procura e abre um projeto salvo (só esse é baixado).
 function openSavedDialog() {
@@ -6554,17 +6569,17 @@ function renderPresets() {
         catch { return toast('Não consegui mudar a aba para a equipe'); }
       } else if (d.kind === 'b') { const o = store.get('shape.galAba', {}); if (auto) delete o[d.name]; else o[d.name] = t; store.set('shape.galAba', o); }
       else {
-        const sv = saved(), st = sv[d.name]; if (!st) return;
+        const sv = saved(); let st; try { st = await getSaved(d.name); } catch {} if (!st) return;
         if (auto) delete st.aba; else st.aba = t;
         if (fileName() === d.name) { if (auto) delete S.aba; else S.aba = t; saveLocalSoon(); }
-        if (cloud) { try { await api('models.php?a=save', { name: d.name, data: st }); } catch { return toast('Não consegui mudar a aba'); } }
+        if (cloud) { const tab = galGroup(st, d.name, 's'); try { await api('models.php?a=save', { name: d.name, data: st, tab }); } catch { return toast('Não consegui mudar a aba'); } const it = cloudList.find(x => x.name === d.name); if (it) it.tab = tab; }
         else store.set('shape.presets', sv);
       }
       toast(auto ? `${d.name}: aba automática` : `${d.name} → ${t}`); galleryKey = ''; renderPresets();
     };
   }
   tabs?.querySelectorAll('.chip').forEach(c => c.classList.toggle('on', c.dataset.tab === galTab));
-  const key = galTab + '#' + stlUploads.map(f => f.id).join(',') + '#' + Object.keys(PRESETS).join('|') + '#' + savedNames().join('|') + '#' + JSON.stringify(baseAbas()) + Object.values(sv).map(v => v.aba || '').join('|');
+  const key = galTab + '#' + stlUploads.map(f => f.id).join(',') + '#' + Object.keys(PRESETS).join('|') + '#' + savedNames().join('|') + '#' + cloudList.map(x => x.tab || '').join('|') + '#' + JSON.stringify(baseAbas()) + Object.values(sv).map(v => v.aba || '').join('|');
   if (key === galleryKey && gal.children.length) {
     gal.querySelectorAll('.card').forEach(c => c.classList.toggle('on', c.title === fileName()));
     return;
@@ -6602,10 +6617,17 @@ function renderPresets() {
     gal.scrollTop = keepTop; return;
   }
   if (galTab !== 'Salvos') section('Modelos base', Object.entries(PRESETS).filter(inTab('b')), 'b');
-  if (cloud) { // da conta: nada de baixar todos; mostra o botão do popup
-    if (galTab === 'Todos' || galTab === 'Salvos') {
-      const h = document.createElement('h4'); h.textContent = `Meus modelos (${cloudList.length})`; gal.appendChild(h);
-      const b = document.createElement('button'); b.className = 'btn'; b.style.gridColumn = '1/-1'; b.textContent = 'Abrir projeto salvo…'; b.onclick = openSavedDialog; gal.appendChild(b);
+  if (cloud) { // da conta: cards com a miniatura do servidor; o modelo só desce ao clicar ou arrastar
+    const list = cloudList.filter(it => galTab === 'Todos' || galTab === 'Salvos' || it.tab === galTab);
+    if (list.length) { const h = document.createElement('h4'); h.textContent = 'Meus modelos'; gal.appendChild(h); }
+    for (const it of list) {
+      const card = document.createElement('div'); card.className = 'card' + (fileName() === it.name ? ' on' : ''); card.title = it.name;
+      card.innerHTML = '<img class="ph" alt=""><div></div>'; card.querySelector('div').textContent = it.name;
+      const img = card.querySelector('img'); if (it.thumb) img.src = it.thumb; if ((!it.thumb || !it.tab) && !it.tried) queueCloudThumb(it, img); // falta miniatura ou aba: feita uma vez
+      card.onclick = async () => { try { toast(`Abrindo ${it.name}…`); const st = await getSaved(it.name); loadState(st, it.name); } catch { toast('Não consegui abrir esse projeto'); } };
+      card.draggable = true;
+      card.ondragstart = e => { e.dataTransfer.setData('text/x-outbox-card', JSON.stringify({ name: it.name, kind: 's' })); e.dataTransfer.effectAllowed = 'copyMove'; };
+      gal.appendChild(card);
     }
   } else if (galTab === 'Todos' || galTab === 'Salvos') section('Salvos', Object.entries(sv), 's');
   else if (!cloud) section('Salvos', Object.entries(sv).filter(inTab('s')), 's');
@@ -6640,7 +6662,7 @@ $('#savePreset').onclick = async () => {
   const name = fileName().trim() || 'Sem nome'; S.file = name;
   if (cloud) {
     let thumb = ''; try { thumb = thumbOf(S) || ''; } catch {}
-    try { await api('models.php?a=save', { name, data: S, thumb }); } catch (e) { return toast(e.status === 401 ? 'Sua sessão expirou: entre de novo' : 'Não consegui salvar'); }
+    try { await api('models.php?a=save', { name, data: S, thumb, tab: galGroup(S, name, 's') }); } catch (e) { return toast(e.status === 401 ? 'Sua sessão expirou: entre de novo' : 'Não consegui salvar'); }
     cloud[name] = structuredClone(S); refreshCloudList();
   } else { const sv = saved(); sv[name] = structuredClone(S); store.set('shape.presets', sv); }
   galleryKey = ''; renderPresets(); toast(`Salvo: ${name}`); // miniatura do salvo é refeita
