@@ -32,8 +32,28 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);font:13px/1
 .team-link input{width:100%;font-size:11px}
 .team-add{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.3fr) auto;gap:6px;align-items:center}
 .team-add input{min-width:0;width:100%;font:inherit;font-size:12px;padding:5px 7px;border:1px solid var(--line);border-radius:6px;background:var(--panel)}
-.app{display:grid;grid-template-columns:360px 1fr;height:100vh}
-aside{background:var(--panel);border-right:1px solid var(--line);overflow-y:auto;padding:16px 16px 48px}
+.app{display:grid;grid-template-columns:340px 1fr 340px;height:100vh}
+.app.insp-off{grid-template-columns:340px 1fr 0}
+aside{background:var(--panel);border-right:1px solid var(--line);overflow-y:auto;padding:0 16px 48px;position:relative}
+/* topo fixo do painel: arquivo + abas (sempre à mão, sem rolar) */
+.ahead{position:sticky;top:0;z-index:5;background:var(--panel);padding:14px 0 8px;margin-bottom:4px;border-bottom:1px solid var(--line)}
+.ahead .brand{display:flex;align-items:baseline;gap:8px;margin-bottom:6px}.ahead .brand .sub{font-size:11px}
+.row.filebar{display:grid;grid-template-columns:auto auto 1fr auto auto}.row.filebar .btn{padding-left:8px;padding-right:8px;white-space:nowrap}
+.tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:0;margin-top:8px;border:1px solid var(--line);border-radius:9px;overflow:hidden}
+.tabs button{border:0;background:var(--soft);padding:7px 0;font:inherit;font-size:12px;font-weight:600;color:#555;cursor:pointer}
+.tabs button+button{border-left:1px solid var(--line)}
+.tabs button.on{background:var(--ink);color:#fff}
+.tab{display:none}.tab.on{display:block}
+.tab[data-t=lib] .gallery{max-height:calc(100vh - 290px);min-height:300px} /* a galeria usa a altura toda da aba */
+.tab>details:first-child{border-top:0}
+/* Exportar / Mais: painel flutuante ao lado do menu */
+.pop{display:none;position:fixed;top:12px;left:352px;width:360px;max-height:calc(100vh - 24px);overflow-y:auto;background:var(--panel);border:1px solid var(--line);border-radius:12px;box-shadow:0 16px 48px rgba(0,0,0,.18);padding:12px 16px 20px;z-index:26}
+.pop.open{display:block}
+.popHead{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px}
+/* inspetor: a peça selecionada abre à direita */
+#inspector{background:var(--panel);border-left:1px solid var(--line);overflow-y:auto;padding:0 16px 48px;min-width:0}
+.app.insp-off #inspector{display:none}
+.inspHead{position:sticky;top:0;z-index:4;background:var(--panel);display:flex;justify-content:space-between;align-items:center;padding:14px 0 8px;border-bottom:1px solid var(--line);margin-bottom:4px}
 h1{font-size:15px;margin:0}
 .sub{color:var(--muted);font-size:12px;margin:2px 0 12px}
 details{border-top:1px solid var(--line);padding:6px 0}
@@ -115,10 +135,13 @@ canvas{display:block;width:100%;height:100%;touch-action:none}
 .toast{position:absolute;right:12px;bottom:12px;background:var(--ink);color:#fff;border-radius:8px;padding:8px 12px;font-size:12px;opacity:0;transition:opacity .2s;pointer-events:none}
 .toast.on{opacity:1}
 .hidden{display:none!important}
+@media (max-width:1100px){ .app,.app.insp-off{grid-template-columns:320px 1fr} #inspector{position:fixed;right:0;top:0;bottom:0;width:330px;z-index:20;box-shadow:-8px 0 30px rgba(0,0,0,.12)} .pop{left:332px} }
 @media (max-width:820px){
-  .app{grid-template-columns:1fr;grid-template-rows:58vh auto;height:auto}
+  .app,.app.insp-off{grid-template-columns:1fr;grid-template-rows:58vh auto;height:auto}
   main{grid-row:1;height:58vh}
   aside{grid-row:2;border-right:0;border-top:1px solid var(--line)}
+  #inspector{width:100%}
+  .pop{left:8px;right:8px;width:auto}
 }
 </style>
 <script type="importmap">
@@ -146,28 +169,38 @@ canvas{display:block;width:100%;height:100%;touch-action:none}
 </div>
 <div class="app">
 <aside>
-  <h1>OUTBOX</h1>
-  <div class="sub">Shapes de embalagem · módulos empilhados · mm · volumetria ao vivo<br><span id="build" style="font-variant-numeric:tabular-nums"></span></div>
-  <div class="row" style="margin:10px 0 2px"><button class="btn pri" id="newProduct" style="flex:1" title="Começa do zero: sem lado a lado, sem logos e sem nome">+ Novo produto</button></div>
-
-  <details open>
-    <summary>Modelo</summary>
-    <div class="chips" id="galTabs"></div>
-    <div class="gallery" id="gallery"></div>
-    <div class="row"><input type="text" id="projName" placeholder="Nome do projeto"></div>
-    <div class="row fileBtns">
+  <div class="ahead">
+    <div class="brand"><h1>OUTBOX</h1><span id="build" class="sub" style="font-variant-numeric:tabular-nums;margin:0"></span></div>
+    <div class="row"><input type="text" id="projName" placeholder="Nome do arquivo"></div>
+    <div class="row filebar">
+      <button class="btn" id="newProduct" title="Começa do zero: sem lado a lado, sem logos e sem nome">Novo</button>
       <button class="btn" id="openSaved" title="Abrir um projeto salvo (só ele é carregado)">Abrir…</button>
-      <button class="btn" id="savePreset">Salvar</button>
-      <button class="btn" id="stlGalBtn" title="Subir uma peça STL: entra no produto e fica na aba Uploads para reuso">+ STL</button>
-      <button class="btn" id="delPreset">Excluir</button>
-      <button class="btn" id="exportJson">JSON ↓</button>
-      <button class="btn" id="importJsonBtn">JSON ↑</button>
-      <input type="file" id="importJson" accept=".json,application/json" class="hidden">
+      <button class="btn pri" id="savePreset">Salvar</button>
+      <button class="btn" id="exportBtn" title="PNG, GLB, OBJ, STL">Exportar ▾</button>
+      <button class="btn" id="moreBtn" title="Silhueta, referência, gerador, JSON, equipe">Mais ▾</button>
     </div>
     <div class="tip" id="saveStatus"></div>
+    <div class="tabs" id="sideTabs"><button data-t="lib">Biblioteca</button><button data-t="build">Montar</button><button data-t="scene">Cena</button></div>
+  </div>
+
+  <div class="tab" data-t="lib">
+    <div class="row"><button class="btn" id="stlGalBtn" title="Subir uma peça STL: entra no produto e fica na aba Uploads para reuso" style="flex:1">+ Subir STL</button></div>
+
+    <div class="chips" id="galTabs"></div>
+    <div class="gallery" id="gallery"></div>
+      </div>
+
+  <div class="tab" data-t="build">
+<details open>
+    <summary>Pilha de módulos</summary>
+    <div class="tip">De cima para baixo, como a embalagem fica em pé. Clique numa peça (aqui ou no 3D): os controles dela abrem à direita.</div>
+    <div class="stack" id="stack"></div>
+    <div class="tip">Inserir acima do módulo selecionado:</div>
+    <div id="addRows"></div>
+    <input type="file" id="importStl" accept=".stl,model/stl" class="hidden">
   </details>
 
-  <details open id="lineBox">
+<details open id="lineBox">
     <summary>Lado a lado</summary>
     <div class="tip">Outros produtos da linha, ao lado deste. Clique num deles (aqui ou no 3D) para editar.</div>
     <div id="lineup"></div>
@@ -175,17 +208,7 @@ canvas{display:block;width:100%;height:100%;touch-action:none}
     <div id="lineGap"></div>
   </details>
 
-  <details open>
-    <summary>Pilha de módulos</summary>
-    <div class="tip">De cima para baixo, como a embalagem fica em pé. Clique num módulo (aqui ou no 3D) para editar.</div>
-    <div class="stack" id="stack"></div>
-    <div class="tip">Inserir acima do módulo selecionado:</div>
-    <div id="addRows"></div>
-    <input type="file" id="importStl" accept=".stl,model/stl" class="hidden">
-    <div class="edit" id="editor"></div>
-  </details>
-
-  <details open>
+<details open>
     <summary>Volumetria</summary>
     <div id="volFields"></div>
     <div class="tip">A capacidade soma os módulos marcados como “frasco”, descontando a parede. É uma estimativa de projeto, não substitui o desenho técnico do fornecedor.</div>
@@ -196,14 +219,16 @@ canvas{display:block;width:100%;height:100%;touch-action:none}
       <button class="btn pri sm" id="fitBtn" style="flex:0">Ajustar</button>
     </div>
   </details>
+  </div>
 
-  <details>
+  <div class="tab" data-t="scene">
+<details open>
     <summary>Aparência</summary>
     <div id="lookFields"></div>
     <div class="row"><button class="btn" id="colorAll">Aplicar cor geral a todos os módulos</button></div>
   </details>
 
-  <details open>
+<details open>
     <summary>Logotipo e rótulo</summary>
     <div class="tip">Carregue o logo em <b>SVG</b> (vetor com preenchimento) e clique no shape onde ele vai ficar. Relevo positivo sai para fora; negativo cava para dentro.</div>
     <div class="row">
@@ -214,28 +239,7 @@ canvas{display:block;width:100%;height:100%;touch-action:none}
     <div id="labelBox"></div>
   </details>
 
-  <details>
-    <summary>Silhueta → revolve (torno)</summary>
-    <div class="tip">Carregue a <b>silhueta do corpo</b> de frente (SVG ou PNG/JPG, forma escura em fundo claro ou transparente). Ela gira em volta do eixo e vira o corpo do produto; gargalo e tampa continuam. Depois dá para mudar largura, profundidade (oval) e altura no editor.</div>
-    <div class="field"><div class="top"><label>Altura do corpo</label><span class="num"><input type="number" id="revH" value="140" min="10" max="400" step="1"> mm</span></div></div>
-    <div class="row">
-      <button class="btn" id="revBtn">Carregar silhueta</button>
-      <input type="file" id="revFile" accept="image/*,.svg" class="hidden">
-    </div>
-  </details>
-
-  <details>
-    <summary>Referência (imagem ou desenho técnico)</summary>
-    <div class="tip">Carregue a imagem e ela aparece na vista <b>Frente · ortográfica</b>, em escala de mm. Ajuste a altura até a embalagem da imagem bater com a grade.</div>
-    <div class="row">
-      <button class="btn" id="refBtn">Carregar imagem</button>
-      <button class="btn" id="refClear">Remover</button>
-      <input type="file" id="refFile" accept="image/*" class="hidden">
-    </div>
-    <div id="refFields"></div>
-  </details>
-
-  <details open>
+<details open>
     <summary>Apresentação</summary>
     <div class="tip">Cenário, luz e vídeo girando para mostrar o produto. O cenário se ajusta ao tamanho do produto (e dos que estão ao lado).</div>
     <div id="sceneFields"></div>
@@ -249,9 +253,11 @@ canvas{display:block;width:100%;height:100%;touch-action:none}
     </div>
     <div class="row"><button class="btn" id="fullBtn">Tela cheia</button></div>
   </details>
+  </div>
 
-  <details open>
-    <summary>Exportar</summary>
+  <div class="pop" id="exportPop">
+    <div class="popHead"><b>Exportar</b><button class="btn sm" data-close>Fechar</button></div>
+
     <h3>Imagem</h3>
     <div class="row">
       <select id="pngRes"><option value="2048">2048 px</option><option value="3072">3072 px</option><option value="4096" selected>4096 px</option></select>
@@ -270,9 +276,40 @@ canvas{display:block;width:100%;height:100%;touch-action:none}
       <button class="btn" id="dlStl">STL</button>
     </div>
     <div class="tip">GLB sai em metros (padrão glTF: Blender, Keyshot, Dimension, AR). OBJ e STL saem em milímetros. Cada módulo vira uma peça separada.</div>
+  
+  </div>
+
+  <div class="pop" id="morePop">
+    <div class="popHead"><b>Mais</b><button class="btn sm" data-close>Fechar</button></div>
+    <h3>Arquivo</h3>
+    <div class="row">
+      <button class="btn" id="exportJson">JSON ↓</button>
+      <button class="btn" id="importJsonBtn">JSON ↑</button>
+      <button class="btn" id="delPreset">Excluir salvo</button>
+      <input type="file" id="importJson" accept=".json,application/json" class="hidden">
+    </div>
+<details>
+    <summary>Silhueta → revolve (torno)</summary>
+    <div class="tip">Carregue a <b>silhueta do corpo</b> de frente (SVG ou PNG/JPG, forma escura em fundo claro ou transparente). Ela gira em volta do eixo e vira o corpo do produto; gargalo e tampa continuam. Depois dá para mudar largura, profundidade (oval) e altura no editor.</div>
+    <div class="field"><div class="top"><label>Altura do corpo</label><span class="num"><input type="number" id="revH" value="140" min="10" max="400" step="1"> mm</span></div></div>
+    <div class="row">
+      <button class="btn" id="revBtn">Carregar silhueta</button>
+      <input type="file" id="revFile" accept="image/*,.svg" class="hidden">
+    </div>
   </details>
 
-  <details id="genBox">
+<details>
+    <summary>Referência (imagem ou desenho técnico)</summary>
+    <div class="tip">Carregue a imagem e ela aparece na vista <b>Frente · ortográfica</b>, em escala de mm. Ajuste a altura até a embalagem da imagem bater com a grade.</div>
+    <div class="row">
+      <button class="btn" id="refBtn">Carregar imagem</button>
+      <button class="btn" id="refClear">Remover</button>
+      <input type="file" id="refFile" accept="image/*" class="hidden">
+    </div>
+    <div id="refFields"></div>
+  </details>
+
+<details id="genBox">
     <summary>Gerador</summary>
     <div class="gen-l">A partir do projeto aberto</div>
     <div class="tip" style="margin-top:2px">Variações do que está na tela: mesmas peças, cores e logos, com proporções, curvas e tampa mudando. Mantém o volume.</div>
@@ -292,11 +329,13 @@ canvas{display:block;width:100%;height:100%;touch-action:none}
     <div class="gallery" id="genGrid"></div>
   </details>
 
-  <details id="teamBox" class="hidden">
+<details id="teamBox" class="hidden">
     <summary>Equipe</summary>
     <div id="team"></div>
   </details>
+  </div>
 </aside>
+
 
 <main id="view">
   <canvas id="c"></canvas>
@@ -317,6 +356,10 @@ canvas{display:block;width:100%;height:100%;touch-action:none}
   <div class="stats" id="stats"></div>
   <div class="toast" id="toast"></div>
 </main>
+<section id="inspector">
+  <div class="inspHead"><b>Peça selecionada</b><button class="btn sm" id="inspClose" title="Fechar (clique numa peça para abrir de novo)">✕</button></div>
+  <div class="edit" id="editor"></div>
+</section>
 </div>
 
 <script type="module">
@@ -710,7 +753,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-10-05.trocar-email';
+const BUILD = '2026-10-05.menu-novo';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -5343,7 +5386,7 @@ canvas.addEventListener('pointerup', e => {
     const i = sideRoot.children.indexOf(g); if (i >= 0) editSide(i);
     return;
   }
-  if (hit) { sel = ownerOf(hit.object.userData.idx); renderStack(); renderEditor(); }
+  if (hit) { sel = ownerOf(hit.object.userData.idx); openInspector(); renderStack(); renderEditor(); }
 });
 // Duplo clique aproxima a câmera do ponto clicado.
 canvas.addEventListener('dblclick', e => {
@@ -5668,7 +5711,7 @@ function renderStack() {
       const n = unitLen(i), part = S.modules.slice(i, i + n);
       if (a === 'eye') { m.hidden = !m.hidden; renderStack(); queueBuild(); return; }
       if (a === 'cor') { // bolinha de cor: abre direto o material deste módulo
-        sel = i; renderStack(); renderEditor();
+        sel = i; openInspector(); renderStack(); renderEditor();
         const g = [...$('#editor').querySelectorAll('details.grp')].find(d => d.querySelector('summary')?.textContent === 'Cor');
         if (g) { g.open = true; g.scrollIntoView({ block: 'start' }); }
         return;
@@ -5677,7 +5720,7 @@ function renderStack() {
       else if (a === 'down') sel = moveUnit(i, -1);
       else if (a === 'dup') { S.modules.splice(i + n, 0, ...part.map(x => ({ ...structuredClone(x), uid: newUid() }))); sel = i + n; }
       else if (a === 'del') { if (S.modules.length > n) { S.logos = S.logos.filter(L => !part.some(x => x.uid === L.uid)); S.modules.splice(i, n); sel = ownerOf(clamp(i - 1, 0, S.modules.length - 1)); renderLogos(); } }
-      else sel = i;
+      else { sel = i; openInspector(); }
       renderStack(); renderEditor(); if (a) queueBuild();
     };
     box.appendChild(el);
@@ -5689,7 +5732,7 @@ function renderEditor() {
   sel = ownerOf(sel);
   const m = S.modules[sel]; if (!m) return;
   const top = document.createElement('div');
-  top.innerHTML = `<h3>Módulo selecionado</h3><div class="row"><input type="text" value=""></div>`;
+  top.innerHTML = `<div class="row"><input type="text" value="" title="Nome da peça"></div>`;
   const nm = top.querySelector('input'); nm.value = m.name;
   nm.oninput = () => { m.name = nm.value; renderStack(); saveLocalSoon(); };
   ed.appendChild(top);
@@ -6228,7 +6271,8 @@ function renderSwap(ed, m) {
   // Tampa e válvula ocupam o mesmo lugar: a troca mostra as duas famílias.
   const closure = label === 'Tampa' || label === 'Válvula', skey = sel + ':' + (closure ? 'fecho' : label);
   const groups = closure ? CATS.filter(([l]) => l === 'Tampa' || l === 'Válvula').map(([l, ks]) => [l === 'Tampa' ? 'Tampas' : 'Válvulas', ks]) : [[null, keys]];
-  const box = document.createElement('details'); box.open = true;
+  const box = document.createElement('details'); box.open = !!store.get('shape.swapOpen', false); // fechado: a troca é rara, as medidas vêm primeiro
+  box.addEventListener('toggle', () => store.set('shape.swapOpen', box.open));
   box.innerHTML = `<summary style="text-transform:none;letter-spacing:0;font-size:12px">${closure ? 'Trocar por outra tampa ou válvula' : `Trocar por outro(a) ${label.toLowerCase()}`}</summary><div class="gallery swap"></div>`;
   const grid = box.querySelector('.gallery');
   for (const [gTitle, gKeys] of groups) {
@@ -6276,8 +6320,8 @@ function renderRibs(ed, m) {
   ed.appendChild(box);
 }
 function renderEditorKeepScroll() {
-  const aside = document.querySelector('aside'), y = aside.scrollTop;
-  renderEditor(); aside.scrollTop = y;
+  const box = $('#inspector'), y = box.scrollTop;
+  renderEditor(); box.scrollTop = y;
 }
 
 function renderGlobal() {
@@ -6292,6 +6336,33 @@ function renderGlobal() {
   $('#projName').value = fileName();
 }
 
+// ───────────────────────── painéis: abas, menus e inspetor ─────────────────────────
+// Esquerda: Biblioteca (modelos), Montar (peças, lado a lado, volume) e Cena (aparência,
+// logo, luz). Exportar e Mais abrem num painel ao lado. A peça selecionada abre à direita.
+const appEl = document.querySelector('.app');
+function setSideTab(t) {
+  document.querySelectorAll('#sideTabs button').forEach(b => b.classList.toggle('on', b.dataset.t === t));
+  document.querySelectorAll('aside > .tab').forEach(d => d.classList.toggle('on', d.dataset.t === t));
+  store.set('shape.sideTab', t);
+}
+document.querySelectorAll('#sideTabs button').forEach(b => b.onclick = () => { setSideTab(b.dataset.t); document.querySelector('aside').scrollTop = 0; });
+setSideTab(store.get('shape.sideTab', 'build'));
+function togglePop(id) {
+  const el = document.getElementById(id), open = !el.classList.contains('open');
+  document.querySelectorAll('.pop.open').forEach(p => p.classList.remove('open'));
+  if (open) el.classList.add('open');
+}
+$('#exportBtn').onclick = e => { e.stopPropagation(); togglePop('exportPop'); };
+$('#moreBtn').onclick = e => { e.stopPropagation(); togglePop('morePop'); };
+document.querySelectorAll('.pop [data-close]').forEach(b => b.onclick = () => b.closest('.pop').classList.remove('open'));
+document.addEventListener('keydown', e => { if (e.key === 'Escape') document.querySelectorAll('.pop.open').forEach(p => p.classList.remove('open')); });
+document.addEventListener('pointerdown', e => { // clicar fora fecha o painel (menos na cena, onde a pessoa pode estar posicionando algo)
+  if (e.target.closest('.pop, #exportBtn, #moreBtn')) return;
+  document.querySelectorAll('.pop.open').forEach(p => p.classList.remove('open'));
+});
+function openInspector() { if (appEl.classList.contains('insp-off')) { appEl.classList.remove('insp-off'); store.set('shape.inspOff', false); } }
+$('#inspClose').onclick = () => { appEl.classList.add('insp-off'); store.set('shape.inspOff', true); };
+if (store.get('shape.inspOff', false)) appEl.classList.add('insp-off');
 function renderAll() { renderStack(); renderEditor(); renderGlobal(); renderPresets(); renderLogos(); renderLineup(); renderScene(); applySceneLight(); }
 
 // Biblioteca de módulos
