@@ -710,7 +710,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-10-04.vidro-ordenado';
+const BUILD = '2026-10-05.trocar-email';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -7424,7 +7424,14 @@ async function renderTeam(link) {
         if (u.email === ME?.email) $('#build').textContent = `versão ${BUILD} · ${n}`;
         renderTeam(); } catch { toast('Não consegui trocar o nome'); }
     };
-    row.append(who, rn, lk);
+    const em = el('button', 'btn sm', 'E-mail');
+    em.title = 'Trocar o e-mail de login (senha e modelos continuam)';
+    em.onclick = async () => {
+      const e = (prompt('Novo e-mail de login:', u.email) || '').trim().toLowerCase(); if (!e || e === u.email) return;
+      try { await api('team.php?a=email', { id: u.id, email: e }); toast(`Login agora é ${e}`); if (u.email === ME?.email) ME.email = e; renderTeam(); }
+      catch (er) { toast(er.code === 'exists' ? 'Esse e-mail já está na equipe' : er.code === 'email' ? 'E-mail inválido' : 'Não consegui trocar o e-mail'); }
+    };
+    row.append(who, rn, em, lk);
     if (!(u.is_admin && users.filter(x => x.is_admin).length === 1)) {
       const rm = el('button', 'btn sm', '✕'); rm.title = 'Remover da equipe';
       rm.onclick = async () => {

@@ -1,5 +1,5 @@
 <?php
-// Equipe (só administradores): lista, convida, renomeia, gera link de senha e remove.
+// Equipe (só administradores): lista, convida, renomeia, troca o e-mail, gera link de senha e remove.
 require __DIR__ . '/_lib.php';
 start_session();
 $me = need_admin();
@@ -43,6 +43,19 @@ if ($a === 'rename') {
   $s = db()->prepare('UPDATE users SET name = ? WHERE id = ?');
   $s->execute([$name, $id]);
   out(['ok' => true, 'name' => $name]);
+}
+
+// Troca o e-mail de login (a senha e os modelos continuam os mesmos).
+if ($a === 'email') {
+  $in = need_post();
+  $id = (int)($in['id'] ?? 0);
+  $email = strtolower(trim((string)($in['email'] ?? '')));
+  if (!valid_email($email)) out(['error' => 'email'], 400);
+  $s = db()->prepare('SELECT id FROM users WHERE email = ? AND id <> ?');
+  $s->execute([$email, $id]);
+  if ($s->fetch()) out(['error' => 'exists'], 409);
+  db()->prepare('UPDATE users SET email = ? WHERE id = ?')->execute([$email, $id]);
+  out(['ok' => true, 'email' => $email]);
 }
 
 if ($a === 'remove') {
