@@ -44,6 +44,9 @@ aside{background:var(--panel);border-right:1px solid var(--line);overflow-y:auto
 .tabs button+button{border-left:1px solid var(--line)}
 .tabs button.on{background:var(--ink);color:#fff}
 .tab{display:none}.tab.on{display:block}
+.itab{display:none}.itab.on{display:block}
+.tabs.two{grid-template-columns:1fr 1.6fr;margin:0 0 8px}
+#inspector .inspHead{border-bottom:0;padding-bottom:6px}
 .tab[data-t=lib] .gallery{max-height:calc(100vh - 290px);min-height:300px} /* a galeria usa a altura toda da aba */
 .tab>details:first-child{border-top:0}
 /* Exportar / Mais: painel flutuante ao lado do menu */
@@ -180,7 +183,7 @@ canvas{display:block;width:100%;height:100%;touch-action:none}
       <button class="btn" id="moreBtn" title="Silhueta, referência, gerador, JSON, equipe">Mais ▾</button>
     </div>
     <div class="tip" id="saveStatus"></div>
-    <div class="tabs" id="sideTabs"><button data-t="lib">Biblioteca</button><button data-t="build">Montar</button><button data-t="art">Arte</button><button data-t="scene">Cena</button></div>
+    <div class="tabs" id="sideTabs"><button data-t="lib">Biblioteca</button><button data-t="build">Montar</button><button data-t="art">Aparência</button><button data-t="scene">Cena</button></div>
   </div>
 
   <div class="tab" data-t="lib">
@@ -227,24 +230,6 @@ canvas{display:block;width:100%;height:100%;touch-action:none}
     <div id="lookFields"></div>
     <div class="row"><button class="btn" id="colorAll">Aplicar cor geral a todos os módulos</button></div>
   </details>
-
-<details open>
-    <summary>Peça selecionada: cor e textura</summary>
-    <div class="tip" id="artPieceName"></div>
-    <div class="edit" id="artPiece"></div>
-  </details>
-
-<details open>
-    <summary>Logotipo e rótulo</summary>
-    <div class="tip">Carregue o logo em <b>SVG</b> (vetor com preenchimento) e clique no shape onde ele vai ficar. Relevo positivo sai para fora; negativo cava para dentro.</div>
-    <div class="row">
-      <button class="btn" id="logoBtn">Carregar logo (SVG)</button>
-      <input type="file" id="logoFile" accept=".svg,image/svg+xml" class="hidden">
-    </div>
-    <div id="logoList"></div>
-    <div id="labelBox"></div>
-  </details>
-
   </div>
 
   <div class="tab" data-t="scene">
@@ -367,7 +352,22 @@ canvas{display:block;width:100%;height:100%;touch-action:none}
 </main>
 <section id="inspector">
   <div class="inspHead"><b>Peça selecionada</b><button class="btn sm" id="inspClose" title="Fechar (clique numa peça para abrir de novo)">✕</button></div>
-  <div class="edit" id="editor"></div>
+  <div class="tabs two" id="inspTabs"><button data-t="forma">Forma</button><button data-t="arte">Arte (cor, textura, logo)</button></div>
+  <div class="itab" data-t="forma"><div class="edit" id="editor"></div></div>
+  <div class="itab" data-t="arte">
+    <div class="edit"><div id="artPiece"></div>
+    <details class="grp" open>
+    <summary>Logotipo e rótulo</summary>
+    <div class="tip">Carregue o logo em <b>SVG</b> (vetor com preenchimento) e clique no shape onde ele vai ficar. Relevo positivo sai para fora; negativo cava para dentro.</div>
+    <div class="row">
+      <button class="btn" id="logoBtn">Carregar logo (SVG)</button>
+      <input type="file" id="logoFile" accept=".svg,image/svg+xml" class="hidden">
+    </div>
+    <div id="logoList"></div>
+    <div id="labelBox"></div>
+    </details>
+    </div>
+  </div>
 </section>
 </div>
 
@@ -762,7 +762,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-10-06.arte';
+const BUILD = '2026-10-06.inspetor-arte';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -5720,7 +5720,7 @@ function renderStack() {
       const n = unitLen(i), part = S.modules.slice(i, i + n);
       if (a === 'eye') { m.hidden = !m.hidden; renderStack(); queueBuild(); return; }
       if (a === 'cor') { // bolinha de cor: abre direto o material deste módulo
-        sel = i; renderStack(); renderEditor(); setSideTab('art');
+        sel = i; openInspector(); setInspTab('arte'); renderStack(); renderEditor();
         const g = [...$('#artPiece').querySelectorAll('details.grp')].find(d => d.querySelector('summary')?.textContent === 'Cor');
         if (g) { g.open = true; g.scrollIntoView({ block: 'start' }); }
         return;
@@ -5741,7 +5741,6 @@ function renderEditor() {
   const artHost = $('#artPiece'); artHost.innerHTML = '';
   sel = ownerOf(sel);
   const m = S.modules[sel]; if (!m) return;
-  $('#artPieceName').textContent = `${m.name} · clique em outra peça (na pilha ou no 3D) para trocar`;
   const top = document.createElement('div');
   top.innerHTML = `<div class="row"><input type="text" value="" title="Nome da peça"></div>`;
   const nm = top.querySelector('input'); nm.value = m.name;
@@ -6349,8 +6348,9 @@ function renderGlobal() {
 }
 
 // ───────────────────────── painéis: abas, menus e inspetor ─────────────────────────
-// Esquerda: Biblioteca (modelos), Montar (peças, lado a lado, volume), Arte (cor, acabamento,
-// logo e rótulo) e Cena (luz, fundo, cenário, vídeo). Exportar e Mais abrem num painel ao lado. A peça selecionada abre à direita.
+// Esquerda: Biblioteca (modelos), Montar (peças, lado a lado, volume), Aparência (cor e
+// acabamento gerais) e Cena (luz, fundo, cenário, vídeo). Direita: a peça selecionada,
+// com Forma e Arte (cor, relevo por textura, logo e rótulo dela). Exportar e Mais abrem num painel ao lado. A peça selecionada abre à direita.
 const appEl = document.querySelector('.app');
 function setSideTab(t) {
   document.querySelectorAll('#sideTabs button').forEach(b => b.classList.toggle('on', b.dataset.t === t));
@@ -6372,6 +6372,13 @@ document.addEventListener('pointerdown', e => { // clicar fora fecha o painel (m
   if (e.target.closest('.pop, #exportBtn, #moreBtn')) return;
   document.querySelectorAll('.pop.open').forEach(p => p.classList.remove('open'));
 });
+function setInspTab(t) {
+  document.querySelectorAll('#inspTabs button').forEach(b => b.classList.toggle('on', b.dataset.t === t));
+  document.querySelectorAll('#inspector > .itab').forEach(d => d.classList.toggle('on', d.dataset.t === t));
+  store.set('shape.inspTab', t);
+}
+document.querySelectorAll('#inspTabs button').forEach(b => b.onclick = () => { setInspTab(b.dataset.t); $('#inspector').scrollTop = 0; });
+setInspTab(store.get('shape.inspTab', 'forma'));
 function openInspector() { if (appEl.classList.contains('insp-off')) { appEl.classList.remove('insp-off'); store.set('shape.inspOff', false); } }
 $('#inspClose').onclick = () => { appEl.classList.add('insp-off'); store.set('shape.inspOff', true); };
 if (store.get('shape.inspOff', false)) appEl.classList.add('insp-off');
