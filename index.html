@@ -205,11 +205,11 @@ canvas{display:block;width:100%;height:100%;touch-action:none}
   </details>
 
 <details open id="colorBox">
-    <summary>Cor e acabamento</summary>
+    <summary>Cor, acabamento e conteúdo</summary>
     <div id="pieceColor"></div>
-    <h3>Produto inteiro</h3>
-    <div id="lookFields"></div>
-    <div class="row"><button class="btn" id="colorAll">Aplicar cor geral a todos os módulos</button></div>
+    <div id="lookFields" class="hidden"></div>
+    <div id="pieceLiquid"></div>
+    <div class="row hidden"><button class="btn" id="colorAll">Aplicar cor geral a todos os módulos</button></div>
   </details>
 
 <details open id="lineBox">
@@ -762,7 +762,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-10-06.cor-esquerda';
+const BUILD = '2026-10-06.cor-simples';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -5739,7 +5739,7 @@ function renderStack() {
 function renderEditor() {
   const ed = $('#editor'); ed.innerHTML = '';
   const artHost = $('#artPiece'); artHost.innerHTML = '';
-  const colorHost = $('#pieceColor'); colorHost.innerHTML = '';
+  const colorHost = $('#pieceColor'); $('#pieceLiquid').innerHTML = '';
   sel = ownerOf(sel);
   const m = S.modules[sel]; if (!m) return;
   const top = document.createElement('div');
@@ -5768,7 +5768,9 @@ function renderEditor() {
   // no lugar; o que não vale agora fica esmaecido (o painel não pula ao arrastar).
   const els = {}; let sidesPrev = m.sides | 0;
   const syncFacet = () => { const poly = (m.sides | 0) >= 3; els.n?.classList.toggle('off', poly); els.sideR?.classList.toggle('off', !poly); };
+  renderColorBox(m);
   for (const [title, defs] of MF) {
+    if (title === 'Cor') continue; // feita em renderColorBox (esquerda, abaixo da pilha)
     if (title === 'Rótulo') continue; // fica no painel do logotipo (renderLabelBox)
     const ribsHere = title === 'Frisos' && (m.kind === 'giro' || m.kind === 'perfil');
     const reliefHere = title === 'Relevo por textura';
@@ -5814,7 +5816,6 @@ function renderEditor() {
       const tip = document.createElement('div'); tip.className = 'tip'; tip.textContent = 'Da biblioteca: reconhece o corpo (trechos iguais viram Repetição), o gargalo e a válvula spray/pump ou tampa, e monta com as peças do OUTBOX. Fiel ao contorno: copia a forma do STL em peças de perfil (para formas que não existem na biblioteca). Detalhes fora do contorno (letras, recortes) ficam de fora.';
       grp.appendChild(tip);
     }
-    if (title === 'Cor') { grp.open = true; grp.querySelector('summary').textContent = `Peça selecionada: ${m.name}`; }
     if (title === 'Relevo por textura') {
       const row = document.createElement('div'); row.className = 'row actions';
       const up = document.createElement('button'); up.className = 'btn sm'; up.textContent = m.reliefImg ? 'Trocar textura' : 'Subir textura (detecta o tipo)';
@@ -6026,7 +6027,7 @@ function renderEditor() {
   }
   // Mola e pescante são da válvula (grupo "Mola e pescante" dela), não do corpo.
   syncFacet();
-  if (isBody(m) && m.kind !== 'gargalo') { renderBodyNeck(ed, m); renderBodyLiquid(ed, m); }
+  if (isBody(m) && m.kind !== 'gargalo') { renderBodyNeck(ed, m); renderBodyLiquid($('#pieceLiquid'), m); } // conteúdo junto da cor
   renderLabelBox();
 }
 // Rótulo junto do logotipo: vale para a peça selecionada (corpo ou tampa); sem
@@ -6193,6 +6194,36 @@ function renderBodyNeck(ed, m) {
   }
 }
 // Líquido no corpo: liga, nível e cor.
+// Cor da peça ou do produto num lugar só: escolhe para quem vale, os materiais salvos
+// logo em cima (reuso) e um único conjunto de cor/acabamento para o escolhido.
+function renderColorBox(m) {
+  const box = $('#pieceColor'); box.innerHTML = '';
+  if (!m) return;
+  const own = !!m.own, o = own ? m : S;
+  const esc = t => String(t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+  const sw = document.createElement('div'); sw.className = 'tabs two'; sw.style.margin = '4px 0 8px';
+  sw.innerHTML = `<button data-k="p" title="Só a peça selecionada tem esta cor">Só esta peça</button><button data-k="g" title="A cor que todas as peças sem cor própria usam">Produto inteiro</button>`;
+  sw.querySelectorAll('button').forEach(b => b.classList.toggle('on', (b.dataset.k === 'p') === own));
+  sw.onclick = e => {
+    const k = e.target.closest('button')?.dataset.k; if (!k || (k === 'p') === own) return;
+    if (k === 'p') { if (!m.color || m.color === BEIGE) m.color = S.color; if (!m.finish) m.finish = S.finish; m.own = true; } // começa igual ao que se via
+    else m.own = false;
+    renderColorBox(m); renderStack(); queueBuild();
+  };
+  const who = document.createElement('div'); who.className = 'tip'; who.style.margin = '0 0 4px';
+  who.innerHTML = own ? `Editando a cor de <b>${esc(m.name)}</b>.` : `Editando a cor do produto (vale para as peças sem cor própria, incluindo <b>${esc(m.name)}</b>).`;
+  box.append(sw, who);
+  matRow(box, () => (m.own ? m : S), d => { renderColorBox(m); renderGlobal(); if (d) { renderStack(); queueBuild(); } });
+  field(box, o, ['color', own ? 'Cor da peça' : 'Cor do produto', 'color'], () => { renderStack(); queueBuild(); });
+  field(box, o, ['finish', 'Acabamento', 'finish'], () => { delete o.difus; delete o.ior; renderColorBox(m); renderStack(); queueBuild(); });
+  field(box, o, ['difus', 'Difusão (0 = liso/polido, 100 = bem difuso)', 0, 100, 1, '%', null, x => presetDif(x.finish)], queueBuild);
+  if (isGlass(o.finish)) field(box, o, ['ior', 'IOR do vidro (1,0 ar · 1,33 água · 1,5 vidro · 2,4 diamante)', 1, 2.4, 0.01, '', null, x => presetIor(x.finish)], queueBuild);
+  if (!own && S.modules.some(q => q.own)) {
+    const r = document.createElement('div'); r.className = 'row';
+    const b = document.createElement('button'); b.className = 'btn sm'; b.textContent = 'Todas as peças com a cor do produto';
+    b.onclick = () => $('#colorAll').click(); r.appendChild(b); box.appendChild(r);
+  }
+}
 function renderBodyLiquid(ed, m) {
   const openG = store.get('shape.openGroups', {});
   const grp = document.createElement('details'); grp.className = 'grp'; grp.open = !!openG['Conteúdo'];
@@ -6201,7 +6232,7 @@ function renderBodyLiquid(ed, m) {
   const before = [...ed.querySelectorAll('.grp')].find(g => ['Encaixe', 'Cor'].includes(g.querySelector('summary').textContent));
   before ? ed.insertBefore(grp, before) : ed.appendChild(grp);
   const ch = (k, structural) => {
-    if (k === 'liq' && m.liq && !isGlass(m.own ? m.finish : S.finish)) toast('Para ver o conteúdo, deixe o corpo em vidro ou PET (Aparência)');
+    if (k === 'liq' && m.liq && !isGlass(m.own ? m.finish : S.finish)) toast('Para ver o conteúdo, deixe o corpo em vidro ou PET (Cor e acabamento)');
     if (structural) renderEditorKeepScroll(); queueBuild();
   };
   field(grp, m, ['liq', 'Conteúdo dentro', 'check'], ch);
@@ -6473,7 +6504,7 @@ function matRow(box, o0, apply) {
   const wrap = document.createElement('div'); wrap.className = 'matRow';
   const esc = t => String(t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
   if (matLib.length) {
-    const lab = document.createElement('div'); lab.className = 'tip'; lab.textContent = typeof o0 === 'function' ? 'Materiais salvos: aplicam na peça selecionada se ela tem cor própria; se não, no produto inteiro.' : 'Materiais salvos (clique para aplicar):'; wrap.appendChild(lab);
+    const lab = document.createElement('div'); lab.className = 'tip'; lab.textContent = 'Materiais salvos (clique para aplicar):'; wrap.appendChild(lab);
     for (const f of matLib) {
       const ch = document.createElement('span'); ch.className = 'chip matChip'; ch.title = `Aplicar ${f.name}`;
       ch.innerHTML = `${f.thumb ? `<img src="${f.thumb}" alt="">` : ''}${esc(f.name)}<b title="Excluir da biblioteca">✕</b>`;
