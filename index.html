@@ -49,6 +49,7 @@ aside{background:var(--panel);border-right:1px solid var(--line);overflow-y:auto
 #inspector .inspHead{border-bottom:0;padding-bottom:6px}
 .tab[data-t=lib] .gallery{max-height:calc(100vh - 290px);min-height:300px} /* a galeria usa a altura toda da aba */
 .tab>details:first-child{border-top:0}
+#colorBox{scroll-margin-top:170px} /* abaixo do topo fixo do painel */
 /* Exportar / Mais: painel flutuante ao lado do menu */
 .pop{display:none;position:fixed;top:12px;left:352px;width:360px;max-height:calc(100vh - 24px);overflow-y:auto;background:var(--panel);border:1px solid var(--line);border-radius:12px;box-shadow:0 16px 48px rgba(0,0,0,.18);padding:12px 16px 20px;z-index:26}
 .pop.open{display:block}
@@ -203,8 +204,10 @@ canvas{display:block;width:100%;height:100%;touch-action:none}
     <input type="file" id="importStl" accept=".stl,model/stl" class="hidden">
   </details>
 
-<details open>
-    <summary>Cor e acabamento do produto</summary>
+<details open id="colorBox">
+    <summary>Cor e acabamento</summary>
+    <div id="pieceColor"></div>
+    <h3>Produto inteiro</h3>
     <div id="lookFields"></div>
     <div class="row"><button class="btn" id="colorAll">Aplicar cor geral a todos os módulos</button></div>
   </details>
@@ -759,7 +762,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-10-06.peca-unica';
+const BUILD = '2026-10-06.cor-esquerda';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -5717,9 +5720,9 @@ function renderStack() {
       const n = unitLen(i), part = S.modules.slice(i, i + n);
       if (a === 'eye') { m.hidden = !m.hidden; renderStack(); queueBuild(); return; }
       if (a === 'cor') { // bolinha de cor: abre direto o material deste módulo
-        sel = i; openInspector(); renderStack(); renderEditor(); setInspTab('arte');
-        const g = [...$('#artPiece').querySelectorAll('details.grp')].find(d => d.querySelector('summary')?.textContent === 'Cor');
-        if (g) { g.open = true; g.scrollIntoView({ block: 'start' }); }
+        sel = i; renderStack(); renderEditor(); setSideTab('build');
+        const g = [...$('#pieceColor').querySelectorAll('details.grp')][0];
+        if (g) g.open = true; $('#colorBox').open = true; $('#colorBox').scrollIntoView({ block: 'start' });
         return;
       }
       if (a === 'up') sel = moveUnit(i, 1);
@@ -5736,6 +5739,7 @@ function renderStack() {
 function renderEditor() {
   const ed = $('#editor'); ed.innerHTML = '';
   const artHost = $('#artPiece'); artHost.innerHTML = '';
+  const colorHost = $('#pieceColor'); colorHost.innerHTML = '';
   sel = ownerOf(sel);
   const m = S.modules[sel]; if (!m) return;
   const top = document.createElement('div');
@@ -5774,7 +5778,7 @@ function renderEditor() {
     grp.innerHTML = `<summary>${title}</summary>`;
     grp.addEventListener('toggle', () => { const o = store.get('shape.openGroups', {}); o[title] = grp.open; store.set('shape.openGroups', o); });
     // cor e relevo da peça ficam na aba Arte (aparência); o inspetor fica com a forma
-    ((title === 'Cor' || title === 'Relevo por textura') ? artHost : ed).appendChild(grp);
+    (title === 'Cor' ? colorHost : title === 'Relevo por textura' ? artHost : ed).appendChild(grp); // cor: na esquerda, abaixo da pilha
     if (title === 'Arredondamento' && m.kind === 'placa') {
       const b = document.createElement('button'); b.className = 'btn'; b.textContent = 'Espelhar ←→';
       b.onclick = () => { [m.rTL, m.rTR, m.rBL, m.rBR, m.ox] = [m.rTR, m.rTL, m.rBR, m.rBL, -m.ox]; renderEditorKeepScroll(); queueBuild(); };
@@ -5810,7 +5814,7 @@ function renderEditor() {
       const tip = document.createElement('div'); tip.className = 'tip'; tip.textContent = 'Da biblioteca: reconhece o corpo (trechos iguais viram Repetição), o gargalo e a válvula spray/pump ou tampa, e monta com as peças do OUTBOX. Fiel ao contorno: copia a forma do STL em peças de perfil (para formas que não existem na biblioteca). Detalhes fora do contorno (letras, recortes) ficam de fora.';
       grp.appendChild(tip);
     }
-    if (title === 'Cor') matRow(grp, m, d => { if (d) m.own = true; renderEditorKeepScroll(); if (d) { renderStack(); queueBuild(); } });
+    if (title === 'Cor') { grp.open = true; grp.querySelector('summary').textContent = `Peça selecionada: ${m.name}`; }
     if (title === 'Relevo por textura') {
       const row = document.createElement('div'); row.className = 'row actions';
       const up = document.createElement('button'); up.className = 'btn sm'; up.textContent = m.reliefImg ? 'Trocar textura' : 'Subir textura (detecta o tipo)';
@@ -6340,7 +6344,7 @@ function renderGlobal() {
   field(lf, S, ['finish', 'Acabamento geral', 'finish'], () => { delete S.difus; delete S.ior; renderGlobal(); queueBuild(); });
   field(lf, S, ['difus', 'Difusão (0 = liso/polido, 100 = bem difuso)', 0, 100, 1, '%', null, o => presetDif(o.finish)], queueBuild);
   if (isGlass(S.finish)) field(lf, S, ['ior', 'IOR do vidro (1,0 ar · 1,33 água · 1,5 vidro · 2,4 diamante)', 1, 2.4, 0.01, '', null, o => presetIor(o.finish)], queueBuild);
-  matRow(lf, S, d => { renderGlobal(); if (d) { renderStack(); queueBuild(); } });
+  matRow(lf, () => { const m = S.modules[sel]; return m?.own ? m : S; }, d => { renderGlobal(); renderEditorKeepScroll(); if (d) { renderStack(); queueBuild(); } });
   $('#projName').value = fileName();
 }
 
@@ -6464,11 +6468,12 @@ async function saveMatToLib(o, name) {
   await refreshMatLib();
 }
 // Linha "Materiais salvos": bolinhas com nome (clique aplica, ✕ exclui) + salvar o atual.
-function matRow(box, o, apply) {
+function matRow(box, o0, apply) {
+  const tgt = () => typeof o0 === 'function' ? o0() : o0; // alvo na hora do clique (peça com cor própria ou produto)
   const wrap = document.createElement('div'); wrap.className = 'matRow';
   const esc = t => String(t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
   if (matLib.length) {
-    const lab = document.createElement('div'); lab.className = 'tip'; lab.textContent = 'Materiais salvos (clique para aplicar):'; wrap.appendChild(lab);
+    const lab = document.createElement('div'); lab.className = 'tip'; lab.textContent = typeof o0 === 'function' ? 'Materiais salvos: aplicam na peça selecionada se ela tem cor própria; se não, no produto inteiro.' : 'Materiais salvos (clique para aplicar):'; wrap.appendChild(lab);
     for (const f of matLib) {
       const ch = document.createElement('span'); ch.className = 'chip matChip'; ch.title = `Aplicar ${f.name}`;
       ch.innerHTML = `${f.thumb ? `<img src="${f.thumb}" alt="">` : ''}${esc(f.name)}<b title="Excluir da biblioteca">✕</b>`;
@@ -6480,7 +6485,7 @@ function matRow(box, o, apply) {
         }
         try {
           const r = await fetch(`api/uploads.php?a=file&id=${f.id}`, { credentials: 'same-origin' }); if (!r.ok) throw 0;
-          const d = await r.json(); delete o.difus; delete o.ior;
+          const d = await r.json(), o = tgt(); delete o.difus; delete o.ior;
           MAT_KEYS.forEach(k => { if (d[k] !== undefined) o[k] = d[k]; });
           apply(d); toast(`Material: ${f.name}`);
         } catch { toast('Não consegui abrir esse material'); }
@@ -6491,7 +6496,7 @@ function matRow(box, o, apply) {
   if (cloud) {
     const b = document.createElement('button'); b.className = 'btn sm'; b.textContent = 'Salvar material (cor + acabamento)';
     b.onclick = async () => {
-      const fin = (FINISHES.find(f => f[0] === o.finish) || [, ''])[1].toLowerCase();
+      const o = tgt(), fin = (FINISHES.find(f => f[0] === o.finish) || [, ''])[1].toLowerCase();
       const name = (prompt('Nome do material (ex.: vidro verde fosco):', fin) || '').trim(); if (!name) return;
       if (matLib.some(f => f.name === name) && !confirm(`Já existe "${name}". Substituir?`)) return;
       try { await saveMatToLib(o, name); toast(`Material salvo: ${name}`); apply(null); } catch { toast('Não consegui salvar o material'); }
