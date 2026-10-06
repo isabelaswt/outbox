@@ -39,7 +39,7 @@ aside{background:var(--panel);border-right:1px solid var(--line);overflow-y:auto
 .ahead{position:sticky;top:0;z-index:5;background:var(--panel);padding:14px 0 8px;margin-bottom:4px;border-bottom:1px solid var(--line)}
 .ahead .brand{display:flex;align-items:baseline;gap:8px;margin-bottom:6px}.ahead .brand .sub{font-size:11px}
 .row.filebar{display:grid;grid-template-columns:auto auto 1fr auto auto}.row.filebar .btn{padding-left:8px;padding-right:8px;white-space:nowrap}
-.tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:0;margin-top:8px;border:1px solid var(--line);border-radius:9px;overflow:hidden}
+.tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:0;margin-top:8px;border:1px solid var(--line);border-radius:9px;overflow:hidden}
 .tabs button{border:0;background:var(--soft);padding:7px 0;font:inherit;font-size:12px;font-weight:600;color:#555;cursor:pointer}
 .tabs button+button{border-left:1px solid var(--line)}
 .tabs button.on{background:var(--ink);color:#fff}
@@ -180,7 +180,7 @@ canvas{display:block;width:100%;height:100%;touch-action:none}
       <button class="btn" id="moreBtn" title="Silhueta, referência, gerador, JSON, equipe">Mais ▾</button>
     </div>
     <div class="tip" id="saveStatus"></div>
-    <div class="tabs" id="sideTabs"><button data-t="lib">Biblioteca</button><button data-t="build">Montar</button><button data-t="scene">Cena</button></div>
+    <div class="tabs" id="sideTabs"><button data-t="lib">Biblioteca</button><button data-t="build">Montar</button><button data-t="art">Arte</button><button data-t="scene">Cena</button></div>
   </div>
 
   <div class="tab" data-t="lib">
@@ -221,11 +221,17 @@ canvas{display:block;width:100%;height:100%;touch-action:none}
   </details>
   </div>
 
-  <div class="tab" data-t="scene">
+  <div class="tab" data-t="art">
 <details open>
     <summary>Aparência</summary>
     <div id="lookFields"></div>
     <div class="row"><button class="btn" id="colorAll">Aplicar cor geral a todos os módulos</button></div>
+  </details>
+
+<details open>
+    <summary>Peça selecionada: cor e textura</summary>
+    <div class="tip" id="artPieceName"></div>
+    <div class="edit" id="artPiece"></div>
   </details>
 
 <details open>
@@ -239,6 +245,9 @@ canvas{display:block;width:100%;height:100%;touch-action:none}
     <div id="labelBox"></div>
   </details>
 
+  </div>
+
+  <div class="tab" data-t="scene">
 <details open>
     <summary>Apresentação</summary>
     <div class="tip">Cenário, luz e vídeo girando para mostrar o produto. O cenário se ajusta ao tamanho do produto (e dos que estão ao lado).</div>
@@ -753,7 +762,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-10-05.menu-novo';
+const BUILD = '2026-10-06.arte';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -5711,8 +5720,8 @@ function renderStack() {
       const n = unitLen(i), part = S.modules.slice(i, i + n);
       if (a === 'eye') { m.hidden = !m.hidden; renderStack(); queueBuild(); return; }
       if (a === 'cor') { // bolinha de cor: abre direto o material deste módulo
-        sel = i; openInspector(); renderStack(); renderEditor();
-        const g = [...$('#editor').querySelectorAll('details.grp')].find(d => d.querySelector('summary')?.textContent === 'Cor');
+        sel = i; renderStack(); renderEditor(); setSideTab('art');
+        const g = [...$('#artPiece').querySelectorAll('details.grp')].find(d => d.querySelector('summary')?.textContent === 'Cor');
         if (g) { g.open = true; g.scrollIntoView({ block: 'start' }); }
         return;
       }
@@ -5729,8 +5738,10 @@ function renderStack() {
 
 function renderEditor() {
   const ed = $('#editor'); ed.innerHTML = '';
+  const artHost = $('#artPiece'); artHost.innerHTML = '';
   sel = ownerOf(sel);
   const m = S.modules[sel]; if (!m) return;
+  $('#artPieceName').textContent = `${m.name} · clique em outra peça (na pilha ou no 3D) para trocar`;
   const top = document.createElement('div');
   top.innerHTML = `<div class="row"><input type="text" value="" title="Nome da peça"></div>`;
   const nm = top.querySelector('input'); nm.value = m.name;
@@ -5766,7 +5777,8 @@ function renderEditor() {
     const grp = document.createElement('details'); grp.className = 'grp'; grp.open = !!openG[title] || (title === 'Gomos' && m.lobes >= 3);
     grp.innerHTML = `<summary>${title}</summary>`;
     grp.addEventListener('toggle', () => { const o = store.get('shape.openGroups', {}); o[title] = grp.open; store.set('shape.openGroups', o); });
-    ed.appendChild(grp);
+    // cor e relevo da peça ficam na aba Arte (aparência); o inspetor fica com a forma
+    ((title === 'Cor' || title === 'Relevo por textura') ? artHost : ed).appendChild(grp);
     if (title === 'Arredondamento' && m.kind === 'placa') {
       const b = document.createElement('button'); b.className = 'btn'; b.textContent = 'Espelhar ←→';
       b.onclick = () => { [m.rTL, m.rTR, m.rBL, m.rBR, m.ox] = [m.rTR, m.rTL, m.rBR, m.rBL, -m.ox]; renderEditorKeepScroll(); queueBuild(); };
@@ -6320,8 +6332,8 @@ function renderRibs(ed, m) {
   ed.appendChild(box);
 }
 function renderEditorKeepScroll() {
-  const box = $('#inspector'), y = box.scrollTop;
-  renderEditor(); box.scrollTop = y;
+  const box = $('#inspector'), y = box.scrollTop, side = document.querySelector('aside'), ys = side.scrollTop;
+  renderEditor(); box.scrollTop = y; side.scrollTop = ys;
 }
 
 function renderGlobal() {
@@ -6337,8 +6349,8 @@ function renderGlobal() {
 }
 
 // ───────────────────────── painéis: abas, menus e inspetor ─────────────────────────
-// Esquerda: Biblioteca (modelos), Montar (peças, lado a lado, volume) e Cena (aparência,
-// logo, luz). Exportar e Mais abrem num painel ao lado. A peça selecionada abre à direita.
+// Esquerda: Biblioteca (modelos), Montar (peças, lado a lado, volume), Arte (cor, acabamento,
+// logo e rótulo) e Cena (luz, fundo, cenário, vídeo). Exportar e Mais abrem num painel ao lado. A peça selecionada abre à direita.
 const appEl = document.querySelector('.app');
 function setSideTab(t) {
   document.querySelectorAll('#sideTabs button').forEach(b => b.classList.toggle('on', b.dataset.t === t));
