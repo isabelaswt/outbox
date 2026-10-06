@@ -17,10 +17,13 @@ function clean_name($n): string {
 if (!db()->query("SHOW COLUMNS FROM models LIKE 'thumb'")->fetch()) db()->exec('ALTER TABLE models ADD COLUMN thumb MEDIUMTEXT NULL');
 // Aba da galeria de cada modelo (calculada no navegador ao salvar): a galeria agrupa sem baixar o modelo.
 if (!db()->query("SHOW COLUMNS FROM models LIKE 'tab'")->fetch()) db()->exec('ALTER TABLE models ADD COLUMN tab VARCHAR(40) NULL');
+// Lixeira: excluir só marca a data; some de vez depois de 30 dias (ou ao esvaziar).
+if (!db()->query("SHOW COLUMNS FROM models LIKE 'deleted_at'")->fetch()) db()->exec('ALTER TABLE models ADD COLUMN deleted_at DATETIME NULL');
+db()->prepare('DELETE FROM models WHERE user_id = ? AND deleted_at IS NOT NULL AND deleted_at < NOW() - INTERVAL 30 DAY')->execute([$u['id']]);
 function clean_tab($t) { $t = trim((string)$t); return $t === '' || mb_strlen($t) > 40 ? null : $t; }
 
 if ($a === 'list') {
-  $s = db()->prepare('SELECT name, thumb, tab, updated_at FROM models WHERE user_id = ? ORDER BY updated_at DESC');
+  $s = db()->prepare('SELECT name, thumb, tab, updated_at FROM models WHERE user_id = ? AND deleted_at IS NULL ORDER BY updated_at DESC');
   $s->execute([$u['id']]);
   $rows = array_map(fn($r) => ['name' => $r['name'], 'thumb' => $r['thumb'] ?: '', 'tab' => $r['tab'] ?: '', 'updated' => $r['updated_at']], $s->fetchAll());
   out(['models' => $rows]);
@@ -42,7 +45,7 @@ if ($a === 'save') {
   $thumb = (string)($in['thumb'] ?? '');
   if ($thumb !== '' && (strlen($thumb) > 400000 || !str_starts_with($thumb, 'data:image/'))) $thumb = '';
   // sem miniatura nova (autosave), fica a que já estava
-  db()->prepare('INSERT INTO models (user_id, name, data, thumb, tab) VALUES (?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE data = VALUES(data), thumb = COALESCE(VALUES(thumb), thumb), tab = COALESCE(VALUES(tab), tab), updated_at = NOW()')
+  db()->prepare('INSERT INTO models (user_id, name, data, thumb, tab) VALUES (?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE data = VALUES(data), thumb = COALESCE(VALUES(thumb), thumb), tab = COALESCE(VALUES(tab), tab), deleted_at = NULL, updated_at = NOW()')
     ->execute([$u['id'], $name, $data, $thumb !== '' ? $thumb : null, clean_tab($in['tab'] ?? '')]);
   out(['ok' => true]);
 }
@@ -58,7 +61,25 @@ if ($a === 'thumb') {
 
 if ($a === 'delete') {
   $in = need_post();
-  db()->prepare('DELETE FROM models WHERE user_id = ? AND name = ?')->execute([$u['id'], clean_name($in['name'] ?? '')]);
+  db()->prepare('UPDATE models SET deleted_at = NOW(), updated_at = updated_at WHERE user_id = ? AND name = ?')->execute([$u['id'], clean_name($in['name'] ?? '')]);
+  out(['ok' => true]);
+}
+
+if ($a === 'trash') {
+  $s = db()->prepare('SELECT name, thumb, deleted_at FROM models WHERE user_id = ? AND deleted_at IS NOT NULL ORDER BY deleted_at DESC');
+  $s->execute([$u['id']]);
+  out(['models' => array_map(fn($r) => ['name' => $r['name'], 'thumb' => $r['thumb'] ?: '', 'deleted' => $r['deleted_at']], $s->fetchAll())]);
+}
+
+if ($a === 'restore') {
+  $in = need_post();
+  db()->prepare('UPDATE models SET deleted_at = NULL, updated_at = updated_at WHERE user_id = ? AND name = ?')->execute([$u['id'], clean_name($in['name'] ?? '')]);
+  out(['ok' => true]);
+}
+
+if ($a === 'purge') {
+  $in = need_post();
+  db()->prepare('DELETE FROM models WHERE user_id = ? AND name = ? AND deleted_at IS NOT NULL')->execute([$u['id'], clean_name($in['name'] ?? '')]);
   out(['ok' => true]);
 }
 

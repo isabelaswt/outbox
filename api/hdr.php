@@ -28,6 +28,9 @@ db()->exec('CREATE TABLE IF NOT EXISTS hdr_chunks (
   PRIMARY KEY (file_id, idx)
 ) ENGINE=InnoDB');
 
+// Lixeira: excluir só marca a data; some de vez depois de 30 dias.
+if (!db()->query("SHOW COLUMNS FROM hdr_files LIKE 'deleted_at'")->fetch()) db()->exec('ALTER TABLE hdr_files ADD COLUMN deleted_at DATETIME NULL');
+
 function hdr_name(string $n): string {
   $n = trim(preg_replace('/[\x00-\x1f\/\\\\]/u', '', $n));
   if ($n === '' || mb_strlen($n) > 190 || !preg_match('/\.(hdr|exr)$/i', $n)) out(['error' => 'name'], 400);
@@ -40,9 +43,9 @@ function hdr_drop(int $id): void {
 
 if ($a === 'list') {
   // envios abandonados há mais de um dia saem
-  $old = db()->query('SELECT id FROM hdr_files WHERE complete = 0 AND created_at < NOW() - INTERVAL 1 DAY')->fetchAll();
+  $old = db()->query('SELECT id FROM hdr_files WHERE (complete = 0 AND created_at < NOW() - INTERVAL 1 DAY) OR (deleted_at IS NOT NULL AND deleted_at < NOW() - INTERVAL 30 DAY)')->fetchAll();
   foreach ($old as $r) hdr_drop((int)$r['id']);
-  $rows = db()->query('SELECT id, name, size FROM hdr_files WHERE complete = 1 ORDER BY name')->fetchAll();
+  $rows = db()->query('SELECT id, name, size FROM hdr_files WHERE complete = 1 AND deleted_at IS NULL ORDER BY name')->fetchAll();
   out(['files' => array_map(fn($r) => ['id' => (int)$r['id'], 'name' => $r['name'], 'size' => (int)$r['size']], $rows)]);
 }
 
@@ -100,7 +103,7 @@ if ($a === 'finish') {
   $c->execute([$id]);
   $got = $c->fetch();
   if ((int)$got['n'] !== (int)$f['chunks'] || (int)$got['b'] !== (int)$f['size']) { hdr_drop($id); out(['error' => 'incomplete'], 400); }
-  $old = db()->prepare('SELECT id FROM hdr_files WHERE name = ? AND complete = 1');
+  $old = db()->prepare('SELECT id FROM hdr_files WHERE name = ? AND complete = 1 AND deleted_at IS NULL');
   $old->execute([$f['name']]);
   foreach ($old->fetchAll() as $r) hdr_drop((int)$r['id']);
   db()->prepare('UPDATE hdr_files SET complete = 1 WHERE id = ?')->execute([$id]);
@@ -109,9 +112,32 @@ if ($a === 'finish') {
 
 if ($a === 'delete') {
   $in = need_post();
-  $s = db()->prepare('SELECT id FROM hdr_files WHERE name = ?');
-  $s->execute([hdr_name((string)($in['name'] ?? ''))]);
-  foreach ($s->fetchAll() as $r) hdr_drop((int)$r['id']);
+  db()->prepare('UPDATE hdr_files SET deleted_at = NOW() WHERE name = ? AND deleted_at IS NULL')->execute([hdr_name((string)($in['name'] ?? ''))]);
+  out(['ok' => true]);
+}
+
+if ($a === 'trash') {
+  $rows = db()->query('SELECT id, name, deleted_at FROM hdr_files WHERE complete = 1 AND deleted_at IS NOT NULL ORDER BY deleted_at DESC')->fetchAll();
+  out(['files' => array_map(fn($r) => ['id' => (int)$r['id'], 'name' => $r['name'], 'deleted' => $r['deleted_at']], $rows)]);
+}
+
+if ($a === 'restore') {
+  $in = need_post();
+  $id = (int)($in['id'] ?? 0);
+  $s = db()->prepare('SELECT name FROM hdr_files WHERE id = ?'); $s->execute([$id]); $n = $s->fetchColumn();
+  if ($n !== false) { // um ativo com o mesmo nome sai (o restaurado volta no lugar)
+    $o = db()->prepare('SELECT id FROM hdr_files WHERE name = ? AND deleted_at IS NULL AND id <> ?'); $o->execute([$n, $id]);
+    foreach ($o->fetchAll() as $r) hdr_drop((int)$r['id']);
+    db()->prepare('UPDATE hdr_files SET deleted_at = NULL WHERE id = ?')->execute([$id]);
+  }
+  out(['ok' => true]);
+}
+
+if ($a === 'purge') {
+  $in = need_post();
+  $s = db()->prepare('SELECT id FROM hdr_files WHERE id = ? AND deleted_at IS NOT NULL');
+  $s->execute([(int)($in['id'] ?? 0)]);
+  if ($r = $s->fetch()) hdr_drop((int)$r['id']);
   out(['ok' => true]);
 }
 

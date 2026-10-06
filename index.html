@@ -286,6 +286,7 @@ canvas{display:block;width:100%;height:100%;touch-action:none}
       <button class="btn" id="exportJson">JSON ↓</button>
       <button class="btn" id="importJsonBtn">JSON ↑</button>
       <button class="btn" id="delPreset">Excluir salvo</button>
+      <button class="btn" id="trashBtn" title="Itens excluídos ficam 30 dias aqui">🗑 Lixeira</button>
       <input type="file" id="importJson" accept=".json,application/json" class="hidden">
     </div>
 <details>
@@ -767,7 +768,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-10-06.aba-cor';
+const BUILD = '2026-10-06.lixeira';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -3762,7 +3763,7 @@ function renderScene() {
   hbs.at(-1).onclick = () => $('#hdrFile').click();
   if (hsel) {
     hbs[0].onclick = () => { S.scene.luz = 'hdr'; S.scene.hdrName = hsel.value; renderScene(); applySceneLight(); saveLocalSoon(); req(); };
-    hbs[1].onclick = async () => { const n = hsel.value; if (!confirm(`Excluir "${n}" do servidor? Some para a equipe toda.`)) return;
+    hbs[1].onclick = async () => { const n = hsel.value; if (!confirm(`Excluir "${n}"? Vai para a Lixeira (Mais ▾) por 30 dias.`)) return;
       try { await api('hdr.php?a=delete', { name: n }); await refreshHdrList(); toast('HDR excluído'); } catch { toast('Não consegui excluir'); } };
   }
   f.appendChild(hl);
@@ -5987,7 +5988,7 @@ function renderEditor() {
       const libF = reliefLib.find(f => f.name === m.reliefName);
       const del = document.createElement('button'); del.className = 'btn sm'; del.textContent = 'Excluir da biblioteca'; del.classList.toggle('hidden', !libF);
       del.onclick = async () => {
-        if (!libF || !confirm(`Excluir "${libF.name}" da biblioteca da equipe? (o frasco atual continua com a textura)`)) return;
+        if (!libF || !confirm(`Excluir "${libF.name}" da biblioteca? Vai para a Lixeira (Mais ▾) por 30 dias; o frasco atual continua com a textura.`)) return;
         try { await api('uploads.php?a=delete', { id: libF.id }); await refreshReliefLib(); toast('Textura excluída da biblioteca'); renderEditorKeepScroll(); }
         catch { toast('Não consegui excluir'); }
       };
@@ -6520,7 +6521,7 @@ function matRow(box, o0, apply) {
       ch.innerHTML = `${f.thumb ? `<img src="${f.thumb}" alt="">` : ''}${esc(f.name)}<b title="Excluir da biblioteca">✕</b>`;
       ch.onclick = async e => {
         if (e.target.tagName === 'B') {
-          if (!confirm(`Excluir o material "${f.name}" da biblioteca da equipe?`)) return;
+          if (!confirm(`Excluir o material "${f.name}"? Vai para a Lixeira (Mais ▾) por 30 dias.`)) return;
           try { await api('uploads.php?a=delete', { id: f.id }); await refreshMatLib(); toast('Material excluído'); apply(null); } catch { toast('Não consegui excluir'); }
           return;
         }
@@ -6616,6 +6617,47 @@ function queueCloudThumb(it) {
   };
   setTimeout(next, 300);
 }
+// Lixeira: projetos, STL, texturas, materiais e HDR excluídos ficam 30 dias; dá para
+// restaurar ou apagar de vez.
+async function openTrash() {
+  if (!cloud) return toast('Entre na conta para ver a lixeira');
+  const ov = document.createElement('div'); ov.className = 'openDlg';
+  ov.innerHTML = `<div class="openBox"><div class="openHead"><b>Lixeira</b><span class="tip" style="margin:0;flex:1">Itens excluídos ficam aqui por 30 dias.</span><button class="btn sm">Fechar</button></div><div class="openGrid"><h4>Carregando…</h4></div></div>`;
+  const grid = ov.querySelector('.openGrid'), close = () => ov.remove();
+  ov.querySelector('button').onclick = close; ov.onclick = e => { if (e.target === ov) close(); };
+  document.body.appendChild(ov);
+  const KIND = { stl: 'STL', relief: 'Textura', material: 'Material' };
+  const fmt = d => d ? new Date(d.replace(' ', 'T')).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '';
+  const draw = async () => {
+    let M = [], U = [], H = [];
+    try { [M, U, H] = await Promise.all([api('models.php?a=trash').then(r => r.models || []), api('uploads.php?a=trash').then(r => r.files || []), api('hdr.php?a=trash').then(r => r.files || []).catch(() => [])]); }
+    catch { grid.innerHTML = '<h4>Não consegui abrir a lixeira</h4>'; return; }
+    grid.innerHTML = '';
+    const sec = (title, arr, card) => { if (!arr.length) return; const h = document.createElement('h4'); h.textContent = title; grid.appendChild(h); arr.forEach(it => grid.appendChild(card(it))); };
+    const mk = (name, sub, thumb, onRestore, onPurge) => {
+      const c = document.createElement('div'); c.className = 'card'; c.title = name;
+      c.innerHTML = `<img class="ph" alt=""><div></div><small></small><div class="row" style="margin:4px 0 0"><button class="btn sm">Restaurar</button><button class="btn sm" title="Apagar de vez">✕</button></div>`;
+      if (thumb) c.querySelector('img').src = thumb;
+      c.querySelector('div').textContent = name; c.querySelector('small').textContent = sub;
+      const [br, bp] = c.querySelectorAll('button');
+      br.onclick = async () => { try { await onRestore(); toast(`Restaurado: ${name}`); draw(); } catch { toast('Não consegui restaurar'); } };
+      bp.onclick = async () => { if (!confirm(`Apagar "${name}" de vez? Não dá para desfazer.`)) return; try { await onPurge(); draw(); } catch { toast('Não consegui apagar'); } };
+      return c;
+    };
+    sec('Projetos', M, it => mk(it.name, `excluído ${fmt(it.deleted)}`, it.thumb,
+      async () => { await api('models.php?a=restore', { name: it.name }); await refreshCloudList(); },
+      () => api('models.php?a=purge', { name: it.name })));
+    sec('STL, texturas e materiais', U, it => mk(it.name, `${KIND[it.kind] || it.kind} · excluído ${fmt(it.deleted)}`, it.thumb,
+      async () => { await api('uploads.php?a=restore', { id: it.id }); it.kind === 'stl' ? await refreshStlUploads() : it.kind === 'relief' ? await refreshReliefLib() : await refreshMatLib(); renderGlobal(); renderEditorKeepScroll(); },
+      () => api('uploads.php?a=purge', { id: it.id })));
+    sec('HDR / EXR', H, it => mk(it.name, `excluído ${fmt(it.deleted)}`, '',
+      async () => { await api('hdr.php?a=restore', { id: it.id }); await refreshHdrList(); renderScene(); },
+      () => api('hdr.php?a=purge', { id: it.id })));
+    if (!M.length && !U.length && !H.length) grid.innerHTML = '<h4>A lixeira está vazia</h4>';
+  };
+  draw();
+}
+$('#trashBtn').onclick = () => { document.querySelectorAll('.pop.open').forEach(p => p.classList.remove('open')); openTrash(); };
 // Popup "Abrir": procura e abre um projeto salvo (só esse é baixado).
 function openSavedDialog() {
   const items = cloud ? cloudList : Object.keys(store.get('shape.presets', {})).map(name => ({ name, thumb: '', updated: '' }));
@@ -6635,12 +6677,12 @@ function openSavedDialog() {
         c.innerHTML = `<img class="ph" alt=""><div></div><small></small><button class="del" title="Excluir este projeto">✕</button>`;
         c.querySelector('.del').onclick = async e => {
           e.stopPropagation();
-          if (!confirm(`Excluir "${it.name}" dos salvos? Não dá para desfazer.`)) return;
+          if (!confirm(`Excluir "${it.name}"? Ele vai para a Lixeira (Mais ▾) por 30 dias.`)) return;
           try {
             if (cloud) { await api('models.php?a=delete', { name: it.name }); delete cloud[it.name]; cloudList = cloudList.filter(x => x.name !== it.name); }
             else { const sv = store.get('shape.presets', {}); delete sv[it.name]; store.set('shape.presets', sv); }
           } catch (er) { return toast(er.status === 401 ? 'Sua sessão expirou: entre de novo' : 'Não consegui excluir'); }
-          items.splice(items.indexOf(it), 1); draw(); galleryKey = ''; renderPresets(); renderLineup(); toast(`Excluído: ${it.name}`);
+          items.splice(items.indexOf(it), 1); draw(); galleryKey = ''; renderPresets(); renderLineup(); toast(`${it.name} foi para a Lixeira`);
         };
         if (it.thumb) c.querySelector('img').src = it.thumb;
         c.querySelector('div').textContent = it.name;
@@ -6813,7 +6855,7 @@ function renderPresets() {
       card.innerHTML = `<img class="ph" alt=""><div></div><button class="b" title="Excluir dos uploads" style="position:absolute;top:4px;right:4px;border:0;background:rgba(255,255,255,.85);border-radius:6px;cursor:pointer">✕</button>`;
       card.querySelector('div').textContent = f.name; if (f.thumb) card.querySelector('img').src = f.thumb;
       card.onclick = e => { if (e.target.closest('button')) return; useStlUpload(f); };
-      card.querySelector('button').onclick = async () => { if (!confirm(`Excluir "${f.name}" dos uploads da equipe?`)) return;
+      card.querySelector('button').onclick = async () => { if (!confirm(`Excluir "${f.name}" dos uploads? Vai para a Lixeira (Mais ▾) por 30 dias.`)) return;
         try { await api('uploads.php?a=delete', { id: f.id }); await refreshStlUploads(); toast('Upload excluído'); } catch { toast('Não consegui excluir'); } };
       gal.appendChild(card);
     }
@@ -6898,7 +6940,7 @@ setInterval(autoSave, 5 * 60000);
 window.addEventListener('beforeunload', () => { autoSave(); });
 $('#delPreset').onclick = async () => {
   const fn = fileName(); if (!savedNames().includes(fn)) { toast('Esse aberto não é um salvo: exclua pelo ✕ no Abrir…'); return openSavedDialog(); }
-  if (!confirm(`Excluir "${fn}" dos salvos?`)) return; const sv = saved();
+  if (!confirm(`Excluir "${fn}"? Ele vai para a Lixeira (Mais ▾) por 30 dias.`)) return; const sv = saved();
   if (cloud) {
     try { await api('models.php?a=delete', { name: fn }); } catch (e) { return toast(e.status === 401 ? 'Sua sessão expirou: entre de novo' : 'Não consegui excluir'); }
     delete cloud[fn]; cloudList = cloudList.filter(x => x.name !== fn);

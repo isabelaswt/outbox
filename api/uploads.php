@@ -30,6 +30,9 @@ db()->exec('CREATE TABLE IF NOT EXISTS upload_chunks (
   PRIMARY KEY (file_id, idx)
 ) ENGINE=InnoDB');
 
+// Lixeira: excluir só marca a data; some de vez depois de 30 dias.
+if (!db()->query("SHOW COLUMNS FROM upload_files LIKE 'deleted_at'")->fetch()) db()->exec('ALTER TABLE upload_files ADD COLUMN deleted_at DATETIME NULL');
+
 function up_name(string $n): string {
   $n = trim(preg_replace('/[\x00-\x1f\/\\\\]/u', '', $n));
   if ($n === '' || mb_strlen($n) > 190) out(['error' => 'name'], 400);
@@ -45,9 +48,9 @@ function up_drop(int $id): void {
 }
 
 if ($a === 'list') {
-  $old = db()->query('SELECT id FROM upload_files WHERE complete = 0 AND created_at < NOW() - INTERVAL 1 DAY')->fetchAll();
+  $old = db()->query('SELECT id FROM upload_files WHERE (complete = 0 AND created_at < NOW() - INTERVAL 1 DAY) OR (deleted_at IS NOT NULL AND deleted_at < NOW() - INTERVAL 30 DAY)')->fetchAll();
   foreach ($old as $r) up_drop((int)$r['id']);
-  $s = db()->prepare('SELECT id, name, size, thumb FROM upload_files WHERE complete = 1 AND kind = ? ORDER BY created_at DESC');
+  $s = db()->prepare('SELECT id, name, size, thumb FROM upload_files WHERE complete = 1 AND deleted_at IS NULL AND kind = ? ORDER BY created_at DESC');
   $s->execute([up_kind((string)($_GET['kind'] ?? 'stl'))]);
   out(['files' => array_map(fn($r) => ['id' => (int)$r['id'], 'name' => $r['name'], 'size' => (int)$r['size'], 'thumb' => $r['thumb'] ?: ''], $s->fetchAll())]);
 }
@@ -107,7 +110,7 @@ if ($a === 'finish') {
   $c->execute([$id]);
   $got = $c->fetch();
   if ((int)$got['n'] !== (int)$f['chunks'] || (int)$got['b'] !== (int)$f['size']) { up_drop($id); out(['error' => 'incomplete'], 400); }
-  $old = db()->prepare('SELECT id FROM upload_files WHERE kind = ? AND name = ? AND complete = 1');
+  $old = db()->prepare('SELECT id FROM upload_files WHERE kind = ? AND name = ? AND complete = 1 AND deleted_at IS NULL');
   $old->execute([$f['kind'], $f['name']]);
   foreach ($old->fetchAll() as $r) up_drop((int)$r['id']);
   db()->prepare('UPDATE upload_files SET complete = 1 WHERE id = ?')->execute([$id]);
@@ -116,7 +119,26 @@ if ($a === 'finish') {
 
 if ($a === 'delete') {
   $in = need_post();
-  up_drop((int)($in['id'] ?? 0));
+  db()->prepare('UPDATE upload_files SET deleted_at = NOW() WHERE id = ?')->execute([(int)($in['id'] ?? 0)]);
+  out(['ok' => true]);
+}
+
+if ($a === 'trash') {
+  $rows = db()->query('SELECT id, kind, name, thumb, deleted_at FROM upload_files WHERE complete = 1 AND deleted_at IS NOT NULL ORDER BY deleted_at DESC')->fetchAll();
+  out(['files' => array_map(fn($r) => ['id' => (int)$r['id'], 'kind' => $r['kind'], 'name' => $r['name'], 'thumb' => $r['thumb'] ?: '', 'deleted' => $r['deleted_at']], $rows)]);
+}
+
+if ($a === 'restore') {
+  $in = need_post();
+  db()->prepare('UPDATE upload_files SET deleted_at = NULL WHERE id = ?')->execute([(int)($in['id'] ?? 0)]);
+  out(['ok' => true]);
+}
+
+if ($a === 'purge') {
+  $in = need_post();
+  $s = db()->prepare('SELECT id FROM upload_files WHERE id = ? AND deleted_at IS NOT NULL');
+  $s->execute([(int)($in['id'] ?? 0)]);
+  if ($r = $s->fetch()) up_drop((int)$r['id']);
   out(['ok' => true]);
 }
 
