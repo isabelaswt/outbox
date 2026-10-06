@@ -44,7 +44,7 @@ aside{background:var(--panel);border-right:1px solid var(--line);overflow-y:auto
 .tabs button+button{border-left:1px solid var(--line)}
 .tabs button.on{background:var(--ink);color:#fff}
 .tab{display:none}.tab.on{display:block}
-.itab{display:none}.itab.on{display:block}
+.itab{display:block}.itab+.itab{margin-top:8px}
 .tabs.two{grid-template-columns:1fr 1.6fr;margin:0 0 8px}
 #inspector .inspHead{border-bottom:0;padding-bottom:6px}
 .tab[data-t=lib] .gallery{max-height:calc(100vh - 290px);min-height:300px} /* a galeria usa a altura toda da aba */
@@ -350,7 +350,6 @@ canvas{display:block;width:100%;height:100%;touch-action:none}
 </main>
 <section id="inspector">
   <div class="inspHead"><b>Peça selecionada</b><button class="btn sm" id="inspClose" title="Fechar (clique numa peça para abrir de novo)">✕</button></div>
-  <div class="tabs two" id="inspTabs"><button data-t="forma">Forma</button><button data-t="arte">Arte (cor, textura, logo)</button></div>
   <div class="itab" data-t="forma"><div class="edit" id="editor"></div></div>
   <div class="itab" data-t="arte">
     <div class="edit"><div id="artPiece"></div>
@@ -760,7 +759,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-10-06.tres-abas';
+const BUILD = '2026-10-06.peca-unica';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -5718,7 +5717,7 @@ function renderStack() {
       const n = unitLen(i), part = S.modules.slice(i, i + n);
       if (a === 'eye') { m.hidden = !m.hidden; renderStack(); queueBuild(); return; }
       if (a === 'cor') { // bolinha de cor: abre direto o material deste módulo
-        sel = i; openInspector(); setInspTab('arte'); renderStack(); renderEditor();
+        sel = i; openInspector(); renderStack(); renderEditor(); setInspTab('arte');
         const g = [...$('#artPiece').querySelectorAll('details.grp')].find(d => d.querySelector('summary')?.textContent === 'Cor');
         if (g) { g.open = true; g.scrollIntoView({ block: 'start' }); }
         return;
@@ -6370,13 +6369,8 @@ document.addEventListener('pointerdown', e => { // clicar fora fecha o painel (m
   if (e.target.closest('.pop, #exportBtn, #moreBtn')) return;
   document.querySelectorAll('.pop.open').forEach(p => p.classList.remove('open'));
 });
-function setInspTab(t) {
-  document.querySelectorAll('#inspTabs button').forEach(b => b.classList.toggle('on', b.dataset.t === t));
-  document.querySelectorAll('#inspector > .itab').forEach(d => d.classList.toggle('on', d.dataset.t === t));
-  store.set('shape.inspTab', t);
-}
-document.querySelectorAll('#inspTabs button').forEach(b => b.onclick = () => { setInspTab(b.dataset.t); $('#inspector').scrollTop = 0; });
-setInspTab(store.get('shape.inspTab', 'forma'));
+// Peça: forma e arte (cor, relevo, logo) num painel só; "arte" rola até a cor da peça.
+function setInspTab(t) { if (t === 'arte') document.querySelector('#inspector > .itab[data-t="arte"]')?.scrollIntoView({ block: 'start' }); }
 function openInspector() { if (appEl.classList.contains('insp-off')) { appEl.classList.remove('insp-off'); store.set('shape.inspOff', false); } }
 $('#inspClose').onclick = () => { appEl.classList.add('insp-off'); store.set('shape.inspOff', true); };
 if (store.get('shape.inspOff', false)) appEl.classList.add('insp-off');
