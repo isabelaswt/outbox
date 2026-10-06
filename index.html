@@ -39,7 +39,7 @@ aside{background:var(--panel);border-right:1px solid var(--line);overflow-y:auto
 .ahead{position:sticky;top:0;z-index:5;background:var(--panel);padding:14px 0 8px;margin-bottom:4px;border-bottom:1px solid var(--line)}
 .ahead .brand{display:flex;align-items:baseline;gap:8px;margin-bottom:6px}.ahead .brand .sub{font-size:11px}
 .row.filebar{display:grid;grid-template-columns:auto auto 1fr auto auto}.row.filebar .btn{padding-left:8px;padding-right:8px;white-space:nowrap}
-.tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:0;margin-top:8px;border:1px solid var(--line);border-radius:9px;overflow:hidden}
+.tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:0;margin-top:8px;border:1px solid var(--line);border-radius:9px;overflow:hidden}
 .tabs button{border:0;background:var(--soft);padding:7px 0;font:inherit;font-size:12px;font-weight:600;color:#555;cursor:pointer}
 .tabs button+button{border-left:1px solid var(--line)}
 .tabs button.on{background:var(--ink);color:#fff}
@@ -183,7 +183,7 @@ canvas{display:block;width:100%;height:100%;touch-action:none}
       <button class="btn" id="moreBtn" title="Silhueta, referência, gerador, JSON, equipe">Mais ▾</button>
     </div>
     <div class="tip" id="saveStatus"></div>
-    <div class="tabs" id="sideTabs"><button data-t="lib">Biblioteca</button><button data-t="build">Montar</button><button data-t="art">Aparência</button><button data-t="scene">Cena</button></div>
+    <div class="tabs" id="sideTabs"><button data-t="lib">Biblioteca</button><button data-t="build">Montar</button><button data-t="scene">Cena</button></div>
   </div>
 
   <div class="tab" data-t="lib">
@@ -201,6 +201,12 @@ canvas{display:block;width:100%;height:100%;touch-action:none}
     <div class="tip">Inserir acima do módulo selecionado:</div>
     <div id="addRows"></div>
     <input type="file" id="importStl" accept=".stl,model/stl" class="hidden">
+  </details>
+
+<details open>
+    <summary>Cor e acabamento do produto</summary>
+    <div id="lookFields"></div>
+    <div class="row"><button class="btn" id="colorAll">Aplicar cor geral a todos os módulos</button></div>
   </details>
 
 <details open id="lineBox">
@@ -221,14 +227,6 @@ canvas{display:block;width:100%;height:100%;touch-action:none}
       <select id="fitMode"><option value="prop">proporcional</option><option value="h">só altura</option><option value="w">só largura/prof.</option></select>
       <button class="btn pri sm" id="fitBtn" style="flex:0">Ajustar</button>
     </div>
-  </details>
-  </div>
-
-  <div class="tab" data-t="art">
-<details open>
-    <summary>Aparência</summary>
-    <div id="lookFields"></div>
-    <div class="row"><button class="btn" id="colorAll">Aplicar cor geral a todos os módulos</button></div>
   </details>
   </div>
 
@@ -762,7 +760,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-10-06.inspetor-arte';
+const BUILD = '2026-10-06.tres-abas';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -6348,8 +6346,8 @@ function renderGlobal() {
 }
 
 // ───────────────────────── painéis: abas, menus e inspetor ─────────────────────────
-// Esquerda: Biblioteca (modelos), Montar (peças, lado a lado, volume), Aparência (cor e
-// acabamento gerais) e Cena (luz, fundo, cenário, vídeo). Direita: a peça selecionada,
+// Esquerda: Biblioteca (modelos), Montar (peças, cor e acabamento do produto, lado a lado,
+// volume) e Cena (luz, fundo, cenário, vídeo). Direita: a peça selecionada,
 // com Forma e Arte (cor, relevo por textura, logo e rótulo dela). Exportar e Mais abrem num painel ao lado. A peça selecionada abre à direita.
 const appEl = document.querySelector('.app');
 function setSideTab(t) {
@@ -6358,7 +6356,7 @@ function setSideTab(t) {
   store.set('shape.sideTab', t);
 }
 document.querySelectorAll('#sideTabs button').forEach(b => b.onclick = () => { setSideTab(b.dataset.t); document.querySelector('aside').scrollTop = 0; });
-setSideTab(store.get('shape.sideTab', 'build'));
+{ const t = store.get('shape.sideTab', 'build'); setSideTab(t === 'art' ? 'build' : t); }
 function togglePop(id) {
   const el = document.getElementById(id), open = !el.classList.contains('open');
   document.querySelectorAll('.pop.open').forEach(p => p.classList.remove('open'));
