@@ -265,7 +265,7 @@ function importedMeshGeo(m, y0) {
 
 // ───────────────────────── módulos ─────────────────────────
 const BASE = {
-  name: 'Módulo', W: 50, D: 50, n: 2, sides: 0, sideR: 0.1, h: 40, taper: 100, taperB: 100, shoulderK: 0, bulge: 0, bulgePos: 50,
+  name: 'Peça', W: 50, D: 50, n: 2, sides: 0, sideR: 0.1, h: 40, taper: 100, taperB: 100, shoulderK: 0, bulge: 0, bulgePos: 50,
   rBot: 2, rTop: 2, rBotW: 0, rTopW: 0, gap: 0, rep: 1, repGap: 0, veste: true, fundo: 6,
   groove: 0, grooveD: 0.6,
   notch: false, notchLock: true, notchY: 12, notchW: 20, notchH: 8, notchD: 2, notchP: 2,
@@ -388,7 +388,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-10-26.arquivos';
+const BUILD = '2026-10-26.ux';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -4989,7 +4989,24 @@ document.addEventListener('keydown', e => {
   const k = e.key.toLowerCase();
   if (k === 'z') { e.preventDefault(); e.shiftKey ? redo() : undo(); }
   else if (k === 'y') { e.preventDefault(); redo(); }
+  else if (k === 's') { e.preventDefault(); $('#savePreset').click(); }
 });
+// Teclas simples (fora de campos de texto): vistas, enquadrar e a lista de atalhos.
+document.addEventListener('keydown', e => {
+  if (e.metaKey || e.ctrlKey || e.altKey || /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement?.tagName) || document.querySelector('.openDlg')) return;
+  const v = { 1: 'front', 2: 'side', 3: 'three', 4: 'top' }[e.key];
+  if (v) fit(v); else if (e.key === 'f' || e.key === 'F') fit(); else if (e.key === '?') openKeys();
+});
+function openKeys() {
+  const ov = document.createElement('div'); ov.className = 'openDlg';
+  const K = [['Ctrl/⌘ + Z', 'Desfazer'], ['Ctrl/⌘ + Shift + Z (ou Y)', 'Refazer'], ['Ctrl/⌘ + S', 'Salvar o arquivo'], ['1 · 2 · 3 · 4', 'Vista Frente · Lado · 3/4 · Topo'], ['F', 'Enquadrar tudo na tela'],
+    ['Espaço + arrastar', 'Mover a vista (mão)'], ['Arrastar no 3D', 'Girar · roda do mouse: zoom'], ['Clique numa peça', 'Abre os controles dela à direita'], ['Arrastar um modelo para a cena', 'Põe ao lado (esquerda ou direita)'], ['Esc', 'Fecha painéis e cancela a colocação do logo'], ['?', 'Esta lista']];
+  ov.innerHTML = `<div class="openBox" style="width:min(520px,100%)"><div class="openHead"><b>Atalhos do teclado</b><span style="flex:1"></span><button class="btn sm">Fechar</button></div><div style="padding:14px 16px 18px"><div class="keys">${K.map(([a, b]) => `<span><kbd>${a}</kbd></span><span>${b}</span>`).join('')}</div></div></div>`;
+  const close = () => { ov.remove(); document.removeEventListener('keydown', esc); }, esc = e => { if (e.key === 'Escape') close(); };
+  ov.querySelector('button').onclick = close; ov.onclick = e => { if (e.target === ov) close(); }; document.addEventListener('keydown', esc);
+  document.body.appendChild(ov);
+}
+$('#keysBtn').onclick = () => { document.querySelectorAll('.pop.open').forEach(p => p.classList.remove('open')); openKeys(); };
 // Segurar espaço = mão temporária (fora de campos de texto).
 const typing = () => /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement?.tagName);
 document.addEventListener('keydown', e => { if (e.code === 'Space' && !typing() && !spaceHeld) { spaceHeld = true; applyHand(); e.preventDefault(); } });
@@ -5274,11 +5291,11 @@ const MF = [
     ['bpescWave', 'Ondulação em S', -15, 15, 0.5, 'mm', m => m.vol && m.kind !== 'bisnaga' && !isPote(m) && !hasSolid(m) && ((m.bpesc && bodyTubeOk(m)) || valveHasPesc())],
   ]],
   ['Encaixe', [
-    ['gap', 'Distância do módulo de baixo', -40, 40, 0.1, 'mm'],
+    ['gap', 'Distância da peça de baixo', -40, 40, 0.1, 'mm'],
     ['ox', 'Deslocar para o lado (− esquerda)', -100, 100, 0.5, 'mm'],
   ]],
   ['Cor', [
-    ['own', 'Cor própria neste módulo', 'check'],
+    ['own', 'Cor própria nesta peça', 'check'],
     ['color', 'Cor', 'color', 0, 0, 0, m => m.own],
     ['finish', 'Acabamento', 'finish', 0, 0, 0, m => m.own],
     ['difus', 'Difusão (0 = liso/polido, 100 = bem difuso)', 0, 100, 1, '%', m => m.own, m => presetDif(m.finish)],
@@ -5335,7 +5352,7 @@ function renderStack() {
     const eye = m.hidden
       ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 3l18 18M10.6 5.1A10.4 10.4 0 0 1 12 5c5 0 9 4.5 10 7-.4 1-1.3 2.4-2.6 3.7M6.2 6.3C4.2 7.6 2.7 9.6 2 12c1 2.5 5 7 10 7 1.8 0 3.4-.5 4.8-1.3"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/></svg>'
       : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M2 12c1-2.5 5-7 10-7s9 4.5 10 7c-1 2.5-5 7-10 7S3 14.5 2 12z"/><circle cx="12" cy="12" r="3"/></svg>';
-    el.innerHTML = `<button class="eye" data-a="eye" title="${m.hidden ? 'Mostrar' : 'Ocultar'} (sem apagar)">${eye}</button><span class="sw" data-a="cor" title="Cor e acabamento deste módulo" style="cursor:pointer;background:${m.own ? m.color : S.color}"></span>
+    el.innerHTML = `<button class="eye" data-a="eye" title="${m.hidden ? 'Mostrar' : 'Ocultar'} (sem apagar)">${eye}</button><span class="sw" data-a="cor" title="Cor e acabamento desta peça" style="cursor:pointer;background:${m.own ? m.color : S.color}"></span>
       <span class="tag">${m.kind === 'gargalo' ? 'Gargalo' : categoryOf(m)?.[0] === 'Peça de encaixe' ? 'Peça' : categoryOf(m)?.[0] || 'Peça'}</span>
       <span class="nm" title="${m.name}${nk ? ' + gargalo' : ''}">${m.name}${m.rep > 1 ? ` ×${m.rep}` : ''}${nk ? ` <small class="nk">+ gargalo${nk.neckStd !== 'livre' ? ' ' + nk.neckStd : ''}</small>` : ''}</span>
       <span class="dm">${r1(m.W)}×${r1(m.D)}×${r1(m.h)}</span>
@@ -6015,6 +6032,23 @@ function renderGlobal() {
 // materiais e conteúdo de cada peça ou do produto) e Cena (luz, fundo, cenário, vídeo). Direita: a peça selecionada,
 // com Forma e Arte (cor, relevo por textura, logo e rótulo dela). Exportar e Mais abrem num painel ao lado. A peça selecionada abre à direita.
 const appEl = document.querySelector('.app');
+// Dica curta no topo de cada aba, na primeira vez (o ✕ guarda que já viu).
+const HINTS = {
+  lib: 'Clique num modelo para abrir. Arraste um modelo para a cena para colocar ao lado. Use a busca para achar pelo nome.',
+  build: 'Clique numa peça (aqui ou no 3D) e os controles da forma abrem à direita. A bolinha colorida abre a cor da peça.',
+  color: 'Escolha se a cor vale só para a peça ou para o produto inteiro. Salve materiais (ex.: vidro verde fosco) para reusar.',
+  scene: 'Luz, fundo e cenário valem para a tela, o PNG e o vídeo. Salve a luz em "Minhas luzes" para reusar.',
+};
+function placeHints() {
+  const seen = store.get('shape.hintsSeen', {});
+  document.querySelectorAll('aside > .tab').forEach(t => {
+    const k = t.dataset.t; t.querySelector(':scope > .hint')?.remove(); if (!HINTS[k] || seen[k]) return;
+    const h = document.createElement('div'); h.className = 'hint'; h.textContent = HINTS[k];
+    const x = document.createElement('button'); x.textContent = '✕'; x.title = 'Entendi'; x.onclick = () => { const s = store.get('shape.hintsSeen', {}); s[k] = true; store.set('shape.hintsSeen', s); h.remove(); };
+    h.appendChild(x); t.prepend(h);
+  });
+}
+placeHints();
 function setSideTab(t) {
   document.querySelectorAll('#sideTabs button').forEach(b => b.classList.toggle('on', b.dataset.t === t));
   document.querySelectorAll('aside > .tab').forEach(d => d.classList.toggle('on', d.dataset.t === t));
@@ -6415,6 +6449,17 @@ function galGroup(st, name, kind) {
 let teamAba = null; // abas dos modelos base definidas pela equipe (com login)
 const baseAbas = () => (cloud && teamAba ? teamAba : store.get('shape.galAba', {}));
 let galTab = store.get('shape.galTab', 'Todos'); galTab = GAL_OLD[galTab] || galTab; if (!GAL_TABS.includes(galTab)) galTab = 'Todos'; // aba que deixou de existir
+// Busca na biblioteca: filtra os cards pelo nome (sem acento, sem maiúscula); ao buscar,
+// procura em todas as abas.
+const norm = t => String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+function filterGallery() {
+  const q = norm($('#galSearch')?.value.trim()), gal = $('#gallery'); if (!gal) return;
+  let shown = 0;
+  gal.querySelectorAll('.card').forEach(c => { const v = !q || norm(c.title).includes(q); c.style.display = v ? '' : 'none'; if (v) shown++; });
+  gal.querySelectorAll('h4').forEach(h => { let n = h.nextElementSibling, any = false; while (n && n.tagName !== 'H4') { if (n.classList.contains('card') && n.style.display !== 'none') any = true; n = n.nextElementSibling; } h.style.display = !q || any ? '' : 'none'; });
+  let none = gal.querySelector('.noHit'); if (q && !shown) { if (!none) gal.insertAdjacentHTML('beforeend', '<h4 class="noHit">Nada com esse nome</h4>'); } else none?.remove();
+}
+$('#galSearch').oninput = () => { if ($('#galSearch').value.trim() && galTab !== 'Todos') { galTab = 'Todos'; galleryKey = ''; renderPresets(); } else filterGallery(); };
 function renderPresets() {
   const sv = saved(), gal = $('#gallery'), keepTop = gal.scrollTop;
   const tabs = $('#galTabs');
@@ -6447,7 +6492,7 @@ function renderPresets() {
   tabs?.querySelectorAll('.chip').forEach(c => c.classList.toggle('on', c.dataset.tab === galTab));
   const key = galTab + '#' + stlUploads.map(f => f.id).join(',') + '#' + Object.keys(PRESETS).join('|') + '#' + savedNames().join('|') + '#' + cloudList.map(x => x.tab || '').join('|') + '#' + JSON.stringify(baseAbas()) + Object.values(sv).map(v => v.aba || '').join('|');
   if (key === galleryKey && gal.children.length) {
-    gal.querySelectorAll('.card').forEach(c => c.classList.toggle('on', c.title === fileName()));
+    gal.querySelectorAll('.card').forEach(c => c.classList.toggle('on', c.title === fileName())); filterGallery();
     return;
   }
   galleryKey = key;
@@ -6499,6 +6544,7 @@ function renderPresets() {
   else if (!cloud) section('Salvos', Object.entries(sv).filter(inTab('s')), 's');
   if (!gal.children.length) gal.innerHTML = '<h4>Nada nesta aba ainda</h4>';
   gal.scrollTop = keepTop;
+  filterGallery();
 
 }
 // Nome do arquivo (o que vai na galeria e no Salvar) é do arquivo inteiro, com todos os
@@ -6579,7 +6625,7 @@ $('#importJson').onchange = async e => {
 $('#fitBtn').onclick = () => {
   const target = +$('#targetMl').value, mode = $('#fitMode').value;
   const cont = S.modules.filter(m => m.vol);
-  if (!(target > 0) || !cont.length) return toast('Marque ao menos um módulo como frasco');
+  if (!(target > 0) || !cont.length) return toast('Marque ao menos uma peça como frasco');
   for (let it = 0; it < 12; it++) {
     const c = volumes(S).cap; if (c <= 0) break;
     if (Math.abs(c - target) < 0.3) break;

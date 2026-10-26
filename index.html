@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>OUTBOX</title>
-<link rel="stylesheet" href="css/app.css?v=2026-10-26.arquivos">
+<link rel="stylesheet" href="css/app.css?v=2026-10-26.ux">
 <script type="importmap">
 {"imports":{
   "three":"https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js",
@@ -47,16 +47,17 @@
   <div class="tab" data-t="lib">
     <div class="row"><button class="btn" id="stlGalBtn" title="Subir uma peça STL: entra no produto e fica na aba Uploads para reuso" style="flex:1">+ Subir STL</button></div>
 
+    <div class="row"><input type="search" id="galSearch" placeholder="Procurar modelo pelo nome…"></div>
     <div class="chips" id="galTabs"></div>
     <div class="gallery" id="gallery"></div>
       </div>
 
   <div class="tab" data-t="build">
 <details open>
-    <summary>Pilha de módulos</summary>
+    <summary>Pilha de peças</summary>
     <div class="tip">De cima para baixo, como a embalagem fica em pé. Clique numa peça (aqui ou no 3D): os controles dela abrem à direita.</div>
     <div class="stack" id="stack"></div>
-    <div class="tip">Inserir acima do módulo selecionado:</div>
+    <div class="tip">Inserir acima da peça selecionada:</div>
     <div id="addRows"></div>
     <input type="file" id="importStl" accept=".stl,model/stl" class="hidden">
   </details>
@@ -74,7 +75,7 @@
 <details open>
     <summary>Volumetria</summary>
     <div id="volFields"></div>
-    <div class="tip">A capacidade soma os módulos marcados como “frasco”, descontando a parede. É uma estimativa de projeto, não substitui o desenho técnico do fornecedor.</div>
+    <div class="tip">A capacidade soma as peças marcadas como “frasco”, descontando a parede. É uma estimativa de projeto, não substitui o desenho técnico do fornecedor.</div>
     <h3>Ajustar para um volume</h3>
     <div class="row">
       <div class="num" style="flex:0"><input type="number" id="targetMl" value="250" min="1" step="1"> ml</div>
@@ -91,7 +92,7 @@
     <div id="pieceColor"></div>
     <div id="lookFields" class="hidden"></div>
     <div id="pieceLiquid"></div>
-    <div class="row hidden"><button class="btn" id="colorAll">Aplicar cor geral a todos os módulos</button></div>
+    <div class="row hidden"><button class="btn" id="colorAll">Todas as peças com a cor do produto</button></div>
   </details>
   </div>
 
@@ -132,7 +133,7 @@
       <button class="btn" id="dlObj">OBJ</button>
       <button class="btn" id="dlStl">STL</button>
     </div>
-    <div class="tip">GLB sai em metros (padrão glTF: Blender, Keyshot, Dimension, AR). OBJ e STL saem em milímetros. Cada módulo vira uma peça separada.</div>
+    <div class="tip">GLB sai em metros (padrão glTF: Blender, Keyshot, Dimension, AR). OBJ e STL saem em milímetros. Cada peça sai como um objeto separado.</div>
   
   </div>
 
@@ -143,6 +144,7 @@
       <button class="btn" id="exportJson">JSON ↓</button>
       <button class="btn" id="importJsonBtn">JSON ↑</button>
       <button class="btn" id="delPreset">Excluir salvo</button>
+      <button class="btn" id="keysBtn" title="Atalhos do teclado (tecla ?)">⌨ Atalhos</button>
       <button class="btn" id="trashBtn" title="Itens excluídos ficam 30 dias aqui">🗑 Lixeira</button>
       <input type="file" id="importJson" accept=".json,application/json" class="hidden">
     </div>
@@ -234,6 +236,6 @@
 </section>
 </div>
 
-<script type="module" src="js/app.js?v=2026-10-26.arquivos"></script>
+<script type="module" src="js/app.js?v=2026-10-26.ux"></script>
 </body>
 </html>
