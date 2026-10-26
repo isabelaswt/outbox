@@ -388,7 +388,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-10-26.criar';
+const BUILD = '2026-10-26.troca';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -5962,8 +5962,9 @@ function renderSwap(ed, m) {
   // Tampa e válvula ocupam o mesmo lugar: a troca mostra as duas famílias.
   const closure = label === 'Tampa' || label === 'Válvula', skey = sel + ':' + (closure ? 'fecho' : label);
   const groups = closure ? CATS.filter(([l]) => l === 'Tampa' || l === 'Válvula').map(([l, ks]) => [l === 'Tampa' ? 'Tampas' : 'Válvulas', ks]) : [[null, keys]];
-  const box = document.createElement('details'); box.open = !!store.get('shape.swapOpen', false); // fechado: a troca é rara, as medidas vêm primeiro
-  box.addEventListener('toggle', () => store.set('shape.swapOpen', box.open));
+  if (closure && label === 'Válvula') groups.reverse(); // a família da peça clicada vem primeiro
+  const box = document.createElement('details'); box.open = store.get('shape.swapOpen2', true) !== false; // aberto: clicou na peça, já pode trocar a forma (fecha se a pessoa fechar)
+  box.addEventListener('toggle', () => store.set('shape.swapOpen2', box.open));
   box.innerHTML = `<summary style="text-transform:none;letter-spacing:0;font-size:12px">${closure ? 'Trocar por outra tampa ou válvula' : `Trocar por outro(a) ${label.toLowerCase()}`}</summary><div class="gallery swap"></div>`;
   const grid = box.querySelector('.gallery');
   for (const [gTitle, gKeys] of groups) {
@@ -6901,6 +6902,93 @@ $('#dlPng').onclick = () => {
   layers.forEach(([nm, c], k) => setTimeout(() => c.toBlob(b => download(b, nm ? `${base}_${String(k + 1).padStart(2, '0')}_${safe(nm)}.png` : `${base}.png`), 'image/png'), k * 450));
   if (layers.length > 1) toast(`${layers.length} PNGs, um por produto`);
 };
+// ───────────────────────── ficha técnica ─────────────────────────
+// Página A4 com vistas ortográficas (frente, lado, topo) cotadas na mesma escala, uma
+// vista 3/4, a tabela de peças (medidas, gargalo, cor, acabamento) e o volume. Abre numa
+// janela nova, pronta para "Salvar como PDF" ou imprimir.
+async function fichaTecnica() {
+  const win = window.open('', '_blank');
+  if (!win) return toast('Permita janelas novas (pop-ups) para abrir a ficha');
+  win.document.write('<p style="font:14px system-ui;padding:24px">Gerando a ficha técnica…</p>');
+  await new Promise(r => setTimeout(r, 50));
+  const b = bounds(), sz = b.getSize(new THREE.Vector3()), c = b.getCenter(new THREE.Vector3()), v = volumes(S);
+  const keep = { bg: scene.background, grid: grid.visible, ref: refMesh.visible, ground: ground.visible, side: sideRoot.visible, stage: stage.visible, size: renderer.getSize(new THREE.Vector2()), pr: renderer.getPixelRatio() };
+  // 3/4 como está na tela (com a luz escolhida)
+  renderMain(); const persp34 = document.createElement('canvas');
+  { const d = renderer.domElement, k = Math.min(1, 900 / Math.max(d.width, d.height)); persp34.width = d.width * k; persp34.height = d.height * k; persp34.getContext('2d').drawImage(d, 0, 0, persp34.width, persp34.height); }
+  grid.visible = refMesh.visible = ground.visible = sideRoot.visible = stage.visible = false; scene.background = new THREE.Color('#ffffff');
+  const K = Math.min(6, 340 / (sz.y + 32), 300 / (sz.x + 70), 300 / (sz.z + 64)); // px por mm, a mesma nas três vistas (cotas legíveis)
+  const views = [];
+  const shot = (dir, up, ex, ey, cotas) => {
+    const w = Math.round(2 * ex * K), h = Math.round(2 * ey * K);
+    const cm = new THREE.OrthographicCamera(-ex, ex, ey, -ey, 0.1, 20000);
+    cm.position.copy(c).addScaledVector(dir, 3000); cm.up.copy(up); cm.lookAt(c); cm.updateMatrixWorld(); cm.updateProjectionMatrix();
+    renderer.setPixelRatio(2); renderer.setSize(w, h, false); renderer.render(scene, cm);
+    const cv = document.createElement('canvas'); cv.width = w * 2; cv.height = h * 2;
+    const x = cv.getContext('2d'); x.drawImage(renderer.domElement, 0, 0, cv.width, cv.height); x.scale(2, 2);
+    const P = (X, Y, Z) => { const p = new THREE.Vector3(X, Y, Z).project(cm); return [(p.x + 1) / 2 * w, (1 - p.y) / 2 * h]; };
+    x.strokeStyle = '#b06a2c'; x.fillStyle = '#b06a2c'; x.lineWidth = 1; x.font = '600 11px system-ui, sans-serif';
+    const dim = (a, b2, o, label) => { // cota entre dois pontos, deslocada pelo vetor o = [px, py] (para fora do produto)
+      const [x1, y1] = a, [x2, y2] = b2, dx = x2 - x1, dy = y2 - y1, L = Math.hypot(dx, dy) || 1, nx = o[0], ny = o[1];
+      x.globalAlpha = .45; x.beginPath(); x.moveTo(x1, y1); x.lineTo(x1 + nx * 1.15, y1 + ny * 1.15); x.moveTo(x2, y2); x.lineTo(x2 + nx * 1.15, y2 + ny * 1.15); x.stroke(); x.globalAlpha = 1;
+      const ax = x1 + nx, ay = y1 + ny, bx = x2 + nx, by = y2 + ny; x.beginPath(); x.moveTo(ax, ay); x.lineTo(bx, by); x.stroke();
+      const tick = (px, py) => { x.beginPath(); x.moveTo(px - dy / L * 4 + dx / L * 4, py + dx / L * 4 + dy / L * 4); x.lineTo(px + dy / L * 4 - dx / L * 4, py - dx / L * 4 - dy / L * 4); x.stroke(); };
+      tick(ax, ay); tick(bx, by);
+      x.save(); x.translate((ax + bx) / 2, (ay + by) / 2); let ang = Math.atan2(dy, dx); if (ang > Math.PI / 2 || ang < -Math.PI / 2) ang += Math.PI; x.rotate(ang);
+      const tw = x.measureText(label).width; x.fillStyle = '#fff'; x.fillRect(-tw / 2 - 3, -8, tw + 6, 15); x.fillStyle = '#b06a2c'; x.textAlign = 'center'; x.fillText(label, 0, 4); x.restore();
+    };
+    cotas(P, dim, x, w, h);
+    return [cv.toDataURL('image/png'), w, h];
+  };
+  const mm = n => `${(Math.round(n * 10) / 10).toLocaleString('pt-BR')} mm`;
+  const L = layout(S).filter(e => !e.m.hidden);
+  views.push(['Frente', ...shot(new THREE.Vector3(0, 0, 1), new THREE.Vector3(0, 1, 0), sz.x * 0.5 + 34 / K + 6, sz.y * 0.5 + 22 / K + 4, (P, dim) => {
+    dim(P(b.min.x, b.min.y, b.max.z), P(b.min.x, b.max.y, b.max.z), [-26, 0], mm(sz.y)); // altura total à esquerda
+    dim(P(b.min.x, b.min.y, b.max.z), P(b.max.x, b.min.y, b.max.z), [0, 18], mm(sz.x)); // largura embaixo
+    // altura de cada peça à direita (de baixo para cima)
+    const ys = [...new Set(L.flatMap(e => [e.y0, e.y0 + e.m.h * Math.max(1, e.m.rep || 1)]).map(y => Math.round(y * 10) / 10))].sort((a, q) => a - q);
+    for (let i = 0; i + 1 < ys.length; i++) if ((ys[i + 1] - ys[i]) * K > 38) dim(P(b.max.x, ys[i + 1], b.max.z), P(b.max.x, ys[i], b.max.z), [22, 0], mm(ys[i + 1] - ys[i]));
+  })]);
+  views.push(['Lado', ...shot(new THREE.Vector3(1, 0, 0), new THREE.Vector3(0, 1, 0), sz.z * 0.5 + 10 / K + 4, sz.y * 0.5 + 22 / K + 4, (P, dim) => {
+    dim(P(b.max.x, b.min.y, b.max.z), P(b.max.x, b.min.y, b.min.z), [0, 18], mm(sz.z)); // profundidade
+  })]);
+  views.push(['Topo', ...shot(new THREE.Vector3(0, 1, 0), new THREE.Vector3(0, 0, -1), sz.x * 0.5 + 34 / K + 4, sz.z * 0.5 + 22 / K + 4, (P, dim) => {
+    dim(P(b.min.x, b.max.y, b.max.z), P(b.max.x, b.max.y, b.max.z), [0, 18], mm(sz.x));
+    dim(P(b.max.x, b.max.y, b.max.z), P(b.max.x, b.max.y, b.min.z), [20, 0], mm(sz.z));
+  })]);
+  scene.background = keep.bg; grid.visible = keep.grid; refMesh.visible = keep.ref; ground.visible = keep.ground; sideRoot.visible = keep.side; stage.visible = keep.stage;
+  renderer.setPixelRatio(keep.pr); renderer.setSize(keep.size.x, keep.size.y, false); resize(); req();
+  // tabela de peças (de cima para baixo, como na pilha)
+  const esc = t => String(t ?? '').replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[ch]);
+  const fin = f => (FINISHES.find(q => q[0] === f) || [, f])[1];
+  const rows = [...L].reverse().map(e => {
+    const m = e.m, rep = Math.max(1, m.rep || 1), col = m.own ? m.color : S.color, f = m.own ? m.finish : S.finish;
+    const tipo = m.kind === 'gargalo' ? 'Gargalo' : categoryOf(m)?.[0] || 'Peça';
+    const extra = [m.kind === 'gargalo' && m.neckStd && m.neckStd !== 'livre' ? `acabamento ${m.neckStd}` : '', rep > 1 ? `${rep}× repetida` : '', m.vol ? 'faz parte do frasco' : '',
+      m.liq ? `conteúdo ${m.liqType || ''} ${m.liqLevel ?? ''}%` : '', m.reliefImg ? `relevo: ${m.reliefName || 'textura'}` : '', m.lobes >= 3 ? `${m.lobes} gomos` : ''].filter(Boolean).join(' · ');
+    return `<tr><td>${esc(m.name)}</td><td>${tipo}</td><td>${mm(m.W).replace(' mm', '')} × ${mm(m.D).replace(' mm', '')} × ${mm(m.h * rep)}</td><td><span class="sw" style="background:${col}"></span>${esc(col)}</td><td>${esc(fin(f))}</td><td>${esc(extra)}</td></tr>`;
+  }).join('');
+  const date = new Date().toLocaleDateString('pt-BR'), who = ME?.name || ME?.email || '';
+  win.document.open(); win.document.write(`<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Ficha técnica — ${esc(fileName() || S.name)}</title>
+<style>@page{size:A4;margin:12mm}body{font:12px/1.4 system-ui,-apple-system,Segoe UI,Helvetica,Arial,sans-serif;color:#1a1a1a;margin:0;padding:18px}
+header{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:2px solid #1a1a1a;padding-bottom:8px;margin-bottom:12px}h1{font-size:18px;margin:0}header small{color:#666}
+.views{display:grid;grid-template-columns:auto auto auto;gap:10px;align-items:end;justify-content:start}.views figure{margin:0;text-align:center}.views img{border:1px solid #eee}
+figcaption{font-size:10px;text-transform:uppercase;letter-spacing:.6px;color:#777;margin-top:3px}.row2{display:grid;grid-template-columns:1fr 1.2fr;gap:14px;margin-top:12px;align-items:start}
+.p34 img{width:100%;border:1px solid #eee;border-radius:6px}table{border-collapse:collapse;width:100%}td,th{border-bottom:1px solid #e6e6e6;padding:4px 6px;text-align:left;vertical-align:top}th{font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:#777}
+.sw{display:inline-block;width:10px;height:10px;border-radius:50%;border:1px solid #0002;margin-right:5px;vertical-align:-1px}.kv td:first-child{color:#666}.note{color:#888;font-size:10px;margin-top:10px}
+.bar{position:fixed;top:10px;right:10px}.bar button{font:inherit;padding:7px 12px;border-radius:8px;border:1px solid #1a1a1a;background:#1a1a1a;color:#fff;cursor:pointer}@media print{.bar{display:none}body{padding:0}}</style></head><body>
+<div class="bar"><button onclick="print()">Salvar PDF / imprimir</button></div>
+<header><div><h1>${esc(fileName() || S.name || 'Produto')}</h1><small>${esc(S.name && S.name !== fileName() ? S.name + ' · ' : '')}Ficha técnica · OUTBOX</small></div><small>${date}${who ? ' · ' + esc(who) : ''}</small></header>
+<div class="views">${views.map(([n, src, w, h]) => `<figure><img src="${src}" width="${w}" height="${h}"><figcaption>${n}</figcaption></figure>`).join('')}</div>
+<div class="row2"><div class="p34"><img src="${persp34.toDataURL('image/png')}"></div><div>
+<table class="kv"><tr><td>Altura total</td><td><b>${mm(sz.y)}</b></td></tr><tr><td>Largura máxima</td><td><b>${mm(sz.x)}</b></td></tr><tr><td>Profundidade máxima</td><td><b>${mm(sz.z)}</b></td></tr>
+<tr><td>Volume externo do frasco</td><td><b>${v.ext ? Math.round(v.ext) + ' ml' : '—'}</b></td></tr><tr><td>Capacidade estimada</td><td><b>${v.cap ? Math.round(v.cap) + ' ml' : '—'}</b></td></tr><tr><td>Parede considerada</td><td>${mm(S.wall)}</td></tr></table></div></div>
+<h3 style="margin:16px 0 4px;font-size:12px;text-transform:uppercase;letter-spacing:.6px">Peças (de cima para baixo)</h3>
+<table><tr><th>Peça</th><th>Tipo</th><th>L × P × A</th><th>Cor</th><th>Acabamento</th><th>Detalhes</th></tr>${rows}</table>
+<div class="note">Medidas do modelo 3D (mm). A capacidade é estimada pela parede informada e não substitui o desenho técnico do fornecedor.</div>
+</body></html>`); win.document.close();
+}
+$('#dlSpec').onclick = () => { document.querySelectorAll('.pop.open').forEach(p => p.classList.remove('open')); fichaTecnica(); };
 const collectReliefSources = st => [...(st.modules || []), ...(st.side || []).flatMap(it => it.modules || [])].map(m => m.reliefImg).filter(Boolean);
 async function ensureReliefsForExport() {
   const srcs = [...new Set(collectReliefSources(S))];

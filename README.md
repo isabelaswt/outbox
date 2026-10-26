@@ -47,6 +47,7 @@ Teste local com PHP: `php -S 127.0.0.1:8767 -t .` e um `api/config.php` apontand
 - Materiais da equipe (cor + acabamento + difusão + IOR) salvos com nome, para aplicar no produto ou numa peça.
 - Painel em abas (Biblioteca, Montar, Cor, Cena), arquivo sempre no topo, Exportar e Mais em painéis ao lado, e a peça selecionada num painel à direita com forma, cor, relevo por textura, logo e rótulo juntos.
 - Lixeira (Mais ▾): projetos, STL, texturas, materiais e HDR excluídos ficam 30 dias para restaurar ou apagar de vez.
+- Ficha técnica (Exportar ▾): página A4 com vistas de frente, lado e topo cotadas, vista 3/4, tabela de peças (medidas, gargalo, cor, acabamento) e volume, pronta para salvar em PDF.
 - Código em `index.html` (estrutura), `css/app.css` e `js/app.js`; `tools/versao.sh` troca a versão em todos os lugares.
 - Teste automático: `npm test` abre a ferramenta num navegador sem tela, monta todos os modelos prontos, testa vidro, líquido, relevo e lado a lado e exporta PNG e GLB (roda também no GitHub a cada envio).
 - Lado a lado arrastando: solte um card da galeria na cena, a esquerda ou a direita do que ja esta nela.
