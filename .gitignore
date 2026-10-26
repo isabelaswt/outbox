@@ -2,3 +2,4 @@
 _ref/
 .DS_Store
 api/config.php
+node_modules/

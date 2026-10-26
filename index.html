@@ -768,7 +768,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-10-06.lixeira';
+const BUILD = '2026-10-26.teste';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -7492,7 +7492,7 @@ $('#varBtn').onclick = () => {
 };
 $('#genDice').onclick = () => { $('#genSeed').value = Math.floor(Math.random() * 99999) + 1; runGen(); };
 
-window.OUTBOX = { get ao() { return { aoP, aoO, GTAOPass }; }, CS, COAT_U, relief: { normalMapToDisplacement, classifyReliefImage, imageToDisplacement, cleanDisplacementMap, reliefSizeNote }, get hdr() { return HDR; }, ensureHdr, moduleGeo, exportRoot, get S() { return S; }, get swapScroll() { return swapScroll; }, product, layout, scene, sun, stage, ground, renderer, areaKey, areaFill, hemi, detailShow, applyLogos, build, render: () => renderFrame(), get cam() { return cam; } };
+window.OUTBOX = { get ao() { return { aoP, aoO, GTAOPass }; }, CS, COAT_U, relief: { normalMapToDisplacement, classifyReliefImage, imageToDisplacement, cleanDisplacementMap, reliefSizeNote }, get hdr() { return HDR; }, ensureHdr, moduleGeo, exportRoot, get S() { return S; }, get swapScroll() { return swapScroll; }, product, layout, scene, sun, stage, ground, renderer, areaKey, areaFill, hemi, detailShow, applyLogos, build, render: () => renderFrame(), get cam() { return cam; }, PRESETS, LIB, loadState, setSideTab, volumes, get sel() { return sel; }, set sel(v) { sel = v; renderStack(); renderEditor(); } };
 
 buildDraftPresets();
 resize();

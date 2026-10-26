@@ -1,0 +1,19 @@
+# Roda o teste de fumaça a cada envio: abre o OUTBOX, monta todos os modelos prontos,
+# testa vidro, líquido, relevo e lado a lado, e exporta PNG e GLB.
+name: Teste do OUTBOX
+on:
+  push:
+    branches: [main, 'claude/**']
+  pull_request:
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install --no-audit --no-fund
+      - run: npx playwright install --with-deps chromium
+      - run: npm test
