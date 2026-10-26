@@ -4,6 +4,13 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);font:13px/1
 .auth-locked .app{display:none}
 .login{position:fixed;inset:0;display:grid;place-items:center;background:#050505;color:#f4f0e8;z-index:20;padding:24px}
 .login.hidden{display:none!important}
+/* barrinha sobre a peça selecionada, no 3D */
+.pieceBar{position:absolute;z-index:6;display:flex;align-items:center;gap:2px;background:rgba(255,255,255,.94);backdrop-filter:blur(6px);border:1px solid var(--line);border-radius:10px;padding:3px;box-shadow:0 6px 18px rgba(0,0,0,.12);transform:translate(-50%,-100%);white-space:nowrap;font-size:12px}
+.pieceBar b{font-weight:600;padding:0 6px;max-width:140px;overflow:hidden;text-overflow:ellipsis;color:#444}
+.pieceBar button{border:0;background:none;font:inherit;padding:5px 8px;border-radius:7px;cursor:pointer;color:var(--ink)}
+.pieceBar button:hover{background:var(--soft)}
+.pieceBar button[data-p=del]{color:#a33}
+.toast.act{pointer-events:auto;display:flex;align-items:center;gap:10px}.toast.act button{border:0;background:#fff;color:var(--ink);font:inherit;font-weight:600;border-radius:6px;padding:3px 9px;cursor:pointer}
 #galSearch{width:100%}
 .gallery{align-content:start}
 .hint{position:relative;background:#fbf6ea;border:1px solid #eadfc6;border-radius:9px;padding:8px 26px 8px 10px;font-size:12px;color:#5b5140;margin:8px 0}

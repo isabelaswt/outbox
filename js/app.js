@@ -388,7 +388,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-10-26.troca';
+const BUILD = '2026-10-26.barra';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -5052,10 +5052,36 @@ canvas.addEventListener('dblclick', e => {
   controls.update(); req();
 });
 
+let barReady = false; // liga depois que a pilha (unitLen) existe
 (function loop() {
   requestAnimationFrame(loop);
-  if (needs) { renderFrame(); needs = false; }
+  if (needs) { renderFrame(); needs = false; if (barReady) updatePieceBar(); }
 })();
+// Barrinha sobre a peça selecionada: Trocar · Cor · Duplicar · Excluir, ao lado dela no 3D.
+const _pb = new THREE.Box3(), _pv = new THREE.Vector3();
+function updatePieceBar() {
+  const bar = $('#pieceBar'); if (!bar) return;
+  const m = S?.modules?.[sel];
+  if (!m || spinning || placing) { bar.classList.add('hidden'); return; }
+  const n = unitLen(sel); _pb.makeEmpty();
+  product.children.forEach(o => { const i = o.userData?.idx; if (o.isMesh && o.visible && i >= sel && i < sel + n) _pb.expandByObject(o); });
+  if (_pb.isEmpty()) { bar.classList.add('hidden'); return; }
+  let x0 = 1e9, x1 = -1e9, y0 = 1e9;
+  for (let k = 0; k < 8; k++) { _pv.set(k & 1 ? _pb.max.x : _pb.min.x, k & 2 ? _pb.max.y : _pb.min.y, k & 4 ? _pb.max.z : _pb.min.z).project(cam);
+    const sx = (_pv.x + 1) / 2 * view.clientWidth, sy = (1 - _pv.y) / 2 * view.clientHeight; x0 = Math.min(x0, sx); x1 = Math.max(x1, sx); y0 = Math.min(y0, sy); }
+  $('#pieceBarName').textContent = m.name;
+  bar.classList.remove('hidden');
+  const w = bar.offsetWidth / 2 + 8;
+  bar.style.left = clamp((x0 + x1) / 2, w, view.clientWidth - w) + 'px';
+  bar.style.top = clamp(y0 - 10, 96, view.clientHeight - 10) + 'px';
+}
+$('#pieceBar').onclick = e => {
+  const a = e.target.closest('button')?.dataset.p; if (!a) return;
+  if (a === 'swap') { openInspector(); renderEditor(); const d = $('#editor details'); if (d) { d.open = true; store.set('shape.swapOpen2', true); } $('#inspector').scrollTop = 0; }
+  else if (a === 'color') $('#stack .mod.sel [data-a="cor"]')?.click();
+  else $(`#stack .mod.sel [data-a="${a}"]`)?.click();
+  req();
+};
 
 // ───────────────────────── interface ─────────────────────────
 // Campo genérico: slider + número ligados a obj[k].
@@ -5332,6 +5358,7 @@ function queueBuild() {
 const neckIdx = i => S.modules[i] && S.modules[i].kind !== 'gargalo' && isBody(S.modules[i]) && S.modules[i + 1]?.kind === 'gargalo' ? i + 1 : -1;
 const ownerOf = j => S.modules[j]?.kind === 'gargalo' && j > 0 && neckIdx(j - 1) === j ? j - 1 : j;
 const unitLen = i => neckIdx(i) >= 0 ? 2 : 1;
+barReady = true;
 function units() { const U = []; for (let i = 0; i < S.modules.length; i += unitLen(i)) U.push({ s: i, n: unitLen(i) }); return U; }
 function moveUnit(i, dir) {
   const U = units(), k = U.findIndex(u => u.s === i), o = k + dir;
@@ -5370,7 +5397,7 @@ function renderStack() {
       if (a === 'up') sel = moveUnit(i, 1);
       else if (a === 'down') sel = moveUnit(i, -1);
       else if (a === 'dup') { S.modules.splice(i + n, 0, ...part.map(x => ({ ...structuredClone(x), uid: newUid() }))); sel = i + n; }
-      else if (a === 'del') { if (S.modules.length > n) { S.logos = S.logos.filter(L => !part.some(x => x.uid === L.uid)); S.modules.splice(i, n); sel = ownerOf(clamp(i - 1, 0, S.modules.length - 1)); renderLogos(); } }
+      else if (a === 'del') { if (S.modules.length > n) { S.logos = S.logos.filter(L => !part.some(x => x.uid === L.uid)); S.modules.splice(i, n); sel = ownerOf(clamp(i - 1, 0, S.modules.length - 1)); renderLogos(); setTimeout(() => toastUndo(`${m.name} excluída`), 50); } }
       else { sel = i; openInspector(); }
       renderStack(); renderEditor(); if (a) queueBuild();
     };
@@ -5418,7 +5445,7 @@ function renderEditor() {
     const reliefHere = title === 'Relevo por textura';
     if (!ribsHere && !reliefHere && !defs.some(d => !d[6] || d[6](m))) continue;
     // Grupo recolhível; lembra quais ficaram abertos.
-    const grp = document.createElement('details'); grp.className = 'grp'; grp.open = !!openG[title] || (title === 'Gomos' && m.lobes >= 3);
+    const grp = document.createElement('details'); grp.className = 'grp'; grp.open = (title in openG ? !!openG[title] : title === 'Medidas') || (title === 'Gomos' && m.lobes >= 3); // Medidas aberta na primeira vez
     grp.innerHTML = `<summary>${title}</summary>`;
     grp.addEventListener('toggle', () => { const o = store.get('shape.openGroups', {}); o[title] = grp.open; store.set('shape.openGroups', o); });
     // cor e relevo da peça ficam na aba Arte (aparência); o inspetor fica com a forma
@@ -5977,7 +6004,7 @@ function renderSwap(ed, m) {
       if (k === cur) return;
       swapScroll = { key: skey, top: grid.scrollTop }; // volta para o mesmo ponto, mesmo trocando tampa ↔ válvula
       // Mantém cor, acabamento, encaixe e deslocamento, e readapta o tamanho.
-      S.modules[sel] = adaptSwap(m, M(k, { own: m.own, color: m.color, finish: m.finish, gap: m.gap, ox: m.ox, uid: m.uid }), label);
+      S.modules[sel] = adaptSwap(m, M(k, { own: m.own, color: m.color, finish: m.finish, gap: m.gap, ox: m.ox, uid: m.uid }), label); setTimeout(() => toastUndo(`Trocada por ${LIB[k].name}`), 50);
       if (label === 'Corpo') refitAfterBodySwap(sel);
       renderStack(); renderEditorKeepScroll(); build();
     };
@@ -6189,7 +6216,7 @@ function matRow(box, o0, apply) {
           const r = await fetch(`api/uploads.php?a=file&id=${f.id}`, { credentials: 'same-origin' }); if (!r.ok) throw 0;
           const d = await r.json(), o = tgt(); delete o.difus; delete o.ior;
           MAT_KEYS.forEach(k => { if (d[k] !== undefined) o[k] = d[k]; });
-          apply(d); toast(`Material: ${f.name}`);
+          apply(d); setTimeout(() => toastUndo(`Material: ${f.name}`), 50);
         } catch { toast('Não consegui abrir esse material'); }
       };
       wrap.appendChild(ch);
@@ -6697,7 +6724,13 @@ function download(blob, name) {
   document.body.appendChild(a); a.click(); a.remove();
   setTimeout(() => URL.revokeObjectURL(a.href), 4000);
 }
-function toast(msg) { const t = $('#toast'); t.textContent = msg; t.classList.add('on'); clearTimeout(toast.t); toast.t = setTimeout(() => t.classList.remove('on'), 2200); }
+function toast(msg) { const t = $('#toast'); t.textContent = msg; t.classList.remove('act'); t.classList.add('on'); clearTimeout(toast.t); toast.t = setTimeout(() => t.classList.remove('on'), 2200); }
+// Aviso com "Desfazer" (fica alguns segundos): excluir, trocar e aplicar material.
+function toastUndo(msg) {
+  const t = $('#toast'); t.textContent = msg; t.classList.add('on', 'act');
+  const b = document.createElement('button'); b.textContent = 'Desfazer'; b.onclick = () => { undo(); t.classList.remove('on', 'act'); }; t.appendChild(b);
+  clearTimeout(toast.t); toast.t = setTimeout(() => t.classList.remove('on', 'act'), 5500);
+}
 
 const HDR = { env: null, url: null, name: '', rot: 0, strength: 100 };
 let hdrNames = [], hdrLoading = ''; // HDRs guardados no navegador
