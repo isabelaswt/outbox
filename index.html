@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>OUTBOX</title>
-<link rel="stylesheet" href="css/app.css?v=2026-10-26.ux">
+<link rel="stylesheet" href="css/app.css?v=2026-10-26.criar">
 <script type="importmap">
 {"imports":{
   "three":"https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js",
@@ -38,19 +38,53 @@
       <button class="btn" id="openSaved" title="Abrir um projeto salvo (só ele é carregado)">Abrir…</button>
       <button class="btn pri" id="savePreset">Salvar</button>
       <button class="btn" id="exportBtn" title="PNG, GLB, OBJ, STL">Exportar ▾</button>
-      <button class="btn" id="moreBtn" title="Silhueta, referência, gerador, JSON, equipe">Mais ▾</button>
+      <button class="btn" id="moreBtn" title="JSON, lixeira, atalhos, referência, equipe">Mais ▾</button>
     </div>
     <div class="tip" id="saveStatus"></div>
-    <div class="tabs" id="sideTabs"><button data-t="lib">Biblioteca</button><button data-t="build">Montar</button><button data-t="color">Cor</button><button data-t="scene">Cena</button></div>
+    <div class="tabs" id="sideTabs"><button data-t="lib">Criar</button><button data-t="build">Montar</button><button data-t="color">Cor</button><button data-t="scene">Cena</button></div>
   </div>
 
   <div class="tab" data-t="lib">
-    <div class="row"><button class="btn" id="stlGalBtn" title="Subir uma peça STL: entra no produto e fica na aba Uploads para reuso" style="flex:1">+ Subir STL</button></div>
-
+    <h3 style="margin-top:8px">Começar um produto</h3>
+    <div class="startGrid">
+      <button class="startBtn" id="startZero"><b>Do zero</b><span>Corpo + tampa básicos para montar peça por peça</span></button>
+      <button class="startBtn" id="startGen"><b>Gerador de opções</b><span>Variações do atual ou opções novas com volume</span></button>
+      <button class="startBtn" id="startSilh"><b>Desenho → torno</b><span>Silhueta (SVG/PNG) vira o corpo</span></button>
+      <button class="startBtn" id="stlGalBtn" title="Subir uma peça STL: entra no produto e fica na aba Uploads para reuso"><b>Subir STL</b><span>Peça em 3D; dá para converter em peças editáveis</span></button>
+    </div>
+<details id="genBox">
+    <summary>Gerador</summary>
+    <div class="gen-l">A partir do projeto aberto</div>
+    <div class="tip" style="margin-top:2px">Variações do que está na tela: mesmas peças, cores e logos, com proporções, curvas e tampa mudando. Mantém o volume.</div>
+    <div class="chips" id="varAmt"><span class="chip" data-v="0.35">Sutil</span><span class="chip on" data-v="0.7">Média</span><span class="chip" data-v="2.2">Ousada</span></div>
+    <div class="row"><button class="btn pri" id="varBtn" style="flex:1">Gerar variações deste projeto</button></div>
+    <div class="gen-l" style="margin-top:12px">Do zero</div>
+    <div class="tip" style="margin-top:2px">Clique nas características e gere opções. Nada marcado num grupo = qualquer uma. A mesma seed repete a mesma leva; o dado sorteia outra.</div>
+    <div id="genOpts"></div>
+    <div class="gen-l">Volume</div>
+    <div class="row"><input type="number" id="genMl" value="300" min="5" max="3000" step="5" style="flex:1"><span class="tip" style="margin:0">ml</span></div>
+    <div class="gen-l">Seed</div>
+    <div class="row">
+      <input type="number" id="genSeed" value="1" style="flex:1">
+      <button class="btn" id="genDice" title="Sortear outra seed">🎲 Outra</button>
+      <button class="btn pri" id="genBtn">Gerar</button>
+    </div>
+    <div class="gallery" id="genGrid"></div>
+  </details>
+<details id="silhBox">
+    <summary>Silhueta → revolve (torno)</summary>
+    <div class="tip">Carregue a <b>silhueta do corpo</b> de frente (SVG ou PNG/JPG, forma escura em fundo claro ou transparente). Ela gira em volta do eixo e vira o corpo do produto; gargalo e tampa continuam. Depois dá para mudar largura, profundidade (oval) e altura no editor.</div>
+    <div class="field"><div class="top"><label>Altura do corpo</label><span class="num"><input type="number" id="revH" value="140" min="10" max="400" step="1"> mm</span></div></div>
+    <div class="row">
+      <button class="btn" id="revBtn">Carregar silhueta</button>
+      <input type="file" id="revFile" accept="image/*,.svg" class="hidden">
+    </div>
+  </details>
+    <h3>Modelos prontos e salvos</h3>
     <div class="row"><input type="search" id="galSearch" placeholder="Procurar modelo pelo nome…"></div>
     <div class="chips" id="galTabs"></div>
     <div class="gallery" id="gallery"></div>
-      </div>
+  </div>
 
   <div class="tab" data-t="build">
 <details open>
@@ -148,15 +182,7 @@
       <button class="btn" id="trashBtn" title="Itens excluídos ficam 30 dias aqui">🗑 Lixeira</button>
       <input type="file" id="importJson" accept=".json,application/json" class="hidden">
     </div>
-<details>
-    <summary>Silhueta → revolve (torno)</summary>
-    <div class="tip">Carregue a <b>silhueta do corpo</b> de frente (SVG ou PNG/JPG, forma escura em fundo claro ou transparente). Ela gira em volta do eixo e vira o corpo do produto; gargalo e tampa continuam. Depois dá para mudar largura, profundidade (oval) e altura no editor.</div>
-    <div class="field"><div class="top"><label>Altura do corpo</label><span class="num"><input type="number" id="revH" value="140" min="10" max="400" step="1"> mm</span></div></div>
-    <div class="row">
-      <button class="btn" id="revBtn">Carregar silhueta</button>
-      <input type="file" id="revFile" accept="image/*,.svg" class="hidden">
-    </div>
-  </details>
+
 
 <details>
     <summary>Referência (imagem ou desenho técnico)</summary>
@@ -169,25 +195,7 @@
     <div id="refFields"></div>
   </details>
 
-<details id="genBox">
-    <summary>Gerador</summary>
-    <div class="gen-l">A partir do projeto aberto</div>
-    <div class="tip" style="margin-top:2px">Variações do que está na tela: mesmas peças, cores e logos, com proporções, curvas e tampa mudando. Mantém o volume.</div>
-    <div class="chips" id="varAmt"><span class="chip" data-v="0.35">Sutil</span><span class="chip on" data-v="0.7">Média</span><span class="chip" data-v="2.2">Ousada</span></div>
-    <div class="row"><button class="btn pri" id="varBtn" style="flex:1">Gerar variações deste projeto</button></div>
-    <div class="gen-l" style="margin-top:12px">Do zero</div>
-    <div class="tip" style="margin-top:2px">Clique nas características e gere opções. Nada marcado num grupo = qualquer uma. A mesma seed repete a mesma leva; o dado sorteia outra.</div>
-    <div id="genOpts"></div>
-    <div class="gen-l">Volume</div>
-    <div class="row"><input type="number" id="genMl" value="300" min="5" max="3000" step="5" style="flex:1"><span class="tip" style="margin:0">ml</span></div>
-    <div class="gen-l">Seed</div>
-    <div class="row">
-      <input type="number" id="genSeed" value="1" style="flex:1">
-      <button class="btn" id="genDice" title="Sortear outra seed">🎲 Outra</button>
-      <button class="btn pri" id="genBtn">Gerar</button>
-    </div>
-    <div class="gallery" id="genGrid"></div>
-  </details>
+
 
 <details id="teamBox" class="hidden">
     <summary>Equipe</summary>
@@ -236,6 +244,6 @@
 </section>
 </div>
 
-<script type="module" src="js/app.js?v=2026-10-26.ux"></script>
+<script type="module" src="js/app.js?v=2026-10-26.criar"></script>
 </body>
 </html>

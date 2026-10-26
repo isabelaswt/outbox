@@ -388,7 +388,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-10-26.ux';
+const BUILD = '2026-10-26.criar';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -6034,7 +6034,7 @@ function renderGlobal() {
 const appEl = document.querySelector('.app');
 // Dica curta no topo de cada aba, na primeira vez (o ✕ guarda que já viu).
 const HINTS = {
-  lib: 'Clique num modelo para abrir. Arraste um modelo para a cena para colocar ao lado. Use a busca para achar pelo nome.',
+  lib: 'Comece do zero, pelo gerador, por um desenho ou STL, ou abra um modelo pronto ou salvo (arraste um modelo para a cena para colocar ao lado).',
   build: 'Clique numa peça (aqui ou no 3D) e os controles da forma abrem à direita. A bolinha colorida abre a cor da peça.',
   color: 'Escolha se a cor vale só para a peça ou para o produto inteiro. Salve materiais (ex.: vidro verde fosco) para reusar.',
   scene: 'Luz, fundo e cenário valem para a tela, o PNG e o vídeo. Salve a luz em "Minhas luzes" para reusar.',
@@ -6049,6 +6049,11 @@ function placeHints() {
   });
 }
 placeHints();
+// Criar: atalhos para as formas de começar um produto.
+function openStart(id) { setSideTab('lib'); const d = $(id); d.open = true; d.scrollIntoView({ block: 'start', behavior: 'smooth' }); }
+$('#startZero').onclick = () => { $('#newProduct').click(); };
+$('#startGen').onclick = () => openStart('#genBox');
+$('#startSilh').onclick = () => openStart('#silhBox');
 function setSideTab(t) {
   document.querySelectorAll('#sideTabs button').forEach(b => b.classList.toggle('on', b.dataset.t === t));
   document.querySelectorAll('aside > .tab').forEach(d => d.classList.toggle('on', d.dataset.t === t));
@@ -6562,11 +6567,12 @@ function loadState(s, name) {
 // para o "Salvar" não sobrescrever o anterior). Luz e fundo do estúdio ficam.
 $('#newProduct').onclick = () => {
   if (!confirm('Começar um produto novo do zero?\n\nO produto atual e o lado a lado saem da tela. O que já foi salvo continua na galeria.')) return;
-  const base = PRESETS[Object.keys(PRESETS)[0]];
+  // base simples: corpo reto + gargalo + tampa, para montar peça por peça
+  const base = { color: BEIGE, finish: 'fosco', modules: [M('reto', { h: 120 }), NECK('24/410'), M('flip')] };
   S = normalize(structuredClone({ wall: S.wall, bg: S.bg, scene: S.scene, ...base, side: [], logos: [], name: '' }));
   S.name = ''; S.file = ''; sel = 0; lastAuto = ''; store.set('shape.openGroups', {});
-  renderAll(); build(); fit(); saveStatus('');
-  toast('Produto novo: monte e salve com um nome');
+  renderAll(); build(); fit(); saveStatus(''); setSideTab('build');
+  toast('Produto novo: troque e acrescente peças em Montar, depois salve com um nome');
 };
 $('#openSaved').onclick = openSavedDialog;
 $('#projName').oninput = e => { S.file = e.target.value; if (!S.side.length) S.name = e.target.value; saveLocalSoon(); };
