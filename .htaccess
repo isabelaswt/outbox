@@ -4,4 +4,12 @@
   <FilesMatch "\.(html|json)$">
     Header set Cache-Control "no-cache, must-revalidate"
   </FilesMatch>
+  # js/app.js e css/app.css vêm sempre com ?v=versão no HTML: podem ficar no cache
+  # (cada versão nova tem endereço novo, então nunca fica a antiga)
+  <FilesMatch "\.(js|css)$">
+    Header set Cache-Control "public, max-age=31536000, immutable"
+  </FilesMatch>
 </IfModule>
+# Arquivos do desenvolvimento (teste automático) não ficam abertos no site.
+RedirectMatch 404 ^/(tests|node_modules|\.github)(/|$)
+RedirectMatch 404 ^/package(-lock)?\.json$
