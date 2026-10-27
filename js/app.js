@@ -388,7 +388,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-10-27.direito';
+const BUILD = '2026-10-27.gargalo';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -5676,7 +5676,7 @@ function renderEditor() {
         if (k === 'notch' && m.notch && !(m.groove > 0)) m.groove = r1(Math.min(12, m.h * 0.35));
         if (k === 'topType' && m.topType === 'flip' && !(m.groove > 0)) m.groove = r1(Math.min(12, m.h * 0.35));
         if (k === 'reliefAdv') return renderEditorKeepScroll(); // mostra/esconde os ajustes avançados do relevo
-        if (k === 'neckStd' && NECKS[m.neckStd]) Object.assign(m, NECKS[m.neckStd], { D: NECKS[m.neckStd].W });
+        if (k === 'neckStd') { delete m.wantStd; if (NECKS[m.neckStd]) Object.assign(m, NECKS[m.neckStd], { D: NECKS[m.neckStd].W }); }
         if ((m.kind === 'gargalo' || m.kind === 'spray') && k === 'W') m.D = m.W;
         // Um pescante só por frasco: os controles do corpo e os da válvula mexem no
         // mesmo (antes, com válvula de pescante próprio, os do corpo não faziam nada).
@@ -5775,7 +5775,9 @@ function renderLabelArt(grp, m) {
   grp.appendChild(tip);
 }
 // Maior padrão de gargalo que cabe no topo do corpo (anel incluído).
-function neckTopW(m) { return Math.max(22, Math.min(m.W, m.D) * (m.taper || 100) / 100 - 2 * (m.rTopW || m.rTop || 0) + 8); }
+// Largura útil do topo para o gargalo. Topo arredondado (Boston, cápsula) ainda tem
+// a coroa: metade da largura serve (antes dava 22 mm e o 24/410 virava 18/410).
+function neckTopW(m) { const w = Math.min(m.W, m.D) * (m.taper || 100) / 100; return Math.max(22, w - 2 * (m.rTopW || m.rTop || 0) + 8, w * 0.5); }
 function neckFor(m) {
   const topW = neckTopW(m);
   return Object.keys(NECKS).filter(k => NECKS[k].W + 2 * (NECKS[k].ringW ?? 1.8) <= topW).sort((a, b) => NECKS[b].W - NECKS[a].W)[0] || '24/410';
@@ -5796,14 +5798,20 @@ function refitAfterBodySwap(bi) {
     S.modules.splice(bi + 1, 0, NECK(neckFor(body))); c0.gap = 0;
   }
   const ni = neckIdx(bi); if (ni < 0) return;
-  let neck = S.modules[ni];
-  if (!(body.cutTop > 0) && neck.W + 2 * (neck.ringW || 0) > neckTopW(body)) {
-    const std = neckFor(body);
-    S.modules[ni] = neck = { ...neck, neckStd: std, ...NECKS[std], D: NECKS[std].W, ringH: 1.6, ringW: 1.8, embed: Math.max(neck.embed || 0, 8) };
+  let neck = S.modules[ni]; const oldW = neck.W;
+  // O padrão escolhido fica guardado (want): um corpo estreito pode pedir um gargalo
+  // menor, mas ao voltar para um corpo que cabe, o padrão original volta.
+  const want = neck.wantStd || (NECKS[neck.neckStd] ? neck.neckStd : null);
+  if (want && !(body.cutTop > 0)) {
+    const topW = neckTopW(body), fits = k => NECKS[k].W + 2 * 1.8 <= topW;
+    const std = fits(want) ? want : neck.W + 2 * (neck.ringW || 0) > topW ? neckFor(body) : neck.neckStd;
+    if (std !== neck.neckStd) S.modules[ni] = neck = { ...neck, neckStd: std, ...NECKS[std], D: NECKS[std].W, ringH: 1.6, ringW: 1.8, embed: Math.max(neck.embed || 0, 8) };
+    neck.wantStd = want;
   }
   const c = S.modules[ni + 1]; if (!c || c.kind === 'gargalo' || c.vol) return;
   if (c.kind === 'spray') {
-    scaleModule(c, (neck.W + 2.4) / collarOf(c));
+    // Válvula só muda se o gargalo mudou, na mesma razão (vai e volta sem deformar).
+    if (neck.W !== oldW) scaleModule(c, neck.W / oldW);
     if (collarOf(c) < minValveW(c, neck.W)) scaleModule(c, minValveW(c, neck.W) / collarOf(c));
   } else {
     const need = neck.W + 0.6 + 2 * S.wall;
@@ -5858,7 +5866,7 @@ function renderBodyNeck(ed, m) {
     let d = pick(k); if (!d) continue;
     if (k === 'h') d = [...d]; if (k === 'h') d[1] = 'Altura do gargalo';
     field(grp, neck, d, (key, structural) => {
-      if (key === 'neckStd' && NECKS[neck.neckStd]) Object.assign(neck, NECKS[neck.neckStd], { D: NECKS[neck.neckStd].W });
+      if (key === 'neckStd') { delete neck.wantStd; if (NECKS[neck.neckStd]) Object.assign(neck, NECKS[neck.neckStd], { D: NECKS[neck.neckStd].W }); }
       if (key === 'W') neck.D = neck.W;
       if (structural || key === 'neckStd') renderEditorKeepScroll();
       renderStack(); queueBuild();
