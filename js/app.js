@@ -388,7 +388,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-10-27.tubo';
+const BUILD = '2026-10-27.tubo2';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -2966,14 +2966,24 @@ const pescMat = new THREE.MeshStandardMaterial({ color: '#e4e6e3', roughness: 0.
 // transparente o pescante continua aparecendo através
 // dele: o líquido (opaco ali) é desenhado depois do resto sem gravar profundidade, e
 // o pescante por último, ainda escondido normalmente pela tampa/virola.
-// Plástico leitoso (PP translúcido): miolo claro, quase da cor do líquido, e só as
-// bordas do tubo um pouco mais escuras. Cinza escuro parecia um cano preto.
-const semiInnerSeeMat = new THREE.MeshStandardMaterial({ color: '#f2f2ee', roughness: 0.4 });
-semiInnerSeeMat.onBeforeCompile = sh => { sh.fragmentShader = sh.fragmentShader.replace('#include <opaque_fragment>',
-  `float fresT = pow(1.0 - abs(dot(normalize(vViewPosition), normal)), 1.5);
-   outgoingLight *= mix(1.05, 0.6, fresT);
-   #include <opaque_fragment>`); };
-semiInnerSeeMat.customProgramCacheKey = () => 'tuboLeitoso';
+// Plástico translúcido (PP) visto pelo PET semi-fosco: quase some no que está em volta
+// (fundo visto através do líquido, ou do ar no frasco vazio), só as bordas do tubo um
+// pouco mais escuras. Sem luz própria: claro e iluminado parecia um tubo sólido na frente.
+const semiTubeMats = {};
+function semiTubeMat(liq) {
+  const c = new THREE.Color(S.bg || '#eeeeee'); if (liq) c.multiply(new THREE.Color(liq.liqColor).lerp(new THREE.Color('#ffffff'), 0.8));
+  const k = c.getHexString(); if (semiTubeMats[k]) return semiTubeMats[k];
+  const g = new THREE.MeshBasicMaterial({ color: c });
+  g.onBeforeCompile = sh => {
+    sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vTN; varying vec3 vTV;')
+      .replace('#include <project_vertex>', '#include <project_vertex>\nvTN = normalize(normalMatrix * normal); vTV = -mvPosition.xyz;');
+    sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying vec3 vTN; varying vec3 vTV;')
+      .replace('#include <opaque_fragment>', `float fresT = pow(1.0 - abs(dot(normalize(vTV), normalize(vTN))), 1.8);
+       outgoingLight *= mix(0.52, 0.3, fresT);
+       #include <opaque_fragment>`);
+  };
+  g.customProgramCacheKey = () => 'tuboSemi'; return semiTubeMats[k] = g;
+}
 // Pipeta de vidro do conta-gotas (vista por dentro do frasco transparente).
 // Vidro fino: quase invisível de frente e marcado nas bordas (efeito fresnel), com as
 // duas paredes do tubo aparecendo.
@@ -4680,7 +4690,8 @@ function buildInto(product, S, explodeAmt = 0) {
   const liqBody = base.find(e => e.m.vol && e.m.liq && ['transparente', 'perfume'].includes(e.m.liqType) && isGlass(e.m.own ? e.m.finish : S.finish))?.m;
   const semiPet = base.some(e => e.m.vol && (e.m.own ? e.m.finish : S.finish) === 'petSemi');
   const semiSee = semiPet && liqBody?.liqType === 'transparente' && liqBody.liqClear >= 50;
-  const innerMat = semiPet ? semiInnerSeeMat : glassBody ? (frostBody ? plastFrostMat : liqBody ? plastLiqMat(liqBody.liqColor, liqBody.liqType === 'perfume' ? 95 : liqBody.liqClear) : plastMat) : pescMat; // peças internas (pescante, mola, carcaça)
+  const semiTube = semiPet ? semiTubeMat(semiSee ? liqBody : null) : null;
+  const innerMat = semiPet ? semiTube : glassBody ? (frostBody ? plastFrostMat : liqBody ? plastLiqMat(liqBody.liqColor, liqBody.liqType === 'perfume' ? 95 : liqBody.liqClear) : plastMat) : pescMat; // peças internas (pescante, mola, carcaça)
   const L = layout(S, explodeAmt);
   const tubeBody = base.some(e => e.m.kind === 'bisnaga' && e.m.vol);
   const solidBody = S.modules.some(m => hasSolid(m) || isPote(m)); // pote ou recheio sólido: nenhum tubo por dentro
@@ -4841,7 +4852,7 @@ function buildInto(product, S, explodeAmt = 0) {
     }
   });
   if (semiSee) product.children.forEach(o => {
-    if (o.material === semiInnerSeeMat) o.renderOrder = 3;
+    if (o.material === semiTube) o.renderOrder = 3;
     else if (o.userData.liquid && o.name === 'liquido') { o.renderOrder = 2; o.material.depthWrite = false; }
   });
 }
