@@ -388,7 +388,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-10-27.gargalo';
+const BUILD = '2026-10-27.salvarcomo';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -4989,7 +4989,7 @@ document.addEventListener('keydown', e => {
   const k = e.key.toLowerCase();
   if (k === 'z') { e.preventDefault(); e.shiftKey ? redo() : undo(); }
   else if (k === 'y') { e.preventDefault(); redo(); }
-  else if (k === 's') { e.preventDefault(); $('#savePreset').click(); }
+  else if (k === 's') { e.preventDefault(); $(e.shiftKey ? '#saveAs' : '#savePreset').click(); }
 });
 // Teclas simples (fora de campos de texto): vistas, enquadrar e a lista de atalhos.
 document.addEventListener('keydown', e => {
@@ -4999,7 +4999,7 @@ document.addEventListener('keydown', e => {
 });
 function openKeys() {
   const ov = document.createElement('div'); ov.className = 'openDlg';
-  const K = [['Ctrl/⌘ + Z', 'Desfazer'], ['Ctrl/⌘ + Shift + Z (ou Y)', 'Refazer'], ['Ctrl/⌘ + S', 'Salvar o arquivo'], ['1 · 2 · 3 · 4', 'Vista Frente · Lado · 3/4 · Topo'], ['F', 'Enquadrar tudo na tela'],
+  const K = [['Ctrl/⌘ + Z', 'Desfazer'], ['Ctrl/⌘ + Shift + Z (ou Y)', 'Refazer'], ['Ctrl/⌘ + S', 'Salvar o arquivo'], ['Ctrl/⌘ + Shift + S', 'Salvar como (cópia com outro nome)'], ['1 · 2 · 3 · 4', 'Vista Frente · Lado · 3/4 · Topo'], ['F', 'Enquadrar tudo na tela'],
     ['Espaço + arrastar', 'Mover a vista (mão)'], ['Arrastar no 3D', 'Girar · roda do mouse: zoom'], ['Clique numa peça', 'Abre os controles dela à direita'], ['Arrastar um modelo para a cena', 'Põe ao lado (esquerda ou direita)'], ['Esc', 'Fecha painéis e cancela a colocação do logo'], ['?', 'Esta lista']];
   ov.innerHTML = `<div class="openBox" style="width:min(520px,100%)"><div class="openHead"><b>Atalhos do teclado</b><span style="flex:1"></span><button class="btn sm">Fechar</button></div><div style="padding:14px 16px 18px"><div class="keys">${K.map(([a, b]) => `<span><kbd>${a}</kbd></span><span>${b}</span>`).join('')}</div></div></div>`;
   const close = () => { ov.remove(); document.removeEventListener('keydown', esc); }, esc = e => { if (e.key === 'Escape') close(); };
@@ -6573,7 +6573,9 @@ function renderPresets() {
   }
   if (galTab !== 'Salvos') section('Modelos base', Object.entries(PRESETS).filter(inTab('b')), 'b');
   if (cloud) { // da conta: cards com a miniatura do servidor; o modelo só desce ao clicar ou arrastar
-    const list = cloudList.filter(it => galTab === 'Todos' || galTab === 'Salvos' || it.tab === galTab);
+    // sem aba ainda (salvos antes da classificação): aparecem em todas as abas até a
+    // miniatura/aba ser feita, senão sumiam das abas de tipo
+    const list = cloudList.filter(it => galTab === 'Todos' || galTab === 'Salvos' || it.tab === galTab || !it.tab);
     if (list.length) { const h = document.createElement('h4'); h.textContent = 'Meus modelos'; gal.appendChild(h); }
     for (const it of list) {
       const card = document.createElement('div'); card.className = 'card' + (fileName() === it.name ? ' on' : ''); card.title = it.name;
@@ -6615,6 +6617,15 @@ $('#newProduct').onclick = () => {
 };
 $('#openSaved').onclick = openSavedDialog;
 $('#projName').oninput = e => { S.file = e.target.value; if (!S.side.length) S.name = e.target.value; saveLocalSoon(); };
+// Salvar como: grava uma cópia com outro nome; o original salvo fica como estava e
+// daqui em diante o Salvar vai para o nome novo.
+$('#saveAs').onclick = () => {
+  const cur = fileName().trim().replace(/ \(autosave\)$/, ''), name = (prompt('Salvar como (nome novo):', cur ? `${cur} cópia` : '') || '').trim();
+  if (!name) return;
+  if (savedNames().includes(name) && !confirm(`Já existe "${name}". Substituir?`)) return;
+  const solo = !S.side?.length; S.file = name; if (solo) S.name = name; lastAuto = '';
+  $('#projName').value = name; $('#savePreset').click();
+};
 $('#savePreset').onclick = async () => {
   const name = fileName().trim() || 'Sem nome'; S.file = name;
   if (cloud) {
