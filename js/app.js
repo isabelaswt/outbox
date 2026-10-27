@@ -388,7 +388,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-10-27.salvarcomo';
+const BUILD = '2026-10-27.liquido';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -2953,6 +2953,9 @@ const holeMat = new THREE.MeshStandardMaterial({ color: '#7d7366', roughness: 0.
 const pescMat = new THREE.MeshStandardMaterial({ color: '#e4e6e3', roughness: 0.35 });
 // Dentro de PET semi-fosco: peças opacas e mais escuras, que o plástico mostra desfocadas.
 const semiInnerMat = new THREE.MeshStandardMaterial({ color: '#6d6a66', roughness: 0.5 });
+// Com líquido transparente no PET semi-fosco o pescante continua aparecendo através
+// dele (desenhado por último, sem ser escondido pelo líquido, que ali é opaco).
+const semiInnerSeeMat = new THREE.MeshStandardMaterial({ color: '#6d6a66', roughness: 0.5, depthTest: false });
 // Pipeta de vidro do conta-gotas (vista por dentro do frasco transparente).
 // Vidro fino: quase invisível de frente e marcado nas bordas (efeito fresnel), com as
 // duas paredes do tubo aparecendo.
@@ -4585,6 +4588,13 @@ function liquidMeshes(m, y0, levelAbs, lift = S.wall) {
     // + faixa clara logo abaixo da superfície (o nível visto por baixo espelha a luz)
     // e a cor aprofundando para o fundo (mais líquido no caminho da luz).
     const lv = level.toFixed(2), span = Math.max(1, level - b.min.y).toFixed(2);
+    // Atrás de PET/vidro fosco o plástico só mostra por dentro o que é opaco, então o
+    // líquido é opaco: transparente, ele vira quase o próprio fundo visto através dele
+    // (fundo do estúdio na cor do líquido), como a parte vazia do frasco. Antes ficava
+    // um bloco escuro mesmo com 95% de transparência.
+    const bgc = new THREE.Color(S.bg || '#eeeeee').multiply(new THREE.Color(m.liqColor).lerp(new THREE.Color('#ffffff'), 0.8));
+    const seeThru = frost && clr > 0 ? `
+       outgoingLight = mix(outgoingLight, vec3(${bgc.r.toFixed(3)}, ${bgc.g.toFixed(3)}, ${bgc.b.toFixed(3)}) * mix(0.85, 1.0, lensN), ${(clr * 0.95).toFixed(3)});` : '';
     mat.onBeforeCompile = sh => {
       sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying float vLiqY;').replace('#include <begin_vertex>', '#include <begin_vertex>\nvLiqY = position.y;');
       sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying float vLiqY;').replace('#include <opaque_fragment>',
@@ -4593,9 +4603,9 @@ function liquidMeshes(m, y0, levelAbs, lift = S.wall) {
        float dTop = max(${lv} - vLiqY, 0.0), deep = clamp(dTop / ${span}, 0.0, 1.0);
        outgoingLight *= mix(1.12, 0.72, deep);
        float menisco = exp(-dTop / 2.2);
-       outgoingLight += (diffuseColor.rgb * 0.45 + vec3(0.22)) * menisco;
+       outgoingLight += (diffuseColor.rgb * 0.45 + vec3(0.22)) * menisco;${seeThru}
        #include <opaque_fragment>`); };
-    mat.customProgramCacheKey = () => 'liqLente' + lv + '_' + span;
+    mat.customProgramCacheKey = () => 'liqLente' + lv + '_' + span + seeThru;
   }
   if (clear && glass && !frost) mat.depthWrite = false; // o pescante (desenhado depois) aparece através do líquido
   const out = [new THREE.Mesh(inner, mat)];
@@ -4651,7 +4661,8 @@ function buildInto(product, S, explodeAmt = 0) {
   const frostBody = base.some(e => e.m.vol && isFrost(e.m.own ? e.m.finish : S.finish));
   const liqBody = base.find(e => e.m.vol && e.m.liq && ['transparente', 'perfume'].includes(e.m.liqType) && isGlass(e.m.own ? e.m.finish : S.finish))?.m;
   const semiPet = base.some(e => e.m.vol && (e.m.own ? e.m.finish : S.finish) === 'petSemi');
-  const innerMat = semiPet ? semiInnerMat : glassBody ? (frostBody ? plastFrostMat : liqBody ? plastLiqMat(liqBody.liqColor, liqBody.liqType === 'perfume' ? 95 : liqBody.liqClear) : plastMat) : pescMat; // peças internas (pescante, mola, carcaça)
+  const semiSee = semiPet && liqBody?.liqType === 'transparente' && liqBody.liqClear >= 50;
+  const innerMat = semiPet ? (semiSee ? semiInnerSeeMat : semiInnerMat) : glassBody ? (frostBody ? plastFrostMat : liqBody ? plastLiqMat(liqBody.liqColor, liqBody.liqType === 'perfume' ? 95 : liqBody.liqClear) : plastMat) : pescMat; // peças internas (pescante, mola, carcaça)
   const L = layout(S, explodeAmt);
   const tubeBody = base.some(e => e.m.kind === 'bisnaga' && e.m.vol);
   const solidBody = S.modules.some(m => hasSolid(m) || isPote(m)); // pote ou recheio sólido: nenhum tubo por dentro
@@ -4811,6 +4822,7 @@ function buildInto(product, S, explodeAmt = 0) {
       if (pg) addP(pg, innerMat, 'pescante');
     }
   });
+  if (semiSee) product.children.forEach(o => { if (o.material === semiInnerSeeMat) o.renderOrder = 3; });
 }
 
 function bounds() { return new THREE.Box3().setFromObject(product); }
