@@ -388,7 +388,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-10-27.liquido';
+const BUILD = '2026-10-27.pescante';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -2954,8 +2954,9 @@ const pescMat = new THREE.MeshStandardMaterial({ color: '#e4e6e3', roughness: 0.
 // Dentro de PET semi-fosco: peças opacas e mais escuras, que o plástico mostra desfocadas.
 const semiInnerMat = new THREE.MeshStandardMaterial({ color: '#6d6a66', roughness: 0.5 });
 // Com líquido transparente no PET semi-fosco o pescante continua aparecendo através
-// dele (desenhado por último, sem ser escondido pelo líquido, que ali é opaco).
-const semiInnerSeeMat = new THREE.MeshStandardMaterial({ color: '#6d6a66', roughness: 0.5, depthTest: false });
+// dele: o líquido (opaco ali) é desenhado depois do resto sem gravar profundidade, e
+// o pescante por último, ainda escondido normalmente pela tampa/virola.
+const semiInnerSeeMat = new THREE.MeshStandardMaterial({ color: '#6d6a66', roughness: 0.5 });
 // Pipeta de vidro do conta-gotas (vista por dentro do frasco transparente).
 // Vidro fino: quase invisível de frente e marcado nas bordas (efeito fresnel), com as
 // duas paredes do tubo aparecendo.
@@ -4822,7 +4823,10 @@ function buildInto(product, S, explodeAmt = 0) {
       if (pg) addP(pg, innerMat, 'pescante');
     }
   });
-  if (semiSee) product.children.forEach(o => { if (o.material === semiInnerSeeMat) o.renderOrder = 3; });
+  if (semiSee) product.children.forEach(o => {
+    if (o.material === semiInnerSeeMat) o.renderOrder = 3;
+    else if (o.userData.liquid && o.name === 'liquido') { o.renderOrder = 2; o.material.depthWrite = false; }
+  });
 }
 
 function bounds() { return new THREE.Box3().setFromObject(product); }
