@@ -388,7 +388,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-10-27.pescante';
+const BUILD = '2026-10-27.boston';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -720,6 +720,16 @@ const PRESETS = {
       actW: 32, actH: 11.1, headH: 16, armT: 3.2, armW: 7.4, nozzleL: 18.2, droop: 0.8, outletD: 1.9,
       domeH: 3.2, spoutD: 2.3, bandInset: 1, notchY: 8.4, notchW: 14, notchH: 5.6, notchD: 1.4, rTL: 4.2, rTR: 4.2, rBL: 4.2, rBR: 4.2, rEdge: 2,
       orifD: 2.8, discD: 25.2, discDip: 2.8, sealH: 4.9 })] },
+  // Referência: par de frascos Boston em PET com pump de luva lisa e cabeça reta de bico
+  // longo (alto ~250 ml e baixo ~180 ml). Mesma válvula nos dois, como a linha da foto.
+  'Boston alto + pump reto': { color: BEIGE, finish: 'fosco', modules: [
+    M('boston', { name: 'Corpo Boston alto', W: 59, D: 59, h: 108, rBot: 9, rTop: 22 }), NECK('24/410', { embed: 10 }),
+    M('pump', { name: 'Pump cabeça reta', W: 28, D: 28, h: 14, ridges: 0, collarR: 0.8, stemD: 17, stemH: 3,
+      actW: 23, headH: 20, armT: 4.5, armW: 13, nozzleL: 19, nozzleY: 1, droop: 0 })] },
+  'Boston baixo + pump reto': { color: BEIGE, finish: 'fosco', modules: [
+    M('boston', { name: 'Corpo Boston baixo', W: 62, D: 62, h: 76, rBot: 9, rTop: 25 }), NECK('24/410', { embed: 10 }),
+    M('pump', { name: 'Pump cabeça reta', W: 28, D: 28, h: 14, ridges: 0, collarR: 0.8, stemD: 17, stemH: 3,
+      actW: 23, headH: 20, armT: 4.5, armW: 13, nozzleL: 19, nozzleY: 1, droop: 0 })] },
   'Boston com pump': { color: BEIGE, finish: 'fosco', modules: [
     M('boston'), NECK('24/410', { embed: 12 }), M('locao')] },
   // Referência gloss labial: tubo de vidro grosso, rosca curta, tampa alta com aplicador.
@@ -927,6 +937,7 @@ function normalize(s) {
       if (m.name === 'Pump domo + disco plano') m.name = 'Pump domo';
       if ((m.name || '').startsWith('Pump escultural')) m.name = L.name;
     }
+    if (m.sprayType === 'pato' && m.nozzleY == null) m.nozzleY = 0.58; // altura do bico na cabeça (padrão: meio)
     if (m.type === 'tampaBisnaga') {
       if (m.h >= 32) m.h = 26;
       if ((m.rBot || 0) <= 3) m.rBot = 8;
@@ -1432,7 +1443,7 @@ function sprayGeo(m, y0, { lo = false } = {}) {
     head.push(cyl(m.stemD / 2, top - sink, m.stemH + sink + 1, 0, 0, lo));
     const yH = top + m.stemH, R = m.actW / 2;
     head.push(ring(m.actW, m.headH, yH, { rBot: 0.8, rTop: Math.min(1.8, m.headH * 0.3), groove: m.headH * 0.22, grooveD: 0.25 }));
-    const N = lo ? 10 : 36, seg = lo ? 16 : 40, bill = [], x0 = R * 0.3, x1 = R + m.nozzleL, yc = yH + m.headH * 0.58;
+    const N = lo ? 10 : 36, seg = lo ? 16 : 40, bill = [], x0 = R * 0.3, x1 = R + m.nozzleL, yc = yH + m.headH * clamp(m.nozzleY ?? 0.58, 0.2, 1) - (m.nozzleY > 0.85 ? m.armT * 0.5 : 0); // bico no meio ou rente ao topo
     for (let i = 0; i <= N; i++) {
       const t = i / N, x = x0 + (x1 - x0) * t, a = m.armW / 2 * (1 - 0.12 * t), b = m.armT / 2 * (1 - 0.1 * t), cy = yc - m.droop * Math.pow(t, m.droopK || 1.6), rg = [];
       for (let j = 0; j < seg; j++) { const [zz, yy] = sp(a, b, 3.2, j / seg * TAU); rg.push([x, cy + yy, zz]); }
@@ -5258,6 +5269,7 @@ const MF = [
   ]],
   ['Bico', [
     K(['nozzleL', 'Comprimento', 0, 60, 0.5, 'mm', m => ['locao', 'lamina', 'bico', 'conico', 'foam', 'draftpump', 'pato'].includes(m.sprayType)]),
+    K(['nozzleY', 'Altura do bico na cabeça (1 = rente ao topo)', 0.2, 1, 0.01, '', m => m.sprayType === 'pato']),
     K(['spoutD', 'Diâmetro do tubo', 1.5, 10, 0.1, 'mm', m => ['locao', 'bico', 'conico'].includes(m.sprayType)]),
     K(['armW', 'Largura', 3, 30, 0.5, 'mm', m => ['lamina', 'draftpump', 'pato'].includes(m.sprayType)]),
     K(['armT', 'Espessura', 1.5, 15, 0.1, 'mm', m => ['lamina', 'draftpump', 'pato'].includes(m.sprayType)]),
