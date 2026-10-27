@@ -388,7 +388,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-10-26.barra';
+const BUILD = '2026-10-27.direito';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -5020,6 +5020,7 @@ const ray = new THREE.Raycaster(); let downAt = null;
 canvas.addEventListener('pointerdown', e => { downAt = [e.clientX, e.clientY]; });
 canvas.addEventListener('pointerup', e => {
   if (!downAt || Math.hypot(e.clientX - downAt[0], e.clientY - downAt[1]) > 4) return;
+  barOn = false; req(); // a barrinha só aparece com o botão direito numa peça
   const r = canvas.getBoundingClientRect();
   ray.setFromCamera(new THREE.Vector2((e.clientX - r.left) / r.width * 2 - 1, -(e.clientY - r.top) / r.height * 2 + 1), cam);
   if (placing) {
@@ -5038,8 +5039,9 @@ canvas.addEventListener('pointerup', e => {
     const i = sideRoot.children.indexOf(g); if (i >= 0) editSide(i);
     return;
   }
-  if (hit) { sel = ownerOf(hit.object.userData.idx); openInspector(); renderStack(); renderEditor(); }
+  if (hit) { sel = ownerOf(hit.object.userData.idx); openInspector(); renderStack(); renderEditor(); barOn = e.button === 2; req(); }
 });
+canvas.addEventListener('contextmenu', e => e.preventDefault());
 // Duplo clique aproxima a câmera do ponto clicado.
 canvas.addEventListener('dblclick', e => {
   const r = canvas.getBoundingClientRect();
@@ -5052,7 +5054,7 @@ canvas.addEventListener('dblclick', e => {
   controls.update(); req();
 });
 
-let barReady = false; // liga depois que a pilha (unitLen) existe
+let barReady = false, barOn = false; // liga depois que a pilha (unitLen) existe
 (function loop() {
   requestAnimationFrame(loop);
   if (needs) { renderFrame(); needs = false; if (barReady) updatePieceBar(); }
@@ -5062,7 +5064,7 @@ const _pb = new THREE.Box3(), _pv = new THREE.Vector3();
 function updatePieceBar() {
   const bar = $('#pieceBar'); if (!bar) return;
   const m = S?.modules?.[sel];
-  if (!m || spinning || placing) { bar.classList.add('hidden'); return; }
+  if (!barOn || !m || spinning || placing) { bar.classList.add('hidden'); return; }
   const n = unitLen(sel); _pb.makeEmpty();
   product.children.forEach(o => { const i = o.userData?.idx; if (o.isMesh && o.visible && i >= sel && i < sel + n) _pb.expandByObject(o); });
   if (_pb.isEmpty()) { bar.classList.add('hidden'); return; }
@@ -5077,6 +5079,7 @@ function updatePieceBar() {
 }
 $('#pieceBar').onclick = e => {
   const a = e.target.closest('button')?.dataset.p; if (!a) return;
+  barOn = false;
   if (a === 'swap') { openInspector(); renderEditor(); const d = $('#editor details'); if (d) { d.open = true; store.set('shape.swapOpen2', true); } $('#inspector').scrollTop = 0; }
   else if (a === 'color') $('#stack .mod.sel [data-a="cor"]')?.click();
   else $(`#stack .mod.sel [data-a="${a}"]`)?.click();
@@ -6063,7 +6066,7 @@ const appEl = document.querySelector('.app');
 // Dica curta no topo de cada aba, na primeira vez (o ✕ guarda que já viu).
 const HINTS = {
   lib: 'Comece do zero, pelo gerador, por um desenho ou STL, ou abra um modelo pronto ou salvo (arraste um modelo para a cena para colocar ao lado).',
-  build: 'Clique numa peça (aqui ou no 3D) e os controles da forma abrem à direita. A bolinha colorida abre a cor da peça.',
+  build: 'Clique numa peça (aqui ou no 3D) e os controles da forma abrem à direita. A bolinha colorida abre a cor da peça. Botão direito numa peça no 3D: atalhos (trocar, cor, duplicar, excluir).',
   color: 'Escolha se a cor vale só para a peça ou para o produto inteiro. Salve materiais (ex.: vidro verde fosco) para reusar.',
   scene: 'Luz, fundo e cenário valem para a tela, o PNG e o vídeo. Salve a luz em "Minhas luzes" para reusar.',
 };
@@ -6097,7 +6100,7 @@ function togglePop(id) {
 $('#exportBtn').onclick = e => { e.stopPropagation(); togglePop('exportPop'); };
 $('#moreBtn').onclick = e => { e.stopPropagation(); togglePop('morePop'); };
 document.querySelectorAll('.pop [data-close]').forEach(b => b.onclick = () => b.closest('.pop').classList.remove('open'));
-document.addEventListener('keydown', e => { if (e.key === 'Escape') document.querySelectorAll('.pop.open').forEach(p => p.classList.remove('open')); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') { document.querySelectorAll('.pop.open').forEach(p => p.classList.remove('open')); barOn = false; req(); } });
 document.addEventListener('pointerdown', e => { // clicar fora fecha o painel (menos na cena, onde a pessoa pode estar posicionando algo)
   if (e.target.closest('.pop, #exportBtn, #moreBtn')) return;
   document.querySelectorAll('.pop.open').forEach(p => p.classList.remove('open'));
