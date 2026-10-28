@@ -388,7 +388,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-10-27.tubo2';
+const BUILD = '2026-10-28.tubo3';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -2967,8 +2967,8 @@ const pescMat = new THREE.MeshStandardMaterial({ color: '#e4e6e3', roughness: 0.
 // dele: o líquido (opaco ali) é desenhado depois do resto sem gravar profundidade, e
 // o pescante por último, ainda escondido normalmente pela tampa/virola.
 // Plástico translúcido (PP) visto pelo PET semi-fosco: quase some no que está em volta
-// (fundo visto através do líquido, ou do ar no frasco vazio), só as bordas do tubo um
-// pouco mais escuras. Sem luz própria: claro e iluminado parecia um tubo sólido na frente.
+// (fundo visto através do líquido, ou do ar no frasco vazio), um pouco mais claro e com
+// as bordas brilhando, como um tubo transparente refratando a luz (escuro parecia um cano).
 const semiTubeMats = {};
 function semiTubeMat(liq) {
   const c = new THREE.Color(S.bg || '#eeeeee'); if (liq) c.multiply(new THREE.Color(liq.liqColor).lerp(new THREE.Color('#ffffff'), 0.8));
@@ -2979,7 +2979,7 @@ function semiTubeMat(liq) {
       .replace('#include <project_vertex>', '#include <project_vertex>\nvTN = normalize(normalMatrix * normal); vTV = -mvPosition.xyz;');
     sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying vec3 vTN; varying vec3 vTV;')
       .replace('#include <opaque_fragment>', `float fresT = pow(1.0 - abs(dot(normalize(vTV), normalize(vTN))), 1.8);
-       outgoingLight *= mix(0.52, 0.3, fresT);
+       outgoingLight *= mix(1.35, 2.8, fresT); // borda clara: o tubo transparente refrata a luz, como na foto
        #include <opaque_fragment>`);
   };
   g.customProgramCacheKey = () => 'tuboSemi'; return semiTubeMats[k] = g;
