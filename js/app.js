@@ -270,7 +270,7 @@ const BASE = {
   groove: 0, grooveD: 0.6,
   notch: false, notchLock: true, notchY: 12, notchW: 20, notchH: 8, notchD: 2, notchP: 2,
   ridges: 0, ridgeD: 0.6, lobes: 0, lobeD: 3,
-  labType: 'nenhum', labH: 50, labY: 50, labW: 40, labColor: '#ffffff', labFinish: 'fosco', labImg: '', labImgB: '', labInk: false, labInkColor: '#1c1c1c', labInkFinish: 'metal',
+  labType: 'nenhum', labH: 50, labY: 50, labW: 40, labPanel: 'nenhuma', labPanelW: 46, labPanelH: 56, labPanelD: 0, labPanelBack: true, labColor: '#ffffff', labFinish: 'fosco', labImg: '', labImgB: '', labInk: false, labInkColor: '#1c1c1c', labInkFinish: 'metal',
   reliefImg: '', reliefName: '', reliefScale: 18, reliefDepth: 0, reliefY: 50, reliefH: 82, reliefW: 100, reliefFade: 4, reliefQuality: 3, reliefPreviewQ: 2, reliefSoft: 1.2, reliefGeomSmooth: 2, reliefTile: 'repeat', reliefFit: 'tile', reliefU: 0, reliefV: 0, reliefWarp: 0,
   own: false, color: '#e8dcc6', finish: 'fosco', vol: false,
   // kind 'giro': seção girando no eixo; 'placa': silhueta frontal extrudada na profundidade.
@@ -388,7 +388,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-10-28.tubo4';
+const BUILD = '2026-11-11.area-lisa-rotulo';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -498,6 +498,8 @@ function profSamples(m, lo) {
   }
   addReliefSamples(m, S, lo);
   ribSamples(m, S);
+  panelSamples(m, S, lo);
+
   const z = m.shoulderK > 0 && profShoulder(m.prof); // ombro reto: amostras na curva comprimida
   if (z) { const sc = Math.max(0.03, 1 - m.shoulderK / 100), tS = z.t1 - (z.t1 - z.t0) * sc, nz = lo ? 8 : 32;
     S.push(z.t0 * h); for (let i = 0; i <= nz; i++) S.push(h * (tS + (z.t1 - tS) * (1 - Math.cos(i / nz * Math.PI)) / 2)); }
@@ -1022,6 +1024,13 @@ function sectionAt(m, y, rB, rT) {
 // Topo do entalhe: preso à linha de abertura, ou posição livre.
 const notchTop = m => (m.notchLock && m.groove > 0 ? m.groove : m.notchY);
 
+// Anéis finos na área lisa do rótulo (a borda e a curva do arco/oval ficam nítidas).
+function panelSamples(m, S, lo) {
+  const P = !lo && labelPanel(m); if (!P) return;
+  const a = P.yc - P.H / 2 - P.edge * 1.5, b = P.yc + P.H / 2 + P.edge * 1.5, step = P.shape === 'oval' || P.shape === 'arco' ? 0.35 : 0.5;
+  for (let y = a; y <= b; y += step) S.push(y);
+  [-1, -0.5, 0, 0.5, 1].forEach(k => { S.push(P.yc - P.H / 2 + k * P.edge * 0.5, P.yc + P.H / 2 + k * P.edge * 0.5); });
+}
 function ySamples(m, rB, rT, lo) {
   const h = m.h, S = [0, h], NF = lo ? 8 : 20;
   for (let i = 0; i <= NF; i++) {
@@ -1037,6 +1046,8 @@ function ySamples(m, rB, rT, lo) {
   }
   addReliefSamples(m, S, lo);
   if (!lo) ribSamples(m, S);
+  panelSamples(m, S, lo);
+
   return [...new Set(S.filter(y => y >= 0 && y <= h).map(y => +y.toFixed(3)))].sort((a, b) => a - b);
 }
 function reliefAreaLocal(m) {
@@ -1142,6 +1153,30 @@ function lobeF(N, k) {
   lobeCache.set(key, f); return f;
 }
 
+// Área lisa para o rótulo: janela sem gomos/frisos na frente (e no verso), com
+// formato próprio. Distância com sinal em mm (negativa dentro), na superfície:
+// largura medida no contorno (arco), altura no eixo.
+function labelPanel(m) {
+  if (!m.labPanel || m.labPanel === 'nenhuma' || !canLabel(m)) return null;
+  const h = m.h, H = clamp(m.labPanelH || 56, 4, h), W = Math.max(4, m.labPanelW || 46);
+  const yc = clamp(h * (m.labY ?? 50) / 100, H / 2, h - H / 2);
+  return { shape: m.labPanel, W, H, yc, D: Math.max(0, m.labPanelD || 0), back: m.labPanelBack !== false, edge: 1.4 };
+}
+function panelDist(P, s, dy) {
+  const hw = P.W / 2, hh = P.H / 2, ax = Math.abs(s), ay = Math.abs(dy);
+  const rrect = rc => { const qx = ax - (hw - rc), qy = ay - (hh - rc); return Math.hypot(Math.max(qx, 0), Math.max(qy, 0)) + Math.min(Math.max(qx, qy), 0) - rc; };
+  if (P.shape === 'oval') return (Math.hypot(s / hw, dy / hh) - 1) * Math.min(hw, hh);
+  if (P.shape === 'arco') { const c = hh - hw; return dy > c ? Math.hypot(s, dy - c) - hw : Math.max(ax - hw, -dy - hh); }
+  return rrect(P.shape === 'arredondada' ? Math.min(hw, hh) * 0.35 : 1.2);
+}
+// 1 dentro da área lisa, 0 fora, com transição macia na borda.
+function panelMask(P, ly, th, R) {
+  if (!P || ly < P.yc - P.H / 2 - P.edge || ly > P.yc + P.H / 2 + P.edge) return 0;
+  const dy = ly - P.yc, wrap = a => Math.atan2(Math.sin(a), Math.cos(a));
+  let d = panelDist(P, wrap(th - Math.PI / 2) * R, dy);
+  if (P.back) d = Math.min(d, panelDist(P, wrap(th + Math.PI / 2) * R, dy));
+  const t = clamp(0.5 - d / P.edge, 0, 1); return t * t * (3 - 2 * t);
+}
 function loft(rings, seg, disp, uniform = false) {
   // Gomos: a malha tem um vértice exatamente em cada vale (a quina entre gomos). Sem
   // isso o vale caía entre vértices, em lugar diferente a cada faixa, e no vidro
@@ -1154,9 +1189,11 @@ function loft(rings, seg, disp, uniform = false) {
     for (let j = 0; j < seg; j++) {
       const th = uniform ? invArc(r, j / seg * TAU) : j / seg * TAU + off;
       let [x, z] = r.sides >= 3 ? polyPt(r.a, r.b, r.sides, r.round, th) : sp(r.a, r.b, r.n, th);
-      if (r.lobes >= 3 && r.lobeK > 0) { const f = lobeF(r.lobes, r.lobeK)(th); x *= f; z *= f; }
+      const pm = r.pan ? panelMask(r.pan, r.ly, th, r.b) : 0;
+      if (r.lobes >= 3 && r.lobeK > 0) { const f = lobeF(r.lobes, r.lobeK)(th) * (1 - pm) + pm; x *= f; z *= f; } // área lisa: na crista dos gomos
       let dy = 0;
-      if (disp && !r.noDisp) [x, z, dy = 0] = disp(x, r.ly, z, th, r);
+      if (disp && !r.noDisp) [x, z, dy = 0] = disp(x, r.ly, z, th, r, pm);
+      if (pm && r.pan.D) { const q = Math.hypot(x, z) || 1, k = Math.max(0.05, 1 - r.pan.D * pm / q); x *= k; z *= k; } // recuo da área
       out[j] = [x + (r.cx || 0), r.y + dy, z + (r.cz || 0)];
     }
     return out;
@@ -1874,11 +1911,13 @@ function moduleGeo(m0, y0, opts = {}) {
   });
   if (!lo && !inset) for (const b of m.ribs || []) kmax = Math.max(kmax, b.k || 0);
   if (rings.length < 2) return null;
+  const pan = lo ? null : labelPanel(m0);
+  if (pan) rings.forEach(r => { r.pan = pan; });
   const saddle = !inset && m.topType === 'disc' && m.discDip > 0, reliefDetailed = !inset && !!m.reliefImg && m.reliefDepth > 0;
-  const detailed = !lo && (m.notch || m.ridges > 0 || saddle || kmax > 0 || logoQuality || reliefDetailed);
+  const detailed = !lo && (m.notch || m.ridges > 0 || saddle || kmax > 0 || logoQuality || reliefDetailed || !!pan);
   const reliefSeg = reliefDetailed ? reliefSegs(m) : 720;
   const seg = lo ? 64 : kmax ? clamp(kmax * 12, 384, 2000) : logoQuality ? 960 : reliefDetailed ? reliefSeg : m.notch ? 720 : detailed ? 384 : 200;
-  const disp = detailed ? (x, ly, z, th, r) => {
+  const disp = detailed ? (x, ly, z, th, r, pm = 0) => {
     // Faixas de frisos (medidas no original ou criadas no editor).
     const tu = (kmax || m.ridges > 0) ? arcTheta(r, th) : th; // frisos com espaçamento igual no contorno
     // Frisos entram perpendiculares à superfície (não na direção do centro, que
@@ -1888,11 +1927,11 @@ function moduleGeo(m0, y0, opts = {}) {
       const e = Math.max(r.n, 2) - 1, gx = Math.sign(x) * Math.pow(Math.abs(x / r.a), e) / r.a, gz = Math.sign(z) * Math.pow(Math.abs(z / r.b), e) / r.b, gl = Math.hypot(gx, gz) || 1;
       return [gx / gl, gz / gl];
     };
-    if (kmax) { const d = ribAt(m, ly, tu); if (d) { const [nx, nz] = nrm(); x -= nx * d; z -= nz * d; } }
+    if (kmax) { const d = ribAt(m, ly, tu) * (1 - pm); if (d) { const [nx, nz] = nrm(); x -= nx * d; z -= nz * d; } }
     // Disc-top: borda em sela, mais baixa na frente e atrás.
     const dy = saddle ? -m.discDip * Math.sin(th) ** 2 * (ly / m.h) : 0;
     if (m.ridges > 0 && ly > rB && ly < m.h - rT) { // frisos saltam para fora (a medida é o fundo deles)
-      const d = m.ridgeD * (0.5 + 0.5 * Math.cos(m.ridges * tu)), [nx, nz] = nrm();
+      const d = m.ridgeD * (0.5 + 0.5 * Math.cos(m.ridges * tu)) * (1 - pm), [nx, nz] = nrm();
       x += nx * d; z += nz * d;
     }
     if (m.notch && z > 0) {
@@ -5355,6 +5394,13 @@ const MF = [
     ['labInkFinish', 'Acabamento da arte', 'finish', 0, 0, 0, m => canLabel(m) && m.labType && m.labType !== 'nenhum' && m.labInk],
     ['labColor', 'Cor do papel', 'color', 0, 0, 0, m => canLabel(m) && m.labType && m.labType !== 'nenhum' && !m.labNoPaper],
     ['labFinish', 'Acabamento do rótulo', 'finish', 0, 0, 0, m => canLabel(m) && m.labType && m.labType !== 'nenhum'],
+    // Área lisa na forma (sem gomos nem frisos) onde o rótulo assenta.
+    ['labPanel', 'Área lisa para o rótulo', 'select', [['nenhuma', 'Sem área lisa'], ['retangular', 'Retangular'], ['arredondada', 'Retangular arredondada'], ['oval', 'Oval'], ['arco', 'Arco (topo redondo)']], 0, 0, m => canLabel(m) && m.kind !== 'spray'],
+    ['labPanelW', 'Largura da área lisa', 6, 300, 0.5, 'mm', m => canLabel(m) && m.labPanel && m.labPanel !== 'nenhuma'],
+    ['labPanelH', 'Altura da área lisa', 6, 300, 0.5, 'mm', m => canLabel(m) && m.labPanel && m.labPanel !== 'nenhuma'],
+    ['labY', 'Posição da área (centro, % da altura da peça)', 0, 100, 1, '%', m => canLabel(m) && m.labPanel && m.labPanel !== 'nenhuma' && (!m.labType || m.labType === 'nenhum')],
+    ['labPanelD', 'Recuo (0 = rente aos gomos)', 0, 6, 0.1, 'mm', m => canLabel(m) && m.labPanel && m.labPanel !== 'nenhuma'],
+    ['labPanelBack', 'Área lisa também no verso', 'check', 0, 0, 0, m => canLabel(m) && m.labPanel && m.labPanel !== 'nenhuma'],
   ]],
   // Pescante do corpo (tampas sem pescante próprio); bisnaga não tem.
   ['Pescante', [
@@ -5760,7 +5806,9 @@ function renderLabelBox() {
   if (m.labFront === undefined) m.labFront = true;
   if (m.labBack === undefined) m.labBack = true;
   for (const def of defs) {
-    const el = field(box, m, def, k => { if (['labType', 'labFront', 'labBack', 'labNoPaper', 'labInk'].includes(k)) renderLabelBox(); renderStack(); queueBuild(); });
+    const el = field(box, m, def, k => { if (['labType', 'labFront', 'labBack', 'labNoPaper', 'labInk', 'labPanel'].includes(k)) renderLabelBox();
+      if (k === 'labPanel' && m.labPanel !== 'nenhuma' && m.labType && m.labType !== 'nenhum' && !m._panelSized) { // nasce do tamanho do rótulo + 3 mm de folga
+        m.labPanelH = r1(Math.min(m.h, m.labH + 6)); if (m.labType === 'frenteVerso') m.labPanelW = r1(m.labW + 6); m._panelSized = true; renderLabelBox(); } renderStack(); queueBuild(); });
     if (def[6] && !def[6](m)) el.classList.add('hidden');
   }
   if (m.labType && m.labType !== 'nenhum') {
