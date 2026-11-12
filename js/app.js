@@ -388,7 +388,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-11.hdri-prontos';
+const BUILD = '2026-11-11.minha-biblioteca';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -4804,7 +4804,10 @@ function buildInto(product, S, explodeAmt = 0) {
     // válvula aparece deslocada e ampliada pela peça grossa, como na foto.
     // Frasco de vidro também: o volume inteiro age como lente (4 mm fixos quase não
     // distorciam), então a refração — e o IOR — aparecem de verdade.
-    const thick = !isGlass(finM) ? undefined : r1(!m0.vol ? clamp(Math.min(m.W, m.D) * 0.35, 4, 18) : clamp(Math.min(m.W, m.D) * 0.3, 4, 30));
+    // Sobretampa (desce vestindo as peças de baixo, como a do stick) é casca fina, não
+    // bloco maciço: com a espessura de bloco, o que está dentro aparecia torto, cortado na diagonal.
+    const overcap = !m0.vol && (m0.gap || 0) < -0.4 * m0.h;
+    const thick = !isGlass(finM) || overcap ? undefined : r1(!m0.vol ? clamp(Math.min(m.W, m.D) * 0.35, 4, 18) : clamp(Math.min(m.W, m.D) * 0.3, 4, 30));
     const own = ms.own ? ms : S, look = own.difus != null || own.ior != null ? { dif: own.difus, ior: own.ior } : null;
     // Tampa jateada/fosca vestindo a válvula: só a casca de fora. A parede da cavidade
     // aparecia nítida através do jateado, como se estivesse na frente; sem ela, o que está
@@ -6408,6 +6411,13 @@ function queueSphere(img, f) {
   sphQueue.push({ img, f });
   if (!sphBusy) { sphBusy = true; const pump = () => { const j = sphQueue.shift(); if (!j) { sphBusy = false; return; } if (j.img.isConnected) j.img.src = sphereThumb(j.f); setTimeout(pump, 10); }; setTimeout(pump, 0); }
 }
+// Dados (cor, acabamento…) de um material salvo, baixados uma vez.
+const myMatCache = new Map();
+function myMatData(f) {
+  if (!myMatCache.has(f.id)) myMatCache.set(f.id, fetch(`api/uploads.php?a=file&id=${f.id}`, { credentials: 'same-origin' })
+    .then(r => r.ok ? r.json() : null).catch(() => null));
+  return myMatCache.get(f.id);
+}
 // Grade de esferas por categoria; clicar aplica na peça (ou no produto).
 function matLibrary(box, o0, apply) {
   const tgt = () => typeof o0 === 'function' ? o0() : o0;
@@ -6415,7 +6425,32 @@ function matLibrary(box, o0, apply) {
   d.addEventListener('toggle', () => store.set('shape.matLibOpen', d.open));
   d.innerHTML = '<summary>Biblioteca de materiais</summary>';
   const o = tgt(), cur = MAT_PRESETS.flatMap(([, l]) => l).find(f => f.color === o.color && f.finish === o.finish && (f.difus ?? null) === (o.difus ?? null));
-  const openCat = store.get('shape.matCat', 'Vidro');
+  const openCat = store.get('shape.matCat', matLib.length ? 'Minha biblioteca' : 'Vidro');
+  // Minha biblioteca: os materiais salvos pela equipe (cor + acabamento), também em esfera
+  if (matLib.length) {
+    const sec = document.createElement('details'); sec.className = 'matCat'; sec.open = openCat === 'Minha biblioteca';
+    sec.innerHTML = '<summary>Minha biblioteca</summary><div class="matGrid"></div>';
+    sec.addEventListener('toggle', () => { if (sec.open) store.set('shape.matCat', 'Minha biblioteca'); });
+    const grid = sec.querySelector('.matGrid');
+    for (const f of matLib) {
+      const c = document.createElement('button'); c.className = 'matCard'; c.title = f.name;
+      c.innerHTML = `<img alt=""><span></span><b class="del" title="Excluir da biblioteca">✕</b>`; c.querySelector('span').textContent = f.name;
+      const img = c.querySelector('img'); if (f.thumb) img.src = f.thumb;
+      myMatData(f).then(d => { if (d) queueSphere(img, d); });
+      c.onclick = async e => {
+        if (e.target.classList.contains('del')) {
+          if (!confirm(`Excluir o material "${f.name}"? Vai para a Lixeira (Mais ▾) por 30 dias.`)) return;
+          try { await api('uploads.php?a=delete', { id: f.id }); await refreshMatLib(); toast('Material excluído'); apply(); } catch { toast('Não consegui excluir'); }
+          return;
+        }
+        const d = await myMatData(f); if (!d) { toast('Não consegui abrir esse material'); return; }
+        const t = tgt(); delete t.difus; delete t.ior; MAT_KEYS.forEach(k => { if (d[k] !== undefined) t[k] = d[k]; });
+        apply(d); setTimeout(() => toastUndo(`Material: ${f.name}`), 50);
+      };
+      grid.appendChild(c);
+    }
+    d.appendChild(sec);
+  }
   for (const [cat, list] of MAT_PRESETS) {
     const sec = document.createElement('details'); sec.className = 'matCat'; sec.open = cat === openCat || cur && list.includes(cur);
     sec.innerHTML = `<summary>${cat}</summary><div class="matGrid"></div>`;
@@ -6439,7 +6474,7 @@ function matRow(box, o0, apply) {
   const tgt = () => typeof o0 === 'function' ? o0() : o0; // alvo na hora do clique (peça com cor própria ou produto)
   const wrap = document.createElement('div'); wrap.className = 'matRow';
   const esc = t => String(t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
-  if (matLib.length) {
+  if (matLib.length && !box.querySelector('.matLib')) { // sem a biblioteca de esferas aqui: mostra as fichas
     const lab = document.createElement('div'); lab.className = 'tip'; lab.textContent = 'Materiais salvos (clique para aplicar):'; wrap.appendChild(lab);
     for (const f of matLib) {
       const ch = document.createElement('span'); ch.className = 'chip matChip'; ch.title = `Aplicar ${f.name}`;
@@ -6461,7 +6496,7 @@ function matRow(box, o0, apply) {
     }
   }
   if (cloud) {
-    const b = document.createElement('button'); b.className = 'btn sm'; b.textContent = 'Salvar material (cor + acabamento)';
+    const b = document.createElement('button'); b.className = 'btn sm'; b.textContent = 'Salvar na minha biblioteca (cor + acabamento)';
     b.onclick = async () => {
       const o = tgt(), fin = (FINISHES.find(f => f[0] === o.finish) || [, ''])[1].toLowerCase();
       const name = (prompt('Nome do material (ex.: vidro verde fosco):', fin) || '').trim(); if (!name) return;
