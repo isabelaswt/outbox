@@ -388,7 +388,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-11.parede-fundo';
+const BUILD = '2026-11-11.liquido-parede';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -4622,7 +4622,7 @@ function liquidMeshes(m, y0, levelAbs, lift = S.wall) {
   // O fundo grosso continua aparecendo embaixo.
   const glassBody = isGlass(m.own ? m.finish : S.finish);
   const reliefGap = m.reliefImg && m.reliefDepth > 0 ? Math.max(0.8, m.reliefDepth * 1.6 + 0.35) : 0;
-  const inset = (glassBody ? Math.max(0.35, S.wall - 0.9) : S.wall + 0.3) + reliefGap + Math.max(0, m.liqInset || 0);
+  const inset = (glassBody ? Math.max(0.35, S.wall - 0.9) : S.wall + 0.3) + reliefGap; // o líquido encosta por dentro da parede (Volumetria: parede e fundo)
   const inner = offsetInner(m, y0, inset, lift); if (!inner) return []; // parede grossa: faixa de vidro em volta do líquido
   inner.computeBoundingBox();
   const b = inner.boundingBox, level = levelAbs ?? b.min.y + (b.max.y - b.min.y) * clamp(m.liqLevel, 0, 100) / 100;
@@ -6072,7 +6072,6 @@ function renderBodyLiquid(ed, m) {
     if (m.liqType === 'transparente') field(grp, m, ['liqClear', 'Transparência', 0, 95, 1, '%'], ch);
     if (solid) field(grp, m, ['liqSize', 'Tamanho da peça', 1, 40, 0.5, 'mm'], ch);
     field(grp, m, ['liqLevel', 'Nível', 0, 100, 1, '%'], ch);
-    if (!solid) field(grp, m, ['liqInset', 'Afastar da parede', 0, 8, 0.1, 'mm'], ch);
     field(grp, m, ['liqColor', 'Cor do conteúdo', 'color'], ch);
     if (solid && m.liqType !== 'comprimidos') field(grp, m, ['liqColor2', m.liqType === 'pilulas' ? 'Cor da outra metade' : 'Segunda cor (mistura)', 'color'], ch);
   }
