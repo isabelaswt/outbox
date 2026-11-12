@@ -388,7 +388,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-11.liquido-parede';
+const BUILD = '2026-11-11.fundo-curvo';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -4610,10 +4610,36 @@ function offsetInner(m, y0, inset, lift) {
   const p = g.attributes.position.array, n = g.attributes.normal.array, yb = y0 + lift;
   for (let i = 0; i < p.length; i += 3) {
     p[i] -= n[i] * inset; p[i + 1] -= n[i + 1] * inset; p[i + 2] -= n[i + 2] * inset;
-    if (p[i + 1] < yb) p[i + 1] = yb;
   }
+  // Fundo grosso (vidro): a cavidade não termina num corte reto — o piso é plano no
+  // meio e sobe em curva até a parede, como no vidro soprado/prensado de verdade.
+  const R = lift > S.wall + 0.5 ? clamp(Math.min(m.W, m.D) / 2 * 0.32, 2, 9) : 0;
+  if (R > 0) roundInnerFloor(p, yb, R);
+  else for (let i = 1; i < p.length; i += 3) if (p[i] < yb) p[i] = yb;
   g.attributes.position.needsUpdate = true; g.computeVertexNormals(); g.computeBoundingBox();
   return g;
+}
+// Leva tudo o que está abaixo de yb+R para um piso com canto arredondado de raio R.
+// Cada vértice é medido pelo caminho "do centro, pelo piso, subindo a parede"; esse
+// caminho é redistribuído no piso (até D−R) e no quarto de círculo (até a parede D).
+function roundInnerFloor(p, yb, R) {
+  let cx = 0, cz = 0, k = 0, ymin = Infinity;
+  for (let i = 0; i < p.length; i += 3) { cx += p[i]; cz += p[i + 2]; k++; ymin = Math.min(ymin, p[i + 1]); }
+  cx /= k; cz /= k;
+  const NB = 180, D = new Float32Array(NB), yT = yb + R, ang = (x, z) => ((Math.atan2(z - cz, x - cx) / TAU + 1) % 1) * NB | 0;
+  // raio da parede em cada direção, logo acima do canto
+  for (let i = 0; i < p.length; i += 3) { const y = p[i + 1]; if (y >= yT && y <= yT + 4) { const a = ang(p[i], p[i + 2]), d = Math.hypot(p[i] - cx, p[i + 2] - cz); if (d > D[a]) D[a] = d; } }
+  for (let a = 0; a < NB; a++) if (!D[a]) { let j = 1; while (j < NB && !D[(a + j) % NB] && !D[(a - j + NB) % NB]) j++; D[a] = D[(a + j) % NB] || D[(a - j + NB) % NB]; }
+  for (let i = 0; i < p.length; i += 3) {
+    const y = p[i + 1]; if (y >= yT) continue;
+    const dx = p[i] - cx, dz = p[i + 2] - cz, d = Math.hypot(dx, dz), Dw = D[ang(p[i], p[i + 2])];
+    if (!(Dw > R * 1.2)) { if (y < yb) p[i + 1] = yb; continue; }
+    const Lo = Dw + (yT - ymin), Lt = Dw - R + Math.PI * R / 2;
+    const path = Math.min(d, Dw) + Math.max(0, y - ymin) * (d > Dw * 0.85 ? 1 : 0), q = clamp(path / Lo, 0, 1) * Lt;
+    let r, yy;
+    if (q <= Dw - R) { r = q; yy = yb; } else { const f = (q - (Dw - R)) / R; r = Dw - R + R * Math.sin(f); yy = yb + R - R * Math.cos(f); }
+    const s = d > 1e-6 ? r / d : 0; p[i] = cx + dx * s; p[i + 2] = cz + dz * s; p[i + 1] = yy;
+  }
 }
 function liquidMeshes(m, y0, levelAbs, lift = S.wall) {
   if (FILL_SOLIDS[m.liqType]) return solidFill(m, y0, levelAbs, lift);
