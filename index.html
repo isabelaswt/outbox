@@ -6,7 +6,7 @@
 <title>OUTBOX</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap">
-<link rel="stylesheet" href="css/app.css?v=2026-11-12.liquido-fundo-curvo">
+<link rel="stylesheet" href="css/app.css?v=2026-11-12.ux-linha-unica">
 <script type="importmap">
 {"imports":{
   "three":"https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js",
@@ -226,16 +226,20 @@
 
 <main id="view">
   <canvas id="c"></canvas>
-  <div class="bar">
-    <button class="btn" data-view="front">Frente</button>
-    <button class="btn" data-view="side">Lado</button>
-    <button class="btn" data-view="three">3/4</button>
-    <button class="btn" data-view="top">Topo</button>
-    <button class="btn" id="orthoBtn">Ortográfica</button>
-    <button class="btn" id="gridBtn">Grade 10 mm</button>
-    <button class="btn" id="explodeBtn">Explodir</button>
-    <label class="btn qual" title="Qualidade da visualização: mais alta = mais nítida e mais pesada">Qualidade <input type="range" id="viewQ" min="1" max="4" step="1" value="2"> <b id="viewQName">Boa</b></label>
-    <button class="btn" id="handBtn" title="Mão: arrastar move a vista (ou segure a barra de espaço)" aria-label="Mão">✋</button>
+  <div class="bar" role="toolbar" aria-label="Vista">
+    <div class="seg">
+      <button data-view="front" title="Vista de frente">Frente</button>
+      <button data-view="side" title="Vista de lado">Lado</button>
+      <button data-view="three" title="Vista 3/4">3/4</button>
+      <button data-view="top" title="Vista de cima">Topo</button>
+    </div>
+    <span class="sep"></span>
+    <button class="tb" id="orthoBtn" title="Ortográfica: sem perspectiva, linhas retas como no desenho técnico" aria-label="Ortográfica"><i data-i="perspective"></i></button>
+    <button class="tb" id="gridBtn" title="Grade de 10 mm" aria-label="Grade 10 mm"><i data-i="grid-4x4"></i></button>
+    <button class="tb" id="explodeBtn" title="Explodir: separa as peças para ver cada uma" aria-label="Explodir"><i data-i="explode"></i></button>
+    <button class="tb" id="handBtn" title="Mão: arrastar move a vista (ou segure a barra de espaço)" aria-label="Mão"><i data-i="hand-stop"></i></button>
+    <span class="sep"></span>
+    <label class="qual" title="Qualidade da visualização: mais alta = mais nítida e mais pesada"><i data-i="sparkles"></i><input type="range" id="viewQ" min="1" max="4" step="1" value="2"><b id="viewQName">Boa</b></label>
   </div>
   <div class="stats" id="stats"></div>
   <div class="pieceBar hidden" id="pieceBar"><b id="pieceBarName"></b><button data-p="swap" title="Trocar por outra forma">Trocar</button><button data-p="color" title="Cor e acabamento desta peça">Cor</button><button data-p="dup" title="Duplicar">Duplicar</button><button data-p="del" title="Excluir (dá para desfazer)">Excluir</button></div>
@@ -280,6 +284,6 @@
 </section>
 </div>
 
-<script type="module" src="js/app.js?v=2026-11-12.liquido-fundo-curvo"></script>
+<script type="module" src="js/app.js?v=2026-11-12.ux-linha-unica"></script>
 </body>
 </html>

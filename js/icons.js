@@ -1,5 +1,11 @@
 // Ícones Tabler (MIT, tabler.io/icons), contorno 24px, embutidos para não depender de fonte externa.
 export const ICONS = {
+"perspective": "<path d=\"M6.141 4.163l12 1.714a1 1 0 0 1 .859 .99v10.266a1 1 0 0 1 -.859 .99l-12 1.714a1 1 0 0 1 -1.141 -.99v-13.694a1 1 0 0 1 1.141 -.99z\" />",
+"grid-4x4": "<path d=\"M3 6h18\" /><path d=\"M3 12h18\" /><path d=\"M3 18h18\" /><path d=\"M6 3v18\" /><path d=\"M12 3v18\" /><path d=\"M18 3v18\" />",
+"explode": "<path d=\"M9 18l3 3l3 -3\" /><path d=\"M12 15v6\" /><path d=\"M15 6l-3 -3l-3 3\" /><path d=\"M12 3v6\" /><path d=\"M5 12h14\" />",
+"hand-stop": "<path d=\"M8 13v-7.5a1.5 1.5 0 0 1 3 0v6.5\" /><path d=\"M11 5.5v-2a1.5 1.5 0 1 1 3 0v8.5\" /><path d=\"M14 5.5a1.5 1.5 0 0 1 3 0v6.5\" /><path d=\"M17 7.5a1.5 1.5 0 0 1 3 0v8.5a6 6 0 0 1 -6 6h-2h.208a6 6 0 0 1 -5.012 -2.7a69.74 69.74 0 0 1 -.196 -.3c-.312 -.479 -1.407 -2.388 -3.286 -5.728a1.5 1.5 0 0 1 .536 -2.022a1.867 1.867 0 0 1 2.28 .28l1.47 1.47\" />",
+"sparkles": "<path d=\"M16 18a2 2 0 0 1 2 2a2 2 0 0 1 2 -2a2 2 0 0 1 -2 -2a2 2 0 0 1 -2 2zm0 -12a2 2 0 0 1 2 2a2 2 0 0 1 2 -2a2 2 0 0 1 -2 -2a2 2 0 0 1 -2 2zm-7 12a6 6 0 0 1 6 -6a6 6 0 0 1 -6 -6a6 6 0 0 1 -6 6a6 6 0 0 1 6 6z\" />",
+"chevron-down": "<path d=\"M6 9l6 6l6 -6\" />",
 "adjustments-horizontal": "<path d=\"M14 6m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0\" /><path d=\"M4 6l8 0\" /><path d=\"M16 6l4 0\" /><path d=\"M8 12m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0\" /><path d=\"M4 12l2 0\" /><path d=\"M10 12l10 0\" /><path d=\"M17 18m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0\" /><path d=\"M4 18l11 0\" /><path d=\"M19 18l1 0\" />",
 "arrow-back-up": "<path d=\"M9 14l-4 -4l4 -4\" /><path d=\"M5 10h11a4 4 0 1 1 0 8h-1\" />",
 "arrow-forward-up": "<path d=\"M15 14l4 -4l-4 -4\" /><path d=\"M19 10h-11a4 4 0 1 0 0 8h1\" />",

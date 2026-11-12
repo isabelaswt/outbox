@@ -17,7 +17,7 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION } from 'three-bvh-csg';
-import { icon } from './icons.js?v=2026-11-12.ux-icones';
+import { icon } from './icons.js?v=2026-11-12.ux-linha-unica';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -390,7 +390,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-12.liquido-fundo-curvo';
+const BUILD = '2026-11-12.ux-linha-unica';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -5265,13 +5265,15 @@ $('#lineAddBtn').onclick = async () => {
 
 function updateStats() {
   const b = bounds(), sz = b.getSize(new THREE.Vector3()), v = volumes(S);
-  $('#stats').innerHTML = `
+  $('#stats').innerHTML = `<button class="stSum" type="button" title="Medidas do produto (clique para ver tudo)">${icon('ruler-measure')}<b>${sz.y.toFixed(1)} × ${sz.x.toFixed(1)} × ${sz.z.toFixed(1)} mm</b>${v.cap ? `<span>${v.cap.toFixed(0)} ml</span>` : ''}${icon('chevron-down')}</button><div class="stFull">
     <span>Altura total</span><b>${sz.y.toFixed(1)} mm</b>
     <span>Largura máx.</span><b>${sz.x.toFixed(1)} mm</b>
     <span>Profundidade máx.</span><b>${sz.z.toFixed(1)} mm</b>
     <span>Volume externo do frasco</span><b>${v.ext ? v.ext.toFixed(0) + ' ml' : '—'}</b>
-    <span class="cap">Capacidade estimada</span><span class="cap"><b>${v.cap ? v.cap.toFixed(0) + ' ml' : '—'}</b></span>`;
+    <span class="cap">Capacidade estimada</span><span class="cap"><b>${v.cap ? v.cap.toFixed(0) + ' ml' : '—'}</b></span></div>`;
 }
+$('#stats').classList.toggle('open', store.get('shape.statsOpen', false) === true);
+$('#stats').addEventListener('click', e => { if (e.target.closest('.stSum')) store.set('shape.statsOpen', $('#stats').classList.toggle('open')); });
 
 // ───────────────────────── câmeras e vistas ─────────────────────────
 const VIEWS = { front: [0, 0.02, 1], side: [1, 0.02, 0], three: [0.75, 0.32, 1], top: [0, 1, 0.001] };
@@ -5427,7 +5429,7 @@ function updatePieceBar() {
   bar.classList.remove('hidden');
   const w = bar.offsetWidth / 2 + 8;
   bar.style.left = clamp((x0 + x1) / 2, w, view.clientWidth - w) + 'px';
-  bar.style.top = clamp(y0 - 10, 96, view.clientHeight - 10) + 'px';
+  bar.style.top = clamp(y0 - 10, 60, view.clientHeight - 70) + 'px'; // em cima o selo de medidas, embaixo a barra da vista
 }
 $('#pieceBar').onclick = e => {
   const a = e.target.closest('button')?.dataset.p; if (!a) return;
@@ -5443,6 +5445,9 @@ $('#pieceBar').onclick = e => {
 // Slider: o trecho já percorrido fica escuro (trilho fino, como nos editores 3D web).
 function fillRange(r) { const a = +r.min || 0, b = +r.max || 100; r.style.setProperty('--p', clamp((r.value - a) / (b - a || 1), 0, 1) * 100 + '%'); }
 document.addEventListener('input', e => { if (e.target.type === 'range') fillRange(e.target); }, true);
+// "Luz (vale para tela, imagem e vídeo)" → ['Luz', 'vale para tela, imagem e vídeo']: o rótulo fica curto e o detalhe vira nota
+const noteInline = l => { const [a, b] = splitNote(l); return b ? `${a} <small>${b}</small>` : a; };
+const splitNote = l => { const m = String(l).match(/^(.*?\S)\s*\(([^()]*)\)\s*$/); return m ? [m[1], m[2]] : [String(l), '']; };
 function field(parent, obj, def, onChange) {
   const [k, label0, min, max, step, unit] = def, label = typeof label0 === 'function' ? label0(obj) : label0; // rótulo pode depender da peça
   const el = document.createElement('div'); el.className = 'f';
@@ -5455,16 +5460,32 @@ function field(parent, obj, def, onChange) {
     const c = el.querySelector('input'); c.value = obj[k];
     c.oninput = () => { obj[k] = c.value; onChange(k); };
   } else if (min === 'select') {
-    el.innerHTML = `<div class="top"><label>${label}</label></div><select>${max.map(([v, l]) => `<option value="${v}">${l}</option>`).join('')}</select>`;
+    el.innerHTML = `<div class="top"><label>${noteInline(label)}</label></div><select>${max.map(([v, l]) => `<option value="${v}">${l}</option>`).join('')}</select>`;
     const c = el.querySelector('select'); c.value = obj[k];
     c.onchange = () => { obj[k] = c.value; onChange(k, true); };
   } else if (min === 'finish') {
-    el.innerHTML = `<div class="top"><label>${label}</label></div><select>${FINISHES.map(([v, l]) => `<option value="${v}">${l}</option>`).join('')}</select>`;
+    el.innerHTML = `<div class="top"><label>${noteInline(label)}</label></div><select>${FINISHES.map(([v, l]) => `<option value="${v}">${l}</option>`).join('')}</select>`;
     const c = el.querySelector('select'); c.value = obj[k];
     c.onchange = () => { obj[k] = c.value; onChange(k); };
   } else {
-    el.innerHTML = `<div class="top"><label>${label}</label><span class="num"><input type="number" step="${step}"> ${unit || ''}</span></div><input type="range" min="${min}" max="${max}" step="${step}">`;
+    el.className = 'f fr'; // uma linha só: rótulo · slider · número (o detalhe entre parênteses vira nota embaixo da linha)
+    const [lab, note] = splitNote(label);
+    el.innerHTML = `<div class="top"><label title="Arraste para os lados para ajustar (Shift: fino)">${lab}</label><span class="num"><input type="number" step="${step}"> ${unit || ''}</span></div><input type="range" min="${min}" max="${max}" step="${step}">${note ? `<small class="note">${note}</small>` : ''}`;
     const num = el.querySelector('input[type=number]'), rng = el.querySelector('input[type=range]');
+    // Arrastar o rótulo para os lados ajusta o valor (como nos programas de 3D); Shift = ajuste fino.
+    const lb = el.querySelector('label'), dec = (String(step).split('.')[1] || '').length;
+    lb.onpointerdown = e => {
+      if (e.button) return;
+      const x0 = e.clientX, v0 = +rng.value, span = (+rng.max - +rng.min) || 1; let moved = false;
+      lb.setPointerCapture(e.pointerId);
+      lb.onpointermove = ev => {
+        const dx = ev.clientX - x0; if (!moved && Math.abs(dx) < 3) return;
+        if (!moved) { moved = true; el.classList.add('scrubbing'); }
+        const v = clamp(Math.round((v0 + dx * Math.max(+step || 1, span / 400) * (ev.shiftKey ? 0.1 : 1)) / step) * step, +rng.min, +rng.max); // ~1 passo por pixel
+        if (+rng.value !== v) { rng.value = v.toFixed(dec); rng.oninput(); }
+      };
+      lb.onpointerup = lb.onpointercancel = () => { lb.onpointermove = lb.onpointerup = lb.onpointercancel = null; el.classList.remove('scrubbing'); };
+    };
     num.value = rng.value = obj[k] ?? (typeof def[7] === 'function' ? def[7](obj) : def[7]); // valor padrão sem gravar (ex.: difusão do acabamento)
     fillRange(rng);
     rng.oninput = () => { obj[k] = +rng.value; num.value = rng.value; fillRange(rng); onChange(k); };
@@ -6408,7 +6429,10 @@ function renderSwap(ed, m) {
   for (const k of gKeys) {
     const card = document.createElement('div');
     card.className = 'card' + (k === cur ? ' on' : ''); card.title = LIB[k].name;
-    card.innerHTML = `<img class="ph" alt=""><div>${LIB[k].name}</div>`;
+    // nome curto no cartão ("Corpo Boston (farmacêutico)" → "Boston"): a família já está no título; o nome inteiro fica na dica
+    const fam = CATS.find(([, ks]) => ks.includes(k))?.[0] || label;
+    const short = LIB[k].name.replace(new RegExp('^' + fam + '\\s+', 'i'), '').replace(/\s*\([^)]*\)\s*$/, '');
+    card.innerHTML = `<img class="ph" alt=""><div>${short.charAt(0).toUpperCase() + short.slice(1)}</div>`;
     card.onclick = () => {
       if (k === cur) return;
       swapScroll = { key: skey, top: grid.scrollTop }; // volta para o mesmo ponto, mesmo trocando tampa ↔ válvula
@@ -6510,6 +6534,31 @@ $('#startGen').onclick = () => openStart('#genBox');
 $('#startSilh').onclick = () => openStart('#silhBox');
 // Ícones: <i data-i="nome"> vira o SVG embutido (js/icons.js).
 document.querySelectorAll('i[data-i]').forEach(el => { el.outerHTML = icon(el.dataset.i); });
+// Dica rápida nos botões de ícone (barra do topo, barra lateral, abas da peça, barra da vista):
+// aparece em ~0,3 s, no lado livre, em vez do balão lento do navegador.
+{ const tip = document.createElement('div'); tip.className = 'qtip'; document.body.appendChild(tip);
+  const ZONES = '.topbar, .rail, .itabs, .bar, #stats, .pieceBar'; let cur = null, tmr = 0;
+  const hide = () => { clearTimeout(tmr); tip.classList.remove('on'); cur = null; };
+  document.addEventListener('pointerover', e => {
+    const el = e.target.closest?.('[title], [data-tip]'); if (!el || !el.closest(ZONES)) { if (cur && !cur.contains(e.target)) hide(); return; }
+    if (el === cur) return;
+    if (el.title) { el.dataset.tip = el.title; el.removeAttribute('title'); } // sem o balão do navegador por cima
+    hide(); cur = el;
+    tmr = setTimeout(() => {
+      if (cur !== el || !el.isConnected) return;
+      tip.textContent = el.dataset.tip; tip.style.left = '0px'; tip.style.top = '0px';
+      const r = el.getBoundingClientRect(), t = tip.getBoundingClientRect(), vw = innerWidth, vh = innerHeight;
+      let x, y;
+      if (el.closest('.rail')) { x = r.right + 8; y = r.top + r.height / 2 - t.height / 2; }
+      else if (el.closest('.bar')) { x = r.left + r.width / 2 - t.width / 2; y = r.top - t.height - 8; }
+      else { x = r.left + r.width / 2 - t.width / 2; y = r.bottom + 8; if (y + t.height > vh - 6) y = r.top - t.height - 8; }
+      tip.style.left = clamp(x, 6, vw - t.width - 6) + 'px'; tip.style.top = clamp(y, 6, vh - t.height - 6) + 'px';
+      tip.classList.add('on');
+    }, 320);
+  });
+  document.addEventListener('pointerdown', hide, true);
+  window.addEventListener('blur', hide);
+}
 document.querySelectorAll('input[type=range]').forEach(fillRange);
 const SIDE_TABS = ['lib', 'build', 'line', 'measure', 'scene'];
 function setSideTab(t) {

@@ -47,6 +47,7 @@ Teste local com PHP: `php -S 127.0.0.1:8767 -t .` e um `api/config.php` apontand
 - Materiais da equipe (cor + acabamento + difusão + IOR) salvos com nome, para aplicar no produto ou numa peça.
 - Interface como nos programas de 3D online: barra no topo (arquivo, desfazer, busca e Exportar), barra de ícones à esquerda com os modos (Modelos, Peças, Linha, Medidas, Cena) e a peça selecionada à direita em abas (Forma, Detalhes, Superfície, Logo). Ícones Tabler embutidos em `js/icons.js`.
 - Busca (Cmd/Ctrl+K): acha qualquer ajuste, painel, modelo pronto ou ação pelo nome e leva direto até ele (abre a aba e o grupo e pisca o campo).
+- Campos numéricos em uma linha (rótulo · slider · número). Arrastar o rótulo para os lados ajusta o valor (Shift: fino). Vista, ortográfica, grade, explodir, mão e qualidade ficam na barra de ícones embaixo do 3D; as medidas, no selo em cima (clique para ver a tabela).
 - Lixeira (Mais ▾): projetos, STL, texturas, materiais e HDR excluídos ficam 30 dias para restaurar ou apagar de vez.
 - Ficha técnica (Exportar ▾): página A4 com vistas de frente, lado e topo cotadas, vista 3/4, tabela de peças (medidas, gargalo, cor, acabamento) e volume, pronta para salvar em PDF.
 - Código em `index.html` (estrutura), `css/app.css` e `js/app.js`; `tools/versao.sh` troca a versão em todos os lugares.

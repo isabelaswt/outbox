@@ -332,3 +332,74 @@ aside,#inspector,.gallery,.cmdList,.pop{scrollbar-width:thin;scrollbar-color:rgb
 ::-webkit-scrollbar{width:8px;height:8px}::-webkit-scrollbar-thumb{background:rgba(20,20,25,.12);border-radius:8px;border:2px solid transparent;background-clip:padding-box}::-webkit-scrollbar-track{background:transparent}
 @media (max-width:1100px){ .app,.app.insp-off{grid-template-columns:60px 272px minmax(0,1fr)} #inspector{top:64px;right:8px;bottom:8px;border-radius:16px} }
 @media (max-width:820px){ .app,.app.insp-off{grid-template-columns:1fr;padding:6px;gap:6px} #inspector{top:6px;left:6px;right:6px;width:auto} }
+
+/* ════════ Visual 2: menos caixas, mais leitura. Campos numa linha (rótulo · slider · número),
+   ferramentas da vista numa barra de ícones embaixo do 3D, medidas num selo que abre,
+   dicas rápidas nos ícones e transições curtas. ════════ */
+/* campo numérico em uma linha; o rótulo também é arrastável (cursor ↔) */
+.f.fr{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(44px,1fr) 80px;align-items:center;column-gap:10px;margin:3px 0;min-height:30px}
+.f.fr>.top{display:contents}
+.f.fr label{grid-column:1;grid-row:1;cursor:ew-resize;user-select:none;-webkit-user-select:none;line-height:1.25;color:#46464b;padding:3px 0;transition:color .12s}
+.f.fr .note{grid-column:1/-1;grid-row:2;font-size:10.5px;color:var(--muted);line-height:1.3;margin:-1px 0 3px}
+.f.fr input[type=range]{grid-column:2;grid-row:1;margin:0}
+.f.fr .num{grid-column:3;grid-row:1;min-width:0}
+.f.fr .num input{width:52px;padding:0 6px}
+.f.fr:hover label,.f.fr.scrubbing label{color:var(--ink)}
+.f.fr.scrubbing,.f.fr.scrubbing *{cursor:ew-resize!important}
+.f.fr.scrubbing .num input{background:#fff;box-shadow:0 0 0 1px var(--ink)}
+/* lista: rótulo em cima, detalhe entre parênteses em cinza */
+.f>.top label small{font-size:11px;color:var(--muted);margin-left:2px}
+.f>.top+select{margin-top:5px;height:30px}
+details{padding:2px 0}
+summary,.grp>summary{padding:11px 0}
+.grp[open]{padding-bottom:10px}
+/* barra da vista: uma doca de ícones, embaixo e no meio do 3D */
+.bar{top:auto;bottom:14px;left:50%;right:auto;transform:translateX(-50%);display:flex;align-items:center;gap:2px;flex-wrap:nowrap;padding:4px;pointer-events:auto;background:rgba(255,255,255,.82);backdrop-filter:blur(14px) saturate(1.4);-webkit-backdrop-filter:blur(14px) saturate(1.4);border:1px solid rgba(255,255,255,.75);border-radius:14px;box-shadow:0 1px 2px rgba(20,20,25,.06),0 8px 28px rgba(20,20,25,.10);max-width:calc(100% - 20px);overflow-x:auto;scrollbar-width:none;z-index:5}
+.bar::-webkit-scrollbar{display:none}
+.bar .seg{display:flex;gap:2px;background:rgba(20,20,25,.05);border-radius:10px;padding:2px;flex:none}
+.bar .seg button{border:0;background:none;font:inherit;font-size:12px;color:#5a5a5f;padding:0 11px;height:28px;border-radius:8px;cursor:pointer;white-space:nowrap;transition:background .12s,color .12s}
+.bar .seg button:hover{color:var(--ink)}
+.bar .seg button.on{background:#fff;color:var(--ink);box-shadow:0 1px 2px rgba(20,20,25,.14),0 0 0 .5px rgba(20,20,25,.06)}
+.bar .sep{width:1px;height:20px;background:rgba(20,20,25,.1);margin:0 4px;flex:none}
+.bar .tb{width:32px;height:32px;display:grid;place-items:center;border:0;background:none;border-radius:9px;color:#5a5a5f;cursor:pointer;flex:none;transition:background .12s,color .12s}
+.bar .tb:hover{background:rgba(20,20,25,.06);color:var(--ink)}
+.bar .tb.on{background:var(--ink);color:#fff}
+.bar .qual{display:flex;align-items:center;gap:7px;height:32px;padding:0 8px 0 7px;color:#5a5a5f;font-size:12px;cursor:default;flex:none}
+.bar .qual input{width:64px;margin:0}
+.bar .qual b{font-weight:500;min-width:42px;color:var(--ink)}
+/* medidas: selo compacto em cima, abre a tabela */
+.stats{top:12px;left:12px;bottom:auto;display:block;padding:0;overflow:hidden;border-radius:12px;z-index:5;max-width:calc(100% - 24px)}
+.stats .stSum{display:flex;align-items:center;gap:8px;border:0;background:none;font:inherit;font-size:12px;color:var(--ink);padding:0 9px 0 10px;height:32px;cursor:pointer;white-space:nowrap}
+.stats .stSum b{font-weight:500;text-align:left}
+.stats .stSum span{color:#6b6b70;padding-left:8px;border-left:1px solid rgba(20,20,25,.12);font-variant-numeric:tabular-nums}
+.stats .stSum .ic{width:15px;height:15px;color:#9a9a9f}
+.stats .stSum .ic:last-child{width:14px;height:14px;transition:transform .18s}
+.stats.open .stSum .ic:last-child{transform:rotate(180deg)}
+.stats .stFull{display:none;grid-template-columns:auto auto;gap:3px 18px;padding:2px 12px 10px 35px;font-size:12px;color:#5a5a5f}
+.stats.open .stFull{display:grid;animation:fadeUp .16s ease-out}
+.toast{top:12px;bottom:auto;left:50%;right:auto;transform:translateX(-50%);z-index:7;box-shadow:0 8px 24px rgba(20,20,25,.18)}
+/* trocar peça: miniaturas menores e nomes numa linha só */
+.gallery.swap{grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;max-height:206px}
+.gallery.swap .card{padding:4px 4px 6px}
+.gallery.swap .card .ph{aspect-ratio:1}
+.gallery.swap .card>div{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:10.5px;margin-top:2px}
+/* dica rápida dos ícones (no lugar do balão lento do navegador) */
+.qtip{position:fixed;z-index:60;pointer-events:none;background:#18181b;color:#fff;font-size:11.5px;line-height:1.35;padding:6px 9px;border-radius:8px;max-width:260px;box-shadow:0 6px 20px rgba(0,0,0,.18);opacity:0;transform:translateY(2px);transition:opacity .12s,transform .12s}
+.qtip.on{opacity:1;transform:none}
+/* movimento curto ao trocar de aba e abrir janelas */
+.tab.on,.itab.on{animation:fadeUp .18s ease-out}
+.pop.open,.cmdBox,.openBox{animation:popIn .16s ease-out}
+@keyframes fadeUp{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+@keyframes popIn{from{opacity:0;transform:translateY(-4px) scale(.985)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+@media (max-width:820px){.bar .qual b{display:none}.bar .seg button{padding:0 8px}}
+/* biblioteca de materiais e HDRIs: cartões claros como o resto (o escuro pesava no painel) */
+.matCard,.hdriCard{background:var(--soft);color:#4a4a4f;border:1px solid transparent;transition:border-color .12s,background .12s}
+.matCard:hover,.hdriCard:hover{border-color:#e2e1de;background:#efefed}
+.matCard.on,.hdriCard.on{border-color:var(--ink);box-shadow:0 0 0 1px var(--ink) inset;background:#fff}
+.matCard img{box-shadow:0 2px 6px rgba(20,20,25,.18)}
+.matNow img{background:var(--soft);box-shadow:0 2px 6px rgba(20,20,25,.18)}
+/* inspetor por cima do 3D (tela estreita): a barra da vista encosta à esquerda para não ficar embaixo dele */
+@media (max-width:1100px) and (min-width:821px){ .app:not(.insp-off) .bar{left:12px;transform:none;max-width:calc(100% - 362px)} }
+/* celular: barra de modos deitada (a regra antiga ficava antes da definição da barra e perdia) */
+@media (max-width:820px){ .rail{flex-direction:row;justify-content:center;padding:4px;overflow-x:auto} .rail .railEnd{margin:0 0 0 auto;flex-direction:row} .stats{max-width:calc(100% - 24px)} .stats .stSum b{overflow:hidden;text-overflow:ellipsis} }
