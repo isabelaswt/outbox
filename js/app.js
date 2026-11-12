@@ -390,7 +390,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-12.troca-bege';
+const BUILD = '2026-11-12.visual-leve';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -5419,6 +5419,9 @@ $('#pieceBar').onclick = e => {
 
 // ───────────────────────── interface ─────────────────────────
 // Campo genérico: slider + número ligados a obj[k].
+// Slider: o trecho já percorrido fica escuro (trilho fino, como nos editores 3D web).
+function fillRange(r) { const a = +r.min || 0, b = +r.max || 100; r.style.setProperty('--p', clamp((r.value - a) / (b - a || 1), 0, 1) * 100 + '%'); }
+document.addEventListener('input', e => { if (e.target.type === 'range') fillRange(e.target); }, true);
 function field(parent, obj, def, onChange) {
   const [k, label0, min, max, step, unit] = def, label = typeof label0 === 'function' ? label0(obj) : label0; // rótulo pode depender da peça
   const el = document.createElement('div'); el.className = 'f';
@@ -5442,11 +5445,12 @@ function field(parent, obj, def, onChange) {
     el.innerHTML = `<div class="top"><label>${label}</label><span class="num"><input type="number" step="${step}"> ${unit || ''}</span></div><input type="range" min="${min}" max="${max}" step="${step}">`;
     const num = el.querySelector('input[type=number]'), rng = el.querySelector('input[type=range]');
     num.value = rng.value = obj[k] ?? (typeof def[7] === 'function' ? def[7](obj) : def[7]); // valor padrão sem gravar (ex.: difusão do acabamento)
-    rng.oninput = () => { obj[k] = +rng.value; num.value = rng.value; onChange(k); };
+    fillRange(rng);
+    rng.oninput = () => { obj[k] = +rng.value; num.value = rng.value; fillRange(rng); onChange(k); };
     num.onchange = () => {
       const v = +num.value; if (!isFinite(v)) return;
       if (v > +rng.max) rng.max = v; if (v < +rng.min) rng.min = v;
-      obj[k] = v; rng.value = v; onChange(k);
+      obj[k] = v; rng.value = v; fillRange(rng); onChange(k);
     };
   }
   parent.appendChild(el);
@@ -6485,6 +6489,7 @@ $('#startGen').onclick = () => openStart('#genBox');
 $('#startSilh').onclick = () => openStart('#silhBox');
 // Ícones: <i data-i="nome"> vira o SVG embutido (js/icons.js).
 document.querySelectorAll('i[data-i]').forEach(el => { el.outerHTML = icon(el.dataset.i); });
+document.querySelectorAll('input[type=range]').forEach(fillRange);
 const SIDE_TABS = ['lib', 'build', 'line', 'measure', 'scene'];
 function setSideTab(t) {
   if (t === 'color') { openInspector(); setInspTab('sup'); return; } // a cor da peça mora no inspetor (Superfície)
