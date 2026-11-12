@@ -390,7 +390,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-12.vidro-mais-claro';
+const BUILD = '2026-11-12.video-tampa-fechada';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -3684,7 +3684,10 @@ function detailShow() {
     if (capBox.isEmpty()) relT = new V(C.x, all.min.y + sz.y * 0.8, C.z);
     else { relT = new V(C.x, capBox.min.y, C.z); relR = Math.max(capBox.getSize(new V()).x * 0.42, 8); }
   }
-  const openI = [...capIdx].reverse().find(i => { const m = S.modules[i]; return (m.topType === 'flip' && m.groove > 0) || m.topType === 'disc'; });
+  // A tampa NÃO abre no vídeo (pedido: produto sempre montado, sem destampar nem explodir);
+  // a tomada da tampa continua, como close dela fechada. Para voltar a abrir: OPEN_CAP = true.
+  const OPEN_CAP = false;
+  const openI = !OPEN_CAP ? undefined : [...capIdx].reverse().find(i => { const m = S.modules[i]; return (m.topType === 'flip' && m.groove > 0) || m.topType === 'disc'; });
   let frames = null, openMeshes = [], flipRig = null;
   if (openI !== undefined && S.modules[openI].topType === 'flip') {
     // flip: base + bico montados uma vez; a tampinha é peça à parte que gira na
@@ -3716,7 +3719,7 @@ function detailShow() {
     openMeshes = product.children.filter(o => o.userData.idx === openI && o.isMesh);
   }
   // flip abrindo: a tampinha sobe além da caixa fechada; mira e distância incluem o arco dela
-  const capAim = flipRig ? capT.clone().add(new V(0, capBox.getSize(new V()).y * 0.55, 0)) : topLift ? capT.clone().add(new V(0, topLift * 0.5, 0)) : capT;
+  const capAim = flipRig ? capT.clone().add(new V(0, capBox.getSize(new V()).y * 0.55, 0)) : topLift && OPEN_CAP ? capT.clone().add(new V(0, topLift * 0.5, 0)) : capT;
   const capFit = capR * (flipRig ? 1.45 : 1.15);
   const lift = capBox.isEmpty() ? 0 : capBox.getSize(new V()).y * 0.9;
   const pose = (T, ang, elev, d) => new V(T.x + Math.cos(ang) * Math.cos(elev) * d, T.y + Math.sin(elev) * d, T.z + Math.sin(ang) * Math.cos(elev) * d);
@@ -3737,8 +3740,8 @@ function detailShow() {
     // abertura: câmera parada em 3/4, o produto gira no próprio eixo (sem aproximar)
     { d: 3.6, T0: CR, T1: CR, P0: pose(CR, A - 0.45, 0.02, distHero * 1.04), P1: pose(CR, A - 0.45, 0.02, distHero), fov: 26, turn: [-0.55, 0.1] },
     { d: 3.6, T0: relT, T1: relT, P0: pose(relT, A + 0.2, 0.04, fitDist(relR * 1.6, 18)), P1: pose(relT, A - 0.2, 0.04, fitDist(relR * 1.6, 18)), fov: 18 },
-    // tampa abrindo de frente, câmera quase na altura da tampa (bico e furo ficam discretos)
-    { d: 4.8, T0: capAimR, T1: capAimR, P0: pose(capAimR, A, 0.1, fitDist(capFit * 1.12, 22)), P1: pose(capAimR, A, 0.12, fitDist(capFit * 1.04, 22)), fov: 22, cap: true },
+    // close da tampa (fechada) de frente, câmera quase na altura dela
+    { d: 4.8, T0: capAimR, T1: capAimR, P0: pose(capAimR, A, 0.1, fitDist(capFit * 1.12, 22)), P1: pose(capAimR, A, 0.12, fitDist(capFit * 1.04, 22)), fov: 22, cap: OPEN_CAP },
     // deitado em diagonal (topo à direita), bem perto, com a malha virando acabamento da base ao topo
     { d: 5.2, T0: C, T1: C, P0: pose(C, A - 0.15, -0.1, distTilt * 1.08), P1: pose(C, A + 0.12, -0.06, distTilt), fov: 24, tilt: true, wire: true },
     // fecho: de frente, em vista ortográfica (sem perspectiva), um giro inteiro no próprio eixo,
@@ -3920,6 +3923,8 @@ async function encodeFrames(frameAt, sec, W, H, onProgress) {
 async function recordSpin(sec, mode = '360') {
   const offline = 'VideoEncoder' in window && 'VideoFrame' in window;
   if (spinning || (!offline && !window.MediaRecorder)) { if (!offline && !window.MediaRecorder) toast('Este navegador não grava vídeo'); return; }
+  // vídeo sempre com o produto montado: se a vista estiver explodida, junta as peças e devolve no fim
+  const wasExploded = explode; if (explode) { explode = false; build(); }
   product.quaternion.identity(); product.position.set(0, 0, 0); product.updateMatrixWorld(true); // o vídeo faz as próprias poses
   // Vista ortográfica não aproxima com a distância (close, inclinado e tampa saíam
   // todos do mesmo tamanho): o vídeo grava sempre em perspectiva, na mesma direção.
@@ -4015,6 +4020,7 @@ async function recordSpin(sec, mode = '360') {
   ground.visible = keep.ground; stage.visible = keep.stage;
   download(blob, fname(ext));
   btn.disabled = false; btn.textContent = 'Gravar vídeo'; spinning = false; buildStage(); req(); // devolve a inclinação do cenário
+  if (wasExploded) { explode = true; build(); }
   resize();
   if (orthoT) { // volta para a vista ortográfica em que estava
     cam = ortho; ortho.position.copy(orthoT).addScaledVector(orthoDir, 3000); ortho.up.set(0, 1, 0); ortho.lookAt(orthoT); makeControls(orthoT); req();
