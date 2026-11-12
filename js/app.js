@@ -266,7 +266,7 @@ function importedMeshGeo(m, y0) {
 // ───────────────────────── módulos ─────────────────────────
 const BASE = {
   name: 'Peça', W: 50, D: 50, n: 2, sides: 0, sideR: 0.1, h: 40, taper: 100, taperB: 100, shoulderK: 0, bulge: 0, bulgePos: 50,
-  rBot: 2, rTop: 2, rBotW: 0, rTopW: 0, gap: 0, rep: 1, repGap: 0, veste: true, fundo: 6,
+  rBot: 2, rTop: 2, rBotW: 0, rTopW: 0, gap: 0, rep: 1, repGap: 0, veste: true, fundo: 6, apoio: true,
   groove: 0, grooveD: 0.6,
   notch: false, notchLock: true, notchY: 12, notchW: 20, notchH: 8, notchD: 2, notchP: 2,
   ridges: 0, ridgeD: 0.6, lobes: 0, lobeD: 3,
@@ -388,7 +388,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-11.perfume-fundo';
+const BUILD = '2026-11-12.apoio-tampa';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -4928,6 +4928,26 @@ function buildInto(product, S, explodeAmt = 0) {
     Object.assign(mesh.userData, { main: true, uid: m.uid, y0, ox: m.ox || 0, rep });
     mesh.name = `${String(idx + 1).padStart(2, '0')}_${m.name}`;
     product.add(mesh);
+    // Apoio: peça de fundo redondo (tigela, bola, esfera) sobre outra encostava só num
+    // ponto e parecia solta no ar; um pé cilíndrico na mesma cor assenta no topo plano de baixo.
+    { const below = L[i - 1];
+      if (rep === 0 && m0.apoio !== false && m0.kind === 'giro' && !m0.vol && !vestsValve(S, idx) && below && below.idx === idx - 1
+        && below.m.kind !== 'spray' && !below.m.hidden) {
+        const a = Math.min(m.W, m.D) / 2, { rB } = radii(m), bm = below.m;
+        if (rB >= a * 0.45 && !(m.gap > 0.5)) {
+          const rd = Math.min(bm.W, bm.D) / 2 - (bm.kind === 'gargalo' ? 0 : radii(bm).rT);
+          const rs = Math.min(rd - 0.3, a * 0.42), f = (a - rs) / rB;
+          if (rs >= 2.5 && f < 1) {
+            const hy = rB * (1 - Math.sqrt(Math.max(0, 1 - (1 - f) ** 2)));
+            if (hy > 0.4) {
+              const ap = new THREE.Mesh(cyl(rs, y0, hy + 0.6, 0, Math.min(0.8, hy * 0.3)), mesh.material);
+              if (m.ox) ap.position.x = m.ox;
+              ap.castShadow = ap.receiveShadow = true; ap.userData.idx = idx; ap.name = `${String(idx + 1).padStart(2, '0')}_apoio`; product.add(ap);
+            }
+          }
+        }
+      }
+    }
     // boca do gargalo em vidro transparente: sem o fundo escuro (ele aparecia pelas paredes)
     if (m0.kind === 'gargalo' && ['vidro', 'pet'].includes(ms.own ? ms.finish : S.finish)) g.userData.extras = [];
     (g.userData.extras || []).forEach(xg => { const xm = new THREE.Mesh(xg, xg.userData.mat === 'insert' ? insertMat : xg.userData.mat === 'clear' ? clearMat : holeFor(ms.own ? ms.color : S.color)); xm.userData.idx = idx; if (xg.userData.boca) xm.name = 'boca'; product.add(xm); });
@@ -5520,6 +5540,7 @@ const MF = [
   ]],
   ['Encaixe', [
     ['gap', 'Distância da peça de baixo', -40, 40, 0.1, 'mm'],
+    ['apoio', 'Pé de apoio embaixo (peça de fundo redondo)', 'check', 0, 0, 0, m => !m.vol && m.kind === 'giro' && radii(m).rB >= Math.min(m.W, m.D) / 2 * 0.45],
     ['ox', 'Deslocar para o lado (− esquerda)', -100, 100, 0.5, 'mm'],
   ]],
   ['Cor', [
