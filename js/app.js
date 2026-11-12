@@ -388,7 +388,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-11.liquido-no-vidro';
+const BUILD = '2026-11-11.base-vidro-tom';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -3232,7 +3232,7 @@ function material(color, finish, band = null, thick, look = null) {
         .replace('totalDiffuse = mix( totalDiffuse, transmitted.rgb, material.transmission );',
           `float frE = pow(1.0 - abs(dot(normalize(vViewPosition), normal)), 1.4);
 \ttransmitted.rgb *= mix(vec3(1.0), ${etv}, clamp(frE * (0.9 + uWall * 0.5), 0.0, 1.0));
-\t${band ? `transmitted.rgb *= mix(vec3(1.0), pow(max(material.diffuseColor, vec3(0.02)), vec3(1.7)), ${bandF(band.y)});` : ''}
+\t${band ? `transmitted.rgb *= mix(vec3(1.0), mix(vec3(1.0), material.diffuseColor, 0.35) * 0.82, ${bandF(band.y)}); // fundo grosso: um pouco mais denso, no mesmo tom (ao quadrado virava vermelho escuro)` : ''}
 \ttotalDiffuse = mix( totalDiffuse, transmitted.rgb, material.transmission );`)); };
     m.customProgramCacheKey = () => 'vidro2' + color + (band ? band.y.toFixed(1) : '') + wk; }
   // Vidro fosco (jateado): transmite a luz mas embaça o que está dentro e atrás.
