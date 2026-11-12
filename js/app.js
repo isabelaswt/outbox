@@ -390,7 +390,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-12.rotulo-na-area';
+const BUILD = '2026-11-12.vidro-mais-claro';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -3352,7 +3352,7 @@ function material(color, finish, band = null, thick, look = null) {
   // esverdeada, como vidro de verdade visto de lado) — sem isso o frasco sumia e
   // só sobrava um filete branco em volta do líquido.
   if (finish === 'vidro') { m.roughness = 0.05; m.transmission = 1; m.thickness = thick ?? 4; m.ior = 1.5; m.depthWrite = false;
-    const et = new THREE.Color(color).multiply(new THREE.Color(0.4, 0.49, 0.46)), etv = `vec3(${et.r.toFixed(3)}, ${et.g.toFixed(3)}, ${et.b.toFixed(3)})`;
+    const et = new THREE.Color(color).multiply(new THREE.Color(0.58, 0.66, 0.63)), etv = `vec3(${et.r.toFixed(3)}, ${et.g.toFixed(3)}, ${et.b.toFixed(3)})`;
     m.onBeforeCompile = sh => { wallUniform(sh); if (band) bandVert(sh, band);
       // A cor vem da espessura atravessada (absorção), não de uma tinta por igual: de frente
       // (pouco vidro no caminho) a luz passa clara e o frasco acende na cor; nas bordas,
@@ -3364,10 +3364,12 @@ function material(color, finish, band = null, thick, look = null) {
           `float faceV = abs(dot(normalize(vViewPosition), normal)), frE = pow(1.0 - faceV, 1.4);
 \ttransmitted.rgb *= pow(max(material.diffuseColor, vec3(1e-4)), vec3(mix(0.5, 1.7, smoothstep(0.05, 0.85, 1.0 - faceV))));
 \ttransmitted.rgb *= 1.0 + 0.3 * faceV * faceV * (1.0 - dot(material.diffuseColor, vec3(0.333))); // o vidro curvo junta a luz de trás no miolo (acende por dentro); no incolor não estoura o fundo
-\ttransmitted.rgb *= mix(vec3(1.0), ${etv}, clamp(frE * (0.9 + uWall * 0.5), 0.0, 1.0));
+\tfloat dnS = smoothstep(0.1, 0.75, -inverseTransformDirection(normal, viewMatrix).y); // parte de baixo da curva
+\ttransmitted.rgb *= mix(vec3(1.0), ${etv}, clamp(frE * (0.9 + uWall * 0.5) * (1.0 - 0.6 * dnS), 0.0, 1.0));
+\ttransmitted.rgb = mix(transmitted.rgb, max(transmitted.rgb, sqrt(max(material.diffuseColor, vec3(1e-4))) * 0.86), 0.65 * dnS); // fundo arredondado: a luz do estúdio entra pela base e acende (sem isso virava cinza chumbo)
 \t${band ? `transmitted.rgb *= mix(vec3(1.0), mix(vec3(1.0), material.diffuseColor, 0.35) * 0.82, ${bandF(band)}); // fundo grosso: um pouco mais denso, no mesmo tom (ao quadrado virava vermelho escuro)` : ''}
 \ttotalDiffuse = mix( totalDiffuse, transmitted.rgb, material.transmission );`)); };
-    m.customProgramCacheKey = () => 'vidro4' + color + bandKey(band) + wk; }
+    m.customProgramCacheKey = () => 'vidro6' + color + bandKey(band) + wk; }
   // Vidro fosco (jateado): transmite a luz mas embaça o que está dentro e atrás.
   // Contraste: parte da luz é espalhada pelo jateado (o vidro ganha o degradê do
   // estúdio), a cor fica mais densa com a espessura e o contorno pega um brilho
@@ -3413,13 +3415,14 @@ function material(color, finish, band = null, thick, look = null) {
         .replace('n, v, material.roughness, material.diffuseColor', cheio ? 'n, v, min(material.roughness * 1.6, 0.47), material.diffuseColor' : 'n, v, material.roughness, material.diffuseColor')
         // refração com a espessura do centro (na borda o desvio grande pegava o fundo claro fora do frasco)
         .replace('material.thickness = thickness;', `float frEdge = pow(1.0 - abs(dot(normalize(vViewPosition), normal)), 1.1);
+\tfloat dnS = smoothstep(0.1, 0.75, -inverseTransformDirection(normal, viewMatrix).y); // parte de baixo da curva (fundo arredondado)
 \tmaterial.thickness = thickness * 0.35;`)
         .replace('totalDiffuse = mix( totalDiffuse, transmitted.rgb, material.transmission );',
-          `${cheio ? 'transmitted.rgb = max(mix(vec3(dot(transmitted.rgb, vec3(0.2126, 0.7152, 0.0722))), transmitted.rgb, 1.5), 0.0);\n\t' : ''}transmitted.rgb *= mix(1.0, ${semi ? '0.4' : pf ? '0.8' : '0.38'}, clamp(frEdge * (0.55 + uWall * 0.6), 0.0, 1.0))${band ? (cheio ? ' * mix(vec3(1.0), ' + glowV + ' * (0.97 - 0.55 * clamp(frEdge * 1.4, 0.0, 1.0)), ' + bandF(band) + ')' : ' * mix(1.0, 0.62, ' + bandF(band) + ')') : ''}; // borda e fundo mais densos, mesmo tom (com conteúdo, a base jateada é um bloco claro só)
+          `${cheio ? 'transmitted.rgb = max(mix(vec3(dot(transmitted.rgb, vec3(0.2126, 0.7152, 0.0722))), transmitted.rgb, 1.5), 0.0);\n\t' : ''}transmitted.rgb *= mix(1.0, ${semi ? '0.62' : pf ? '0.85' : '0.66'}, clamp(frEdge * (0.55 + uWall * 0.6) * (1.0 - 0.7 * dnS), 0.0, 1.0))${band ? (cheio ? ' * mix(vec3(1.0), ' + glowV + ' * (0.97 - 0.55 * clamp(frEdge * 1.4, 0.0, 1.0)), ' + bandF(band) + ')' : ' * mix(1.0, 0.62, ' + bandF(band) + ')') : ''}; // borda e fundo mais densos, mesmo tom (com conteúdo, a base jateada é um bloco claro só)
 \ttotalDiffuse = mix( totalDiffuse, transmitted.rgb, material.transmission );`)
-        + '\n#if defined(USE_TRANSMISSION) && defined(USE_ENVMAP)\n totalDiffuse += material.diffuseColor * (transmitted.rgb / max(max(transmitted.r, max(transmitted.g, transmitted.b)), 0.05)) * getIBLIrradiance(-normal) * ' + (semi ? '0.62' : ps ? '0.0' : '0.8') + (look?.cheio && !pf ? ' * 0.35' : '') + ' * pow(1.0 - frEdge, 1.5); // luz de trás acende o miolo, na cor do que está atrás\n#endif'); // só com transmissão (o PNG transparente desliga ela por um instante)
+        + '\n#if defined(USE_TRANSMISSION) && defined(USE_ENVMAP)\n totalDiffuse += material.diffuseColor * (transmitted.rgb / max(max(transmitted.r, max(transmitted.g, transmitted.b)), 0.05)) * getIBLIrradiance(-normal) * ' + (semi ? '0.62' : ps ? '0.0' : '0.8') + (look?.cheio && !pf ? ' * 0.35' : '') + ' * max(pow(1.0 - frEdge, 1.5), 0.75 * dnS); // luz de trás acende o miolo (e o fundo arredondado recebe a luz de cima, em vez de virar cinza), na cor do que está atrás\n#endif'); // só com transmissão (o PNG transparente desliga ela por um instante)
     };
-    m.customProgramCacheKey = () => (semi ? 'semi2' : ps ? 'pets1' : pf ? 'petf1' : 'jateado10') + wk + (band ? 'b' + bandKey(band) : '') + (look?.cheio ? 'c' + look.cheio : ''); }
+    m.customProgramCacheKey = () => (semi ? 'semi4' : ps ? 'pets2' : pf ? 'petf3' : 'jateado12') + wk + (band ? 'b' + bandKey(band) : '') + (look?.cheio ? 'c' + look.cheio : ''); }
   if (finish === 'metal') { m.metalness = 1; m.roughness = 0.3; } // um pouco menos espelhado: sem brilho piscando nas quinas
   if (look?.dif != null) { m.roughness = clamp(look.dif, 0, 100) / 100 * 0.8; if (m.clearcoat) m.clearcoatRoughness = Math.max(0.03, m.roughness * 0.8); if (m.sheen) m.sheenRoughness = Math.max(0.2, m.roughness); }
   if (look?.ior != null && m.transmission > 0) m.ior = clamp(look.ior, 1, 2.4); // refração: quanto maior, mais o vidro distorce o que está atrás
