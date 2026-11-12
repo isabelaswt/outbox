@@ -390,7 +390,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-12.video-estudio';
+const BUILD = '2026-11-12.video-classico';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -2419,9 +2419,8 @@ function updateGroundFade() {
   GROUND_U.e.value.set((b.max.x - b.min.x) / 2, (b.max.z - b.min.z) / 2);
   // até onde a sombra vai (mm), pela altura do produto; na luz Sol a sombra comprida é o
   // próprio efeito (foto de sol de fim de tarde), então ela vai longe
-  GROUND_U.L.value = groundLOverride || (S.scene?.luz === 'sol' ? clamp(b.max.y * 1.8, 40, 600) : clamp(b.max.y * 0.09, 5, 22));
+  GROUND_U.L.value = S.scene?.luz === 'sol' ? clamp(b.max.y * 1.8, 40, 600) : clamp(b.max.y * 0.09, 5, 22);
 }
-let groundLOverride = 0; // vídeo (tomada de cima): sombra comprida até o fim
 
 const grid = new THREE.GridHelper(800, 80, 0xb9b3aa, 0xd9d4cc);
 grid.rotation.x = Math.PI / 2; grid.position.set(0, 400, -400); grid.visible = false;
@@ -3737,36 +3736,22 @@ function detailShow() {
   const off = mark ? relAng - A : 0, Yax = new V(0, 1, 0);
   // pontos que acompanham o produto girado (o eixo de giro é a origem)
   relT.applyAxisAngle(Yax, off); const capAimR = capAim.clone().applyAxisAngle(Yax, off), CR = C.clone().applyAxisAngle(Yax, off);
-  // Roteiro no estilo dos filmes de produto em estúdio (referência: takes do Malbec Club):
-  // estúdio claro, lente longa (pouca perspectiva), corte seco a cada ~3 s e câmera
-  // quase parada — cada take é uma pose do produto com um único movimento lento.
-  // A luz nunca mexe; o chão com a sombra aparece em todos.
-  const cubeH = sz.y * 0.42, ledgeH = sz.y * 0.34, toCam = new V(Math.cos(A), 0, Math.sin(A));
-  const fitT = (fov, h, w, m = 1.2) => fitBox(fov, h, w, wd, m); // enquadra altura × largura com a lente do take
-  const at = y => new V(CR.x, y, CR.z);
   const shots = [
-    // 1 giro de apresentação: de frente, na altura do produto, uma volta inteira constante; câmera só encosta
-    { d: 6, T0: at(all.min.y + sz.y * 0.5), T1: at(all.min.y + sz.y * 0.5), P0: pose(at(all.min.y + sz.y * 0.5), A, 0.02, fitT(20, sz.y, wd, 1.5)), P1: pose(at(all.min.y + sz.y * 0.5), A, 0.02, fitT(20, sz.y, wd, 1.42)), fov: 20, turn: [-Math.PI * 2, 0], ground: true },
-    // 2 flutuando: inclinado no ar, sobe e gira bem devagar; câmera um pouco abaixo, encostando
-    { d: 3, cut: true, T0: at(sz.y * 0.85), T1: at(sz.y * 0.88), P0: pose(at(sz.y * 0.85), A, -0.05, fitT(24, sz.y * 1.6, wd * 2.2, 1.12)), P1: pose(at(sz.y * 0.88), A, -0.05, fitT(24, sz.y * 1.6, wd * 2.2, 1.05)), fov: 24, rest: { side: 27, lift: sz.y * 0.3, drift: 0.12 }, turn: [-0.25, 0.05], ground: true },
-    // 3 no cubo: inclinado, equilibrado na quina sobre um cubo branco; câmera desliza de lado
-    { d: 3, cut: true, T0: at(cubeH + sz.y * 0.4), T1: at(cubeH + sz.y * 0.4), P0: pose(at(cubeH + sz.y * 0.4), A + 0.2, 0.05, fitT(22, sz.y * 1.55, wd * 2.6)), P1: pose(at(cubeH + sz.y * 0.4), A - 0.08, 0.05, fitT(22, sz.y * 1.55, wd * 2.6)), fov: 22, rest: { side: -15, y: cubeH }, prop: 'cubo', ground: true },
-    // 4 na borda do degrau: encostado para trás na beira; câmera baixa, quase na altura do degrau, deslizando
-    { d: 3, cut: true, T0: at(ledgeH + sz.y * 0.4), T1: at(ledgeH + sz.y * 0.4), P0: pose(at(ledgeH + sz.y * 0.4), A - 0.42, -0.13, fitT(22, sz.y * 1.25, wd * 2, 1.12)), P1: pose(at(ledgeH + sz.y * 0.4), A - 0.2, -0.11, fitT(22, sz.y * 1.25, wd * 2, 1.06)), fov: 22, rest: { back: 17, y: ledgeH }, prop: 'degrau', ground: true },
-    // 5 de frente, parado no chão, câmera um pouco baixa aproximando bem devagar
-    { d: 3, cut: true, T0: at(all.min.y + sz.y * 0.45), T1: at(all.min.y + sz.y * 0.47), P0: pose(at(all.min.y + sz.y * 0.45), A, -0.03, fitT(20, sz.y, wd * 2.2, 1.3)), P1: pose(at(all.min.y + sz.y * 0.47), A, -0.03, fitT(20, sz.y, wd * 2.2, 1.18)), fov: 20, ground: true },
-    // 6 fecho: de costas, gira meia volta freando até parar de frente; fica parado no fim
-    { d: 3.5, cut: true, T0: at(all.min.y + sz.y * 0.5), T1: at(all.min.y + sz.y * 0.5), P0: pose(at(all.min.y + sz.y * 0.5), A, 0.02, fitT(20, sz.y, wd, 1.45)), P1: pose(at(all.min.y + sz.y * 0.5), A, 0.02, fitT(20, sz.y, wd, 1.4)), fov: 20, turn: [-Math.PI, 0], land: true, hold: 0.3, ground: true },
+    // abertura: câmera parada em 3/4, o produto gira no próprio eixo (sem aproximar)
+    { d: 3.6, T0: CR, T1: CR, P0: pose(CR, A - 0.45, 0.02, distHero * 1.04), P1: pose(CR, A - 0.45, 0.02, distHero), fov: 26, turn: [-0.55, 0.1] },
+    { d: 3.6, T0: relT, T1: relT, P0: pose(relT, A + 0.2, 0.04, fitDist(relR * 1.6, 18)), P1: pose(relT, A - 0.2, 0.04, fitDist(relR * 1.6, 18)), fov: 18 },
+    // close da tampa (fechada) de frente, câmera quase na altura dela
+    { d: 4.8, T0: capAimR, T1: capAimR, P0: pose(capAimR, A, 0.1, fitDist(capFit * 1.12, 22)), P1: pose(capAimR, A, 0.12, fitDist(capFit * 1.04, 22)), fov: 22, cap: OPEN_CAP },
+    // deitado em diagonal (topo à direita), bem perto, com a malha virando acabamento da base ao topo
+    { d: 5.2, T0: C, T1: C, P0: pose(C, A - 0.15, -0.1, distTilt * 1.08), P1: pose(C, A + 0.12, -0.06, distTilt), fov: 24, tilt: true, wire: true },
+    // fecho: de frente, em vista ortográfica (sem perspectiva), um giro inteiro no próprio eixo,
+    // com o frasco deitado um pouco para a esquerda (não repete o de pé das outras cenas)
+    { d: 6, T0: CR, T1: CR, P0: pose(CR, A, 0, 3000), P1: pose(CR, A, 0, 3000), fov: 28, ortho: true, turn: [-Math.PI * 2, 0], land: true, lean: -16 },
+    // final: produto parado em 3/4 (deitado um pouco para o outro lado), aproximando devagar;
+    // luz fixa (a volta da luz girava o estúdio todo e ficava estranho)
+    { d: 5.2, T0: CR, T1: CR, P0: pose(CR, A - 0.4, 0.05, distHero * 1.1), P1: pose(CR, A - 0.4, 0.05, distHero * 1.03), fov: 26, lean: 12 },
   ];
-  // cenografia dos takes: cubo e degrau brancos foscos (recebem a sombra do produto)
-  const propMat = new THREE.MeshStandardMaterial({ color: '#ecebe8', roughness: 0.92 });
-  const props = { cubo: new THREE.Mesh(new THREE.BoxGeometry(wd * 1.7, cubeH, wd * 1.7), propMat), degrau: new THREE.Mesh(new THREE.BoxGeometry(wd * 14, ledgeH, wd * 4), propMat) };
-  props.cubo.position.set(CR.x, cubeH / 2, CR.z);
-  props.degrau.position.copy(at(ledgeH / 2)).addScaledVector(toCam, Math.min(sz.x, sz.z) / 2 + 1.5 - wd * 2); // a quina do degrau rente ao pé do produto (câmera abaixo dela, como na referência)
-  props.degrau.rotation.y = -A + Math.PI / 2;
-  Object.values(props).forEach(o => { o.castShadow = o.receiveShadow = true; o.visible = false; scene.add(o); });
-  const rot0 = sceneOf().luzRot || 0; let rotNow = rot0, gKeep = null;
-  const restoreGround = () => { if (!gKeep) return; ground.material.opacity = gKeep.op; ground.visible = gKeep.vis; groundLOverride = 0; gKeep = null; };
+  const rot0 = sceneOf().luzRot || 0; let rotNow = rot0;
   const setLightRot = v => { if (Math.abs(v - rotNow) < 1e-3) return; rotNow = v; S.scene = S.scene || {}; S.scene.luzRot = v; applySceneLight(); };
   // Fade cruzado: cada tomada continua o movimento por FADE s enquanto a próxima
   // entra por cima (nada congela na troca); o vídeo tem a duração do roteiro.
@@ -3846,8 +3831,8 @@ function detailShow() {
       // tomada atual e, na sobreposição, a anterior (que ainda se move por baixo do fade)
       let a = clamp(t, 0, 1) * total, si = 0;
       while (si < shots.length - 1 && a >= shots[si].d) { a -= shots[si].d; si++; }
-      const uOf = (i, local) => clamp(local / (shots[i].d + (shots[i + 1]?.cut ? 0 : FADE)), 0, 1); // antes de um corte seco a tomada acaba no próprio tempo
-      const w = si > 0 && a < FADE && !shots[si].cut ? smoother(a / FADE) : 1;
+      const uOf = (i, local) => clamp(local / (shots[i].d + FADE), 0, 1);
+      const w = si > 0 && a < FADE ? smoother(a / FADE) : 1;
       if (w >= 1) { applyShot(shots[si], uOf(si, a)); frameHook = shots[si].wire ? composite : null; return; }
       const prev = shots[si - 1], pu = uOf(si - 1, prev.d + a), cu = uOf(si, a);
       frameHook = () => {
@@ -3867,26 +3852,11 @@ function detailShow() {
         cam = ortho; const hh = Math.max((sz.y * Math.cos(lr) + dg * Math.sin(lr)) / 2, (dg * Math.cos(lr) + sz.y * Math.sin(lr)) / 2 / persp.aspect) * 1.18;
         Object.assign(ortho, { left: -hh * persp.aspect, right: hh * persp.aspect, top: hh, bottom: -hh, zoom: 1 }); ortho.updateProjectionMatrix();
       } else if (!sh.ortho && cam !== persp) cam = persp;
-      if (sh.orbit) { const o = sh.orbit; cam.position.copy(pose(o.T, o.a0 + (o.a1 - o.a0) * m, o.e0 + (o.e1 - o.e0) * m, o.d0 + (o.d1 - o.d0) * m)); cam.lookAt(o.T); }
-      else { cam.position.copy(sh.P0).lerp(sh.P1, m); cam.lookAt(sh.T0.clone().lerp(sh.T1, m)); }
+      cam.position.copy(sh.P0).lerp(sh.P1, m); cam.lookAt(sh.T0.clone().lerp(sh.T1, m));
       if (persp.fov !== sh.fov) { persp.fov = sh.fov; persp.updateProjectionMatrix(); }
-      props.cubo.visible = sh.prop === 'cubo'; props.degrau.visible = sh.prop === 'degrau';
       if (sh.tilt) setPose(tiltQ.clone().multiply(new THREE.Quaternion().setFromAxisAngle(Y, off + 0.35 * glide(u) - 0.1)));
-      else if (sh.rest) { // apoiado/flutuando: inclina de lado e/ou para trás; o ponto mais baixo encosta na superfície (cubo, degrau) ou fica no ar
-        const r = sh.rest, D2R = THREE.MathUtils.degToRad, backAx = new V(-Math.sin(A), 0, Math.cos(A));
-        const ry = off + (sh.turn ? sh.turn[0] + (sh.turn[1] - sh.turn[0]) * glide(u) : 0);
-        const q = new THREE.Quaternion().setFromAxisAngle(fwdA, D2R(r.side || 0)).multiply(new THREE.Quaternion().setFromAxisAngle(backAx, D2R(r.back || 0))).multiply(new THREE.Quaternion().setFromAxisAngle(Y, ry));
-        if (!sh._bb) { // medida exata uma vez por take (a pose quase não muda dentro dele)
-          product.position.set(0, 0, 0); product.quaternion.copy(q); product.updateMatrixWorld(true);
-          sh._bb = new THREE.Box3().setFromObject(product, true);
-        }
-        const b = sh._bb;
-        product.quaternion.copy(q);
-        product.position.set(CR.x - (b.min.x + b.max.x) / 2, (r.y || 0) + (r.lift || 0) * (1 + (r.drift || 0) * m) - b.min.y, CR.z - (b.min.z + b.max.z) / 2);
-      }
       else {
-        const ut = sh.hold ? Math.min(1, u / (1 - sh.hold)) : u; // com pausa no fim, o giro termina antes e fica parado
-        const ry = off + (sh.turn ? sh.turn[0] + (sh.turn[1] - sh.turn[0]) * (sh.whip ? 1 - Math.pow(1 - ut, 3.2) : sh.land ? land(ut) : glide(ut)) : 0); // whip: arranca rápido e freia longo
+        const ry = off + (sh.turn ? sh.turn[0] + (sh.turn[1] - sh.turn[0]) * (sh.land ? land(u) : glide(u)) : 0);
         if (sh.lean) setPose(new THREE.Quaternion().setFromAxisAngle(fwdA, THREE.MathUtils.degToRad(sh.lean)).multiply(new THREE.Quaternion().setFromAxisAngle(Y, ry))); // deitado, girando no próprio eixo
         else { product.position.set(0, 0, 0); product.quaternion.identity(); product.rotation.y = ry; }
       }
@@ -3896,9 +3866,6 @@ function detailShow() {
         revP.value.set(ax.x, ax.y, ax.z, -ax.dot(P)); // distância com sinal: + acima da faixa
       }
       setLightRot(sh.lightSpin ? rot0 + 360 * land(u) : rot0);
-      if (sh.ground) { // o vídeo esconde o chão (produto flutuando); nestas tomadas ele aparece com a sombra
-        if (!gKeep) { gKeep = { op: ground.material.opacity, vis: ground.visible }; ground.visible = true; ground.material.opacity = Math.max(gKeep.op, 0.3); groundLOverride = sz.y * 1.2; }
-      } else restoreGround();
       // tampa: abre suave na tomada 3 e fica aberta; nas outras, fechada
       const k = sh.cap ? smoother(clamp((u - 0.1) / 0.75, 0, 1)) : 0; // abre devagar, quase a tomada toda
       if (flipRig) {
@@ -3911,9 +3878,8 @@ function detailShow() {
       } else topMeshes.forEach(o => { o.position.set(0, topLift * k, 0); o.rotation.y = -1.6 * k; });
   }
   function cleanupShots() {
-      setLightRot(rot0); restoreGround();
+      setLightRot(rot0);
       cam = persp; persp.fov = fov0; persp.updateProjectionMatrix();
-      Object.values(props).forEach(o => { scene.remove(o); o.geometry.dispose(); }); propMat.dispose();
       product.remove(wire); wire.traverse(o => o.geometry?.dispose()); [wireMat, maskMat, depthMat, mixMat, texA, texB, maskRT].forEach(x => x?.dispose());
       product.position.set(0, 0, 0); product.quaternion.identity();
       frames?.forEach(g => { g.traverse(o => o.geometry?.dispose()); product.remove(g); });
