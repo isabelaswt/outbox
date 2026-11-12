@@ -388,7 +388,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-11.jateado-difuso';
+const BUILD = '2026-11-11.jateado-um-fundo';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -3279,7 +3279,7 @@ function material(color, finish, band = null, thick, look = null) {
         .replace('material.thickness = thickness;', `float frEdge = pow(1.0 - abs(dot(normalize(vViewPosition), normal)), 1.1);
 \tmaterial.thickness = thickness * 0.35;`)
         .replace('totalDiffuse = mix( totalDiffuse, transmitted.rgb, material.transmission );',
-          `${cheio ? 'transmitted.rgb = max(mix(vec3(dot(transmitted.rgb, vec3(0.2126, 0.7152, 0.0722))), transmitted.rgb, 1.5), 0.0);\n\t' : ''}transmitted.rgb *= mix(1.0, ${semi ? '0.4' : pf ? '0.8' : '0.38'}, clamp(frEdge * (0.55 + uWall * 0.6), 0.0, 1.0))${band ? ' * mix(1.0, 0.62, ' + bandF(band.y) + ')' : ''}; // borda e fundo mais densos, mesmo tom
+          `${cheio ? 'transmitted.rgb = max(mix(vec3(dot(transmitted.rgb, vec3(0.2126, 0.7152, 0.0722))), transmitted.rgb, 1.5), 0.0);\n\t' : ''}transmitted.rgb *= mix(1.0, ${semi ? '0.4' : pf ? '0.8' : '0.38'}, clamp(frEdge * (0.55 + uWall * 0.6), 0.0, 1.0))${band && !cheio ? ' * mix(1.0, 0.62, ' + bandF(band.y) + ')' : ''}; // borda e fundo mais densos, mesmo tom (com conteúdo, a base jateada é um bloco claro só)
 \ttotalDiffuse = mix( totalDiffuse, transmitted.rgb, material.transmission );`)
         + '\n#if defined(USE_TRANSMISSION) && defined(USE_ENVMAP)\n totalDiffuse += material.diffuseColor * (transmitted.rgb / max(max(transmitted.r, max(transmitted.g, transmitted.b)), 0.05)) * getIBLIrradiance(-normal) * ' + (semi ? '0.62' : ps ? '0.0' : '0.8') + (look?.cheio && !pf ? ' * 0.35' : '') + ' * pow(1.0 - frEdge, 1.5); // luz de trás acende o miolo, na cor do que está atrás\n#endif'); // só com transmissão (o PNG transparente desliga ela por um instante)
     };
@@ -4612,7 +4612,8 @@ function withoutRelief(m) {
   return { ...m, reliefImg: '', reliefName: '', reliefDepth: 0 };
 }
 function offsetInner(m, y0, inset, lift) {
-  const R0 = lift > S.wall + 0.5 ? clamp(Math.min(m.W, m.D) / 2 * 0.32, 2, 9) : 0;
+  // jateado: piso reto (o desfoque já esfuma a passagem; a curva virava uma segunda faixa clara)
+  const R0 = lift > S.wall + 0.5 && !isFrost(m.own ? m.finish : S.finish) ? clamp(Math.min(m.W, m.D) / 2 * 0.32, 2, 9) : 0;
   // fundo curvo: anéis finos até acima do canto (com poucos anéis a curva saía em degraus)
   const g0 = moduleGeo({ ...withoutRelief(m), _dense: R0 ? lift + R0 + 3 : 0 }, y0, { lo: false }); if (!g0) return null;
   const g = g0.index ? g0 : g0; if (!g.attributes.normal) g.computeVertexNormals();
