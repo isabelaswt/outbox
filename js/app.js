@@ -388,7 +388,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-11.troca-volta';
+const BUILD = '2026-11-11.perfume-fundo';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -4707,12 +4707,12 @@ function liquidMeshes(m, y0, levelAbs, lift = S.wall) {
     lm.onBeforeCompile = sh => { sh.fragmentShader = sh.fragmentShader.replace('#include <transmission_fragment>', THREE.ShaderChunk.transmission_fragment
       // de lado (borda e canto do fundo) a lente perde espessura: o desvio grande pegava o
       // fundo claro de fora do frasco (cunha clara e fio escuro no canto de baixo)
-      .replace('material.thickness = thickness;', 'material.thickness = thickness * smoothstep(0.08, 0.55, abs(dot(normalize(vViewPosition), normal))) * (1.0 - smoothstep(0.05, 0.5, -normal.y));')
+      .replace('material.thickness = thickness;', 'material.thickness = thickness * max(0.35, smoothstep(0.08, 0.55, abs(dot(normalize(vViewPosition), normal))) * (1.0 - smoothstep(0.05, 0.5, -normal.y)));') // piso: espessura zero pintava a curva do fundo de preto
       .replace('totalDiffuse = mix( totalDiffuse, transmitted.rgb, material.transmission );',
         `float frE = pow(1.0 - abs(dot(normalize(vViewPosition), normal)), 1.6);
 \ttransmitted.rgb *= mix(vec3(1.0), ${etv}, clamp(frE * 1.1, 0.0, 1.0));
 \ttotalDiffuse = mix( totalDiffuse, transmitted.rgb, material.transmission );`)); };
-    lm.customProgramCacheKey = () => 'perfumeLiq3' + etv;
+    lm.customProgramCacheKey = () => 'perfumeLiq4' + etv;
     const out = [new THREE.Mesh(inner, lm)];
     const cap = level < b.max.y - 0.05 ? levelCap(inner, level - 0.01) : null;
     if (cap) { const cm = lm.clone(); cm.clippingPlanes = []; cm.onBeforeCompile = lm.onBeforeCompile; cm.customProgramCacheKey = lm.customProgramCacheKey; out.push(new THREE.Mesh(cap, cm)); } // a superfície do nível espelha a luz
