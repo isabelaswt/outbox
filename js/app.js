@@ -390,7 +390,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-12.ux-icones';
+const BUILD = '2026-11-12.troca-bege';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -6399,7 +6399,8 @@ function renderSwap(ed, m) {
       renderStack(); renderEditorKeepScroll(); build();
     };
     grid.appendChild(card);
-    queueThumb(card.querySelector('img'), { color: S.color, finish: S.finish, modules: [M(k)] });
+    // miniatura sempre em bege fosco: é para ler a forma (na cor do produto, um dourado ou vidro escondia o formato)
+    queueThumb(card.querySelector('img'), { color: BEIGE, finish: 'fosco', modules: [M(k)] });
   }
   }
   ed.appendChild(box);
