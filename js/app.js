@@ -388,7 +388,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-11.materiais-troca';
+const BUILD = '2026-11-11.hdri-prontos';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -3457,6 +3457,22 @@ function renderScene() {
       try { await api('hdr.php?a=delete', { name: n }); await refreshHdrList(); toast('HDR excluído'); } catch { toast('Não consegui excluir'); } };
   }
   f.appendChild(hl);
+  // Biblioteca de HDRIs prontos (luz de foto de verdade, como nos programas de 3D)
+  const hb = document.createElement('details'); hb.className = 'hdriLib'; hb.open = store.get('shape.hdriOpen', true) !== false;
+  hb.addEventListener('toggle', () => store.set('shape.hdriOpen', hb.open));
+  hb.innerHTML = '<summary>HDRIs prontos (luz de foto)</summary>';
+  for (const [cat, list] of HDRI_LIB) {
+    const h4 = document.createElement('h4'); h4.textContent = cat; hb.appendChild(h4);
+    const grid = document.createElement('div'); grid.className = 'hdriGrid'; hb.appendChild(grid);
+    for (const [id, nm] of list) {
+      const c = document.createElement('button'); c.className = 'hdriCard' + (S.scene.luz === 'hdr' && S.scene.hdrName === 'ph:' + id ? ' on' : ''); c.title = nm;
+      c.innerHTML = `<img alt="" src="assets/hdri/${id}.jpg"><span>${nm}</span>`;
+      c.onclick = () => { S.scene.luz = 'hdr'; S.scene.hdrName = 'ph:' + id; renderScene(); applySceneLight(); saveLocalSoon(); ensureHdr('ph:' + id); };
+      grid.appendChild(c);
+    }
+  }
+  const cr = document.createElement('div'); cr.className = 'tip'; cr.innerHTML = 'HDRIs do <a href="https://polyhaven.com/hdris" target="_blank" rel="noopener">Poly Haven</a> (CC0, uso livre). Gire com "Girar a luz".';
+  hb.appendChild(cr); f.appendChild(hb);
   field(f, S.scene, ['ao', 'Sombra de contato (o produto pesa na superfície)', 'check'], ch);
   field(f, S, ['bg', 'Fundo da cena', 'color'], queueBuild);
   field(f, S.scene, ['bgGrad', 'Fundo em degradê', 'select', [['nenhum', 'Liso'], ['radial', 'Radial (centro claro, bordas escuras)'], ['vertical', 'Vertical (claro em cima)'], ['lateral', 'Lateral (luz projetada da esquerda)']]], () => { renderScene(); applyBackground(); saveLocalSoon(); });
@@ -7067,8 +7083,31 @@ async function loadHdr(blob, name) {
     res(true);
   }, undefined, () => { URL.revokeObjectURL(url); toast(`Não consegui carregar esse ${exr ? 'EXR' : 'HDR'}`); res(false); }));
 }
+// HDRIs prontos (Poly Haven, CC0): baixados direto de lá quando escolhidos, sem
+// passar pelo servidor. No projeto ficam como "ph:<id>".
+const HDRI_LIB = [
+  ['Estúdio', [['studio_small_09', 'Estúdio claro'], ['studio_small_08', 'Estúdio softbox'], ['studio_small_03', 'Estúdio janelas'], ['studio_small_05', 'Estúdio pequeno'],
+    ['studio_small_06', 'Estúdio escuro'], ['photo_studio_01', 'Estúdio de foto'], ['white_studio_03', 'Estúdio branco'], ['white_studio_05', 'Branco suave'],
+    ['brown_photostudio_02', 'Estúdio quente'], ['brown_photostudio_06', 'Quente lateral'], ['photo_studio_loft_hall', 'Loft'], ['blue_photo_studio', 'Estúdio azul'],
+    ['neon_photostudio', 'Estúdio amplo'], ['pav_studio_03', 'Pavilhão'], ['ferndale_studio_06', 'Neon rosa'], ['empty_warehouse_01', 'Galpão']]],
+  ['Exterior', [['kloofendal_48d_partly_cloudy_puresky', 'Céu aberto'], ['sunflowers_puresky', 'Céu de verão'], ['autumn_field_puresky', 'Campo'],
+    ['venice_sunset', 'Pôr do sol'], ['industrial_sunset_puresky', 'Fim de tarde'], ['qwantani_dusk_2', 'Entardecer'], ['studio_garden', 'Jardim'], ['lebombo', 'Montanha']]],
+  ['Noite e cidade', [['potsdamer_platz', 'Cidade'], ['shanghai_bund', 'Xangai'], ['rooftop_night', 'Terraço à noite'], ['vignaioli_night', 'Noite'],
+    ['dikhololo_night', 'Céu estrelado'], ['artist_workshop', 'Ateliê'], ['peppermint_powerplant_2', 'Usina']]],
+];
+const phHdrUrl = id => `https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/2k/${id}_2k.hdr`;
+const phLabel = n => HDRI_LIB.flatMap(([, l]) => l).find(([id]) => 'ph:' + id === n)?.[1] || n;
 // Projeto que usa um HDR da equipe: baixa do servidor quando a luz pede
 async function ensureHdr(name) {
+  if (name?.startsWith('ph:')) {
+    if (HDR.name === name || hdrLoading === name) return;
+    hdrLoading = name; toast(`Carregando luz ${phLabel(name)}…`);
+    try {
+      const r = await fetch(phHdrUrl(name.slice(3))); if (!r.ok) throw 0;
+      if (await loadHdr(await r.blob(), name) && sceneOf().hdrName === name) { renderScene(); applySceneLight(); req(); }
+    } catch { toast('Não consegui baixar essa luz (precisa de internet)'); } finally { hdrLoading = ''; }
+    return;
+  }
   if (!name || HDR.name === name || hdrLoading === name || !cloud) return;
   hdrLoading = name;
   try {
