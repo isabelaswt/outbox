@@ -390,7 +390,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-12.video-sombra-de-cima';
+const BUILD = '2026-11-12.video-dinamico';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -3737,28 +3737,28 @@ function detailShow() {
   const off = mark ? relAng - A : 0, Yax = new V(0, 1, 0);
   // pontos que acompanham o produto girado (o eixo de giro é a origem)
   relT.applyAxisAngle(Yax, off); const capAimR = capAim.clone().applyAxisAngle(Yax, off), CR = C.clone().applyAxisAngle(Yax, off);
-  // tomada de cima: mira o chão no pé do produto; cabe o produto e a sombra comprida em volta
-  const SUN_EL = THREE.MathUtils.degToRad(38), shadowL = sz.y / Math.tan(SUN_EL);
-  const topT = new V(CR.x, all.min.y, CR.z), distTop = fitDist(Math.max(sz.x, sz.z) / 2 + shadowL * 0.85, 30);
+  // Roteiro dinâmico: a câmera está sempre andando, cada tomada num ângulo diferente,
+  // cortes secos (cut) no ritmo e fade só na entrada do fecho. A luz nunca mexe.
+  const lowT = new V(CR.x, all.min.y + sz.y * 0.36, CR.z), baseT = new V(CR.x, all.min.y + sz.y * 0.16, CR.z);
+  const orb = (T, a0, a1, e0, e1, d0, d1) => ({ T, a0, a1, e0, e1, d0, d1 }); // órbita: ângulo, elevação e distância variando juntos
   const shots = [
-    // abertura: câmera parada em 3/4, o produto gira no próprio eixo (sem aproximar)
-    { d: 3.6, T0: CR, T1: CR, P0: pose(CR, A - 0.45, 0.02, distHero * 1.04), P1: pose(CR, A - 0.45, 0.02, distHero), fov: 26, turn: [-0.55, 0.1] },
-    { d: 3.6, T0: relT, T1: relT, P0: pose(relT, A + 0.2, 0.04, fitDist(relR * 1.6, 18)), P1: pose(relT, A - 0.2, 0.04, fitDist(relR * 1.6, 18)), fov: 18 },
-    // close da tampa (fechada) de frente, câmera quase na altura dela
-    { d: 4.8, T0: capAimR, T1: capAimR, P0: pose(capAimR, A, 0.1, fitDist(capFit * 1.12, 22)), P1: pose(capAimR, A, 0.12, fitDist(capFit * 1.04, 22)), fov: 22, cap: OPEN_CAP },
-    // deitado em diagonal (topo à direita), bem perto, com a malha virando acabamento da base ao topo
-    { d: 5.2, T0: C, T1: C, P0: pose(C, A - 0.15, -0.1, distTilt * 1.08), P1: pose(C, A + 0.12, -0.06, distTilt), fov: 24, tilt: true, wire: true },
-    // fecho: de frente, em vista ortográfica (sem perspectiva), um giro inteiro no próprio eixo,
-    // com o frasco deitado um pouco para a esquerda (não repete o de pé das outras cenas)
-    { d: 6, T0: CR, T1: CR, P0: pose(CR, A, 0, 3000), P1: pose(CR, A, 0, 3000), fov: 28, ortho: true, turn: [-Math.PI * 2, 0], land: true, lean: -16 },
-    // vista de cima: produto parado e só o sol anda (baixo, sombra comprida) — a sombra
-    // projetada passeia pelo chão; o estúdio e os reflexos ficam fixos
-    { d: 5.6, T0: topT, T1: topT, P0: pose(topT, A, 1.42, distTop * 1.06), P1: pose(topT, A, 1.42, distTop), fov: 30, sunSweep: [-65, 65] },
-    // final: produto parado em 3/4, aproximando devagar; luz fixa
-    // (antes a luz dava uma volta inteira e o estúdio todo girava junto: ficava estranho)
-    { d: 5.2, T0: CR, T1: CR, P0: pose(CR, A - 0.4, 0.05, distHero * 1.1), P1: pose(CR, A - 0.4, 0.05, distHero * 1.03), fov: 26, lean: 12 },
+    // 1 entrada rasante: câmera quase no chão deslizando de lado, produto girando devagar (paralaxe na base)
+    { d: 3.5, T0: lowT, T1: lowT, P0: pose(lowT, A - 0.75, 0.03, distHero * 0.9), P1: pose(lowT, A + 0.35, 0.05, distHero * 0.86), fov: 30, turn: [-0.45, 0.15] },
+    // 2 subida pelo corpo: bem perto, da base até o logo/relevo
+    // (perto, mas sempre com a borda do frasco no quadro: sem logo, o close só no corpo virava uma tela lisa)
+    { d: 3.5, cut: true, T0: baseT, T1: relT, P0: pose(baseT, A + 0.3, 0.02, fitDist(Math.max(relR * 2.2, wd * 0.42), 18)), P1: pose(relT, A - 0.05, 0.05, fitDist(Math.max(relR * 1.7, wd * 0.34), 18)), fov: 18 },
+    // 3 órbita do alto: meia volta em volta do produto parado, vendo topo, tampa e a sombra no chão
+    { d: 4, cut: true, orbit: orb(CR, A - 1.25, A + 0.35, 0.62, 0.52, distHero * 1.18, distHero * 1.08), fov: 26, ground: true },
+    // 4 arco por cima da tampa (fechada), de um lado para o outro
+    { d: 3, cut: true, orbit: orb(capAimR, A + 0.95, A - 0.85, 0.55, 0.85, fitDist(capFit * 1.15, 22), fitDist(capFit * 1.05, 22)), fov: 22, cap: OPEN_CAP },
+    // 5 deitado em diagonal, com a malha virando acabamento da base ao topo
+    { d: 4.5, cut: true, T0: C, T1: C, P0: pose(C, A - 0.15, -0.1, distTilt * 1.08), P1: pose(C, A + 0.12, -0.06, distTilt), fov: 24, tilt: true, wire: true },
+    // 6 giro rápido com freio: uma volta inteira que desacelera até a marca parar de frente
+    { d: 3, cut: true, T0: CR, T1: CR, P0: pose(CR, A, 0.08, distHero * 1.02), P1: pose(CR, A, 0.08, distHero * 0.96), fov: 26, turn: [-Math.PI * 2, 0], whip: true },
+    // 7 fecho: recua e sobe um pouco, produto termina de frente e para (último quadro limpo), com sombra no chão
+    { d: 5, T0: CR, T1: CR, P0: pose(CR, A - 0.2, 0.04, distHero * 0.92), P1: pose(CR, A - 0.38, 0.2, distHero * 1.12), fov: 26, turn: [-0.6, 0], land: true, hold: 0.28, ground: true },
   ];
-  const rot0 = sceneOf().luzRot || 0; let rotNow = rot0, sunMoved = false, sunAz0 = 0, sunR = 1, gKeep = null;
+  const rot0 = sceneOf().luzRot || 0; let rotNow = rot0, gKeep = null;
   const restoreGround = () => { if (!gKeep) return; ground.material.opacity = gKeep.op; ground.visible = gKeep.vis; groundLOverride = 0; gKeep = null; };
   const setLightRot = v => { if (Math.abs(v - rotNow) < 1e-3) return; rotNow = v; S.scene = S.scene || {}; S.scene.luzRot = v; applySceneLight(); };
   // Fade cruzado: cada tomada continua o movimento por FADE s enquanto a próxima
@@ -3839,8 +3839,8 @@ function detailShow() {
       // tomada atual e, na sobreposição, a anterior (que ainda se move por baixo do fade)
       let a = clamp(t, 0, 1) * total, si = 0;
       while (si < shots.length - 1 && a >= shots[si].d) { a -= shots[si].d; si++; }
-      const uOf = (i, local) => clamp(local / (shots[i].d + FADE), 0, 1);
-      const w = si > 0 && a < FADE ? smoother(a / FADE) : 1;
+      const uOf = (i, local) => clamp(local / (shots[i].d + (shots[i + 1]?.cut ? 0 : FADE)), 0, 1); // antes de um corte seco a tomada acaba no próprio tempo
+      const w = si > 0 && a < FADE && !shots[si].cut ? smoother(a / FADE) : 1;
       if (w >= 1) { applyShot(shots[si], uOf(si, a)); frameHook = shots[si].wire ? composite : null; return; }
       const prev = shots[si - 1], pu = uOf(si - 1, prev.d + a), cu = uOf(si, a);
       frameHook = () => {
@@ -3860,11 +3860,13 @@ function detailShow() {
         cam = ortho; const hh = Math.max((sz.y * Math.cos(lr) + dg * Math.sin(lr)) / 2, (dg * Math.cos(lr) + sz.y * Math.sin(lr)) / 2 / persp.aspect) * 1.18;
         Object.assign(ortho, { left: -hh * persp.aspect, right: hh * persp.aspect, top: hh, bottom: -hh, zoom: 1 }); ortho.updateProjectionMatrix();
       } else if (!sh.ortho && cam !== persp) cam = persp;
-      cam.position.copy(sh.P0).lerp(sh.P1, m); cam.lookAt(sh.T0.clone().lerp(sh.T1, m));
+      if (sh.orbit) { const o = sh.orbit; cam.position.copy(pose(o.T, o.a0 + (o.a1 - o.a0) * m, o.e0 + (o.e1 - o.e0) * m, o.d0 + (o.d1 - o.d0) * m)); cam.lookAt(o.T); }
+      else { cam.position.copy(sh.P0).lerp(sh.P1, m); cam.lookAt(sh.T0.clone().lerp(sh.T1, m)); }
       if (persp.fov !== sh.fov) { persp.fov = sh.fov; persp.updateProjectionMatrix(); }
       if (sh.tilt) setPose(tiltQ.clone().multiply(new THREE.Quaternion().setFromAxisAngle(Y, off + 0.35 * glide(u) - 0.1)));
       else {
-        const ry = off + (sh.turn ? sh.turn[0] + (sh.turn[1] - sh.turn[0]) * (sh.land ? land(u) : glide(u)) : 0);
+        const ut = sh.hold ? Math.min(1, u / (1 - sh.hold)) : u; // com pausa no fim, o giro termina antes e fica parado
+        const ry = off + (sh.turn ? sh.turn[0] + (sh.turn[1] - sh.turn[0]) * (sh.whip ? 1 - Math.pow(1 - ut, 3.2) : sh.land ? land(ut) : glide(ut)) : 0); // whip: arranca rápido e freia longo
         if (sh.lean) setPose(new THREE.Quaternion().setFromAxisAngle(fwdA, THREE.MathUtils.degToRad(sh.lean)).multiply(new THREE.Quaternion().setFromAxisAngle(Y, ry))); // deitado, girando no próprio eixo
         else { product.position.set(0, 0, 0); product.quaternion.identity(); product.rotation.y = ry; }
       }
@@ -3874,15 +3876,9 @@ function detailShow() {
         revP.value.set(ax.x, ax.y, ax.z, -ax.dot(P)); // distância com sinal: + acima da faixa
       }
       setLightRot(sh.lightSpin ? rot0 + 360 * land(u) : rot0);
-      if (sh.sunSweep) { // só o sol (a sombra) anda: baixo, girando em volta do produto
-        if (!sunMoved) { applySceneLight(); sunAz0 = Math.atan2(sun.position.z, sun.position.x); sunR = sun.position.length();
-          // o vídeo esconde o chão (produto flutuando); nesta tomada ele volta, com a sombra forte e comprida
-          gKeep = { op: ground.material.opacity, vis: ground.visible };
-          ground.visible = true; ground.material.opacity = Math.max(gKeep.op, 0.42); groundLOverride = shadowL * 1.4; }
-        sunMoved = true;
-        const az = sunAz0 + THREE.MathUtils.degToRad(sh.sunSweep[0] + (sh.sunSweep[1] - sh.sunSweep[0]) * glide(u));
-        sun.position.set(sunR * Math.cos(SUN_EL) * Math.cos(az), sunR * Math.sin(SUN_EL), sunR * Math.cos(SUN_EL) * Math.sin(az));
-      } else if (sunMoved) { sunMoved = false; restoreGround(); applySceneLight(); } // volta o sol (e o chão) para como estavam
+      if (sh.ground) { // o vídeo esconde o chão (produto flutuando); nestas tomadas ele aparece com a sombra
+        if (!gKeep) { gKeep = { op: ground.material.opacity, vis: ground.visible }; ground.visible = true; ground.material.opacity = Math.max(gKeep.op, 0.3); groundLOverride = sz.y * 1.2; }
+      } else restoreGround();
       // tampa: abre suave na tomada 3 e fica aberta; nas outras, fechada
       const k = sh.cap ? smoother(clamp((u - 0.1) / 0.75, 0, 1)) : 0; // abre devagar, quase a tomada toda
       if (flipRig) {
@@ -3895,7 +3891,7 @@ function detailShow() {
       } else topMeshes.forEach(o => { o.position.set(0, topLift * k, 0); o.rotation.y = -1.6 * k; });
   }
   function cleanupShots() {
-      setLightRot(rot0); if (sunMoved) { sunMoved = false; restoreGround(); applySceneLight(); }
+      setLightRot(rot0); restoreGround();
       cam = persp; persp.fov = fov0; persp.updateProjectionMatrix();
       product.remove(wire); wire.traverse(o => o.geometry?.dispose()); [wireMat, maskMat, depthMat, mixMat, texA, texB, maskRT].forEach(x => x?.dispose());
       product.position.set(0, 0, 0); product.quaternion.identity();
