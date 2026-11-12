@@ -388,7 +388,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-11.raio-topo';
+const BUILD = '2026-11-11.fundo-vidro';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -887,6 +887,8 @@ const FINISHES = [['fosco', 'Fosco'], ['acetinado', 'Acetinado'], ['brilho', 'Br
 // tratamento do jateado, com o embaçado e o véu mais leves).
 const isFrost = f => f === 'vidroFosco' || f === 'vidroSemi' || f === 'petFosco' || f === 'petSemi';
 const isGlass = f => f === 'vidro' || isFrost(f) || f === 'pet';
+// Espessura do fundo por dentro: no vidro, a massa de vidro embaixo (o pescante para em cima dela).
+const floorThick = () => { const b = S.modules.find(v => v.vol); return b && thickBase(b.own ? b.finish : S.finish) ? Math.max(S.wall, b.fundo ?? 6) : S.wall; };
 const thickBase = f => f === 'vidro' || f === 'vidroFosco' || f === 'vidroSemi'; // fundo grosso: só vidro (PET é fino)
 
 const typeKey = m => m?.type || Object.keys(LIB).find(k => LIB[k].name === m?.name);
@@ -4865,7 +4867,7 @@ function buildInto(product, S, explodeAmt = 0) {
           sm.name = `${String(idx + 1).padStart(2, '0')}_carcaca`; product.add(sm);
         }
       }
-      const len = yTop - (y0 - base[i].y0) - (floor + S.wall + m.pescGap);
+      const len = yTop - (y0 - base[i].y0) - (floor + floorThick() + m.pescGap);
       const pg = pescanteGeo(m, yTop - len, yTop);
       if (pg && m.sprayType === 'gloss') {
         // Gloss: haste de plástico branco e ponta de feltro na cor do produto (opacas:
@@ -4899,7 +4901,7 @@ function buildInto(product, S, explodeAmt = 0) {
       && (hasNeck ? L[i + 1]?.m.kind === 'gargalo' : i === topVol)) {
       const nx = L[i + 1]?.m.kind === 'gargalo' ? L[i + 1] : null, capE = nx ? L[i + 2] : L[i + 1];
       let yTop = nx ? nx.y0 + nx.m.h - 1 : y0 + m0.h - 1;
-      const shift = y0 - base[i].y0, yBot = floor + S.wall + m0.bpescGap + shift;
+      const shift = y0 - base[i].y0, yBot = floor + floorThick() + m0.bpescGap + shift;
       const addP = (geo, mat, name, order) => { const pm = new THREE.Mesh(geo, mat); pm.userData.idx = idx; pm.name = `${String(idx + 1).padStart(2, '0')}_${name}`; if (order) pm.renderOrder = order; product.add(pm); };
       if (m0.bpescMola !== false) {
         // mecanismo de spray sob a tampa (carcaça, mola, assento), como nas válvulas
