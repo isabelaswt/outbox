@@ -272,7 +272,7 @@ const BASE = {
   groove: 0, grooveD: 0.6,
   notch: false, notchLock: true, notchY: 12, notchW: 20, notchH: 8, notchD: 2, notchP: 2,
   ridges: 0, ridgeD: 0.6, lobes: 0, lobeD: 3,
-  labType: 'nenhum', labH: 50, labY: 50, labW: 40, labPanel: 'nenhuma', labPanelW: 46, labPanelH: 56, labPanelD: 0, labPanelBack: true, labColor: '#ffffff', labFinish: 'fosco', labImg: '', labImgB: '', labInk: false, labInkColor: '#1c1c1c', labInkFinish: 'metal',
+  labType: 'nenhum', labH: 50, labY: 50, labW: 40, labPanel: 'nenhuma', labPanelW: 46, labPanelH: 56, labPanelD: 0, labPanelBack: true, labPanelGap: 3, labColor: '#ffffff', labFinish: 'fosco', labImg: '', labImgB: '', labInk: false, labInkColor: '#1c1c1c', labInkFinish: 'metal',
   reliefImg: '', reliefName: '', reliefScale: 18, reliefDepth: 0, reliefY: 50, reliefH: 82, reliefW: 100, reliefFade: 4, reliefQuality: 3, reliefPreviewQ: 2, reliefSoft: 1.2, reliefGeomSmooth: 2, reliefTile: 'repeat', reliefFit: 'tile', reliefU: 0, reliefV: 0, reliefWarp: 0,
   own: false, color: '#e8dcc6', finish: 'fosco', vol: false,
   // kind 'giro': seção girando no eixo; 'placa': silhueta frontal extrudada na profundidade.
@@ -390,7 +390,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-12.ux-linha-unica';
+const BUILD = '2026-11-12.rotulo-na-area';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -1175,6 +1175,23 @@ function panelDist(P, s, dy) {
   if (P.shape === 'oval') return (Math.hypot(s / hw, dy / hh) - 1) * Math.min(hw, hh);
   if (P.shape === 'arco') { const c = hh - hw; return dy > c ? Math.hypot(s, dy - c) - hw : Math.max(ax - hw, -dy - hh); }
   return rrect(P.shape === 'arredondada' ? Math.min(hw, hh) * 0.35 : 1.2);
+}
+// Meia largura do formato da área lisa na altura dy (a partir do centro), para
+// formato de meia largura hw e meia altura hh. Usado pelo adesivo que acompanha a área.
+function shapeHalf(shape, hw, hh, dy) {
+  const ay = Math.abs(dy); if (ay > hh + 1e-6) return 0;
+  if (shape === 'oval') return hw * Math.sqrt(Math.max(0, 1 - (dy / hh) ** 2));
+  if (shape === 'arco') { const c = hh - hw; return dy > c ? Math.sqrt(Math.max(0, hw * hw - (dy - c) ** 2)) : hw; }
+  const rc = shape === 'arredondada' ? Math.min(hw, hh) * 0.35 : Math.min(1.2, hw, hh);
+  return ay > hh - rc ? hw - rc + Math.sqrt(Math.max(0, rc * rc - (ay - (hh - rc)) ** 2)) : hw;
+}
+// Adesivo (frente e verso) sobre a área lisa: mesmo formato, centrado nela e menor
+// pela folga em volta. Mudar a área muda o adesivo junto.
+function labelOnPanel(m) {
+  if (m.labType !== 'frenteVerso') return null;
+  const P = labelPanel(m); if (!P) return null;
+  const g = clamp(m.labPanelGap ?? 3, 0, Math.min(P.W, P.H) / 2 - 1);
+  return { shape: P.shape, W: P.W - 2 * g, H: P.H - 2 * g, yc: P.yc };
 }
 // 1 dentro da área lisa, 0 fora, com transição macia na borda.
 function panelMask(P, ly, th, R) {
@@ -4372,8 +4389,8 @@ function applyLabelsTo(group, st) {
     const m = mods.get(o.userData.uid);
     if (!m || !canLabel(m) || !m.labType || m.labType === 'nenhum') continue;
     if (!o.geometry.boundsTree) o.geometry.computeBoundsTree();
-    const bb = new THREE.Box3().setFromObject(o), BH = bb.max.y - bb.min.y;
-    const H = clamp(m.labH, 2, BH - 0.4), yc = clamp(bb.min.y + BH * m.labY / 100, bb.min.y + H / 2 + 0.2, bb.max.y - H / 2 - 0.2);
+    const bb = new THREE.Box3().setFromObject(o), BH = bb.max.y - bb.min.y, LP = labelOnPanel(m); // LP: adesivo no formato da área lisa
+    const H = clamp(LP ? LP.H : m.labH, 2, BH - 0.4), yc = clamp(bb.min.y + (LP ? LP.yc : BH * m.labY / 100), bb.min.y + H / 2 + 0.2, bb.max.y - H / 2 - 0.2);
     const cx = o.userData.ox || 0, NR = clamp(Math.round(H / 0.8), 8, 160), NA = 360, off = 0.14;
     // Anel de amostras por altura: começa atrás (−z) e dá a volta; arco acumulado.
     const rows = [];
@@ -4407,12 +4424,12 @@ function applyLabelsTo(group, st) {
       const pts = ring.map(q => q.p), NP = pts.length;
       for (let j = 1; j < NP; j++) acc.push(acc[j - 1] + pts[j].distanceTo(pts[j - 1]));
       const total = acc[NP - 1] + pts[0].distanceTo(pts[NP - 1]);
-      rows.push({ pts, acc, total });
+      rows.push({ pts, acc, total, dy: yy - yc });
     }
     if (group === product) {
       const tots = rows.map(R => R.total), mid = rows[NR >> 1].total;
-      const w = t => m.labType === 'envolve' ? t : Math.min(m.labW, t * 0.49);
-      labDims.set(m.uid, { W: w(mid), H, Wtop: w(tots[NR]), Wbot: w(tots[0]) });
+      const w = t => m.labType === 'envolve' ? t : Math.min(LP ? LP.W : m.labW, t * 0.49);
+      labDims.set(m.uid, { W: w(mid), H, Wtop: w(tots[NR]), Wbot: w(tots[0]), shape: LP?.shape });
     }
     // Ponto no arco s (cíclico) de uma linha.
     const at = (R, sArc) => {
@@ -4422,10 +4439,10 @@ function applyLabelsTo(group, st) {
       const f = (q - A(lo)) / Math.max(A(hi) - A(lo), 1e-6);
       return P(lo).clone().lerp(P(hi), f);
     };
-    const patch = (sOf, NC, img) => {
+    const patch = (sOf, NC, img, uOf = (R, u) => u) => {
       const pos = [], uv = [], idx = [];
       for (let r = 0; r <= NR; r++) for (let c = 0; c <= NC; c++) {
-        const u = c / NC, p = at(rows[r], sOf(rows[r], u)); pos.push(p.x, p.y, p.z); uv.push(u, r / NR);
+        const u = c / NC, p = at(rows[r], sOf(rows[r], u)); pos.push(p.x, p.y, p.z); uv.push(uOf(rows[r], u), r / NR);
       }
       for (let r = 0; r < NR; r++) for (let c = 0; c < NC; c++) {
         const a = r * (NC + 1) + c, b = a + 1, d = a + NC + 1, e = d + 1; idx.push(a, b, d, b, e, d);
@@ -4446,9 +4463,13 @@ function applyLabelsTo(group, st) {
     // u cresce da esquerda para a direita de quem olha de fora (θ decrescente).
     if (m.labType === 'envolve') patch((R, u) => (1 - u) * R.total, 256, m.labImg);
     else {
-      const half = R => Math.min(m.labW, R.total * 0.49) / 2;
-      if (m.labFront !== false) patch((R, u) => R.total / 2 + half(R) * (1 - 2 * u), 96, m.labImg);   // frente (+z)
-      if (m.labBack !== false) patch((R, u) => half(R) * (1 - 2 * u), 96, m.labImgB);                 // verso (−z)
+      // Na área lisa, cada linha tem a largura do formato naquela altura (arco, oval...);
+      // a arte não estica: fica presa ao retângulo inteiro e o formato só recorta.
+      const full = R => Math.min(LP ? LP.W : m.labW, R.total * 0.49) / 2;
+      const half = LP ? R => full(R) * shapeHalf(LP.shape, LP.W / 2, H / 2, R.dy) / (LP.W / 2) : full;
+      const uOf = LP ? (R, u) => 0.5 + (u - 0.5) * half(R) / Math.max(full(R), 1e-6) : undefined;
+      if (m.labFront !== false) patch((R, u) => R.total / 2 + half(R) * (1 - 2 * u), 96, m.labImg, uOf);   // frente (+z)
+      if (m.labBack !== false) patch((R, u) => half(R) * (1 - 2 * u), 96, m.labImgB, uOf);                 // verso (−z)
     }
   }
   group.position.copy(px); group.quaternion.copy(pq); group.updateMatrixWorld(true);
@@ -5676,11 +5697,11 @@ const MF = [
   // Rótulo do corpo: envolve tudo ou adesivo frente e verso (arte opcional).
   ['Rótulo', [
     ['labType', 'Rótulo', 'select', [['nenhum', 'Sem rótulo'], ['envolve', 'Envolve o produto todo'], ['frenteVerso', 'Adesivo frente e verso']], 0, 0, m => canLabel(m)],
-    ['labH', 'Altura do rótulo', 5, 300, 0.5, 'mm', m => canLabel(m) && m.labType && m.labType !== 'nenhum'],
+    ['labH', 'Altura do rótulo', 5, 300, 0.5, 'mm', m => canLabel(m) && m.labType && m.labType !== 'nenhum' && !labelOnPanel(m)],
     ['labY', 'Posição (centro, % da altura da peça)', 0, 100, 1, '%', m => canLabel(m) && m.labType && m.labType !== 'nenhum'],
     ['labFront', 'Adesivo na frente', 'check', 0, 0, 0, m => canLabel(m) && m.labType === 'frenteVerso'],
     ['labBack', 'Adesivo no verso', 'check', 0, 0, 0, m => canLabel(m) && m.labType === 'frenteVerso'],
-    ['labW', 'Largura de cada adesivo', 5, 300, 0.5, 'mm', m => canLabel(m) && m.labType === 'frenteVerso'],
+    ['labW', 'Largura de cada adesivo', 5, 300, 0.5, 'mm', m => canLabel(m) && m.labType === 'frenteVerso' && !labelOnPanel(m)],
     ['labNoPaper', 'Papel sem cor (usa a cor da peça)', 'check', 0, 0, 0, m => canLabel(m) && m.labType && m.labType !== 'nenhum'],
     ['labInk', 'Arte com cor e acabamento próprios (PNG sem fundo)', 'check', 0, 0, 0, m => canLabel(m) && m.labType && m.labType !== 'nenhum'],
     ['labInkColor', 'Cor da arte', 'color', 0, 0, 0, m => canLabel(m) && m.labType && m.labType !== 'nenhum' && m.labInk],
@@ -5694,6 +5715,7 @@ const MF = [
     ['labY', 'Posição da área (centro, % da altura da peça)', 0, 100, 1, '%', m => canLabel(m) && m.labPanel && m.labPanel !== 'nenhuma' && (!m.labType || m.labType === 'nenhum')],
     ['labPanelD', 'Recuo (0 = rente aos gomos)', 0, 6, 0.1, 'mm', m => canLabel(m) && m.labPanel && m.labPanel !== 'nenhuma'],
     ['labPanelBack', 'Área lisa também no verso', 'check', 0, 0, 0, m => canLabel(m) && m.labPanel && m.labPanel !== 'nenhuma'],
+    ['labPanelGap', 'Folga do adesivo até a borda da área (o adesivo segue o formato e o tamanho da área)', 0, 20, 0.5, 'mm', m => !!labelOnPanel(m)],
   ]],
   // Pescante do corpo (tampas sem pescante próprio); bisnaga não tem.
   ['Pescante', [
@@ -6126,12 +6148,19 @@ function downloadDieline(m) {
   const lines = [m.labType === 'envolve' ? 'Rótulo envolvente' : m.labFront !== false && m.labBack !== false ? 'Adesivo (frente e verso)' : 'Adesivo',
     `${W} × ${H} mm`].concat(cone ? [`topo ${r1(d.Wtop)} · base ${r1(d.Wbot)} mm`] : []);
   const fs = f(Math.min(4, H / 10, W / (Math.max(...lines.map(l => l.length)) * 0.6)));
+  // Adesivo no formato da área lisa (arco, oval...): a faca segue o contorno; a margem de segurança também.
+  const outline = (hw, hh) => { const N = 96, pt = [];
+    for (let i = 0; i <= N; i++) { const dy = -hh + 2 * hh * i / N; pt.push([W / 2 + shapeHalf(d.shape, hw, hh, dy), H / 2 - dy]); }
+    for (let i = N; i >= 0; i--) { const dy = -hh + 2 * hh * i / N; pt.push([W / 2 - shapeHalf(d.shape, hw, hh, dy), H / 2 - dy]); }
+    return 'M' + pt.map(([x, y]) => `${f(x)},${f(y)}`).join(' L') + ' Z'; };
+  const cut = d.shape ? `<path d="${outline(W / 2, H / 2)}" fill="none" stroke="#ff00ff" stroke-width="0.25"/>` : `<rect x="0" y="0" width="${f(W)}" height="${f(H)}" fill="none" stroke="#ff00ff" stroke-width="0.25"/>`;
+  const safe = d.shape ? `<path d="${outline(W / 2 - sm, H / 2 - sm)}" fill="none" stroke="#00a0ff" stroke-width="0.2" stroke-dasharray="1.5 1"/>` : `<rect x="${sm}" y="${sm}" width="${f(W - 2 * sm)}" height="${f(H - 2 * sm)}" fill="none" stroke="#00a0ff" stroke-width="0.2" stroke-dasharray="1.5 1"/>`;
   const txt = lines.map((l, i) => `<tspan x="${f(W / 2)}" dy="${i ? fs * 1.3 : 0}">${l}</tspan>`).join('');
   const svg = `<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="${f(W)}mm" height="${f(H)}mm" viewBox="0 0 ${f(W)} ${f(H)}">
   <title>Faca do rótulo ${W} x ${H} mm</title>
-  <g id="corte"><rect x="0" y="0" width="${f(W)}" height="${f(H)}" fill="none" stroke="#ff00ff" stroke-width="0.25"/></g>
-  <g id="seguranca"><rect x="${sm}" y="${sm}" width="${f(W - 2 * sm)}" height="${f(H - 2 * sm)}" fill="none" stroke="#00a0ff" stroke-width="0.2" stroke-dasharray="1.5 1"/></g>
+  <g id="corte">${cut}</g>
+  <g id="seguranca">${safe}</g>
   <g id="info" font-family="Helvetica, Arial, sans-serif" fill="#888"><text x="${f(W / 2)}" y="${f(H / 2 - (lines.length - 1) * fs * 0.65)}" font-size="${fs}" text-anchor="middle">${txt}</text></g>
 </svg>`;
   download(new Blob([svg], { type: 'image/svg+xml' }), `faca_rotulo_${nome}_${W}x${H}mm.svg`);
