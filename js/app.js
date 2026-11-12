@@ -388,7 +388,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-11.fundo-vidro';
+const BUILD = '2026-11-11.parede-fundo';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -5260,7 +5260,6 @@ const MF = [
     notK(['gargalo', 'spray'], ['W', 'Largura (frente)', 4, 200, 0.5, 'mm']),
     notK(['gargalo', 'spray'], ['D', 'Profundidade (lado)', 4, 200, 0.5, 'mm']),
     GP(['roundLock', 'Esfera: manter redonda', 'check', 0, 0, 0, isSphereCap]),
-    ['fundo', 'Espessura do fundo (vidro)', 1, 25, 0.5, 'mm', m => m.vol && thickBase(m.own ? m.finish : S.finish)],
     ['veste', 'Tampa da válvula (desce e veste o spray de baixo)', 'check', 0, 0, 0, m => vestsValve({ modules: S.modules.map(x => (x === m ? { ...x, veste: true } : x)) }, S.modules.indexOf(m))],
     GP(['sphereR', 'Raio da esfera', 0, 150, 0.5, 'mm', isSphereCap]),
     N(['neckStd', 'Padrão do acabamento (aprox.)', 'select', [...Object.keys(NECKS).map(k => [k, k]), ['livre', 'Livre']]]),
@@ -5816,7 +5815,7 @@ function renderEditor() {
   // Mola e pescante são da válvula (grupo "Mola e pescante" dela), não do corpo.
   syncFacet();
   if (isBody(m) && m.kind !== 'gargalo') { renderBodyNeck(ed, m); renderBodyLiquid($('#pieceLiquid'), m); } // conteúdo junto da cor
-  renderLabelBox();
+  renderLabelBox(); renderWallFields();
 }
 // Rótulo junto do logotipo: vale para a peça selecionada (corpo ou tampa); sem
 // peça que aceite rótulo selecionada, vai para o primeiro corpo.
@@ -6040,7 +6039,7 @@ function renderColorBox(m) {
     pv.querySelector('span').textContent = (FINISHES.find(f => f[0] === o.finish) || [, ''])[1]; box.appendChild(pv);
     queueSphere(pv.querySelector('img'), { color: o.color || S.color, finish: o.finish || S.finish, difus: o.difus, ior: o.ior }); }
   field(box, o, ['color', own ? 'Cor da peça' : 'Cor do produto', 'color'], () => { renderStack(); queueBuild(); });
-  field(box, o, ['finish', 'Acabamento', 'finish'], () => { delete o.difus; delete o.ior; renderColorBox(m); renderStack(); queueBuild(); });
+  field(box, o, ['finish', 'Acabamento', 'finish'], () => { delete o.difus; delete o.ior; renderColorBox(m); renderStack(); renderWallFields(); queueBuild(); });
   field(box, o, ['difus', 'Difusão (0 = liso/polido, 100 = bem difuso)', 0, 100, 1, '%', null, x => presetDif(x.finish)], queueBuild);
   if (isGlass(o.finish)) field(box, o, ['ior', 'IOR do vidro (1,0 ar · 1,33 água · 1,5 vidro · 2,4 diamante)', 1, 2.4, 0.01, '', null, x => presetIor(x.finish)], queueBuild);
   if (!own && S.modules.some(q => q.own)) {
@@ -6193,9 +6192,19 @@ function renderEditorKeepScroll() {
   renderEditor(); box.scrollTop = y; side.scrollTop = ys;
 }
 
+// Parede e fundo juntos (Volumetria): o fundo é o do primeiro corpo; no vidro vira a
+// massa de vidro embaixo, no plástico o fundo tem a espessura da parede.
+function renderWallFields() {
+  const vf = $('#volFields'); if (!vf) return; vf.innerHTML = '';
+  field(vf, S, ['wall', 'Espessura da parede', 0.3, 4, 0.1, 'mm'], queueBuild);
+  const b = S.modules.find(v => v.vol); if (!b) return;
+  const glass = thickBase(b.own ? b.finish : S.finish);
+  const el = field(vf, b, ['fundo', 'Espessura do fundo (vidro: massa embaixo)', 1, 25, 0.5, 'mm', null, 6], queueBuild);
+  if (!glass) { el.classList.add('off'); el.title = 'Só no vidro: no plástico o fundo tem a espessura da parede'; }
+}
 function renderGlobal() {
   const vf = $('#volFields'); vf.innerHTML = '';
-  field(vf, S, ['wall', 'Espessura da parede', 0.3, 4, 0.1, 'mm'], queueBuild);
+  renderWallFields();
   const lf = $('#lookFields'); lf.innerHTML = '';
   field(lf, S, ['color', 'Cor geral', 'color'], () => { renderStack(); queueBuild(); });
   field(lf, S, ['finish', 'Acabamento geral', 'finish'], () => { delete S.difus; delete S.ior; renderGlobal(); queueBuild(); });
