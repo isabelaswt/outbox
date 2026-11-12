@@ -388,7 +388,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-11.fundo-curvo3';
+const BUILD = '2026-11-11.fundo-curvo4';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -4626,7 +4626,8 @@ function offsetInner(m, y0, inset, lift) {
 // Leva tudo o que está abaixo de yb+R para um piso com canto arredondado de raio R.
 // Cada vértice é medido pelo caminho "do centro, pelo piso, subindo a parede"; esse
 // caminho é redistribuído no piso (até D−R) e no quarto de círculo (até a parede D).
-function roundInnerFloor(p, yb, R) {
+function roundInnerFloor(p, yb, R0) {
+  const R = R0;
   let cx = 0, cz = 0, k = 0, ymin = Infinity;
   for (let i = 0; i < p.length; i += 3) { cx += p[i]; cz += p[i + 2]; k++; ymin = Math.min(ymin, p[i + 1]); }
   cx /= k; cz /= k;
@@ -4644,17 +4645,20 @@ function roundInnerFloor(p, yb, R) {
     for (let a = 0; a < NB; a++) if (!D[a]) { let j = 1; while (j < NB && !D[(a + j) % NB] && !D[(a - j + NB) % NB]) j++; D[a] = D[(a + j) % NB] || D[(a - j + NB) % NB]; }
   }
   const Dt = exactD ? Array.from({ length: seg }, (_, j) => exactD(j)) : null;
+  const Dmax = Dt ? Math.max(...Dt) : 0; // gomos: o raio da curva acompanha o contorno (menor no vale)
   // parede de dentro original, por índice e altura: a curva nunca passa dela (em frasco
   // que afina embaixo, como pera/gomos, a cavidade furava a parede)
   const rY = [], rD = [];
   if (Dt) for (let r = 0; r < ringN; r++) { const k0 = r * seg * 3; rY.push(p[k0 + 1]); const row = new Float32Array(seg); for (let j = 0; j < seg; j++) { const k = k0 + j * 3; row[j] = Math.hypot(p[k] - cx, p[k + 2] - cz); } rD.push(row); }
   const wallAt = (j, y) => { let lo = 0; while (lo < rY.length - 2 && rY[lo + 1] < y) lo++; const t = clamp((y - rY[lo]) / Math.max(rY[lo + 1] - rY[lo], 1e-6), 0, 1); return rD[lo][j] + (rD[lo + 1][j] - rD[lo][j]) * t; };
+  const yT0 = yT;
   for (let i = 0; i < p.length; i += 3) {
-    const y = p[i + 1]; if (y >= yT) continue;
+    const y = p[i + 1]; if (y >= yT0) continue;
     const vi = i / 3, dx = p[i] - cx, dz = p[i + 2] - cz, d = Math.hypot(dx, dz);
     const Dw = Dt && vi < ringN * seg ? Dt[vi % seg] : Dt ? d : D[ang(p[i], p[i + 2])]; // ponto do tampo (centro): fica no piso
+    const R = Dt && Dmax > 0 && vi < ringN * seg ? R0 * Dw / Dmax : R0, yT = yb + R;
     if (!(Dw > R * 1.2)) { if (y < yb) p[i + 1] = yb; continue; }
-    const Lo = Dw + (yT - ymin), Lt = Dw - R + Math.PI * R / 2;
+    const Lo = Dw + (yT0 - ymin), Lt = Dw - R + Math.PI * R / 2;
     // caminho sempre crescente pelo perfil (centro → canto → parede): sem dobras na malha
     const path = d + Math.max(0, y - ymin), q = clamp(path / Lo, 0, 1) * Lt;
     let r, yy;
