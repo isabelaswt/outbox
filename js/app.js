@@ -388,7 +388,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-11.colar-ombro';
+const BUILD = '2026-11-11.troca-volta';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -6186,7 +6186,10 @@ function scaleModule(m, f) {
 // Peça nova herda o tamanho da trocada: corpo assume largura, profundidade e
 // altura; tampa/válvula escala por inteiro para ficar com a largura anterior.
 function adaptSwap(old, nw, label) {
-  if (label === 'Peça de encaixe') return nw;
+  if (label === 'Peça de encaixe') { // mesma largura total da peça que saiu (gargalo segue a rosca)
+    if (nw.kind !== 'gargalo' && old.kind !== 'gargalo') scaleModule(nw, Math.max(old.W, old.D) / Math.max(nw.W, nw.D));
+    return nw;
+  }
   if (label === 'Corpo') {
     const f = old.W / nw.W;
     scaleModule(nw, f);
@@ -6203,7 +6206,10 @@ function adaptSwap(old, nw, label) {
     const want = neck ? Math.max(neck.W + 2.4, nw.sprayType === 'conico' ? neck.W * 1.35 : 0) : tube ? tube.W * 0.94 : collarOf(nw);
     scaleModule(nw, want / collarOf(nw));
     if (neck && collarOf(nw) < minValveW(nw, neck.W)) scaleModule(nw, minValveW(nw, neck.W) / collarOf(nw));
-  } else scaleModule(nw, collarOf(old) / collarOf(nw));
+  } else if (S.modules[sel - 1]?.kind === 'gargalo') scaleModule(nw, collarOf(old) / collarOf(nw));
+  // fora do gargalo (sobre colar, outra peça): mesma largura total da peça que saiu
+  // (pela base de encaixe, esfera/bola — que encostam num ponto — encolhiam)
+  else scaleModule(nw, Math.max(old.W, old.D) / Math.max(nw.W, nw.D));
   // Sobre um gargalo: a rosca tem que caber por dentro e ficar coberta.
   const below = S.modules[sel - 1];
   if (below?.kind === 'gargalo') {
@@ -6216,6 +6222,7 @@ function adaptSwap(old, nw, label) {
 }
 // Posição do scroll da grade de troca (não volta ao topo a cada clique).
 let swapScroll = { key: '', top: 0 };
+const swapMemo = new Map(); // uid|tipo → peça como estava antes de ser trocada
 function renderSwap(ed, m) {
   const [label, keys] = categoryOf(m), cur = typeOf(m);
   // Tampa e válvula ocupam o mesmo lugar: a troca mostra as duas famílias.
@@ -6236,7 +6243,13 @@ function renderSwap(ed, m) {
       if (k === cur) return;
       swapScroll = { key: skey, top: grid.scrollTop }; // volta para o mesmo ponto, mesmo trocando tampa ↔ válvula
       // Mantém cor, acabamento, encaixe e deslocamento, e readapta o tamanho.
-      S.modules[sel] = adaptSwap(m, M(k, { own: m.own, color: m.color, finish: m.finish, gap: m.gap, ox: m.ox, uid: m.uid }), label); setTimeout(() => toastUndo(`Trocada por ${LIB[k].name}`), 50);
+      // A peça que sai fica lembrada: voltar para ela traz exatamente como estava
+      // (antes era recalculada a partir da intermediária e voltava menor/maior).
+      swapMemo.set(m.uid + '|' + cur, structuredClone(m));
+      const back = swapMemo.get(m.uid + '|' + k);
+      S.modules[sel] = back ? { ...structuredClone(back), own: m.own, color: m.color, finish: m.finish, ox: m.ox, uid: m.uid }
+        : adaptSwap(m, M(k, { own: m.own, color: m.color, finish: m.finish, gap: m.gap, ox: m.ox, uid: m.uid }), label);
+      setTimeout(() => toastUndo(`Trocada por ${LIB[k].name}`), 50);
       if (label === 'Corpo') refitAfterBodySwap(sel);
       renderStack(); renderEditorKeepScroll(); build();
     };
