@@ -388,7 +388,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-12.apoio-tampa';
+const BUILD = '2026-11-12.apoio-todas';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -4934,7 +4934,7 @@ function buildInto(product, S, explodeAmt = 0) {
       if (rep === 0 && m0.apoio !== false && m0.kind === 'giro' && !m0.vol && !vestsValve(S, idx) && below && below.idx === idx - 1
         && below.m.kind !== 'spray' && !below.m.hidden) {
         const a = Math.min(m.W, m.D) / 2, { rB } = radii(m), bm = below.m;
-        if (rB >= a * 0.45 && !(m.gap > 0.5)) {
+        if (rB >= a * 0.18 && !(m.gap > 0.5)) { // toda tampa de fundo arredondado que deixa vão embaixo
           const rd = Math.min(bm.W, bm.D) / 2 - (bm.kind === 'gargalo' ? 0 : radii(bm).rT);
           const rs = Math.min(rd - 0.3, a * 0.42), f = (a - rs) / rB;
           if (rs >= 2.5 && f < 1) {
@@ -5540,7 +5540,7 @@ const MF = [
   ]],
   ['Encaixe', [
     ['gap', 'Distância da peça de baixo', -40, 40, 0.1, 'mm'],
-    ['apoio', 'Pé de apoio embaixo (peça de fundo redondo)', 'check', 0, 0, 0, m => !m.vol && m.kind === 'giro' && radii(m).rB >= Math.min(m.W, m.D) / 2 * 0.45],
+    ['apoio', 'Pé de apoio embaixo (peça de fundo redondo)', 'check', 0, 0, 0, m => !m.vol && m.kind === 'giro' && radii(m).rB >= Math.min(m.W, m.D) / 2 * 0.18],
     ['ox', 'Deslocar para o lado (− esquerda)', -100, 100, 0.5, 'mm'],
   ]],
   ['Cor', [
