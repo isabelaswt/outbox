@@ -388,7 +388,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-11.fundo-curvo5';
+const BUILD = '2026-11-11.hdri-calibrado';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -7142,7 +7142,9 @@ function applyLightingMode(mode) {
   } else if (mode === 'contrast') {
     scene.environmentIntensity = 1.15 * boost; hemi.intensity = 0.18; sun.intensity = 2.1; sun.position.set(-180, 460, 220);
   } else if (mode === 'hdr' && HDR.env) {
-    scene.environmentIntensity = 1.25 * boost; hemi.intensity = 0.42; sun.intensity = 1.15; sun.position.set(180, 420, 300);
+    // O HDRI é a luz: sem céu extra e sol só para a sombra no chão; a força é calibrada
+    // pelo brilho médio de cada HDRI (estúdio claro estourava somado às outras luzes)
+    scene.environmentIntensity = 0.9 * (HDR.norm || 1) * boost; hemi.intensity = 0; sun.intensity = 0.3; sun.position.set(180, 420, 300);
   } else { // estúdio claro (padrão): caixa de luz de área + ambiente de estúdio
     scene.environment = refEnv; scene.environmentIntensity = 0.5 * boost; hemi.intensity = 0.08; sun.intensity = 0.5; sun.position.set(220, 520, 260);
   }
@@ -7180,6 +7182,19 @@ async function uploadHdr(blob, name) {
   await api('hdr.php?a=finish', { id });
   await refreshHdrList();
 }
+// Brilho médio do HDRI (luminância) → fator para todos ficarem na mesma faixa.
+function hdrNorm(tex) {
+  try {
+    const d = tex.image?.data, W = tex.image?.width, H = tex.image?.height; if (!d || !W || !H) return 1;
+    const half = d instanceof Uint16Array, f = half ? THREE.DataUtils.fromHalfFloat : x => x, ch = d.length / (W * H);
+    // todos os pixels (o sol do céu aberto é minúsculo e domina a luz), com o peso da latitude
+    let s = 0, ws = 0;
+    for (let y = 0; y < H; y++) { const w = Math.sin(Math.PI * (y + 0.5) / H); let row = 0;
+      for (let x = 0; x < W; x++) { const i = (y * W + x) * ch; const L = 0.2126 * f(d[i]) + 0.7152 * f(d[i + 1]) + 0.0722 * f(d[i + 2]); if (isFinite(L)) row += Math.min(L, 1e5); }
+      s += row * w; ws += W * w; }
+    const mean = ws ? s / ws : 1; return clamp(0.55 / Math.max(mean, 1e-3), 0.06, 1.2);
+  } catch { return 1; }
+}
 async function loadHdr(blob, name) {
   const exr = /\.exr$/i.test(name), url = URL.createObjectURL(blob);
   // .hdr (Radiance) ou .exr (OpenEXR, o que sai do Blender/KeyShot); o leitor de EXR só
@@ -7187,6 +7202,7 @@ async function loadHdr(blob, name) {
   let Loader = RGBELoader;
   if (exr) try { Loader = (await import('three/addons/loaders/EXRLoader.js')).EXRLoader; } catch { URL.revokeObjectURL(url); toast('Não consegui abrir o leitor de EXR'); return false; }
   return new Promise(res => new Loader().load(url, tex => {
+    HDR.norm = hdrNorm(tex);
     const env = pmrem.fromEquirectangular(tex).texture;
     tex.dispose(); HDR.env?.dispose(); if (HDR.url) URL.revokeObjectURL(HDR.url);
     HDR.env = env; HDR.url = url; HDR.name = name;
