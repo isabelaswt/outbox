@@ -388,7 +388,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-11.minha-biblioteca';
+const BUILD = '2026-11-11.raio-topo';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -1007,7 +1007,8 @@ function sectionAt(m, y, rB, rT) {
   // Raio na altura (rB/rT) e recuo na largura (rBotW/rTopW; 0 = igual ao raio).
   let r = 0, f = 0;
   if (rB > 0 && y < rB) { const c = 1 - y / rB; f = 1 - Math.sqrt(Math.max(0, 1 - c * c)); r = m.rBotW > 0 ? m.rBotW : rB; }
-  else if (rT > 0 && y > h - rT) { const c = 1 - (h - y) / rT; f = 1 - Math.sqrt(Math.max(0, 1 - c * c)); r = m.rTopW > 0 ? m.rTopW : rT; }
+  else if (rT > 0 && y > h - rT) { const c = 1 - (h - y) / rT; f = 1 - Math.sqrt(Math.max(0, 1 - c * c)); r = m.rTopW > 0 ? m.rTopW : rT;
+    if (m.rTopWa != null) { a -= Math.min(m.rTopWa, a) * f; b -= Math.min(m.rTopWb, b) * f; r = 0; } } // gargalo: cada eixo recua o que pode
   a -= Math.min(r, a) * f; b -= Math.min(r, b) * f;
   if (m.groove > 0) {
     const g = m.grooveD * Math.max(0, 1 - Math.abs(y - (h - m.groove)) / 0.5);
@@ -2051,7 +2052,7 @@ function shoulderDrop(m, R) {
   // e com a peça de cima mais estreita que o corpo; senão fica no topo.
   if (m.kind !== 'giro' || Math.abs(m.W - m.D) > 2 || (m.sides | 0) >= 3) return 0;
   const a0 = Math.min(m.W, m.D) / 2 * (m.taper || 100) / 100, rT = clamp(m.rTop || 0, 0, Math.min(m.h / 2, a0));
-  const rTw = m.rTopW > 0 ? m.rTopW : rT;
+  const rTw = m.rTopWa != null ? Math.min(m.rTopWa, m.rTopWb) : m.rTopW > 0 ? m.rTopW : rT;
   if (!rT || R <= a0 - rTw || R >= a0 - 1) return 0;
   const g = clamp((a0 - R) / rTw, 0, 1), c = Math.sqrt(Math.max(0, 1 - (1 - g) ** 2));
   return rT * (1 - c);
@@ -2078,11 +2079,14 @@ function openForNeck(body, neck) {
   // Frasco da Draft com a rosca trocada: o topo fecha num ombro até o gargalo.
   if (neck?.kind === 'gargalo' && body?.kind === 'perfil' && body.cutTop > 0) return { ...body, neckR: neck.W / 2 + 0.8 };
   if (!neck || neck.kind !== 'gargalo' || !body?.vol || body.kind !== 'giro') return body;
-  const a0 = Math.min(body.W, body.D) / 2 * (body.taper || 100) / 100, rT = clamp(body.rTop || 0, 0, Math.min(body.h / 2, a0));
+  const tp = (body.taper || 100) / 100, aW = body.W / 2 * tp, aD = body.D / 2 * tp, a0 = Math.min(aW, aD);
+  const rT = clamp(body.rTop || 0, 0, Math.min(body.h / 2, a0));
   if (!rT) return body;
   const rTw = body.rTopW > 0 ? body.rTopW : rT, need = neck.W / 2 + Math.max(0, neck.neckFillet ?? 3) * 0.5 + 0.5;
   if (a0 - rTw >= need) return body;
-  return { ...body, rTopW: Math.max(0.5, a0 - need) };
+  // Cada eixo recua só o que precisa: no lado largo o raio continua redondo (antes o
+  // limite do lado fino valia para os dois e o arredondamento virava uma rampa longa).
+  return { ...body, rTopWa: Math.max(0.5, Math.min(rTw, aW - need)), rTopWb: Math.max(0.5, Math.min(rTw, aD - need)) };
 }
 // Tampa da válvula: a peça logo acima de um spray desce até a base dele e o veste
 // (com a cavidade no tamanho da válvula), em vez de empilhar sobre a virola.
