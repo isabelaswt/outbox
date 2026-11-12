@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>OUTBOX</title>
-<link rel="stylesheet" href="css/app.css?v=2026-11-12.render-vidro">
+<link rel="stylesheet" href="css/app.css?v=2026-11-12.ux-icones">
 <script type="importmap">
 {"imports":{
   "three":"https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js",
@@ -29,23 +29,41 @@
   </form>
 </div>
 <div class="app">
-<aside>
-  <div class="ahead">
-    <div class="brand"><h1>OUTBOX</h1><span id="build" class="sub" style="font-variant-numeric:tabular-nums;margin:0"></span></div>
-    <div class="row"><input type="text" id="projName" placeholder="Nome do arquivo"><button class="btn sm" id="saveAs" title="Salva uma cópia com outro nome, sem mexer no original (Ctrl+Shift+S)">Salvar como…</button></div>
-    <div class="row filebar">
-      <button class="btn" id="newProduct" title="Começa do zero: sem lado a lado, sem logos e sem nome">Novo</button>
-      <button class="btn" id="openSaved" title="Abrir um projeto salvo (só ele é carregado)">Abrir…</button>
-      <button class="btn pri" id="savePreset">Salvar</button>
-      <button class="btn" id="exportBtn" title="PNG, GLB, OBJ, STL">Exportar ▾</button>
-      <button class="btn" id="moreBtn" title="JSON, lixeira, atalhos, referência, equipe">Mais ▾</button>
-    </div>
-    <div class="tip" id="saveStatus"></div>
-    <div class="tabs" id="sideTabs"><button data-t="lib">Criar</button><button data-t="build">Montar</button><button data-t="color">Cor</button><button data-t="scene">Cena</button></div>
+<header class="top">
+  <div class="brand"><h1>OUTBOX</h1><span id="build" class="sub"></span></div>
+  <input type="text" id="projName" placeholder="Nome do arquivo" title="Nome do arquivo">
+  <div class="tgroup">
+    <button class="ibtn" id="newProduct" title="Novo: começa do zero, sem lado a lado, sem logos e sem nome" aria-label="Novo"><i data-i="file-plus"></i></button>
+    <button class="ibtn" id="openSaved" title="Abrir um projeto salvo" aria-label="Abrir"><i data-i="folder-open"></i></button>
+    <button class="ibtn txt" id="savePreset" title="Salvar (Cmd/Ctrl+S)"><i data-i="device-floppy"></i>Salvar</button>
+    <button class="ibtn" id="saveAs" title="Salvar como: uma cópia com outro nome, sem mexer no original (Ctrl+Shift+S)" aria-label="Salvar como"><i data-i="copy"></i></button>
   </div>
+  <span class="tip" id="saveStatus"></span>
+  <div class="tgroup">
+    <button class="ibtn" id="undoBtn" title="Desfazer (Cmd/Ctrl+Z)" aria-label="Desfazer"><i data-i="arrow-back-up"></i></button>
+    <button class="ibtn" id="redoBtn" title="Refazer (Cmd/Ctrl+Shift+Z)" aria-label="Refazer"><i data-i="arrow-forward-up"></i></button>
+  </div>
+  <button class="cmdBtn" id="cmdBtn" title="Procurar qualquer ajuste, peça, modelo ou ação (Cmd/Ctrl+K)"><i data-i="search"></i><span>Buscar ajuste ou ação</span><kbd>⌘K</kbd></button>
+  <button class="ibtn" id="moreBtn" title="Mais: JSON, excluir salvo, equipe" aria-label="Mais"><i data-i="dots"></i></button>
+  <button class="ibtn txt pri" id="exportBtn" title="PNG, ficha técnica, GLB, OBJ, STL"><i data-i="download"></i>Exportar</button>
+  <button class="ibtn" id="logoutBtn" title="Sair" aria-label="Sair"><i data-i="logout"></i></button>
+</header>
+<nav class="rail" id="rail">
+  <button data-t="lib" title="Modelos: começar um produto, gerador, modelos prontos e salvos"><i data-i="layout-grid"></i><span>Modelos</span></button>
+  <button data-t="build" title="Peças: a pilha do produto e inserir peças"><i data-i="stack-2"></i><span>Peças</span></button>
+  <button data-t="line" title="Linha: outros produtos lado a lado"><i data-i="columns-3"></i><span>Linha</span></button>
+  <button data-t="measure" title="Medidas: volume, parede, ajustar para um volume, imagem de referência"><i data-i="ruler-measure"></i><span>Medidas</span></button>
+  <button data-t="scene" title="Cena: luz, fundo, chão, cenário e vídeo"><i data-i="bulb"></i><span>Cena</span></button>
+  <div class="railEnd">
+    <button data-a="trash" title="Lixeira: itens excluídos ficam 30 dias"><i data-i="trash"></i></button>
+    <button data-a="keys" title="Atalhos do teclado (tecla ?)"><i data-i="keyboard"></i></button>
+  </div>
+</nav>
+<aside>
 
   <div class="tab" data-t="lib">
-    <h3 style="margin-top:8px">Começar um produto</h3>
+    <h2 class="tabTitle">Modelos</h2>
+    <h3>Começar um produto</h3>
     <div class="startGrid">
       <button class="startBtn" id="startZero"><b>Do zero</b><span>Corpo + tampa básicos para montar peça por peça</span></button>
       <button class="startBtn" id="startGen"><b>Gerador de opções</b><span>Variações do atual ou opções novas com volume</span></button>
@@ -87,17 +105,19 @@
   </div>
 
   <div class="tab" data-t="build">
+    <h2 class="tabTitle">Peças</h2>
 <details open>
     <summary>Pilha de peças</summary>
-    <div class="tip">De cima para baixo, como a embalagem fica em pé. Clique numa peça (aqui ou no 3D): os controles dela abrem à direita.</div>
+    <div class="tip">De cima para baixo, como a embalagem fica em pé.</div>
     <div class="stack" id="stack"></div>
     <div class="tip">Inserir acima da peça selecionada:</div>
     <div id="addRows"></div>
     <input type="file" id="importStl" accept=".stl,model/stl" class="hidden">
   </details>
+  </div>
 
-
-
+  <div class="tab" data-t="line">
+    <h2 class="tabTitle">Linha</h2>
 <details open id="lineBox">
     <summary>Lado a lado</summary>
     <div class="tip">Outros produtos da linha, ao lado deste. Clique num deles (aqui ou no 3D) para editar.</div>
@@ -105,7 +125,10 @@
     <div class="row"><select id="lineAdd"></select><button class="btn pri sm" id="lineAddBtn" style="flex:0;min-width:104px">+ Produto</button></div>
     <div id="lineGap"></div>
   </details>
+  </div>
 
+  <div class="tab" data-t="measure">
+    <h2 class="tabTitle">Medidas</h2>
 <details open>
     <summary>Volumetria</summary>
     <div id="volFields"></div>
@@ -117,20 +140,21 @@
       <button class="btn pri sm" id="fitBtn" style="flex:0">Ajustar</button>
     </div>
   </details>
-  </div>
-
-  <div class="tab" data-t="color">
-<details open id="colorBox">
-    <summary>Cor, acabamento e conteúdo</summary>
-    <div class="chips" id="colorPick"></div>
-    <div id="pieceColor"></div>
-    <div id="lookFields" class="hidden"></div>
-    <div id="pieceLiquid"></div>
-    <div class="row hidden"><button class="btn" id="colorAll">Todas as peças com a cor do produto</button></div>
+<details>
+    <summary>Referência (imagem ou desenho técnico)</summary>
+    <div class="tip">Carregue a imagem e ela aparece na vista <b>Frente · ortográfica</b>, em escala de mm. Ajuste a altura até a embalagem da imagem bater com a grade.</div>
+    <div class="row">
+      <button class="btn" id="refBtn">Carregar imagem</button>
+      <button class="btn" id="refClear">Remover</button>
+      <input type="file" id="refFile" accept="image/*" class="hidden">
+    </div>
+    <div id="refFields"></div>
   </details>
   </div>
 
+
   <div class="tab" data-t="scene">
+    <h2 class="tabTitle">Cena</h2>
 <details open>
     <summary>Apresentação</summary>
     <div class="tip">Cenário, luz e vídeo girando para mostrar o produto. O cenário se ajusta ao tamanho do produto (e dos que estão ao lado).</div>
@@ -187,16 +211,6 @@
     </div>
 
 
-<details>
-    <summary>Referência (imagem ou desenho técnico)</summary>
-    <div class="tip">Carregue a imagem e ela aparece na vista <b>Frente · ortográfica</b>, em escala de mm. Ajuste a altura até a embalagem da imagem bater com a grade.</div>
-    <div class="row">
-      <button class="btn" id="refBtn">Carregar imagem</button>
-      <button class="btn" id="refClear">Remover</button>
-      <input type="file" id="refFile" accept="image/*" class="hidden">
-    </div>
-    <div id="refFields"></div>
-  </details>
 
 
 
@@ -218,21 +232,37 @@
     <button class="btn" id="orthoBtn">Ortográfica</button>
     <button class="btn" id="gridBtn">Grade 10 mm</button>
     <button class="btn" id="explodeBtn">Explodir</button>
-    <button class="btn" id="undoBtn" title="Desfazer (Cmd/Ctrl+Z)" aria-label="Desfazer">↶</button>
-    <button class="btn" id="redoBtn" title="Refazer (Cmd/Ctrl+Shift+Z)" aria-label="Refazer">↷</button>
     <label class="btn qual" title="Qualidade da visualização: mais alta = mais nítida e mais pesada">Qualidade <input type="range" id="viewQ" min="1" max="4" step="1" value="2"> <b id="viewQName">Boa</b></label>
     <button class="btn" id="handBtn" title="Mão: arrastar move a vista (ou segure a barra de espaço)" aria-label="Mão">✋</button>
-    <button class="btn" id="logoutBtn">Sair</button>
   </div>
   <div class="stats" id="stats"></div>
   <div class="pieceBar hidden" id="pieceBar"><b id="pieceBarName"></b><button data-p="swap" title="Trocar por outra forma">Trocar</button><button data-p="color" title="Cor e acabamento desta peça">Cor</button><button data-p="dup" title="Duplicar">Duplicar</button><button data-p="del" title="Excluir (dá para desfazer)">Excluir</button></div>
   <div class="toast" id="toast"></div>
 </main>
 <section id="inspector">
-  <div class="inspHead"><b>Peça selecionada</b><button class="btn sm" id="inspClose" title="Fechar (clique numa peça para abrir de novo)">✕</button></div>
+  <div class="inspHead">
+    <div class="inspName"><b id="inspTitle">Peça selecionada</b><button class="ibtn" id="inspClose" title="Fechar (clique numa peça para abrir de novo)" aria-label="Fechar"><i data-i="x"></i></button></div>
+    <div class="itabs" id="itabs">
+      <button data-t="forma" title="Forma: trocar, medidas, gargalo, formato, arredondamento"><i data-i="shape"></i><span>Forma</span></button>
+      <button data-t="det" title="Detalhes: gomos, frisos, entalhe, encaixe, relevo por textura"><i data-i="wave-sine"></i><span>Detalhes</span></button>
+      <button data-t="sup" title="Superfície: cor, acabamento, materiais e conteúdo"><i data-i="droplet"></i><span>Superfície</span></button>
+      <button data-t="arte" title="Logo e rótulo"><i data-i="tag"></i><span>Logo</span></button>
+    </div>
+  </div>
   <div class="itab" data-t="forma"><div class="edit" id="editor"></div></div>
+  <div class="itab" data-t="det"><div class="edit"><div id="detailHost"></div><div id="artPiece"></div><div class="tip empty" id="detailEmpty">Esta peça não tem detalhes de superfície.</div></div></div>
+  <div class="itab" data-t="sup"><div class="edit">
+<details open id="colorBox" class="grp">
+    <summary>Cor, acabamento e conteúdo</summary>
+    <div class="chips" id="colorPick"></div>
+    <div id="pieceColor"></div>
+    <div id="lookFields" class="hidden"></div>
+    <div id="pieceLiquid"></div>
+    <div class="row hidden"><button class="btn" id="colorAll">Todas as peças com a cor do produto</button></div>
+  </details>
+  </div></div>
   <div class="itab" data-t="arte">
-    <div class="edit"><div id="artPiece"></div>
+    <div class="edit">
     <details class="grp" open>
     <summary>Logotipo e rótulo</summary>
     <div class="tip">Carregue o logo em <b>SVG</b> (vetor com preenchimento) e clique no shape onde ele vai ficar. Relevo positivo sai para fora; negativo cava para dentro.</div>
@@ -248,6 +278,6 @@
 </section>
 </div>
 
-<script type="module" src="js/app.js?v=2026-11-12.render-vidro"></script>
+<script type="module" src="js/app.js?v=2026-11-12.ux-icones"></script>
 </body>
 </html>

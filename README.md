@@ -45,7 +45,8 @@ Teste local com PHP: `php -S 127.0.0.1:8767 -t .` e um `api/config.php` apontand
 - Logo/SVG aplicado na superficie com relevo para fora ou para dentro, com melhoria para suavizar serrilhado em curvas.
 - Texturas de relevo salvas na biblioteca da equipe (banco), com tamanho e força, para reaproveitar em outros frascos.
 - Materiais da equipe (cor + acabamento + difusão + IOR) salvos com nome, para aplicar no produto ou numa peça.
-- Painel em abas (Biblioteca, Montar, Cor, Cena), arquivo sempre no topo, Exportar e Mais em painéis ao lado, e a peça selecionada num painel à direita com forma, cor, relevo por textura, logo e rótulo juntos.
+- Interface como nos programas de 3D online: barra no topo (arquivo, desfazer, busca e Exportar), barra de ícones à esquerda com os modos (Modelos, Peças, Linha, Medidas, Cena) e a peça selecionada à direita em abas (Forma, Detalhes, Superfície, Logo). Ícones Tabler embutidos em `js/icons.js`.
+- Busca (Cmd/Ctrl+K): acha qualquer ajuste, painel, modelo pronto ou ação pelo nome e leva direto até ele (abre a aba e o grupo e pisca o campo).
 - Lixeira (Mais ▾): projetos, STL, texturas, materiais e HDR excluídos ficam 30 dias para restaurar ou apagar de vez.
 - Ficha técnica (Exportar ▾): página A4 com vistas de frente, lado e topo cotadas, vista 3/4, tabela de peças (medidas, gargalo, cor, acabamento) e volume, pronta para salvar em PDF.
 - Código em `index.html` (estrutura), `css/app.css` e `js/app.js`; `tools/versao.sh` troca a versão em todos os lugares.

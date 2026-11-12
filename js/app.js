@@ -17,6 +17,7 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION } from 'three-bvh-csg';
+import { icon } from './icons.js?v=2026-11-12.ux-icones';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -389,7 +390,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-12.render-vidro';
+const BUILD = '2026-11-12.ux-icones';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -5410,7 +5411,7 @@ function updatePieceBar() {
 $('#pieceBar').onclick = e => {
   const a = e.target.closest('button')?.dataset.p; if (!a) return;
   barOn = false;
-  if (a === 'swap') { openInspector(); renderEditor(); const d = $('#editor details'); if (d) { d.open = true; store.set('shape.swapOpen2', true); } $('#inspector').scrollTop = 0; }
+  if (a === 'swap') { openInspector(); setInspTab('forma'); renderEditor(); const d = $('#editor details'); if (d) { d.open = true; store.set('shape.swapOpen2', true); } $('#inspector').scrollTop = 0; }
   else if (a === 'color') $('#stack .mod.sel [data-a="cor"]')?.click();
   else $(`#stack .mod.sel [data-a="${a}"]`)?.click();
   req();
@@ -5732,7 +5733,7 @@ function renderStack() {
       if (a === 'eye') { m.hidden = !m.hidden; renderStack(); queueBuild(); return; }
       if (a === 'cor') { // bolinha de cor: abre direto o material deste módulo
         sel = i; renderStack(); renderEditor();
-        setSideTab('color'); $('#colorBox').open = true; document.querySelector('aside').scrollTop = 0;
+        openInspector(); setInspTab('sup'); $('#colorBox').open = true; $('#inspector').scrollTop = 0;
         return;
       }
       if (a === 'up') sel = moveUnit(i, 1);
@@ -5746,16 +5747,19 @@ function renderStack() {
   });
 }
 
+const DETAIL_GROUPS = new Set(['Gomos', 'Frisos', 'Entalhe', 'Encaixe']);
 function renderEditor() {
   const ed = $('#editor'); ed.innerHTML = '';
   const artHost = $('#artPiece'); artHost.innerHTML = '';
+  const detHost = $('#detailHost'); detHost.innerHTML = '';
   const colorHost = $('#pieceColor'); $('#pieceLiquid').innerHTML = '';
   sel = ownerOf(sel);
-  const m = S.modules[sel]; if (!m) return;
+  const m = S.modules[sel]; if (!m) { $('#inspTitle').textContent = 'Peça selecionada'; return; }
+  $('#inspTitle').textContent = m.name || 'Peça selecionada';
   const top = document.createElement('div');
   top.innerHTML = `<div class="row"><input type="text" value="" title="Nome da peça"></div>`;
   const nm = top.querySelector('input'); nm.value = m.name;
-  nm.oninput = () => { m.name = nm.value; renderStack(); saveLocalSoon(); };
+  nm.oninput = () => { m.name = nm.value; $('#inspTitle').textContent = m.name || 'Peça selecionada'; renderStack(); saveLocalSoon(); };
   ed.appendChild(top);
   renderSwap(ed, m);
   if (isSphereCap(m)) {
@@ -5790,7 +5794,9 @@ function renderEditor() {
     grp.innerHTML = `<summary>${title}</summary>`;
     grp.addEventListener('toggle', () => { const o = store.get('shape.openGroups', {}); o[title] = grp.open; store.set('shape.openGroups', o); });
     // cor e relevo da peça ficam na aba Arte (aparência); o inspetor fica com a forma
-    (title === 'Cor' ? colorHost : title === 'Relevo por textura' ? artHost : ed).appendChild(grp); // cor: na esquerda, abaixo da pilha
+    // Forma fica na aba Forma; o que desenha a superfície (gomos, frisos, entalhe, encaixe,
+    // relevo) fica na aba Detalhes do inspetor
+    (title === 'Cor' ? colorHost : title === 'Relevo por textura' ? artHost : DETAIL_GROUPS.has(title) ? detHost : ed).appendChild(grp);
     if (title === 'Arredondamento' && m.kind === 'placa') {
       const b = document.createElement('button'); b.className = 'btn'; b.textContent = 'Espelhar ←→';
       b.onclick = () => { [m.rTL, m.rTR, m.rBL, m.rBR, m.ox] = [m.rTR, m.rTL, m.rBR, m.rBL, -m.ox]; renderEditorKeepScroll(); queueBuild(); };
@@ -6450,9 +6456,9 @@ function renderGlobal() {
 }
 
 // ───────────────────────── painéis: abas, menus e inspetor ─────────────────────────
-// Esquerda: Biblioteca (modelos), Montar (peças, lado a lado, volume), Cor (cor, acabamento,
-// materiais e conteúdo de cada peça ou do produto) e Cena (luz, fundo, cenário, vídeo). Direita: a peça selecionada,
-// com Forma e Arte (cor, relevo por textura, logo e rótulo dela). Exportar e Mais abrem num painel ao lado. A peça selecionada abre à direita.
+// Topo: arquivo, desfazer, busca (Cmd/Ctrl+K) e Exportar. Barra de ícones à esquerda com os modos:
+// Modelos, Peças, Linha (lado a lado), Medidas (volume e referência) e Cena. Direita: a peça
+// selecionada em abas (Forma, Detalhes, Superfície = cor/acabamento/conteúdo, Logo e rótulo).
 const appEl = document.querySelector('.app');
 // Dica curta no topo de cada aba, na primeira vez (o ✕ guarda que já viu).
 const HINTS = {
@@ -6467,7 +6473,7 @@ function placeHints() {
     const k = t.dataset.t; t.querySelector(':scope > .hint')?.remove(); if (!HINTS[k] || seen[k]) return;
     const h = document.createElement('div'); h.className = 'hint'; h.textContent = HINTS[k];
     const x = document.createElement('button'); x.textContent = '✕'; x.title = 'Entendi'; x.onclick = () => { const s = store.get('shape.hintsSeen', {}); s[k] = true; store.set('shape.hintsSeen', s); h.remove(); };
-    h.appendChild(x); t.prepend(h);
+    h.appendChild(x); const ttl = t.querySelector(':scope > .tabTitle'); if (ttl) ttl.after(h); else t.prepend(h);
   });
 }
 placeHints();
@@ -6476,13 +6482,19 @@ function openStart(id) { setSideTab('lib'); const d = $(id); d.open = true; d.sc
 $('#startZero').onclick = () => { $('#newProduct').click(); };
 $('#startGen').onclick = () => openStart('#genBox');
 $('#startSilh').onclick = () => openStart('#silhBox');
+// Ícones: <i data-i="nome"> vira o SVG embutido (js/icons.js).
+document.querySelectorAll('i[data-i]').forEach(el => { el.outerHTML = icon(el.dataset.i); });
+const SIDE_TABS = ['lib', 'build', 'line', 'measure', 'scene'];
 function setSideTab(t) {
-  document.querySelectorAll('#sideTabs button').forEach(b => b.classList.toggle('on', b.dataset.t === t));
+  if (t === 'color') { openInspector(); setInspTab('sup'); return; } // a cor da peça mora no inspetor (Superfície)
+  if (!SIDE_TABS.includes(t)) t = 'build';
+  document.querySelectorAll('#rail button[data-t]').forEach(b => b.classList.toggle('on', b.dataset.t === t));
   document.querySelectorAll('aside > .tab').forEach(d => d.classList.toggle('on', d.dataset.t === t));
   store.set('shape.sideTab', t);
 }
-document.querySelectorAll('#sideTabs button').forEach(b => b.onclick = () => { setSideTab(b.dataset.t); document.querySelector('aside').scrollTop = 0; });
-{ const t = store.get('shape.sideTab', 'build'); setSideTab(t === 'art' ? 'build' : t); }
+document.querySelectorAll('#rail button[data-t]').forEach(b => b.onclick = () => { setSideTab(b.dataset.t); document.querySelector('aside').scrollTop = 0; });
+document.querySelectorAll('#rail button[data-a]').forEach(b => b.onclick = () => { $(b.dataset.a === 'trash' ? '#trashBtn' : '#keysBtn').click(); });
+setSideTab(store.get('shape.sideTab', 'build'));
 function togglePop(id) {
   const el = document.getElementById(id), open = !el.classList.contains('open');
   document.querySelectorAll('.pop.open').forEach(p => p.classList.remove('open'));
@@ -6497,7 +6509,108 @@ document.addEventListener('pointerdown', e => { // clicar fora fecha o painel (m
   document.querySelectorAll('.pop.open').forEach(p => p.classList.remove('open'));
 });
 // Peça: forma e arte (cor, relevo, logo) num painel só; "arte" rola até a cor da peça.
-function setInspTab(t) { if (t === 'arte') document.querySelector('#inspector > .itab[data-t="arte"]')?.scrollIntoView({ block: 'start' }); }
+// Peça selecionada em 4 abas: Forma, Detalhes, Superfície (cor, acabamento, conteúdo) e Logo.
+const INSP_TABS = ['forma', 'det', 'sup', 'arte'];
+function setInspTab(t) {
+  if (!INSP_TABS.includes(t)) t = 'forma';
+  document.querySelectorAll('#itabs button').forEach(b => b.classList.toggle('on', b.dataset.t === t));
+  document.querySelectorAll('#inspector > .itab').forEach(d => d.classList.toggle('on', d.dataset.t === t));
+  store.set('shape.inspTab', t);
+}
+document.querySelectorAll('#itabs button').forEach(b => b.onclick = () => { setInspTab(b.dataset.t); $('#inspector').scrollTop = 0; });
+setInspTab(store.get('shape.inspTab', 'forma'));
+
+// Busca (Cmd/Ctrl+K): qualquer ajuste, painel, modelo pronto ou ação pelo nome, como nos
+// programas de 3D online. Escolher um ajuste abre o painel/aba/grupo dele e pisca o campo.
+const cmdNorm = t => String(t || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/\s+/g, ' ').trim();
+const TAB_NAME = { lib: 'Modelos', build: 'Peças', line: 'Linha', measure: 'Medidas', scene: 'Cena' };
+const TAB_ICON = { lib: 'layout-grid', build: 'stack-2', line: 'columns-3', measure: 'ruler-measure', scene: 'bulb' };
+const ITAB_NAME = { forma: 'Peça › Forma', det: 'Peça › Detalhes', sup: 'Peça › Superfície', arte: 'Peça › Logo' };
+const ITAB_ICON = { forma: 'shape', det: 'wave-sine', sup: 'droplet', arte: 'tag' };
+function cmdEntries() {
+  const click = id => () => $(id)?.click(), view = v => () => document.querySelector(`.bar [data-view="${v}"]`)?.click();
+  const A = (t, ic, fn, w = 'Ação') => ({ t, ic, fn, w });
+  const acts = [
+    A('Salvar', 'device-floppy', click('#savePreset')), A('Salvar como…', 'copy', click('#saveAs')),
+    A('Novo produto', 'file-plus', click('#newProduct')), A('Abrir projeto salvo', 'folder-open', click('#openSaved')),
+    A('Desfazer', 'arrow-back-up', click('#undoBtn')), A('Refazer', 'arrow-forward-up', click('#redoBtn')),
+    A('Exportar… (PNG, ficha, 3D)', 'download', () => togglePop('exportPop'), 'Exportar'),
+    A('Baixar PNG', 'download', click('#dlPng'), 'Exportar'), A('Ficha técnica (PDF)', 'download', click('#dlSpec'), 'Exportar'),
+    A('Baixar GLB', 'cube', click('#dlGlb'), 'Exportar'), A('Baixar OBJ', 'cube', click('#dlObj'), 'Exportar'), A('Baixar STL', 'cube', click('#dlStl'), 'Exportar'),
+    A('Gravar vídeo girando', 'player-record', click('#spinBtn'), 'Cena'), A('Tela cheia', 'arrows-maximize', click('#fullBtn'), 'Cena'),
+    A('Vista de frente', 'eye', view('front'), 'Vista'), A('Vista de lado', 'eye', view('side'), 'Vista'), A('Vista 3/4', 'eye', view('three'), 'Vista'), A('Vista de topo', 'eye', view('top'), 'Vista'),
+    A('Ortográfica / perspectiva', 'eye', click('#orthoBtn'), 'Vista'), A('Grade 10 mm', 'eye', click('#gridBtn'), 'Vista'), A('Explodir as peças', 'eye', click('#explodeBtn'), 'Vista'),
+    A('Carregar logo (SVG)', 'tag', () => { openInspector(); setInspTab('arte'); $('#logoBtn').click(); }, 'Peça › Logo'),
+    A('Gerador de opções', 'layout-grid', click('#startGen'), 'Modelos'), A('Desenho → torno (silhueta)', 'layout-grid', click('#startSilh'), 'Modelos'),
+    A('Subir STL', 'cube', click('#stlGalBtn'), 'Modelos'), A('Imagem de referência', 'ruler-measure', click('#refBtn'), 'Medidas'),
+    A('Lixeira', 'trash', click('#trashBtn')), A('Atalhos do teclado', 'keyboard', click('#keysBtn')),
+    A('Baixar JSON do projeto', 'download', click('#exportJson'), 'Mais'), A('Abrir JSON', 'folder-open', click('#importJsonBtn'), 'Mais'),
+  ];
+  const panels = [...SIDE_TABS.map(t => A(TAB_NAME[t], TAB_ICON[t], () => setSideTab(t), 'Painel')),
+    ...INSP_TABS.map(t => A(ITAB_NAME[t], ITAB_ICON[t], () => { openInspector(); setInspTab(t); }, 'Painel'))];
+  // ajustes: rótulos dos campos e títulos dos grupos que estão na tela (de qualquer aba)
+  const where = el => { const tb = el.closest('aside > .tab'); if (tb) return TAB_NAME[tb.dataset.t];
+    const it = el.closest('#inspector > .itab'); if (it) return ITAB_NAME[it.dataset.t];
+    const pp = el.closest('.pop'); return pp ? (pp.id === 'exportPop' ? 'Exportar' : 'Mais') : ''; };
+  const ctrls = [], seen = new Set();
+  document.querySelectorAll('aside .f label, #inspector .f label, .pop .f label, aside label.chk, .pop label.chk, aside summary, #inspector summary').forEach(el => {
+    const t = el.textContent.replace(/\s+/g, ' ').trim(); const w0 = where(el); if (!t || !w0) return;
+    const sum = el.tagName === 'SUMMARY', g = sum ? '' : el.closest('details')?.querySelector(':scope > summary')?.textContent.trim();
+    const w = g && g !== t ? `${w0} › ${g}` : w0, key = t + '|' + w; if (seen.has(key)) return; seen.add(key);
+    ctrls.push({ t: t.length > 80 ? t.slice(0, 78) + '…' : t, ic: sum ? 'stack-2' : 'adjustments-horizontal', w, el });
+  });
+  const models = Object.keys(PRESETS).map(n => A(n, 'layout-grid', () => { setSideTab('lib'); const s = $('#galSearch'); s.value = n; s.oninput(); }, 'Modelo pronto'));
+  return [...acts, ...panels, ...ctrls, ...models];
+}
+function cmdGo(it) {
+  if (it.fn) { it.fn(); return; }
+  const el = it.el; if (!el.isConnected) return;
+  const tb = el.closest('aside > .tab'); if (tb) setSideTab(tb.dataset.t);
+  const itab = el.closest('#inspector > .itab'); if (itab) { openInspector(); setInspTab(itab.dataset.t); }
+  const pp = el.closest('.pop'); if (pp && !pp.classList.contains('open')) togglePop(pp.id);
+  for (let d = el.closest('details'); d; d = d.parentElement?.closest('details')) d.open = true;
+  const target = el.tagName === 'SUMMARY' ? el : el.closest('.f') || el;
+  requestAnimationFrame(() => {
+    target.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    target.classList.remove('flash'); void target.offsetWidth; target.classList.add('flash');
+    target.querySelector?.('input[type=number], select, input[type=checkbox], input[type=color]')?.focus({ preventScroll: true });
+  });
+}
+function openCmd() {
+  if (document.querySelector('.cmdDlg')) return;
+  document.querySelectorAll('.pop.open').forEach(p => p.classList.remove('open'));
+  const all = cmdEntries();
+  const dlg = document.createElement('div'); dlg.className = 'cmdDlg';
+  dlg.innerHTML = `<div class="cmdBox" role="dialog" aria-label="Buscar"><div class="cmdIn">${icon('search')}<input type="text" placeholder="Buscar ajuste, peça, modelo ou ação (ex.: gomos, luz, exportar png)" aria-label="Buscar"></div><div class="cmdList" role="listbox"></div><div class="cmdFoot"><span><kbd>↑</kbd> <kbd>↓</kbd> escolher</span><span><kbd>Enter</kbd> abrir</span><span><kbd>Esc</kbd> fechar</span></div></div>`;
+  document.body.appendChild(dlg);
+  const inp = dlg.querySelector('input'), list = dlg.querySelector('.cmdList'); let res = [], cur = 0;
+  const close = () => dlg.remove();
+  const esc = t => String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;');
+  const draw = () => {
+    const q = cmdNorm(inp.value), words = q.split(' ').filter(Boolean);
+    if (!words.length) res = all.filter(e => e.w === 'Painel' || ['Salvar', 'Exportar… (PNG, ficha, 3D)', 'Baixar PNG', 'Carregar logo (SVG)', 'Gravar vídeo girando'].includes(e.t));
+    else res = all.map((e, i) => { const t = cmdNorm(e.t), hay = t + ' ' + cmdNorm(e.w); if (!words.every(w => hay.includes(w))) return null;
+      return { e, s: (t === q ? 0 : t.startsWith(q) ? 1 : t.includes(q) ? 2 : words.every(w => t.includes(w)) ? 3 : 4) * 1000 + i }; })
+      .filter(Boolean).sort((a, b) => a.s - b.s).slice(0, 60).map(r => r.e);
+    cur = Math.min(cur, Math.max(0, res.length - 1));
+    list.innerHTML = res.length ? res.map((e, i) => `<div class="cmdItem${i === cur ? ' on' : ''}" data-i="${i}" role="option">${icon(e.ic)}<span class="t">${esc(e.t)}</span><span class="w">${esc(e.w)}</span></div>`).join('')
+      : '<div class="cmdEmpty">Nada com esse nome. Tente outra palavra (ex.: altura, vidro, sombra).</div>';
+    list.querySelector('.cmdItem.on')?.scrollIntoView({ block: 'nearest' });
+  };
+  const pick = i => { const e = res[i]; if (!e) return; close(); cmdGo(e); };
+  inp.oninput = () => { cur = 0; draw(); };
+  inp.onkeydown = e => { e.stopPropagation();
+    if (e.key === 'Escape') close();
+    else if (e.key === 'ArrowDown') { e.preventDefault(); cur = Math.min(res.length - 1, cur + 1); draw(); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); cur = Math.max(0, cur - 1); draw(); }
+    else if (e.key === 'Enter') { e.preventDefault(); pick(cur); } };
+  list.onclick = e => { const it = e.target.closest('.cmdItem'); if (it) pick(+it.dataset.i); };
+  list.onmousemove = e => { const it = e.target.closest('.cmdItem'); if (it && +it.dataset.i !== cur) { cur = +it.dataset.i; list.querySelectorAll('.cmdItem').forEach((x, i) => x.classList.toggle('on', i === cur)); } };
+  dlg.onpointerdown = e => { if (e.target === dlg) close(); };
+  draw(); inp.focus();
+}
+$('#cmdBtn').onclick = openCmd;
+document.addEventListener('keydown', e => { if ((e.metaKey || e.ctrlKey) && !e.shiftKey && !e.altKey && e.key.toLowerCase() === 'k') { e.preventDefault(); openCmd(); } });
 function openInspector() { if (appEl.classList.contains('insp-off')) { appEl.classList.remove('insp-off'); store.set('shape.inspOff', false); } }
 $('#inspClose').onclick = () => { appEl.classList.add('insp-off'); store.set('shape.inspOff', true); };
 if (store.get('shape.inspOff', false)) appEl.classList.add('insp-off');
