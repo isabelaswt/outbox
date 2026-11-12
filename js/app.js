@@ -388,7 +388,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-11.area-lisa-rotulo';
+const BUILD = '2026-11-11.materiais-troca';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -5882,16 +5882,30 @@ function refitAfterBodySwap(bi) {
   const body = S.modules[bi];
   const d = body.cutTop > 0 ? null : builtInThread(body); // com a rosca trocada, segue como corpo comum
   if (d) { // rosca no próprio corpo: sai o gargalo e a tampa veste a rosca
-    if (S.modules[bi + 1]?.kind === 'gargalo') S.modules.splice(bi + 1, 1);
+    // Guarda o padrão do gargalo e o tamanho da tampa/válvula em relação a ele:
+    // ao voltar para um corpo comum, tudo volta igual (antes o gargalo voltava no
+    // maior padrão que cabia e a válvula inflava junto).
+    const n0 = S.modules[bi + 1];
+    if (n0?.kind === 'gargalo') {
+      S.neckMemo = { std: n0.wantStd || n0.neckStd, embed: n0.embed };
+      const c1 = S.modules[bi + 2]; if (c1 && !c1.vol && c1.kind !== 'gargalo') c1.fitR = collarOf(c1) / n0.W;
+      S.modules.splice(bi + 1, 1);
+    }
     const c = S.modules[bi + 1]; if (c && !c.vol && c.kind !== 'gargalo') c.gap = draftCoverGap(d, body, c);
     return;
   }
   const c0 = S.modules[bi + 1];
+  let oldW = 0;
   if (c0 && !c0.vol && c0.kind !== 'gargalo' && !S.modules.some(x => x.kind === 'gargalo')) { // vinha de um corpo com rosca própria
-    S.modules.splice(bi + 1, 0, NECK(neckFor(body))); c0.gap = 0;
+    const memo = S.neckMemo, topW = neckTopW(body);
+    const std = memo && NECKS[memo.std] && (body.cutTop > 0 || NECKS[memo.std].W + 2 * 1.8 <= topW) ? memo.std : neckFor(body);
+    const nk = NECK(std); if (memo?.std) nk.wantStd = memo.std; if (memo?.embed != null) nk.embed = memo.embed;
+    S.modules.splice(bi + 1, 0, nk); c0.gap = 0;
+    oldW = c0.fitR ? collarOf(c0) / c0.fitR : 0; // a válvula volta à proporção que tinha com o gargalo
+    delete c0.fitR;
   }
   const ni = neckIdx(bi); if (ni < 0) return;
-  let neck = S.modules[ni]; const oldW = neck.W;
+  let neck = S.modules[ni]; oldW ||= neck.W;
   // O padrão escolhido fica guardado (want): um corpo estreito pode pedir um gargalo
   // menor, mas ao voltar para um corpo que cabe, o padrão original volta.
   const want = neck.wantStd || (NECKS[neck.neckStd] ? neck.neckStd : null);
@@ -5907,6 +5921,8 @@ function refitAfterBodySwap(bi) {
     if (neck.W !== oldW) scaleModule(c, neck.W / oldW);
     if (collarOf(c) < minValveW(c, neck.W)) scaleModule(c, minValveW(c, neck.W) / collarOf(c));
   } else {
+    // Tampa acompanha o gargalo na mesma razão (vai e volta igual) e nunca fica estreita demais.
+    if (neck.W !== oldW) scaleModule(c, neck.W / oldW);
     const need = neck.W + 0.6 + 2 * S.wall;
     if (collarOf(c) < need) scaleModule(c, need / collarOf(c));
   }
@@ -5992,7 +6008,12 @@ function renderColorBox(m) {
   const who = document.createElement('div'); who.className = 'tip'; who.style.margin = '0 0 4px';
   who.innerHTML = own ? `Editando a cor de <b>${esc(m.name)}</b>.` : `Editando a cor do produto (vale para as peças sem cor própria, incluindo <b>${esc(m.name)}</b>).`;
   box.append(sw, who);
+  matLibrary(box, () => (m.own ? m : S), () => { renderColorBox(m); renderGlobal(); renderStack(); queueBuild(); });
   matRow(box, () => (m.own ? m : S), d => { renderColorBox(m); renderGlobal(); if (d) { renderStack(); queueBuild(); } });
+  // material atual em esfera, ao lado da cor (como nos programas de 3D)
+  { const pv = document.createElement('div'); pv.className = 'matNow'; pv.innerHTML = '<img alt=""><span></span>';
+    pv.querySelector('span').textContent = (FINISHES.find(f => f[0] === o.finish) || [, ''])[1]; box.appendChild(pv);
+    queueSphere(pv.querySelector('img'), { color: o.color || S.color, finish: o.finish || S.finish, difus: o.difus, ior: o.ior }); }
   field(box, o, ['color', own ? 'Cor da peça' : 'Cor do produto', 'color'], () => { renderStack(); queueBuild(); });
   field(box, o, ['finish', 'Acabamento', 'finish'], () => { delete o.difus; delete o.ior; renderColorBox(m); renderStack(); queueBuild(); });
   field(box, o, ['difus', 'Difusão (0 = liso/polido, 100 = bem difuso)', 0, 100, 1, '%', null, x => presetDif(x.finish)], queueBuild);
@@ -6301,6 +6322,103 @@ async function saveMatToLib(o, name) {
   await refreshMatLib();
 }
 // Linha "Materiais salvos": bolinhas com nome (clique aplica, ✕ exclui) + salvar o atual.
+// ───────── biblioteca de materiais prontos (como nos programas de 3D) ─────────
+// Cada material é cor + acabamento (+ difusão/IOR); a miniatura é uma esfera com o
+// material de verdade, sobre um fundo listrado (o vidro mostra a refração).
+const MAT_PRESETS = [
+  ['Vidro', [
+    { n: 'Vidro incolor', color: '#eef3f1', finish: 'vidro' }, { n: 'Vidro âmbar', color: '#b5651d', finish: 'vidro' },
+    { n: 'Vidro verde', color: '#2f6b4f', finish: 'vidro' }, { n: 'Vidro azul cobalto', color: '#2348a0', finish: 'vidro' },
+    { n: 'Vidro fumê', color: '#6b6865', finish: 'vidro' }, { n: 'Vidro rosé', color: '#e7b9b4', finish: 'vidro' },
+    { n: 'Vidro jateado', color: '#eef3f1', finish: 'vidroFosco' }, { n: 'Âmbar jateado', color: '#b5651d', finish: 'vidroFosco' },
+    { n: 'Verde jateado', color: '#5f8f78', finish: 'vidroFosco' }, { n: 'Vidro semi-jateado', color: '#e9eeec', finish: 'vidroSemi' },
+    { n: 'Cristal pesado', color: '#f4f8f7', finish: 'vidro', ior: 1.9 }, { n: 'Rosa jateado', color: '#e3a9ad', finish: 'vidroFosco' },
+  ]],
+  ['Plástico', [
+    { n: 'PET cristal', color: '#eef3f2', finish: 'pet' }, { n: 'PET âmbar', color: '#a8641f', finish: 'pet' },
+    { n: 'PET azul', color: '#7fa7cf', finish: 'pet' }, { n: 'PET semi-fosco', color: '#f1f1ee', finish: 'petSemi' },
+    { n: 'PET fosco', color: '#e8e6e1', finish: 'petFosco' }, { n: 'PP branco', color: '#f3f1ec', finish: 'acetinado' },
+    { n: 'PP preto', color: '#1a1a1a', finish: 'acetinado' }, { n: 'Brilhante preto', color: '#111111', finish: 'brilho' },
+    { n: 'Brilhante branco', color: '#f7f6f2', finish: 'brilho' }, { n: 'Soft touch nude', color: '#d9b8a0', finish: 'fosco', difus: 95 },
+    { n: 'Soft touch sálvia', color: '#9aab8f', finish: 'fosco', difus: 95 }, { n: 'Soft touch preto', color: '#232323', finish: 'fosco', difus: 95 },
+  ]],
+  ['Metal', [
+    { n: 'Cromado', color: '#e8e8e8', finish: 'metal', difus: 3 }, { n: 'Alumínio escovado', color: '#c8c9cb', finish: 'metal', difus: 45 },
+    { n: 'Alumínio fosco', color: '#b9babc', finish: 'metal', difus: 70 }, { n: 'Dourado polido', color: '#d9b04c', finish: 'metal', difus: 6 },
+    { n: 'Dourado escovado', color: '#cfa64a', finish: 'metal', difus: 40 }, { n: 'Ouro rosé', color: '#dba491', finish: 'metal', difus: 18 },
+    { n: 'Cobre', color: '#c27a4a', finish: 'metal', difus: 22 }, { n: 'Bronze', color: '#9c7445', finish: 'metal', difus: 35 },
+    { n: 'Champagne', color: '#e3d2b0', finish: 'metal', difus: 25 }, { n: 'Grafite', color: '#4a4a4c', finish: 'metal', difus: 30 },
+    { n: 'Preto metálico', color: '#262626', finish: 'metal', difus: 12 }, { n: 'Prata acetinada', color: '#d6d7d9', finish: 'metal', difus: 25 },
+  ]],
+  ['Fosco, cerâmica e perolado', [
+    { n: 'Cerâmica branca', color: '#f2efe8', finish: 'brilho', difus: 12 }, { n: 'Terracota', color: '#b9633f', finish: 'fosco' },
+    { n: 'Porcelana', color: '#f6f4ef', finish: 'acetinado', difus: 22 }, { n: 'Bege fosco', color: '#e6dccb', finish: 'fosco' },
+    { n: 'Rosa fosco', color: '#e4b8b4', finish: 'fosco' }, { n: 'Verde oliva', color: '#7c7f4e', finish: 'fosco' },
+    { n: 'Azul pó', color: '#a8bccf', finish: 'fosco' }, { n: 'Lilás', color: '#b7a6c9', finish: 'acetinado' },
+    { n: 'Perolado branco', color: '#f4efe6', finish: 'perolado' }, { n: 'Perolado rosa', color: '#efc9c4', finish: 'perolado' },
+    { n: 'Perolado lavanda', color: '#cdbfe0', finish: 'perolado' }, { n: 'Perolado champagne', color: '#eadcc0', finish: 'perolado' },
+  ]],
+];
+let sphR = null, sphScene, sphCam, sphMesh;
+const sphCache = new Map();
+function sphereThumb(f) {
+  const key = [f.color, f.finish, f.difus ?? '', f.ior ?? ''].join('|');
+  if (sphCache.has(key)) return sphCache.get(key);
+  if (!sphR) {
+    sphR = new THREE.WebGLRenderer({ antialias: true, alpha: false, preserveDrawingBuffer: true });
+    sphR.setPixelRatio(1); sphR.setSize(128, 128); sphR.toneMapping = renderer.toneMapping; sphR.toneMappingExposure = renderer.toneMappingExposure;
+    sphScene = new THREE.Scene(); sphScene.background = new THREE.Color('#2b2b2d');
+    sphScene.environment = new THREE.PMREMGenerator(sphR).fromScene(new RoomEnvironment(), 0.04).texture; sphScene.environmentIntensity = 0.75;
+    const k = new THREE.DirectionalLight(0xffffff, 2.2); k.position.set(-60, 80, 60); sphScene.add(k);
+    const r = new THREE.DirectionalLight(0xdfe8ff, 1.2); r.position.set(60, 30, -40); sphScene.add(r);
+    // fundo listrado atrás da esfera: o vidro refrata as listras (como no preview dos apps de 3D)
+    const cv = document.createElement('canvas'); cv.width = cv.height = 64; const cx = cv.getContext('2d');
+    cx.fillStyle = '#2b2b2d'; cx.fillRect(0, 0, 64, 64); cx.fillStyle = '#76767c'; for (let i = 0; i < 64; i += 16) cx.fillRect(i, 0, 8, 64);
+    const tx = new THREE.CanvasTexture(cv); tx.colorSpace = THREE.SRGBColorSpace;
+    const bg = new THREE.Mesh(new THREE.PlaneGeometry(130, 130), new THREE.MeshBasicMaterial({ map: tx })); bg.position.z = -44; bg.rotation.z = 0.5; sphScene.add(bg);
+    // esfera de 40 mm (tamanho real: espessura e refração do vidro são em mm)
+    sphCam = new THREE.PerspectiveCamera(30, 1, 1, 1000); sphCam.position.set(0, 7, 88); sphCam.lookAt(0, 0, 0);
+    sphMesh = new THREE.Mesh(new THREE.SphereGeometry(20, 96, 64)); sphScene.add(sphMesh);
+  }
+  const look = f.difus != null || f.ior != null ? { dif: f.difus, ior: f.ior } : null;
+  sphMesh.material = material(f.color, f.finish, null, null, look);
+  sphR.render(sphScene, sphCam);
+  const url = sphR.domElement.toDataURL('image/jpeg', 0.88); sphCache.set(key, url); return url;
+}
+let sphQueue = [], sphBusy = false;
+function queueSphere(img, f) {
+  const hit = sphCache.get([f.color, f.finish, f.difus ?? '', f.ior ?? ''].join('|'));
+  if (hit) { img.src = hit; return; }
+  sphQueue.push({ img, f });
+  if (!sphBusy) { sphBusy = true; const pump = () => { const j = sphQueue.shift(); if (!j) { sphBusy = false; return; } if (j.img.isConnected) j.img.src = sphereThumb(j.f); setTimeout(pump, 10); }; setTimeout(pump, 0); }
+}
+// Grade de esferas por categoria; clicar aplica na peça (ou no produto).
+function matLibrary(box, o0, apply) {
+  const tgt = () => typeof o0 === 'function' ? o0() : o0;
+  const d = document.createElement('details'); d.className = 'matLib'; d.open = store.get('shape.matLibOpen', true) !== false;
+  d.addEventListener('toggle', () => store.set('shape.matLibOpen', d.open));
+  d.innerHTML = '<summary>Biblioteca de materiais</summary>';
+  const o = tgt(), cur = MAT_PRESETS.flatMap(([, l]) => l).find(f => f.color === o.color && f.finish === o.finish && (f.difus ?? null) === (o.difus ?? null));
+  const openCat = store.get('shape.matCat', 'Vidro');
+  for (const [cat, list] of MAT_PRESETS) {
+    const sec = document.createElement('details'); sec.className = 'matCat'; sec.open = cat === openCat || cur && list.includes(cur);
+    sec.innerHTML = `<summary>${cat}</summary><div class="matGrid"></div>`;
+    sec.addEventListener('toggle', () => { if (sec.open) store.set('shape.matCat', cat); });
+    const grid = sec.querySelector('.matGrid');
+    for (const f of list) {
+      const c = document.createElement('button'); c.className = 'matCard' + (f === cur ? ' on' : ''); c.title = f.n;
+      c.innerHTML = `<img alt=""><span>${f.n}</span>`;
+      c.onclick = () => {
+        const t = tgt(); t.color = f.color; t.finish = f.finish; delete t.difus; delete t.ior;
+        if (f.difus != null) t.difus = f.difus; if (f.ior != null) t.ior = f.ior;
+        apply(f); setTimeout(() => toastUndo(`Material: ${f.n}`), 50);
+      };
+      grid.appendChild(c); queueSphere(c.querySelector('img'), f);
+    }
+    d.appendChild(sec);
+  }
+  box.appendChild(d);
+}
 function matRow(box, o0, apply) {
   const tgt = () => typeof o0 === 'function' ? o0() : o0; // alvo na hora do clique (peça com cor própria ou produto)
   const wrap = document.createElement('div'); wrap.className = 'matRow';
