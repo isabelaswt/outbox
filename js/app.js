@@ -388,7 +388,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-11.fundo-curvo4';
+const BUILD = '2026-11-11.fundo-curvo5';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -4612,13 +4612,16 @@ function offsetInner(m, y0, inset, lift) {
   const g0 = moduleGeo({ ...withoutRelief(m), _dense: R0 ? lift + R0 + 3 : 0 }, y0, { lo: false }); if (!g0) return null;
   const g = g0.index ? g0 : g0; if (!g.attributes.normal) g.computeVertexNormals();
   const p = g.attributes.position.array, n = g.attributes.normal.array, yb = y0 + lift;
+  // anel por anel: conta os pontos de um anel ANTES de deslocar (depois, com gomos
+  // fundos, crista e vale saem em alturas diferentes e os anéis não eram reconhecidos)
+  let seg0 = 1; while (seg0 < p.length / 3 && Math.abs(p[seg0 * 3 + 1] - p[1]) < 1e-5) seg0++;
   for (let i = 0; i < p.length; i += 3) {
     p[i] -= n[i] * inset; p[i + 1] -= n[i + 1] * inset; p[i + 2] -= n[i + 2] * inset;
   }
   // Fundo grosso (vidro): a cavidade não termina num corte reto — o piso é plano no
   // meio e sobe em curva até a parede, como no vidro soprado/prensado de verdade.
   const R = R0;
-  if (R > 0) roundInnerFloor(p, yb, R);
+  if (R > 0) roundInnerFloor(p, yb, R, seg0);
   else for (let i = 1; i < p.length; i += 3) if (p[i] < yb) p[i] = yb;
   g.attributes.position.needsUpdate = true; g.computeVertexNormals(); g.computeBoundingBox();
   return g;
@@ -4626,7 +4629,7 @@ function offsetInner(m, y0, inset, lift) {
 // Leva tudo o que está abaixo de yb+R para um piso com canto arredondado de raio R.
 // Cada vértice é medido pelo caminho "do centro, pelo piso, subindo a parede"; esse
 // caminho é redistribuído no piso (até D−R) e no quarto de círculo (até a parede D).
-function roundInnerFloor(p, yb, R0) {
+function roundInnerFloor(p, yb, R0, seg0 = 0) {
   const R = R0;
   let cx = 0, cz = 0, k = 0, ymin = Infinity;
   for (let i = 0; i < p.length; i += 3) { cx += p[i]; cz += p[i + 2]; k++; ymin = Math.min(ymin, p[i + 1]); }
@@ -4635,8 +4638,10 @@ function roundInnerFloor(p, yb, R0) {
   // A malha do loft é anel por anel, com o mesmo número de pontos: cada ponto do canto
   // usa o raio da parede no MESMO índice do primeiro anel acima do canto (exato; por
   // fatias de ângulo o raio variava de ponto a ponto e o canto saía ondulado).
-  const n = p.length / 3; let seg = 1; while (seg < n && Math.abs(p[seg * 3 + 1] - p[1]) < 1e-5) seg++;
-  let ringT = -1; if (seg >= 8) for (let r = 0; (r + 1) * seg <= n; r++) { if (p[r * seg * 3 + 1] >= yT) { ringT = r; break; } }
+  const n = p.length / 3; let seg = seg0; if (!(seg >= 8)) { seg = 1; while (seg < n && Math.abs(p[seg * 3 + 1] - p[1]) < 1e-5) seg++; }
+  // altura de cada anel = a menor dos seus pontos (crista e vale podem diferir um pouco)
+  const ringY = r => { let m = Infinity; for (let j = 0; j < seg; j++) m = Math.min(m, p[(r * seg + j) * 3 + 1]); return m; };
+  let ringT = -1; if (seg >= 8) for (let r = 0; (r + 1) * seg <= n; r++) { if (ringY(r) >= yT) { ringT = r; break; } }
   const exactD = ringT >= 0 ? j => { const k = (ringT * seg + j) * 3; return Math.hypot(p[k] - cx, p[k + 2] - cz); } : null;
   const ringN = ringT >= 0 ? Math.floor(n / seg) : 0;
   // reserva (malha fora do padrão): raio por fatias de ângulo
@@ -4649,8 +4654,9 @@ function roundInnerFloor(p, yb, R0) {
   // parede de dentro original, por índice e altura: a curva nunca passa dela (em frasco
   // que afina embaixo, como pera/gomos, a cavidade furava a parede)
   const rY = [], rD = [];
-  if (Dt) for (let r = 0; r < ringN; r++) { const k0 = r * seg * 3; rY.push(p[k0 + 1]); const row = new Float32Array(seg); for (let j = 0; j < seg; j++) { const k = k0 + j * 3; row[j] = Math.hypot(p[k] - cx, p[k + 2] - cz); } rD.push(row); }
-  const wallAt = (j, y) => { let lo = 0; while (lo < rY.length - 2 && rY[lo + 1] < y) lo++; const t = clamp((y - rY[lo]) / Math.max(rY[lo + 1] - rY[lo], 1e-6), 0, 1); return rD[lo][j] + (rD[lo + 1][j] - rD[lo][j]) * t; };
+  if (Dt) for (let r = 0; r < ringN; r++) { const k0 = r * seg * 3, ry = new Float32Array(seg), row = new Float32Array(seg); for (let j = 0; j < seg; j++) { const k = k0 + j * 3; ry[j] = p[k + 1]; row[j] = Math.hypot(p[k] - cx, p[k + 2] - cz); } rY.push(ry); rD.push(row); }
+  // raio da parede no índice j na altura y (cada ponto com a sua altura)
+  const wallAt = (j, y) => { let lo = 0; while (lo < rY.length - 2 && rY[lo + 1][j] < y) lo++; const y0r = rY[lo][j], y1r = rY[lo + 1][j]; const t = clamp((y - y0r) / Math.max(y1r - y0r, 1e-6), 0, 1); return rD[lo][j] + (rD[lo + 1][j] - rD[lo][j]) * t; };
   const yT0 = yT;
   for (let i = 0; i < p.length; i += 3) {
     const y = p[i + 1]; if (y >= yT0) continue;
