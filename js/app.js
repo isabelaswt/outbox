@@ -388,7 +388,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-11.fundo-curvo';
+const BUILD = '2026-11-11.fundo-curvo3';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -499,6 +499,7 @@ function profSamples(m, lo) {
   addReliefSamples(m, S, lo);
   ribSamples(m, S);
   panelSamples(m, S, lo);
+  if (m._dense > 0) for (let y = 0; y <= m._dense; y += 0.3) S.push(y);
 
   const z = m.shoulderK > 0 && profShoulder(m.prof); // ombro reto: amostras na curva comprimida
   if (z) { const sc = Math.max(0.03, 1 - m.shoulderK / 100), tS = z.t1 - (z.t1 - z.t0) * sc, nz = lo ? 8 : 32;
@@ -1050,6 +1051,7 @@ function ySamples(m, rB, rT, lo) {
   addReliefSamples(m, S, lo);
   if (!lo) ribSamples(m, S);
   panelSamples(m, S, lo);
+  if (m._dense > 0) for (let y = 0; y <= m._dense; y += 0.3) S.push(y);
 
   return [...new Set(S.filter(y => y >= 0 && y <= h).map(y => +y.toFixed(3)))].sort((a, b) => a - b);
 }
@@ -4605,7 +4607,9 @@ function withoutRelief(m) {
   return { ...m, reliefImg: '', reliefName: '', reliefDepth: 0 };
 }
 function offsetInner(m, y0, inset, lift) {
-  const g0 = moduleGeo(withoutRelief(m), y0, { lo: false }); if (!g0) return null;
+  const R0 = lift > S.wall + 0.5 ? clamp(Math.min(m.W, m.D) / 2 * 0.32, 2, 9) : 0;
+  // fundo curvo: anéis finos até acima do canto (com poucos anéis a curva saía em degraus)
+  const g0 = moduleGeo({ ...withoutRelief(m), _dense: R0 ? lift + R0 + 3 : 0 }, y0, { lo: false }); if (!g0) return null;
   const g = g0.index ? g0 : g0; if (!g.attributes.normal) g.computeVertexNormals();
   const p = g.attributes.position.array, n = g.attributes.normal.array, yb = y0 + lift;
   for (let i = 0; i < p.length; i += 3) {
@@ -4613,7 +4617,7 @@ function offsetInner(m, y0, inset, lift) {
   }
   // Fundo grosso (vidro): a cavidade não termina num corte reto — o piso é plano no
   // meio e sobe em curva até a parede, como no vidro soprado/prensado de verdade.
-  const R = lift > S.wall + 0.5 ? clamp(Math.min(m.W, m.D) / 2 * 0.32, 2, 9) : 0;
+  const R = R0;
   if (R > 0) roundInnerFloor(p, yb, R);
   else for (let i = 1; i < p.length; i += 3) if (p[i] < yb) p[i] = yb;
   g.attributes.position.needsUpdate = true; g.computeVertexNormals(); g.computeBoundingBox();
@@ -4626,18 +4630,36 @@ function roundInnerFloor(p, yb, R) {
   let cx = 0, cz = 0, k = 0, ymin = Infinity;
   for (let i = 0; i < p.length; i += 3) { cx += p[i]; cz += p[i + 2]; k++; ymin = Math.min(ymin, p[i + 1]); }
   cx /= k; cz /= k;
-  const NB = 180, D = new Float32Array(NB), yT = yb + R, ang = (x, z) => ((Math.atan2(z - cz, x - cx) / TAU + 1) % 1) * NB | 0;
-  // raio da parede em cada direção, logo acima do canto
-  for (let i = 0; i < p.length; i += 3) { const y = p[i + 1]; if (y >= yT && y <= yT + 4) { const a = ang(p[i], p[i + 2]), d = Math.hypot(p[i] - cx, p[i + 2] - cz); if (d > D[a]) D[a] = d; } }
-  for (let a = 0; a < NB; a++) if (!D[a]) { let j = 1; while (j < NB && !D[(a + j) % NB] && !D[(a - j + NB) % NB]) j++; D[a] = D[(a + j) % NB] || D[(a - j + NB) % NB]; }
+  const NB = 360, D = new Float32Array(NB), yT = yb + R, ang = (x, z) => ((Math.atan2(z - cz, x - cx) / TAU + 1) % 1) * NB | 0;
+  // A malha do loft é anel por anel, com o mesmo número de pontos: cada ponto do canto
+  // usa o raio da parede no MESMO índice do primeiro anel acima do canto (exato; por
+  // fatias de ângulo o raio variava de ponto a ponto e o canto saía ondulado).
+  const n = p.length / 3; let seg = 1; while (seg < n && Math.abs(p[seg * 3 + 1] - p[1]) < 1e-5) seg++;
+  let ringT = -1; if (seg >= 8) for (let r = 0; (r + 1) * seg <= n; r++) { if (p[r * seg * 3 + 1] >= yT) { ringT = r; break; } }
+  const exactD = ringT >= 0 ? j => { const k = (ringT * seg + j) * 3; return Math.hypot(p[k] - cx, p[k + 2] - cz); } : null;
+  const ringN = ringT >= 0 ? Math.floor(n / seg) : 0;
+  // reserva (malha fora do padrão): raio por fatias de ângulo
+  if (!exactD) {
+    for (let i = 0; i < p.length; i += 3) { const y = p[i + 1]; if (y >= yT && y <= yT + 4) { const a = ang(p[i], p[i + 2]), d = Math.hypot(p[i] - cx, p[i + 2] - cz); if (d > D[a]) D[a] = d; } }
+    for (let a = 0; a < NB; a++) if (!D[a]) { let j = 1; while (j < NB && !D[(a + j) % NB] && !D[(a - j + NB) % NB]) j++; D[a] = D[(a + j) % NB] || D[(a - j + NB) % NB]; }
+  }
+  const Dt = exactD ? Array.from({ length: seg }, (_, j) => exactD(j)) : null;
+  // parede de dentro original, por índice e altura: a curva nunca passa dela (em frasco
+  // que afina embaixo, como pera/gomos, a cavidade furava a parede)
+  const rY = [], rD = [];
+  if (Dt) for (let r = 0; r < ringN; r++) { const k0 = r * seg * 3; rY.push(p[k0 + 1]); const row = new Float32Array(seg); for (let j = 0; j < seg; j++) { const k = k0 + j * 3; row[j] = Math.hypot(p[k] - cx, p[k + 2] - cz); } rD.push(row); }
+  const wallAt = (j, y) => { let lo = 0; while (lo < rY.length - 2 && rY[lo + 1] < y) lo++; const t = clamp((y - rY[lo]) / Math.max(rY[lo + 1] - rY[lo], 1e-6), 0, 1); return rD[lo][j] + (rD[lo + 1][j] - rD[lo][j]) * t; };
   for (let i = 0; i < p.length; i += 3) {
     const y = p[i + 1]; if (y >= yT) continue;
-    const dx = p[i] - cx, dz = p[i + 2] - cz, d = Math.hypot(dx, dz), Dw = D[ang(p[i], p[i + 2])];
+    const vi = i / 3, dx = p[i] - cx, dz = p[i + 2] - cz, d = Math.hypot(dx, dz);
+    const Dw = Dt && vi < ringN * seg ? Dt[vi % seg] : Dt ? d : D[ang(p[i], p[i + 2])]; // ponto do tampo (centro): fica no piso
     if (!(Dw > R * 1.2)) { if (y < yb) p[i + 1] = yb; continue; }
     const Lo = Dw + (yT - ymin), Lt = Dw - R + Math.PI * R / 2;
-    const path = Math.min(d, Dw) + Math.max(0, y - ymin) * (d > Dw * 0.85 ? 1 : 0), q = clamp(path / Lo, 0, 1) * Lt;
+    // caminho sempre crescente pelo perfil (centro → canto → parede): sem dobras na malha
+    const path = d + Math.max(0, y - ymin), q = clamp(path / Lo, 0, 1) * Lt;
     let r, yy;
     if (q <= Dw - R) { r = q; yy = yb; } else { const f = (q - (Dw - R)) / R; r = Dw - R + R * Math.sin(f); yy = yb + R - R * Math.cos(f); }
+    if (Dt && vi < ringN * seg && rY.length > 1) r = Math.min(r, wallAt(vi % seg, yy) - 0.05);
     const s = d > 1e-6 ? r / d : 0; p[i] = cx + dx * s; p[i + 2] = cz + dz * s; p[i + 1] = yy;
   }
 }
@@ -4666,11 +4688,14 @@ function liquidMeshes(m, y0, levelAbs, lift = S.wall) {
       attenuationColor: tint, attenuationDistance: Math.max(8, (b.max.x - b.min.x) * 1.5) });
     const et = gc.clone().multiply(new THREE.Color(0.4, 0.49, 0.46)).multiply(tint), etv = `vec3(${et.r.toFixed(3)}, ${et.g.toFixed(3)}, ${et.b.toFixed(3)})`;
     lm.onBeforeCompile = sh => { sh.fragmentShader = sh.fragmentShader.replace('#include <transmission_fragment>', THREE.ShaderChunk.transmission_fragment
+      // de lado (borda e canto do fundo) a lente perde espessura: o desvio grande pegava o
+      // fundo claro de fora do frasco (cunha clara e fio escuro no canto de baixo)
+      .replace('material.thickness = thickness;', 'material.thickness = thickness * smoothstep(0.08, 0.55, abs(dot(normalize(vViewPosition), normal))) * (1.0 - smoothstep(0.05, 0.5, -normal.y));')
       .replace('totalDiffuse = mix( totalDiffuse, transmitted.rgb, material.transmission );',
         `float frE = pow(1.0 - abs(dot(normalize(vViewPosition), normal)), 1.6);
 \ttransmitted.rgb *= mix(vec3(1.0), ${etv}, clamp(frE * 1.1, 0.0, 1.0));
 \ttotalDiffuse = mix( totalDiffuse, transmitted.rgb, material.transmission );`)); };
-    lm.customProgramCacheKey = () => 'perfumeLiq' + etv;
+    lm.customProgramCacheKey = () => 'perfumeLiq3' + etv;
     const out = [new THREE.Mesh(inner, lm)];
     const cap = level < b.max.y - 0.05 ? levelCap(inner, level - 0.01) : null;
     if (cap) { const cm = lm.clone(); cm.clippingPlanes = []; cm.onBeforeCompile = lm.onBeforeCompile; cm.customProgramCacheKey = lm.customProgramCacheKey; out.push(new THREE.Mesh(cap, cm)); } // a superfície do nível espelha a luz
