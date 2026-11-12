@@ -388,7 +388,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-11.jateado-um-fundo';
+const BUILD = '2026-11-11.colar-ombro';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -2071,7 +2071,8 @@ function surfaceDrop(m, R) {
   }
   if (m.kind !== 'giro') return 0;
   const a0 = Math.max(m.W, m.D) / 2 * (m.taper || 100) / 100, rT = clamp(m.rTop || 0, 0, Math.min(m.h / 2, a0));
-  const rTw = m.rTopW > 0 ? m.rTopW : rT;
+  // recuo por eixo (gargalo limitando o raio): vale o do lado mais largo, que é o usado aqui
+  const rTw = m.rTopWa != null ? (m.W >= m.D ? m.rTopWa : m.rTopWb) : m.rTopW > 0 ? m.rTopW : rT;
   if (!rT || R <= a0 - rTw) return 0;
   const g = clamp((a0 - R) / rTw, 0, 1);
   return rT * (1 - Math.sqrt(Math.max(0, 1 - (1 - g) ** 2)));
