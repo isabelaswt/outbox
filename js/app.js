@@ -388,7 +388,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-11.hdri-calibrado';
+const BUILD = '2026-11-11.pipeta-escura';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -3070,7 +3070,8 @@ function multTubeMat(a0, a1, tint) {
 }
 // Reflexo de vidro (camada que só clareia, por cima): duas linhas finas verticais
 // das luzes do estúdio e um brilho leve de borda — é o que faz a pipeta ler como vidro.
-function glassGlintMat(k = 1) {
+function glassGlintMat(k = 1, tint = '#ffffff') {
+  const tc = new THREE.Color(tint), tv = `vec3(${tc.r.toFixed(3)}, ${tc.g.toFixed(3)}, ${tc.b.toFixed(3)})`;
   const g = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, depthWrite: false, side: THREE.FrontSide,
     blending: THREE.AdditiveBlending, toneMapped: false });
   g.onBeforeCompile = sh => {
@@ -3082,10 +3083,10 @@ function glassGlintMat(k = 1) {
        float s2 = pow(max(dot(reflect(-v, n), normalize(vec3(0.6, 0.1, 0.8))), 0.0), 90.0);
        float fr = pow(1.0 - abs(dot(v, n)), 3.0);
        float b = (s1 * 0.85 + s2 * 0.45 + fr * 0.12 + 0.03) * ${k.toFixed(2)};
-       gl_FragColor = vec4(vec3(b), 1.0);`)
+       gl_FragColor = vec4(${tv} * b, 1.0);`)
       .replace('#include <tonemapping_fragment>', '').replace('#include <colorspace_fragment>', '');
   };
-  g.customProgramCacheKey = () => 'brilhoVidro' + k;
+  g.customProgramCacheKey = () => 'brilhoVidro' + k + tv;
   return g;
 }
 const plastMat = multTubeMat(0.015, 0.45, '#8c9294');
@@ -4942,11 +4943,18 @@ function buildInto(product, S, explodeAmt = 0) {
         // Num frasco opaco ela fica escondida; no Explodir ou no frasco transparente aparece.
         const frost = base.some(e => e.m.vol && isFrost(e.m.own ? e.m.finish : S.finish));
         // pipeta como o pescante: em multiplicar, quase invisível no meio e desenhada nas bordas
-        const pipMat = frost ? multTubeMat(0.01, 0.16, '#a8adaf')
-          : liqBody ? multTubeMat(0.03, 0.62, new THREE.Color(liqBody.liqColor).multiplyScalar(0.5)) : multTubeMat(0.02, 0.55, '#7d8486');
+        // Vista através do frasco: num vidro escuro (âmbar, fumê) a pipeta escurece junto
+        // e o reflexo dela vem fraco e na cor do vidro (branco somado ficava "aceso").
+        const gb = base.find(e => e.m.vol), gCol = new THREE.Color(gb ? (gb.m.own ? gb.m.color : S.color) : '#ffffff');
+        const gFin = gb ? (gb.m.own ? gb.m.finish : S.finish) : '', seen = isGlass(gFin) ? gCol : new THREE.Color('#ffffff');
+        const lum = 0.2126 * seen.r + 0.7152 * seen.g + 0.0722 * seen.b; // linear: âmbar ≈ 0,1
+        const dim = clamp(lum * 1.8, 0.06, 1), gTint = seen.clone().lerp(new THREE.Color('#ffffff'), clamp(lum, 0, 1) * 0.6);
+        const pipBase = frost ? new THREE.Color('#a8adaf') : liqBody ? new THREE.Color(liqBody.liqColor).multiplyScalar(0.5) : new THREE.Color('#7d8486');
+        const pipMat = frost ? multTubeMat(0.01, 0.16, pipBase.multiply(gTint))
+          : liqBody ? multTubeMat(0.03, 0.62, pipBase.multiply(gTint)) : multTubeMat(0.02 + 0.08 * (1 - dim), 0.55, pipBase.multiply(gTint));
         const pm = new THREE.Mesh(pg, pipMat); pm.userData.idx = idx;
         pm.name = `${String(idx + 1).padStart(2, '0')}_pipeta`; pm.renderOrder = 18; product.add(pm);
-        const gl = new THREE.Mesh(pg, glassGlintMat(frost ? 0.25 : 1)); gl.userData.idx = idx; // reflexo do vidro por cima
+        const gl = new THREE.Mesh(pg, glassGlintMat((frost ? 0.25 : 1) * dim, gTint)); gl.userData.idx = idx; // reflexo do vidro por cima
         gl.name = `${String(idx + 1).padStart(2, '0')}_pipeta`; gl.renderOrder = 19; product.add(gl);
       } else if (pg) add(pg, 'pescante');
     }
