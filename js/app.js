@@ -390,7 +390,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-12.vidro-de-cima3';
+const BUILD = '2026-11-12.frisos-arredondados';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -1086,9 +1086,14 @@ function addReliefSamples(m, S, lo) {
 function ribSamples(m, S) {
   for (const b of m.ribs || []) {
     for (let y = b.y0 - 0.6; y <= b.y1 + 0.6; y += 0.4) S.push(y);
-    [0, 0.15, 0.3, 0.6].forEach(e => S.push(b.y0 + e, b.y1 - e));
+    const eL = ribEnd(b); [0, 0.15, 0.3, 0.6, eL * 0.5, eL].forEach(e => S.push(b.y0 + e, b.y1 - e));
   }
 }
+// Arredondamento dos frisos (0 = quinas vivas, quadrado; 100 = onda redonda). Sem o campo
+// gravado, cada formato mantém o perfil de antes (canelado ~40%, ondulado 100%).
+const ribRound = b => clamp((b.round ?? (b.shape === 'reto' ? 40 : 100)) / 100, 0, 1);
+// Pontas da faixa: com arredondamento, o friso termina afinando em curva (não num corte).
+const ribEnd = b => b.round == null ? 0.6 : 0.6 + 2.4 * ribRound(b);
 // Frisos de uma faixa na altura ly: fator 0..1 da profundidade no ângulo th.
 // Ângulo "por comprimento de contorno": em seção achatada/quadrada o ângulo do
 // parâmetro anda devagar nas faces e rápido nos cantos; frisos distribuídos por ele
@@ -1126,9 +1131,11 @@ function ribAt(m, ly, th) {
   let best = null;
   for (const b of m.ribs || []) {
     if (ly < b.y0 || ly > b.y1 || !(b.k > 0)) continue;
-    const edge = smooth(0, 0.6, Math.min(ly - b.y0, b.y1 - ly)), c = Math.cos(b.k * th);
-    // onda: ondulação suave; reto: canelado com fundo e topo planos
-    const f = b.shape === 'reto' ? 0.5 - 0.5 * Math.tanh(3 * c) / Math.tanh(3) : 0.5 - 0.5 * c;
+    const edge = smooth(0, ribEnd(b), Math.min(ly - b.y0, b.y1 - ly)), c = Math.cos(b.k * th);
+    // perfil: onda (redondo) até canelado de quinas vivas, pelo arredondamento
+    let f;
+    if (b.round == null) f = b.shape === 'reto' ? 0.5 - 0.5 * Math.tanh(3 * c) / Math.tanh(3) : 0.5 - 0.5 * c; // como antes
+    else { const r = ribRound(b), sh = 0.05 + 7.95 * (1 - r) ** 2; f = r > 0.995 ? 0.5 - 0.5 * c : 0.5 - 0.5 * Math.tanh(sh * c) / Math.tanh(sh); }
     const v = b.d * f * edge;
     if (!best || v > best) best = v;
   }
@@ -6555,7 +6562,8 @@ function renderRibs(ed, m) {
     field(el, b, ['y1', 'Termina em', 0, Math.max(1, r1(m.h)), 0.1, 'mm'], ch);
     field(el, b, ['k', 'Quantidade de frisos', 4, 240, 1, ''], ch);
     field(el, b, ['d', 'Profundidade', 0.05, 2, 0.05, 'mm'], ch);
-    field(el, b, ['shape', 'Formato', 'select', [['onda', 'Ondulado (suave)'], ['reto', 'Canelado (reto)']]], ch);
+    field(el, b, ['shape', 'Formato', 'select', [['onda', 'Ondulado (suave)'], ['reto', 'Canelado (reto)']]], () => { delete b.round; ch(); renderEditorKeepScroll(); }); // trocar o formato volta ao arredondamento dele
+    field(el, b, ['round', 'Arredondamento dos frisos (0 = quinas vivas, 100 = redondo; também afina as pontas)', 0, 100, 1, '%', null, () => Math.round(ribRound(b) * 100)], ch);
     box.appendChild(el);
   });
   const add = document.createElement('button'); add.className = 'btn'; add.textContent = '+ Faixa de frisos';
