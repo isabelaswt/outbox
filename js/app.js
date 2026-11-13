@@ -390,7 +390,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-13.liquido-compila';
+const BUILD = '2026-11-13.perfume-contraste2';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -3361,7 +3361,7 @@ function material(color, finish, band = null, thick, look = null) {
   // uniform compartilhado: mudar a parede não recompila shader nem cria material novo.
   WALL_U.value = clamp(S?.wall ?? 1.2, 0.3, 4);
   const wk = '';
-  const lk = look ? `|d${look.dif ?? ''}|i${look.ior ?? ''}${look.cheio ? '|c' + look.cheio : ''}` : '';
+  const lk = look ? `|d${look.dif ?? ''}|i${look.ior ?? ''}${look.cheio ? '|c' + look.cheio : ''}${look.brilho ? '|g' + look.brilho : ''}` : '';
   const key = color + finish + (band ? '|b' + bandKey(band) : '') + (thick ? '|t' + thick : '') + lk;
   if (matCache.has(key)) return matCache.get(key);
   const m = new THREE.MeshPhysicalMaterial({ color, roughness: 0.5, metalness: 0 });
@@ -3390,6 +3390,7 @@ function material(color, finish, band = null, thick, look = null) {
   // esverdeada, como vidro de verdade visto de lado) — sem isso o frasco sumia e
   // só sobrava um filete branco em volta do líquido.
   if (finish === 'vidro') { m.roughness = 0.05; m.transmission = 1; m.thickness = thick ?? 4; m.ior = 1.5; m.depthWrite = false;
+    const gb = look?.brilho ? new THREE.Color(look.brilho).lerp(new THREE.Color('#ffffff'), 0.55) : null, glowB = gb ? `vec3(${gb.r.toFixed(3)}, ${gb.g.toFixed(3)}, ${gb.b.toFixed(3)})` : '';
     const et = new THREE.Color(color).multiply(new THREE.Color(0.58, 0.66, 0.63)), etv = `vec3(${et.r.toFixed(3)}, ${et.g.toFixed(3)}, ${et.b.toFixed(3)})`;
     m.onBeforeCompile = sh => { wallUniform(sh); if (band) { bandVert(sh, band); floorCut(sh, band); }
       // A cor vem da espessura atravessada (absorção), não de uma tinta por igual: de frente
@@ -3405,9 +3406,9 @@ function material(color, finish, band = null, thick, look = null) {
 \tfloat dnS = smoothstep(0.1, 0.75, -inverseTransformDirection(normal, viewMatrix).y); // parte de baixo da curva
 \ttransmitted.rgb *= mix(vec3(1.0), ${etv}, clamp(frE * (0.9 + uWall * 0.5) * (1.0 - 0.6 * dnS), 0.0, 1.0));
 \ttransmitted.rgb = mix(transmitted.rgb, max(transmitted.rgb, sqrt(max(material.diffuseColor, vec3(1e-4))) * 0.86), 0.65 * dnS); // fundo arredondado: a luz do estúdio entra pela base e acende (sem isso virava cinza chumbo)
-\t${band ? `transmitted.rgb *= mix(vec3(1.0), mix(vec3(1.0), material.diffuseColor, 0.35) * 0.82, ${bandF(band)}); // fundo grosso: um pouco mais denso, no mesmo tom (ao quadrado virava vermelho escuro)` : ''}
+\t${band ? (look?.brilho ? `transmitted.rgb *= mix(vec3(1.0), ${glowB} * 1.06, ${bandF(band)}); // fundo grosso com perfume: claro e aquecido pela luz que atravessou o líquido` : `transmitted.rgb *= mix(vec3(1.0), mix(vec3(1.0), material.diffuseColor, 0.35) * 0.82, ${bandF(band)}); // fundo grosso: um pouco mais denso, no mesmo tom (ao quadrado virava vermelho escuro)`) : ''}
 \ttotalDiffuse = mix( totalDiffuse, transmitted.rgb, material.transmission );`)); };
-    m.customProgramCacheKey = () => 'vidro8' + color + bandKey(band) + wk; }
+    m.customProgramCacheKey = () => 'vidro9' + color + glowB + bandKey(band) + wk; }
   // Vidro fosco (jateado): transmite a luz mas embaça o que está dentro e atrás.
   // Contraste: parte da luz é espalhada pelo jateado (o vidro ganha o degradê do
   // estúdio), a cor fica mais densa com a espessura e o contorno pega um brilho
@@ -4988,8 +4989,11 @@ function liquidMeshes(m, y0, levelAbs, lift = S.wall) {
     // própria nem branco por cima, que deixava leitoso). O brilho fica por conta do vidro.
     const mult = m.liqType === 'perfume', see = mult ? 1 : clr * 0.75;
     const seeThru = (frost || mult) && clr > 0 ? `
-       { float path = mix(2.8, 1.0, lensN) * (1.0 + ${frost ? '0.6' : '0.22'} * deep); // caminho da luz dentro do líquido (jateado: como estava, aprovado; vidro liso: menos, a base puxava para vermelho)
-         vec3 thruL = ${f3(bgL)} * pow(max(${f3(tv)}, vec3(1e-3)), vec3(path)) * (1.04 - 0.14 * deep)${mult ? '' : ' + vec3(0.16) * menisco'}; // (transparente: + o brilho do nível)
+       { float path = mix(2.8, 1.0, lensN) * ${frost ? '(1.0 + 0.6 * deep)' : '(1.0 + 0.5 * (1.0 - deep))'}; // caminho da luz dentro do líquido
+         // jateado: como estava (aprovado). Vidro liso, como na foto de perfume: topo denso e escuro
+         // (a tampa e o ombro tapam a luz) e a cor clareando e acendendo para baixo (a luz entra
+         // pelo fundo de vidro); logo abaixo do nível, uma faixa mais escura dá o contraste do topo.
+         vec3 thruL = ${f3(bgL)} * pow(max(${f3(tv)}, vec3(1e-3)), vec3(path)) * ${frost ? '(1.04 - 0.14 * deep)' : 'mix(0.74, 1.14, smoothstep(0.0, 0.9, deep)) * (1.0 - 0.22 * exp(-dTop / 6.0))'}${mult ? '' : ' + vec3(0.16) * menisco'}; // (transparente: + o brilho do nível)
          outgoingLight = mix(outgoingLight, thruL${mult ? '' : ' + outgoingLight * 0.1'}, ${see.toFixed(3)});${mult && !frost ? `
          // contorno do líquido aceso (a divisa líquido/vidro reflete a luz): fio claro nas bordas
          // e o canto curvo de baixo marcado em cima do fundo grosso, como no vidro de verdade
@@ -5155,7 +5159,9 @@ function buildInto(product, S, explodeAmt = 0) {
     const overcap = !m0.vol && (m0.gap || 0) < -0.4 * m0.h;
     const thick = !isGlass(finM) || overcap ? undefined : r1(!m0.vol ? clamp(Math.min(m.W, m.D) * 0.35, 4, 18) : clamp(Math.min(m.W, m.D) * 0.3, 4, 30));
     const own = ms.own ? ms : S, cheio = m0.vol && m0.liq && isFrost(finM) ? (m0.liqColor || '#ffffff') : false; // cor do conteúdo: tinge de leve a base jateada
-    const look = own.difus != null || own.ior != null || cheio ? { dif: own.difus, ior: own.ior, cheio } : null;
+    // perfume no vidro liso: a base grossa recebe a luz que passou pelo líquido (clara e na cor dele, como na foto)
+    const brilho = m0.vol && m0.liq && finM === 'vidro' && ['perfume', 'transparente'].includes(m0.liqType) ? (m0.liqColor || '#ffffff') : false;
+    const look = own.difus != null || own.ior != null || cheio || brilho ? { dif: own.difus, ior: own.ior, cheio, brilho } : null;
     // Tampa jateada/fosca vestindo a válvula: só a casca de fora. A parede da cavidade
     // aparecia nítida através do jateado, como se estivesse na frente; sem ela, o que está
     // dentro (a válvula) aparece embaçado pelo vidro, como na peça real.
