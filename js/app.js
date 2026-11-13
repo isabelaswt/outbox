@@ -390,7 +390,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-13.vidro-sem-listras6';
+const BUILD = '2026-11-13.liquido-ve-tras';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -4989,17 +4989,32 @@ function liquidMeshes(m, y0, levelAbs, lift = S.wall) {
        { float path = mix(2.8, 1.0, lensN) * (1.0 + 0.6 * deep); // caminho da luz dentro do líquido
          vec3 thruL = ${f3(bgL)} * pow(max(${f3(tv)}, vec3(1e-3)), vec3(path)) * (1.08 - 0.18 * deep) + vec3(0.16) * menisco; // + o brilho do nível
          outgoingLight = mix(outgoingLight, thruL + outgoingLight * 0.1, ${see.toFixed(3)}); }` : '';
+    // Parede de trás vista através do líquido: no frasco canelado, os frisos do outro lado
+    // aparecem como listras verticais por dentro do líquido (é o que mostra que ele é
+    // transparente, como nos perfumes de vidro canelado). Para cada ponto, acha onde o
+    // olhar sai do outro lado do cilindro e desenha o friso que está ali.
+    const ribsB = (m.ribs || []).filter(rb => rb.k > 0 && rb.d > 0);
+    const backAmp = ribsB.length ? clamp(Math.max(...ribsB.map(rb => rb.d)) / 1.5, 0.35, 1) * (frost ? (m.finish === 'vidroSemi' || S.finish === 'vidroSemi' ? 0.09 : 0.04) : 0.2) : 0;
+    const bcx = ((b.min.x + b.max.x) / 2).toFixed(2), bcz = ((b.min.z + b.max.z) / 2).toFixed(2), bR = Math.max(1, (b.max.x - b.min.x) / 2).toFixed(2);
+    const backRib = backAmp ? `
+       { float sl = clamp(vLiqLat / ${bR} * 0.86, -0.995, 0.995); // a lente do líquido aperta o que está atrás
+         vec3 pb = vLiqRight * sl - vLiqToCam * sqrt(1.0 - sl * sl);
+         float thb = atan(pb.z, pb.x), rb = 0.0;
+         ${ribsB.map(rb => `if (vLiqY > ${(y0 + rb.y0 + 0.5).toFixed(2)} && vLiqY < ${(y0 + rb.y1 - 0.5).toFixed(2)}) rb = cos(${rb.k.toFixed(1)} * thb);`).join(' ')}
+         float fade = smoothstep(0.995, 0.6, abs(sl)); // nas bordas o desvio embaralha: some
+         outgoingLight *= 1.0 + ${backAmp.toFixed(3)} * rb * fade; }` : '';
     mat.onBeforeCompile = sh => {
-      sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying float vLiqY;').replace('#include <begin_vertex>', '#include <begin_vertex>\nvLiqY = position.y;');
-      sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying float vLiqY;').replace('#include <opaque_fragment>',
+      sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying float vLiqY;' + (backRib ? ' varying float vLiqLat; varying vec3 vLiqRight; varying vec3 vLiqToCam;' : '')).replace('#include <begin_vertex>', '#include <begin_vertex>\nvLiqY = position.y;')
+        .replace('#include <project_vertex>', '#include <project_vertex>' + (backRib ? `\n\tvLiqLat = mvPosition.x - (modelViewMatrix * vec4(${bcx}, transformed.y, ${bcz}, 1.0)).x;\n\tmat3 mvT = transpose(mat3(modelViewMatrix)); vLiqRight = normalize(mvT * vec3(1.0, 0.0, 0.0)); vLiqToCam = normalize(mvT * vec3(0.0, 0.0, 1.0));` : ''));
+      sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying float vLiqY;' + (backRib ? ' varying float vLiqLat; varying vec3 vLiqRight; varying vec3 vLiqToCam;' : '')).replace('#include <opaque_fragment>',
       `float lensN = smoothstep(0.08, 0.95, abs(dot(normalize(vViewPosition), normal)));
        outgoingLight = mix(outgoingLight * diffuseColor.rgb * 0.95, outgoingLight * 1.18, lensN);
        float dTop = max(${lv} - vLiqY, 0.0), deep = clamp(dTop / ${span}, 0.0, 1.0);
        outgoingLight *= mix(1.12, 0.72, deep);
        float menisco = exp(-dTop / 2.2);
-       outgoingLight += (diffuseColor.rgb * 0.45 + vec3(0.22)) * menisco;${seeThru}
+       outgoingLight += (diffuseColor.rgb * 0.45 + vec3(0.22)) * menisco;${seeThru}${backRib}
        #include <opaque_fragment>`); };
-    mat.customProgramCacheKey = () => 'liqLente' + lv + '_' + span + seeThru;
+    mat.customProgramCacheKey = () => 'liqLente' + lv + '_' + span + seeThru + backRib;
   }
   if (clear && glass && !frost) mat.depthWrite = false; // o pescante (desenhado depois) aparece através do líquido
   const out = [new THREE.Mesh(inner, mat)];
