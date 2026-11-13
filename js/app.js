@@ -390,7 +390,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-13.logo-cavado';
+const BUILD = '2026-11-13.base-limpa6';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -3304,7 +3304,8 @@ const floorCut = (sh, band) => { if (!band) return;
 const bandF = (band, w = 0.9) => { const y = band.y; // w: meia largura da transição (mm)
   const yE = band.R > 0 ? `(${y.toFixed(2)} + ${band.R.toFixed(2)} * (1.0 - sqrt(max(0.0, 1.0 - pow(clamp((vBandU - ${(band.r - band.R).toFixed(2)}) / ${band.R.toFixed(2)}, 0.0, 1.0), 2.0)))))` : y.toFixed(2);
   return `(1.0 - smoothstep(${yE} - ${w.toFixed(2)}, ${yE} + ${w.toFixed(2)}, vObjY))`; };
-const bandKey = band => band ? `${band.y.toFixed(1)}_${(band.R || 0).toFixed(1)}_${(band.r || 0).toFixed(1)}_${(band.cx || 0).toFixed(1)}_${(band.cz || 0).toFixed(1)}` : '';
+const v3 = c => { const k = new THREE.Color(c); return `vec3(${k.r.toFixed(3)}, ${k.g.toFixed(3)}, ${k.b.toFixed(3)})`; };
+const bandKey = band => band ? `${band.liq || ''}${band.bg || ''}${band.y.toFixed(1)}_${(band.R || 0).toFixed(1)}_${(band.r || 0).toFixed(1)}_${(band.cx || 0).toFixed(1)}_${(band.cz || 0).toFixed(1)}` : '';
 const WALL_U = { value: 1.2 };
 const COAT_U = { value: 1 }; // reforço do reflexo do estúdio no verniz do plástico (por luz)
 const wallUniform = sh => { sh.uniforms.uWall = WALL_U; sh.fragmentShader = 'uniform float uWall;\n' + sh.fragmentShader; };
@@ -3407,7 +3408,7 @@ function material(color, finish, band = null, thick, look = null) {
         .replace('n, v, material.roughness, material.diffuseColor', 'n, v, material.roughness, vec3(1.0)')
         // ombro (vidro virado para cima): parede fina de verdade, sem a lente grossa — com ela o
         // ombro puxava o líquido de baixo (oval claro deformado no topo e anel rosa acima do nível)
-        .replace('material.thickness = thickness;', 'material.thickness = thickness * mix(1.0, 0.08, smoothstep(0.12, 0.55, inverseTransformDirection(normal, viewMatrix).y));')
+        .replace('material.thickness = thickness;', 'material.thickness = thickness * mix(1.0, 0.08, smoothstep(0.12, 0.55, inverseTransformDirection(normal, viewMatrix).y))' + (band ? ' * (1.0 - 0.7 * ' + bandF(band) + ')' : '') + ';') // fundo grosso: lente curta (a grossa entortava até o chão sombreado embaixo e o vidro ficava cinza)
         .replace('totalDiffuse = mix( totalDiffuse, transmitted.rgb, material.transmission );',
           `float faceV = abs(dot(normalize(vViewPosition), normal)), frE = pow(1.0 - faceV, 2.4); // só a borda de verdade escurece (em ângulo médio, como canelado visto de cima, tirava ~30% da luz)
 \ttransmitted.rgb *= pow(max(material.diffuseColor, vec3(1e-4)), vec3(mix(0.5, 1.7, smoothstep(0.3, 0.92, 1.0 - faceV))));
@@ -3415,9 +3416,14 @@ function material(color, finish, band = null, thick, look = null) {
 \tfloat dnS = smoothstep(0.1, 0.75, -inverseTransformDirection(normal, viewMatrix).y); // parte de baixo da curva
 \ttransmitted.rgb *= mix(vec3(1.0), ${etv}, clamp(frE * (0.9 + uWall * 0.5) * (1.0 - 0.6 * dnS), 0.0, 1.0));
 \ttransmitted.rgb = mix(transmitted.rgb, max(transmitted.rgb, sqrt(max(material.diffuseColor, vec3(1e-4))) * 0.86), 0.65 * dnS); // fundo arredondado: a luz do estúdio entra pela base e acende (sem isso virava cinza chumbo)
-\t${band ? `transmitted.rgb *= mix(vec3(1.0), mix(vec3(1.0), material.diffuseColor, 0.35) * 0.82, ${bandF(band)}); // fundo grosso: um pouco mais denso, no mesmo tom (ao quadrado virava vermelho escuro)` : ''}
+\t${band ? `transmitted.rgb *= mix(vec3(1.0), mix(vec3(1.0), material.diffuseColor, 0.35), ${bandF(band)}); // fundo grosso: vidro límpido, só no tom do vidro (escurecido virava cinza)
+	{ float bF = ${bandF(band)}; vec3 bgC = ${v3(band.bg)};
+	  float lT = dot(transmitted.rgb, vec3(0.2126, 0.7152, 0.0722)), lB = dot(bgC, vec3(0.2126, 0.7152, 0.0722));
+	  transmitted.rgb *= mix(1.0, clamp(lB * 0.97 / max(lT, 1e-3), 1.0, 1.6), 0.9 * bF); // o bloco de vidro é claro como o fundo (antes pegava o chão sombreado e ficava cinza)${band.liq ? `
+	  transmitted.rgb *= mix(vec3(1.0), ${v3(band.liq)}, 0.55 * bF * smoothstep(0.35, 0.85, 1.0 - faceV)); // laterais do fundo grosso refletem o perfume de dentro (como a base do frasco de verdade)` : ''}
+	}` : ''}
 \ttotalDiffuse = mix( totalDiffuse, transmitted.rgb, material.transmission );`)); };
-    m.customProgramCacheKey = () => 'vidro9' + color + bandKey(band) + wk; }
+    m.customProgramCacheKey = () => 'vidro11' + color + bandKey(band) + wk; }
   // Vidro fosco (jateado): transmite a luz mas embaça o que está dentro e atrás.
   // Contraste: parte da luz é espalhada pelo jateado (o vidro ganha o degradê do
   // estúdio), a cor fica mais densa com a espessura e o contorno pega um brilho
@@ -4839,9 +4845,12 @@ function offsetInner(m, y0, inset, lift) {
   // Fundo grosso (vidro): a cavidade não termina num corte reto — o piso é plano no
   // meio e sobe em curva até a parede, como no vidro soprado/prensado de verdade.
   const R = R0;
-  if (R > 0) roundInnerFloor(p, yb, R, seg0);
-  else for (let i = 1; i < p.length; i += 3) if (p[i] < yb) p[i] = yb;
+  const fn = R > 0 ? roundInnerFloor(p, yb, R, seg0) : null;
+  if (!fn) for (let i = 1; i < p.length; i += 3) if (p[i] < yb) p[i] = yb;
   g.attributes.position.needsUpdate = true; g.computeVertexNormals(); g.computeBoundingBox();
+  // piso e canto: normais pela própria curva (no centro muitos anéis se juntam em triângulos
+  // minúsculos e a normal calculada saía torta — uma estrela clara no meio do líquido)
+  if (fn) { const na = g.attributes.normal.array; for (const [k, x, y, z] of fn) { na[k] = x; na[k + 1] = y; na[k + 2] = z; } g.attributes.normal.needsUpdate = true; }
   return g;
 }
 // Leva tudo o que está abaixo de yb+R para um piso com canto arredondado de raio R.
@@ -4875,21 +4884,24 @@ function roundInnerFloor(p, yb, R0, seg0 = 0) {
   if (Dt) for (let r = 0; r < ringN; r++) { const k0 = r * seg * 3, ry = new Float32Array(seg), row = new Float32Array(seg); for (let j = 0; j < seg; j++) { const k = k0 + j * 3; ry[j] = p[k + 1]; row[j] = Math.hypot(p[k] - cx, p[k + 2] - cz); } rY.push(ry); rD.push(row); }
   // raio da parede no índice j na altura y (cada ponto com a sua altura)
   const wallAt = (j, y) => { let lo = 0; while (lo < rY.length - 2 && rY[lo + 1][j] < y) lo++; const y0r = rY[lo][j], y1r = rY[lo + 1][j]; const t = clamp((y - y0r) / Math.max(y1r - y0r, 1e-6), 0, 1); return rD[lo][j] + (rD[lo + 1][j] - rD[lo][j]) * t; };
-  const yT0 = yT;
+  const yT0 = yT, fn = [];
   for (let i = 0; i < p.length; i += 3) {
     const y = p[i + 1]; if (y >= yT0) continue;
     const vi = i / 3, dx = p[i] - cx, dz = p[i + 2] - cz, d = Math.hypot(dx, dz);
     const Dw = Dt && vi < ringN * seg ? Dt[vi % seg] : Dt ? d : D[ang(p[i], p[i + 2])]; // ponto do tampo (centro): fica no piso
     const R = Math.min(Dt && Dmax > 0 && vi < ringN * seg ? R0 * Dw / Dmax : R0, Dw * 0.97), yT = yb + R; // bola: o canto vira a curva inteira
-    if (!(Dw > 0.5 && R > 0.3)) { if (y < yb) p[i + 1] = yb; continue; }
+    if (!(Dw > 0.5 && R > 0.3)) { if (y < yb) { p[i + 1] = yb; fn.push([i, 0, -1, 0]); } continue; }
     const Lo = Dw + (yT0 - ymin), Lt = Dw - R + Math.PI * R / 2;
     // caminho sempre crescente pelo perfil (centro → canto → parede): sem dobras na malha
     const path = d + Math.max(0, y - ymin), q = clamp(path / Lo, 0, 1) * Lt;
     let r, yy;
-    if (q <= Dw - R) { r = q; yy = yb; } else { const f = (q - (Dw - R)) / R; r = Dw - R + R * Math.sin(f); yy = yb + R - R * Math.cos(f); }
+    let fa = 0;
+    if (q <= Dw - R) { r = q; yy = yb; } else { fa = (q - (Dw - R)) / R; r = Dw - R + R * Math.sin(fa); yy = yb + R - R * Math.cos(fa); }
     if (Dt && vi < ringN * seg && rY.length > 1) r = Math.min(r, wallAt(vi % seg, yy) - 0.05);
     const s = d > 1e-6 ? r / d : 0; p[i] = cx + dx * s; p[i + 2] = cz + dz * s; p[i + 1] = yy;
+    if (fa < Math.PI / 2 * 0.9) { const sn = Math.sin(fa), ux = d > 1e-6 ? dx / d : 0, uz = d > 1e-6 ? dz / d : 0; fn.push([i, ux * sn, -Math.cos(fa), uz * sn]); } // perto da parede fica a normal calculada
   }
+  return fn;
 }
 function liquidMeshes(m, y0, levelAbs, lift = S.wall) {
   if (FILL_SOLIDS[m.liqType]) return solidFill(m, y0, levelAbs, lift);
@@ -5177,6 +5189,7 @@ function buildInto(product, S, explodeAmt = 0) {
     let band = null;
     if (firstBody && thickBase(finM)) { if (!g.boundingBox) g.computeBoundingBox(); const gb = g.boundingBox;
       band = { y: y0 + fundo, R: floorR(m, fundo), r: Math.min(m.W, m.D) / 2 - Math.max(0.35, S.wall - 0.9),
+        liq: m0.liq && ['perfume', 'transparente'].includes(m0.liqType) ? m0.liqColor : '', bg: S.bg || '#eeeeee',
         cx: (gb.min.x + gb.max.x) / 2, cz: (gb.min.z + gb.max.z) / 2 }; }
     const mesh = new THREE.Mesh(g, material(colM, finM, band, thick, look));
     if (mesh.material.transmission > 0 && !mesh.material.depthWrite) glassAxis(mesh);
