@@ -390,7 +390,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-13.perfume-multiplica';
+const BUILD = '2026-11-13.jateado-fundo-suave';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -3294,9 +3294,9 @@ const floorCut = (sh, band) => { if (!band) return;
   sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying vec3 vCutN; varying vec2 vCutXZ;')
     .replace('void main() {', `void main() {\n\t{ vec3 cn = normalize(vCutN); vec2 rr = vCutXZ - vec2(${f(band.cx || 0)}, ${f(band.cz || 0)});\n\t  if (vObjY > ${f(y - 0.3)} && vObjY < ${f(top)} && cn.y > 0.2 && dot(cn.xz, rr) <= 0.02 * length(rr)) discard; } // piso/canto de dentro do fundo grosso`);
 };
-const bandF = band => { const y = band.y;
+const bandF = (band, w = 0.9) => { const y = band.y; // w: meia largura da transição (mm)
   const yE = band.R > 0 ? `(${y.toFixed(2)} + ${band.R.toFixed(2)} * (1.0 - sqrt(max(0.0, 1.0 - pow(clamp((vBandU - ${(band.r - band.R).toFixed(2)}) / ${band.R.toFixed(2)}, 0.0, 1.0), 2.0)))))` : y.toFixed(2);
-  return `(1.0 - smoothstep(${yE} - 0.9, ${yE} + 0.9, vObjY))`; };
+  return `(1.0 - smoothstep(${yE} - ${w.toFixed(2)}, ${yE} + ${w.toFixed(2)}, vObjY))`; };
 const bandKey = band => band ? `${band.y.toFixed(1)}_${(band.R || 0).toFixed(1)}_${(band.r || 0).toFixed(1)}_${(band.cx || 0).toFixed(1)}_${(band.cz || 0).toFixed(1)}` : '';
 const WALL_U = { value: 1.2 };
 const COAT_U = { value: 1 }; // reforço do reflexo do estúdio no verniz do plástico (por luz)
@@ -3456,11 +3456,11 @@ function material(color, finish, band = null, thick, look = null) {
 \tfloat dnS = smoothstep(0.1, 0.75, -inverseTransformDirection(normal, viewMatrix).y); // parte de baixo da curva (fundo arredondado)
 \tmaterial.thickness = thickness * 0.35;`)
         .replace('totalDiffuse = mix( totalDiffuse, transmitted.rgb, material.transmission );',
-          `${cheio ? 'transmitted.rgb = max(mix(vec3(dot(transmitted.rgb, vec3(0.2126, 0.7152, 0.0722))), transmitted.rgb, 1.2), 0.0);\n\t' : ''}transmitted.rgb *= mix(1.0, ${semi ? '0.62' : pf ? '0.85' : '0.66'}, clamp(frEdge * (0.55 + uWall * 0.6) * (1.0 - 0.7 * dnS), 0.0, 1.0))${band ? (cheio ? ' * mix(vec3(1.0), ' + glowV + ' * (0.97 - 0.55 * clamp(frEdge * 1.4, 0.0, 1.0)), ' + bandF(band) + ')' : ' * mix(1.0, 0.62, ' + bandF(band) + ')') : ''}; // borda e fundo mais densos, mesmo tom (com conteúdo, a base jateada é um bloco claro só)
+          `${cheio ? 'transmitted.rgb = max(mix(vec3(dot(transmitted.rgb, vec3(0.2126, 0.7152, 0.0722))), transmitted.rgb, 1.2), 0.0);\n\t' : ''}transmitted.rgb *= mix(1.0, ${semi ? '0.62' : pf ? '0.85' : '0.66'}, clamp(frEdge * (0.55 + uWall * 0.6) * (1.0 - 0.7 * dnS), 0.0, 1.0))${band && !cheio ? ' * mix(1.0, 0.62, ' + bandF(band) + ')' : ''};${band && cheio ? '\n\ttransmitted.rgb = mix(transmitted.rgb, ' + glowV + ' * (0.97 - 0.55 * clamp(frEdge * 1.4, 0.0, 1.0)), ' + bandF(band, 2.6) + '); // uma passagem só: o conteúdo esmaece na base jateada seguindo a curva do fundo (antes: borda do líquido + faixa rosada reta por cima)' : ''} // borda e fundo mais densos, mesmo tom (com conteúdo, a base jateada é um bloco claro só)
 \ttotalDiffuse = mix( totalDiffuse, transmitted.rgb, material.transmission );`)
         + '\n#if defined(USE_TRANSMISSION) && defined(USE_ENVMAP)\n totalDiffuse += material.diffuseColor * (transmitted.rgb / max(max(transmitted.r, max(transmitted.g, transmitted.b)), 0.05)) * getIBLIrradiance(-normal) * ' + (semi ? '0.62' : ps ? '0.0' : '0.8') + (look?.cheio && !pf ? ' * 0.35' : '') + ' * max(pow(1.0 - frEdge, 1.5), 0.75 * dnS); // luz de trás acende o miolo (e o fundo arredondado recebe a luz de cima, em vez de virar cinza), na cor do que está atrás\n#endif'); // só com transmissão (o PNG transparente desliga ela por um instante)
     };
-    m.customProgramCacheKey = () => (semi ? 'semi5' : ps ? 'pets2' : pf ? 'petf3' : 'jateado13') + wk + (band ? 'b' + bandKey(band) : '') + (look?.cheio ? 'c' + look.cheio : ''); }
+    m.customProgramCacheKey = () => (semi ? 'semi6' : ps ? 'pets2' : pf ? 'petf3' : 'jateado14') + wk + (band ? 'b' + bandKey(band) : '') + (look?.cheio ? 'c' + look.cheio : ''); }
   if (finish === 'metal') { m.metalness = 1; m.roughness = 0.3; } // um pouco menos espelhado: sem brilho piscando nas quinas
   if (look?.dif != null) { m.roughness = clamp(look.dif, 0, 100) / 100 * 0.8; if (m.clearcoat) m.clearcoatRoughness = Math.max(0.03, m.roughness * 0.8); if (m.sheen) m.sheenRoughness = Math.max(0.2, m.roughness); }
   if (look?.ior != null && m.transmission > 0) m.ior = clamp(look.ior, 1, 2.4); // refração: quanto maior, mais o vidro distorce o que está atrás
