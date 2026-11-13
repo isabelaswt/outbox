@@ -390,7 +390,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-13.liquido-suave2';
+const BUILD = '2026-11-13.nivel-fino';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -4997,7 +4997,7 @@ function liquidMeshes(m, y0, levelAbs, lift = S.wall) {
          float rimL = smoothstep(0.32, 0.04, fv) * 0.55 + smoothstep(0.3, 0.6, dnL) * (1.0 - smoothstep(0.72, 0.92, dnL)) * 1.35;
          outgoingLight += mix(${f3(tv)}, vec3(1.0), 0.55) * rimL * 0.42;
          // nível: a superfície vista de lado é uma linha escura fina (marca onde o perfume termina)
-         outgoingLight *= 1.0 - 0.45 * exp(-dTop / 0.22); // discreta: forte, ela virava um contorno marrom acompanhando os gomos` : ''} }` : '';
+         outgoingLight *= 1.0 - 0.85 * exp(-dTop / max(0.1, fwidth(vLiqY) * 1.1)); // escura e fina como na foto (~1 px na tela, no mínimo 0,1 mm); larga, virava um contorno marrom` : ''} }` : '';
     // Parede de trás vista através do líquido: no frasco canelado, os frisos do outro lado
     // aparecem como listras verticais por dentro do líquido (é o que mostra que ele é
     // transparente, como nos perfumes de vidro canelado). Para cada ponto, acha onde o
