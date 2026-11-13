@@ -390,7 +390,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-13.cor-conteudo-jateado3';
+const BUILD = '2026-11-13.liquido-limpido';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -4965,9 +4965,16 @@ function liquidMeshes(m, y0, levelAbs, lift = S.wall) {
     // (fundo do estúdio na cor do líquido), como a parte vazia do frasco. Antes ficava
     // um bloco escuro mesmo com 95% de transparência.
     // luz do fundo atravessando o líquido: leva a cor dele (quase branca lavava tudo no jateado)
-    const bgc = new THREE.Color(S.bg || '#eeeeee').multiply(liqSeen.clone().lerp(new THREE.Color('#ffffff'), 0.15));
+    // Líquido límpido atrás do jateado/semi: é a luz do fundo atravessando o líquido, não uma
+    // superfície pintada. Quanto mais líquido no caminho (bordas, fundo), mais a cor dele
+    // aparece (absorção): miolo claro e luminoso, laterais e base mais intensas. Antes era um
+    // pastel chapado de ponta a ponta e o perfume parecia creme.
+    const bgL = new THREE.Color(S.bg || '#eeeeee'), tv = liqSeen.clone(), f3 = c => `vec3(${c.r.toFixed(3)}, ${c.g.toFixed(3)}, ${c.b.toFixed(3)})`;
+    const see = m.liqType === 'perfume' ? 0.85 : clr * 0.75;
     const seeThru = frost && clr > 0 ? `
-       outgoingLight = mix(outgoingLight, vec3(${bgc.r.toFixed(3)}, ${bgc.g.toFixed(3)}, ${bgc.b.toFixed(3)}) * mix(0.85, 1.0, lensN), ${(clr * 0.35).toFixed(3)});` : '';
+       { float path = mix(2.8, 1.0, lensN) * (1.0 + 0.6 * deep); // caminho da luz dentro do líquido
+         vec3 thruL = ${f3(bgL)} * pow(max(${f3(tv)}, vec3(1e-3)), vec3(path)) * (1.08 - 0.18 * deep) + vec3(0.16) * menisco; // + o brilho do nível
+         outgoingLight = mix(outgoingLight, thruL + outgoingLight * 0.1, ${see.toFixed(3)}); }` : '';
     mat.onBeforeCompile = sh => {
       sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying float vLiqY;').replace('#include <begin_vertex>', '#include <begin_vertex>\nvLiqY = position.y;');
       sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying float vLiqY;').replace('#include <opaque_fragment>',
