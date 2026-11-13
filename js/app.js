@@ -390,7 +390,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-13.gel1';
+const BUILD = '2026-11-13.faixa-oval';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -3155,18 +3155,22 @@ const pescMat = new THREE.MeshStandardMaterial({ color: '#e4e6e3', roughness: 0.
 // como no PET transparente. Tubo inteiro escuro ou claro parecia um cano sólido.
 const semiTubeMats = {};
 function semiTubeMat(liq) {
-  const c = new THREE.Color(S.bg || '#eeeeee'); if (liq) c.multiply(new THREE.Color(liq.liqColor).lerp(new THREE.Color('#ffffff'), 0.8));
+  // com conteúdo: o tubo fica mais escuro que o gel em volta, na cor dele (claro, ele virava
+  // um fio aceso no meio do frasco); vazio: quase some, só o contorno
+  const c = new THREE.Color(S.bg || '#eeeeee'); if (liq) { const t = new THREE.Color(liq.liqColor); c.multiply(new THREE.Color(t.r ** 1.5, t.g ** 1.5, t.b ** 1.5)).multiplyScalar(0.55); }
   const k = c.getHexString(); if (semiTubeMats[k]) return semiTubeMats[k];
-  const g = new THREE.MeshBasicMaterial({ color: c });
-  g.onBeforeCompile = sh => {
-    sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vTN; varying vec3 vTV;')
-      .replace('#include <project_vertex>', '#include <project_vertex>\nvTN = normalize(normalMatrix * normal); vTV = -mvPosition.xyz;');
-    sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying vec3 vTN; varying vec3 vTV;')
-      .replace('#include <opaque_fragment>', `float fresT = pow(1.0 - abs(dot(normalize(vTV), normalize(vTN))), 2.2); // só a beirada do tubo
+  const g = new THREE.MeshBasicMaterial({ color: c }), air = new THREE.Color(S.bg || '#eeeeee');
+  g.userData.uLvl = { value: 1e9 };
+  g.onBeforeCompile = sh => { sh.uniforms.uLvl = g.userData.uLvl;
+    sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vTN; varying vec3 vTV; varying float vWY;')
+      .replace('#include <project_vertex>', '#include <project_vertex>\nvTN = normalize(normalMatrix * normal); vTV = -mvPosition.xyz; vWY = (modelMatrix * vec4(transformed, 1.0)).y;');
+    sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying vec3 vTN; varying vec3 vTV; varying float vWY; uniform float uLvl;')
+      .replace('#include <opaque_fragment>', `${liq ? `outgoingLight = mix(outgoingLight, vec3(${air.r.toFixed(3)}, ${air.g.toFixed(3)}, ${air.b.toFixed(3)}), step(uLvl, vWY)); // acima do nível: no ar
+       ` : ''}float fresT = pow(1.0 - abs(dot(normalize(vTV), normalize(vTN))), 2.2); // só a beirada do tubo
        outgoingLight *= mix(1.0, 0.12, fresT); // miolo some no líquido, contorno fino mais escuro (como o PET transparente)
        #include <opaque_fragment>`);
   };
-  g.customProgramCacheKey = () => 'tuboSemi'; return semiTubeMats[k] = g;
+  g.customProgramCacheKey = () => 'tuboSemi2' + (liq ? 'l' + k : ''); return semiTubeMats[k] = g;
 }
 // Pipeta de vidro do conta-gotas (vista por dentro do frasco transparente).
 // Vidro fino: quase invisível de frente e marcado nas bordas (efeito fresnel), com as
@@ -3289,8 +3293,13 @@ function addGrain(m, amt, cell = 0.13) {
 // faixa sobe na mesma curva do piso (reta, ela cortava o canto do conteúdo num traço reto).
 const bandVert = (sh, band) => { const cv = band?.R > 0;
   sh.vertexShader = sh.vertexShader.replace('#include <common>', `#include <common>\nvarying float vObjY;${cv ? '\nvarying float vBandU;' : ''}`).replace('#include <begin_vertex>', '#include <begin_vertex>\nvObjY = position.y;');
-  if (cv) sh.vertexShader = sh.vertexShader.replace('#include <project_vertex>', `#include <project_vertex>\nvBandU = abs(mvPosition.x - (modelViewMatrix * vec4(${band.cx.toFixed(2)}, transformed.y, ${band.cz.toFixed(2)}, 1.0)).x);`);
-  sh.fragmentShader = sh.fragmentShader.replace('#include <common>', `#include <common>\nvarying float vObjY;${cv ? '\nvarying float vBandU;' : ''}`); };
+  // vBandR: meia largura da cavidade vista deste ângulo (frasco oval/achatado é mais largo de
+  // frente que de lado; com um raio só, o do lado estreito, a curva começava no meio e
+  // deixava uma língua do conteúdo descendo no centro da base)
+  if (cv) sh.vertexShader = sh.vertexShader.replace('#include <project_vertex>', `#include <project_vertex>\nvBandU = abs(mvPosition.x - (modelViewMatrix * vec4(${band.cx.toFixed(2)}, transformed.y, ${band.cz.toFixed(2)}, 1.0)).x);
+\t{ vec3 rg = transpose(mat3(modelViewMatrix)) * vec3(1.0, 0.0, 0.0); vec2 u = rg.xz / max(length(rg.xz), 1e-4); vBandR = length(vec2(${(band.rx ?? band.r).toFixed(2)} * u.x, ${(band.rz ?? band.r).toFixed(2)} * u.y)); }`);
+  sh.vertexShader = sh.vertexShader.replace('varying float vBandU;', 'varying float vBandU; varying float vBandR;');
+  sh.fragmentShader = sh.fragmentShader.replace('#include <common>', `#include <common>\nvarying float vObjY;${cv ? '\nvarying float vBandU; varying float vBandR;' : ''}`); };
 // Piso e canto da cavidade do fundo grosso (vidro transparente): não são desenhados por
 // cima — o que está ali é o conteúdo ou, vazio, o que a transmissão já mostra. Com a
 // câmera de cima eles cobriam o líquido (disco branco, meia-lua escura e anéis pontilhados).
@@ -3302,10 +3311,10 @@ const floorCut = (sh, band) => { if (!band) return;
     .replace('void main() {', `void main() {\n\t{ vec3 cn = normalize(vCutN); vec2 rr = vCutXZ - vec2(${f(band.cx || 0)}, ${f(band.cz || 0)});\n\t  if (vObjY > ${f(y - 0.3)} && vObjY < ${f(top)} && cn.y > 0.2 && dot(cn.xz, rr) <= 0.02 * length(rr)) discard; } // piso/canto de dentro do fundo grosso`);
 };
 const bandF = (band, w = 0.9) => { const y = band.y; // w: meia largura da transição (mm)
-  const yE = band.R > 0 ? `(${y.toFixed(2)} + ${band.R.toFixed(2)} * (1.0 - sqrt(max(0.0, 1.0 - pow(clamp((vBandU - ${(band.r - band.R).toFixed(2)}) / ${band.R.toFixed(2)}, 0.0, 1.0), 2.0)))))` : y.toFixed(2);
+  const yE = band.R > 0 ? `(${y.toFixed(2)} + ${band.R.toFixed(2)} * (1.0 - sqrt(max(0.0, 1.0 - pow(clamp((vBandU - vBandR + ${band.R.toFixed(2)}) / ${band.R.toFixed(2)}, 0.0, 1.0), 2.0)))))` : y.toFixed(2);
   return `(1.0 - smoothstep(${yE} - ${w.toFixed(2)}, ${yE} + ${w.toFixed(2)}, vObjY))`; };
 const v3 = c => { const k = new THREE.Color(c); return `vec3(${k.r.toFixed(3)}, ${k.g.toFixed(3)}, ${k.b.toFixed(3)})`; };
-const bandKey = band => band ? `${band.liq || ''}${band.bg || ''}${band.y.toFixed(1)}_${(band.R || 0).toFixed(1)}_${(band.r || 0).toFixed(1)}_${(band.cx || 0).toFixed(1)}_${(band.cz || 0).toFixed(1)}` : '';
+const bandKey = band => band ? `${band.liq || ''}${band.bg || ''}${band.y.toFixed(1)}_${(band.R || 0).toFixed(1)}_${(band.r || 0).toFixed(1)}_${(band.rx || 0).toFixed(1)}_${(band.rz || 0).toFixed(1)}_${(band.cx || 0).toFixed(1)}_${(band.cz || 0).toFixed(1)}` : '';
 const WALL_U = { value: 1.2 };
 const COAT_U = { value: 1 }; // reforço do reflexo do estúdio no verniz do plástico (por luz)
 const wallUniform = sh => { sh.uniforms.uWall = WALL_U; sh.fragmentShader = 'uniform float uWall;\n' + sh.fragmentShader; };
@@ -3442,9 +3451,11 @@ function material(color, finish, band = null, thick, look = null) {
     const et = new THREE.Color(color).multiply(new THREE.Color(0.72, 0.76, 0.74)), etv = `vec3(${et.r.toFixed(3)}, ${et.g.toFixed(3)}, ${et.b.toFixed(3)})`;
     m.onBeforeCompile = sh => { wallUniform(sh);
       sh.fragmentShader = sh.fragmentShader.replace('#include <transmission_fragment>', THREE.ShaderChunk.transmission_fragment
+        // ombro com parede fina, como no vidro liso (a lente grossa deformava o topo do líquido num oval claro)
+        .replace('material.thickness = thickness;', 'material.thickness = thickness * mix(1.0, 0.08, smoothstep(0.12, 0.55, inverseTransformDirection(normal, viewMatrix).y));')
         .replace('totalDiffuse = mix( totalDiffuse, transmitted.rgb, material.transmission );',
           `float frE = pow(1.0 - abs(dot(normalize(vViewPosition), normal)), 1.8);\n\ttransmitted.rgb *= mix(vec3(1.0), ${etv}, clamp(frE * (0.45 + uWall * 0.45), 0.0, 1.0));\n\ttotalDiffuse = mix( totalDiffuse, transmitted.rgb, material.transmission );`)); };
-    m.customProgramCacheKey = () => 'pet' + color + wk; }
+    m.customProgramCacheKey = () => 'pet2' + color + wk; }
   // Vidro jateado: a MESMA cor do vidro transparente — só muda o acabamento (o
   // desfoque do que está atrás, o brilho espalhado e o grão). Bordas e fundo ficam
   // mais escuros só em luminosidade, sem desviar o tom (a absorção por potência
@@ -5188,7 +5199,7 @@ function buildInto(product, S, explodeAmt = 0) {
     // canto do piso da cavidade (mesma conta de offsetInner) para a faixa do fundo acompanhar
     let band = null;
     if (firstBody && thickBase(finM)) { if (!g.boundingBox) g.computeBoundingBox(); const gb = g.boundingBox;
-      band = { y: y0 + fundo, R: floorR(m, fundo), r: Math.min(m.W, m.D) / 2 - Math.max(0.35, S.wall - 0.9),
+      band = { y: y0 + fundo, R: floorR(m, fundo), r: Math.min(m.W, m.D) / 2 - Math.max(0.35, S.wall - 0.9), rx: m.W / 2 - Math.max(0.35, S.wall - 0.9), rz: m.D / 2 - Math.max(0.35, S.wall - 0.9),
         liq: m0.liq && ['perfume', 'transparente'].includes(m0.liqType) ? m0.liqColor : '', bg: S.bg || '#eeeeee',
         cx: (gb.min.x + gb.max.x) / 2, cz: (gb.min.z + gb.max.z) / 2 }; }
     const mesh = new THREE.Mesh(g, material(colM, finM, band, thick, look));
@@ -5315,6 +5326,8 @@ function buildInto(product, S, explodeAmt = 0) {
     if (o.material === semiTube) o.renderOrder = 3;
     else if (o.userData.liquid && o.name === 'liquido') { o.renderOrder = 2; o.material.depthWrite = false; }
   });
+  // tubo escuro só dentro do líquido: acima do nível (no ar) ele volta a quase sumir
+  if (semiTube?.userData.uLvl) { let lv = 1e9; product.children.forEach(o => { const cp = o.userData.liquid && o.material?.clippingPlanes?.[0]; if (cp) lv = Math.min(lv, cp.constant); }); semiTube.userData.uLvl.value = lv; }
 }
 
 function bounds() { return new THREE.Box3().setFromObject(product); }
