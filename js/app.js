@@ -390,7 +390,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-13.vidro-sem-listras2';
+const BUILD = '2026-11-13.vidro-sem-listras6';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -3330,15 +3330,18 @@ function glassAxis(mesh) {
 // mais perto sempre vence e os vales dos gomos não viram tracejado.
 const _cam = new THREE.Vector3(), _inv = new THREE.Matrix4(), _fwd = new THREE.Vector3();
 function sortBackToFront(mesh, geo, camera) {
-  const I = geo.index; if (!I || I.count > 900000) return;
+  const I = geo.index; if (!I || I.count > 4000000) return; // (o teto antigo, 900 mil, deixava o canelado fundo sem ordenar: listrinhas)
   _inv.copy(mesh.matrixWorld).invert(); _cam.setFromMatrixPosition(camera.matrixWorld).applyMatrix4(_inv);
   const u = geo.userData, last = u.sortCam;
   camera.getWorldDirection(_fwd).transformDirection(_inv);
   if (last && last.distanceToSquared(_cam) < Math.max(1, last.lengthSq() * 0.0004) && u.sortFwd && u.sortFwd.dot(_fwd) > 0.9995) return; // mexeu pouco: mantém
-  const n = I.count / 3;
-  if (!u.sortTri) { // centro de cada triângulo e o índice original (uma vez)
+  // Ordena por quadradinho (os dois triângulos de cada quadra da malha, que vêm seguidos):
+  // separados, os dois triângulos de uma quadra se intercalavam com os da vizinha perto da
+  // silhueta e a borda do canelado saía tracejada.
+  const n = Math.floor(I.count / 6), tail = I.count - n * 6;
+  if (!u.sortTri) { // centro de cada quadra e o índice original (uma vez)
     const P = geo.attributes.position, src = I.array.slice(), c = new Float32Array(n * 3);
-    for (let t = 0; t < n; t++) for (let k = 0; k < 3; k++) { const v = src[3 * t + k]; c[3 * t] += P.getX(v) / 3; c[3 * t + 1] += P.getY(v) / 3; c[3 * t + 2] += P.getZ(v) / 3; }
+    for (let t = 0; t < n; t++) for (let k = 0; k < 6; k++) { const v = src[6 * t + k]; c[3 * t] += P.getX(v) / 6; c[3 * t + 1] += P.getY(v) / 6; c[3 * t + 2] += P.getZ(v) / 6; }
     u.sortTri = { src, c, d: new Float32Array(n), ord: new Uint32Array(n) };
   }
   const { src, c, d, ord } = u.sortTri;
@@ -3348,7 +3351,8 @@ function sortBackToFront(mesh, geo, camera) {
   camera.getWorldDirection(_fwd).transformDirection(_inv);
   for (let t = 0; t < n; t++) { d[t] = c[3 * t] * _fwd.x + c[3 * t + 1] * _fwd.y + c[3 * t + 2] * _fwd.z; ord[t] = t; }
   ord.sort((a, b) => d[b] - d[a]); // longe primeiro
-  const A = I.array; for (let t = 0; t < n; t++) { const o = ord[t] * 3; A[3 * t] = src[o]; A[3 * t + 1] = src[o + 1]; A[3 * t + 2] = src[o + 2]; }
+  const A = I.array; for (let t = 0; t < n; t++) { const o = ord[t] * 6; for (let k = 0; k < 6; k++) A[6 * t + k] = src[o + k]; }
+  for (let k = 0; k < tail; k++) A[n * 6 + k] = src[n * 6 + k];
   I.needsUpdate = true; u.sortCam = (last || new THREE.Vector3()).copy(_cam); u.sortFwd = (u.sortFwd || new THREE.Vector3()).copy(_fwd);
 }
 function material(color, finish, band = null, thick, look = null) {
@@ -3483,8 +3487,8 @@ function halfFront(m) {
 	if (uAxisOn > 0.5 && abs(vGlassNy) < 0.6) { // parede da metade de trás (em volta do eixo, na altura do ponto): fica para a transmissão
 	  vec3 rel = vGlassW - uAxisC; rel -= uAxisUp * dot(rel, uAxisUp);
 	  vec3 tc = uAxisCam - uAxisUp * dot(uAxisCam, uAxisUp);
-	  if (length(tc) > 0.05 && dot(rel, tc) < 0.0) discard; }`); };
-    m.customProgramCacheKey = () => (pk ? pk.call(m) : '') + '|meiaFrente2';
+	  if (length(tc) > 0.05 && dot(normalize(rel), normalize(tc)) < -0.22) discard; }`); }; // só o que está claramente atrás: rente à silhueta o lado de trás dos frisos aparece de verdade (cortado ali, virava listrinhas)
+    m.customProgramCacheKey = () => (pk ? pk.call(m) : '') + '|meiaFrente3';
   }
 }
 
