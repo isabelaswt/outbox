@@ -390,7 +390,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-13.chao-cor-liquido2';
+const BUILD = '2026-11-13.volta-023f983';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -2507,7 +2507,7 @@ void main() { float a = 1.0 - (1.0 - texture2D(tT, vUv).r * kT) * (1.0 - texture
   // fotos de vidro âmbar/laranja. Vidro incolor ou branco não tinge nada.
   const rtC = new THREE.WebGLRenderTarget(N, N, opt), rtC2 = new THREE.WebGLRenderTarget(N, N, opt), tintMats = new Map();
   const tintOf = col => { const k = col.getHexString(); if (!tintMats.has(k)) tintMats.set(k, new THREE.MeshBasicMaterial({
-    color: new THREE.Color(col.r ** 0.7, col.g ** 0.7, col.b ** 0.7), toneMapped: false, depthTest: false, depthWrite: false, transparent: true,
+    color: new THREE.Color(Math.sqrt(col.r), Math.sqrt(col.g), Math.sqrt(col.b)), toneMapped: false, depthTest: false, depthWrite: false, transparent: true,
     blending: THREE.CustomBlending, blendSrc: THREE.DstColorFactor, blendDst: THREE.ZeroFactor })); return tintMats.get(k); };
   const tintMesh = new THREE.Mesh(geo, new THREE.ShaderMaterial({ uniforms: { t: { value: rtC.texture }, k: { value: 0.85 } }, transparent: true, depthWrite: false, toneMapped: false,
     blending: THREE.CustomBlending, blendSrc: THREE.DstColorFactor, blendDst: THREE.ZeroFactor, polygonOffset: true, polygonOffsetFactor: -2,
@@ -2525,24 +2525,11 @@ void main() {
   float e = min(min(vUv.x, 1.0 - vUv.x), min(vUv.y, 1.0 - vUv.y));
   gl_FragColor = vec4(mix(vec3(1.0), c * (1.0 + 0.35 * sat), k * smoothstep(0.0, 0.12, e)), 1.0); }` }));
   tintMesh.rotation.x = -Math.PI / 2; tintMesh.position.y = 0.07; tintMesh.renderOrder = 3; tintMesh.visible = false; scene.add(tintMesh);
-  // + brilho: a luz que atravessa o vidro/líquido colorido chega concentrada no chão, na cor dele
-  // (a mancha acima só tinge e escurece; na foto o chão acende colorido junto da base)
-  const glowMesh = new THREE.Mesh(geo, new THREE.ShaderMaterial({ uniforms: { t: { value: rtC.texture } }, transparent: true, depthWrite: false, toneMapped: false,
-    blending: THREE.AdditiveBlending, polygonOffset: true, polygonOffsetFactor: -3,
-    vertexShader: tintMesh.material.vertexShader,
-    fragmentShader: `uniform sampler2D t; varying vec2 vUv;
-#include <logdepthbuf_pars_fragment>
-void main() {
-#include <logdepthbuf_fragment>
-  vec3 c = texture2D(t, vUv).rgb; float a = 1.0 - min(c.r, min(c.g, c.b));
-  float e = min(min(vUv.x, 1.0 - vUv.x), min(vUv.y, 1.0 - vUv.y));
-  gl_FragColor = vec4(c * a * 0.32 * smoothstep(0.0, 0.15, e), 1.0); }` }));
-  glowMesh.rotation.x = -Math.PI / 2; glowMesh.position.y = 0.08; glowMesh.renderOrder = 4; glowMesh.visible = false; scene.add(glowMesh);
   const pass = (mat, src, dst, dx, dy, s) => { quad.material = mat; if (mat === blur) { blur.uniforms.t.value = src.texture; blur.uniforms.d.value.set(dx, dy); blur.uniforms.s.value = Math.max(s, 0.3); }
     renderer.setRenderTarget(dst); renderer.render(quadScene, quadCam); };
   const cc = new THREE.Color();
   function update(on) {
-    mesh.visible = false; tintMesh.visible = false; glowMesh.visible = false; if (!on) return;
+    mesh.visible = false; tintMesh.visible = false; if (!on) return;
     const b = new THREE.Box3().setFromObject(product); sideRoot.children.forEach(g => b.union(new THREE.Box3().setFromObject(g)));
     if (b.isEmpty() || b.max.y <= 0) return;
     const w = b.max.x - b.min.x, d = b.max.z - b.min.z, F = Math.max(w, d, 1), H = b.max.y;
@@ -2564,12 +2551,12 @@ void main() {
     // luz colorida (ver tintMesh): só as camadas transparentes com cor
     let tinted = false;
     for (const root of [product, sideRoot]) root.traverse(o => { if (!o.isMesh) return; const m = Array.isArray(o.material) ? o.material[0] : o.material;
-      const col = m?.visible !== false && m?.colorWrite !== false && (o.userData.tintFloor ? new THREE.Color(o.userData.tintFloor) : m.transmission > 0.05 && m.color ? m.color : null);
+      const col = m?.visible !== false && m?.colorWrite !== false && m.transmission > 0.05 && m.color ? m.color : null;
       const tint = col && Math.min(col.r, col.g, col.b) < 0.8 ? tintOf(col) : hidden; if (tint !== hidden) tinted = true;
       swap.push([o, o.material]); o.material = tint; });
     const sd = sun.position.clone().sub(sun.target.position), sl = sd.length() || 1, el = Math.asin(clamp(sd.y / sl, -1, 1));
     const off = new THREE.Vector2(-sd.x, -sd.z); if (off.lengthSq() > 1e-6) off.normalize();
-    off.multiplyScalar(clamp(H * 0.18 / Math.max(Math.tan(el), 0.5), 0, F * 0.35)); // do lado oposto à luz, junto da base (mais longe, o próprio frasco escondia a mancha)
+    off.multiplyScalar(clamp(H * 0.3 / Math.max(Math.tan(el), 0.5), 0, F * 0.6)); // do lado oposto à luz; sol baixo = mais longe
     const halfT = F / 2 + sw * 2 + F * 0.35;
     if (tinted) {
       Object.assign(cam, { left: -halfT, right: halfT, top: halfT, bottom: -halfT }); cam.updateProjectionMatrix();
@@ -2584,10 +2571,9 @@ void main() {
     pass(comb, null, rtO);
     renderer.setRenderTarget(prev); renderer.setClearColor(cc, ca);
     mesh.scale.set(2 * half, 2 * half, 1); mesh.position.set(cx, 0.06, cz); mesh.visible = true;
-    if (tinted) { tintMesh.scale.set(2 * halfT, 2 * halfT, 1); tintMesh.position.set(cx + off.x, 0.07, cz + off.y); tintMesh.visible = true;
-      glowMesh.scale.copy(tintMesh.scale); glowMesh.position.set(cx + off.x * 0.6, 0.08, cz + off.y * 0.6); glowMesh.visible = true; }
+    if (tinted) { tintMesh.scale.set(2 * halfT, 2 * halfT, 1); tintMesh.position.set(cx + off.x, 0.07, cz + off.y); tintMesh.visible = true; }
   }
-  return { update, mesh, tintMesh, glowMesh, comb };
+  return { update, mesh, tintMesh, comb };
 })();
 // Chão brilhante (Cena → Chão): o produto refletido no chão claro, como em mesa de acrílico
 // ou laca. O espelho redesenha a cena vista de baixo do chão com o mesmo fundo da tela —
@@ -2632,7 +2618,7 @@ void main() {
     const w = Math.max(64, Math.round(ds.x / 2)), h = Math.max(64, Math.round(ds.y / 2));
     if (rt.width !== w || rt.height !== h) rt.setSize(w, h);
     U.uPx.value.set(1 / w, 1 / h);
-    const hide = [ground, CS.mesh, CS.tintMesh, CS.glowMesh, grid, refMesh, stage].filter(o => o.visible); hide.forEach(o => { o.visible = false; });
+    const hide = [ground, CS.mesh, CS.tintMesh, grid, refMesh, stage].filter(o => o.visible); hide.forEach(o => { o.visible = false; });
     mirror.call(this, rend, sc, camera);
     hide.forEach(o => { o.visible = true; });
   };
@@ -3375,7 +3361,7 @@ function material(color, finish, band = null, thick, look = null) {
   // uniform compartilhado: mudar a parede não recompila shader nem cria material novo.
   WALL_U.value = clamp(S?.wall ?? 1.2, 0.3, 4);
   const wk = '';
-  const lk = look ? `|d${look.dif ?? ''}|i${look.ior ?? ''}${look.cheio ? '|c' + look.cheio : ''}${look.brilho ? '|g' + look.brilho : ''}` : '';
+  const lk = look ? `|d${look.dif ?? ''}|i${look.ior ?? ''}${look.cheio ? '|c' + look.cheio : ''}` : '';
   const key = color + finish + (band ? '|b' + bandKey(band) : '') + (thick ? '|t' + thick : '') + lk;
   if (matCache.has(key)) return matCache.get(key);
   const m = new THREE.MeshPhysicalMaterial({ color, roughness: 0.5, metalness: 0 });
@@ -3404,7 +3390,6 @@ function material(color, finish, band = null, thick, look = null) {
   // esverdeada, como vidro de verdade visto de lado) — sem isso o frasco sumia e
   // só sobrava um filete branco em volta do líquido.
   if (finish === 'vidro') { m.roughness = 0.05; m.transmission = 1; m.thickness = thick ?? 4; m.ior = 1.5; m.depthWrite = false;
-    const gb = look?.brilho ? new THREE.Color(look.brilho).lerp(new THREE.Color('#ffffff'), 0.55) : null, glowB = gb ? `vec3(${gb.r.toFixed(3)}, ${gb.g.toFixed(3)}, ${gb.b.toFixed(3)})` : '';
     const et = new THREE.Color(color).multiply(new THREE.Color(0.58, 0.66, 0.63)), etv = `vec3(${et.r.toFixed(3)}, ${et.g.toFixed(3)}, ${et.b.toFixed(3)})`;
     m.onBeforeCompile = sh => { wallUniform(sh); if (band) { bandVert(sh, band); floorCut(sh, band); }
       // A cor vem da espessura atravessada (absorção), não de uma tinta por igual: de frente
@@ -3420,9 +3405,9 @@ function material(color, finish, band = null, thick, look = null) {
 \tfloat dnS = smoothstep(0.1, 0.75, -inverseTransformDirection(normal, viewMatrix).y); // parte de baixo da curva
 \ttransmitted.rgb *= mix(vec3(1.0), ${etv}, clamp(frE * (0.9 + uWall * 0.5) * (1.0 - 0.6 * dnS), 0.0, 1.0));
 \ttransmitted.rgb = mix(transmitted.rgb, max(transmitted.rgb, sqrt(max(material.diffuseColor, vec3(1e-4))) * 0.86), 0.65 * dnS); // fundo arredondado: a luz do estúdio entra pela base e acende (sem isso virava cinza chumbo)
-\t${band ? (look?.brilho ? `transmitted.rgb *= mix(vec3(1.0), ${glowB} * 1.06, ${bandF(band)}); // fundo grosso com perfume: claro e aquecido pela luz que atravessou o líquido` : `transmitted.rgb *= mix(vec3(1.0), mix(vec3(1.0), material.diffuseColor, 0.35) * 0.82, ${bandF(band)}); // fundo grosso: um pouco mais denso, no mesmo tom (ao quadrado virava vermelho escuro)`) : ''}
+\t${band ? `transmitted.rgb *= mix(vec3(1.0), mix(vec3(1.0), material.diffuseColor, 0.35) * 0.82, ${bandF(band)}); // fundo grosso: um pouco mais denso, no mesmo tom (ao quadrado virava vermelho escuro)` : ''}
 \ttotalDiffuse = mix( totalDiffuse, transmitted.rgb, material.transmission );`)); };
-    m.customProgramCacheKey = () => 'vidro9' + color + glowB + bandKey(band) + wk; }
+    m.customProgramCacheKey = () => 'vidro8' + color + bandKey(band) + wk; }
   // Vidro fosco (jateado): transmite a luz mas embaça o que está dentro e atrás.
   // Contraste: parte da luz é espalhada pelo jateado (o vidro ganha o degradê do
   // estúdio), a cor fica mais densa com a espessura e o contorno pega um brilho
@@ -3476,13 +3461,6 @@ function material(color, finish, band = null, thick, look = null) {
         + '\n#if defined(USE_TRANSMISSION) && defined(USE_ENVMAP)\n totalDiffuse += material.diffuseColor * (transmitted.rgb / max(max(transmitted.r, max(transmitted.g, transmitted.b)), 0.05)) * getIBLIrradiance(-normal) * ' + (semi ? '0.62' : ps ? '0.0' : '0.8') + (look?.cheio && !pf ? ' * 0.35' : '') + ' * max(pow(1.0 - frEdge, 1.5), 0.75 * dnS); // luz de trás acende o miolo (e o fundo arredondado recebe a luz de cima, em vez de virar cinza), na cor do que está atrás\n#endif'); // só com transmissão (o PNG transparente desliga ela por um instante)
     };
     m.customProgramCacheKey = () => (semi ? 'semi6' : ps ? 'pets2' : pf ? 'petf3' : 'jateado14') + wk + (band ? 'b' + bandKey(band) : '') + (look?.cheio ? 'c' + look.cheio : ''); }
-  // Reflexo das softboxes: duas faixas verticais de luz onde a superfície vira de lado (a da
-  // esquerda mais forte), como no vidro fotografado em estúdio. Nítidas no vidro liso, macias
-  // no jateado. Presas à câmera, como as luzes de um estúdio de foto.
-  const SB = { vidro: [0.07, 0.8], pet: [0.09, 0.5], vidroSemi: [0.16, 0.26], vidroFosco: [0.24, 0.14], petSemi: [0.2, 0.16], petFosco: [0.26, 0.09] }[finish];
-  if (SB) { const prev = m.onBeforeCompile, pk = m.customProgramCacheKey;
-    m.onBeforeCompile = (sh, r) => { prev?.call(m, sh, r); softboxStrips(sh, SB[0], SB[1]); };
-    m.customProgramCacheKey = () => (pk ? pk.call(m) : '') + '|sb' + SB.join('_'); }
   if (finish === 'metal') { m.metalness = 1; m.roughness = 0.3; } // um pouco menos espelhado: sem brilho piscando nas quinas
   if (look?.dif != null) { m.roughness = clamp(look.dif, 0, 100) / 100 * 0.8; if (m.clearcoat) m.clearcoatRoughness = Math.max(0.03, m.roughness * 0.8); if (m.sheen) m.sheenRoughness = Math.max(0.2, m.roughness); }
   if (look?.ior != null && m.transmission > 0) m.ior = clamp(look.ior, 1, 2.4); // refração: quanto maior, mais o vidro distorce o que está atrás
@@ -3495,12 +3473,6 @@ function material(color, finish, band = null, thick, look = null) {
   halfFront(m);
   matCache.set(key, m);
   return m;
-}
-function softboxStrips(sh, w, k) {
-  sh.fragmentShader = sh.fragmentShader.replace('#include <opaque_fragment>', `{ vec3 nS = normalize(normal); float vS = 1.0 - smoothstep(0.3, 0.85, abs(nS.y)); // só nas laterais em pé
-    float sb = (1.0 - smoothstep(0.0, ${w.toFixed(3)}, abs(nS.x + 0.6))) + 0.6 * (1.0 - smoothstep(0.0, ${(w * 0.8).toFixed(3)}, abs(nS.x - 0.52)));
-    outgoingLight += vec3(${k.toFixed(3)}) * sb * vS; }
-#include <opaque_fragment>`);
 }
 function halfFront(m) {
   if (m.transmission > 0 && !m.depthWrite && !m.userData.meiaFrente) {
@@ -5016,11 +4988,8 @@ function liquidMeshes(m, y0, levelAbs, lift = S.wall) {
     // própria nem branco por cima, que deixava leitoso). O brilho fica por conta do vidro.
     const mult = m.liqType === 'perfume', see = mult ? 1 : clr * 0.75;
     const seeThru = (frost || mult) && clr > 0 ? `
-       { float path = ${frost ? 'mix(2.8, 1.0, lensN) * (1.0 + 0.6 * deep)' : 'mix(3.2, 1.7, lensN) * (1.0 + 0.5 * (1.0 - deep))'}; // caminho da luz dentro do líquido (vidro liso: o frasco inteiro de perfume no caminho satura a cor, mesmo no miolo)
-         // jateado: como estava (aprovado). Vidro liso, como na foto de perfume: topo denso e escuro
-         // (a tampa e o ombro tapam a luz) e a cor clareando e acendendo para baixo (a luz entra
-         // pelo fundo de vidro); logo abaixo do nível, uma faixa mais escura dá o contraste do topo.
-         vec3 thruL = ${f3(bgL)} * pow(max(${f3(tv)}, vec3(1e-3)), vec3(path)) * ${frost ? '(1.04 - 0.14 * deep)' : 'mix(0.74, 1.14, smoothstep(0.0, 0.9, deep)) * (1.0 - 0.22 * exp(-dTop / 6.0))'}${mult ? '' : ' + vec3(0.16) * menisco'}; // (transparente: + o brilho do nível)
+       { float path = mix(2.8, 1.0, lensN) * (1.0 + ${frost ? '0.6' : '0.22'} * deep); // caminho da luz dentro do líquido (jateado: como estava, aprovado; vidro liso: menos, a base puxava para vermelho)
+         vec3 thruL = ${f3(bgL)} * pow(max(${f3(tv)}, vec3(1e-3)), vec3(path)) * (1.04 - 0.14 * deep)${mult ? '' : ' + vec3(0.16) * menisco'}; // (transparente: + o brilho do nível)
          outgoingLight = mix(outgoingLight, thruL${mult ? '' : ' + outgoingLight * 0.1'}, ${see.toFixed(3)});${mult && !frost ? `
          // contorno do líquido aceso (a divisa líquido/vidro reflete a luz): fio claro nas bordas
          // e o canto curvo de baixo marcado em cima do fundo grosso, como no vidro de verdade
@@ -5071,7 +5040,7 @@ function liquidMeshes(m, y0, levelAbs, lift = S.wall) {
     out.push(new THREE.Mesh(cap, new THREE.MeshPhysicalMaterial({ color: c.clone().multiplyScalar(0.45), emissive: c.clone().multiplyScalar(0.55), roughness: 0.1, clearcoat: 0.45, clearcoatRoughness: 0.08,
       specularIntensity: 0.7, specularColor: new THREE.Color('#ffffff'), ior: 1.36 }))); } // (espelho total soltava brilhinhos pontilhados)
   else if (cap) out.push(new THREE.Mesh(cap, new THREE.MeshPhysicalMaterial({ color: lc, roughness: 0.08, ...opts, ...inGlass, clearcoat: 0.25, specularColor: lc.clone().lerp(new THREE.Color('#ffffff'), 0.4) })));
-  out.forEach(o => { o.userData.liquid = true; o.name = 'liquido'; if (clear && glass) o.userData.tintFloor = m.liqColor; }); // perfume/transparente no vidro: a luz que o atravessa tinge o chão
+  out.forEach(o => { o.userData.liquid = true; o.name = 'liquido'; });
   return out;
 }
 
@@ -5186,9 +5155,7 @@ function buildInto(product, S, explodeAmt = 0) {
     const overcap = !m0.vol && (m0.gap || 0) < -0.4 * m0.h;
     const thick = !isGlass(finM) || overcap ? undefined : r1(!m0.vol ? clamp(Math.min(m.W, m.D) * 0.35, 4, 18) : clamp(Math.min(m.W, m.D) * 0.3, 4, 30));
     const own = ms.own ? ms : S, cheio = m0.vol && m0.liq && isFrost(finM) ? (m0.liqColor || '#ffffff') : false; // cor do conteúdo: tinge de leve a base jateada
-    // perfume no vidro liso: a base grossa recebe a luz que passou pelo líquido (clara e na cor dele, como na foto)
-    const brilho = m0.vol && m0.liq && finM === 'vidro' && ['perfume', 'transparente'].includes(m0.liqType) ? (m0.liqColor || '#ffffff') : false;
-    const look = own.difus != null || own.ior != null || cheio || brilho ? { dif: own.difus, ior: own.ior, cheio, brilho } : null;
+    const look = own.difus != null || own.ior != null || cheio ? { dif: own.difus, ior: own.ior, cheio } : null;
     // Tampa jateada/fosca vestindo a válvula: só a casca de fora. A parede da cavidade
     // aparecia nítida através do jateado, como se estivesse na frente; sem ela, o que está
     // dentro (a válvula) aparece embaçado pelo vidro, como na peça real.
