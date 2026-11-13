@@ -16,8 +16,8 @@ import { GTAOPass } from 'three/addons/postprocessing/GTAOPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
-import { Brush, Evaluator, SUBTRACTION, INTERSECTION } from 'three-bvh-csg';
-import { icon } from './icons.js?v=2026-11-13.render-final';
+import { Brush, Evaluator, SUBTRACTION } from 'three-bvh-csg';
+import { icon } from './icons.js?v=2026-11-12.ux-linha-unica';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -390,7 +390,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-13.render-final5';
+const BUILD = '2026-11-13.reflexo-softbox';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -2450,9 +2450,8 @@ const persp = new THREE.PerspectiveCamera(28, 1, 1, 20000);
 const ortho = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 20000);
 let cam = persp, controls, orthoHalf = 150, needs = true;
 const req = () => { needs = true; };
-let PT_ON = false; // Render final (path tracing) ativo
 let frameHook = null; // vídeo: um quadro composto (ex.: revelação da malha) no lugar do render simples
-function renderFrame() { if (PT_ON) return; if (frameHook) frameHook(); else renderMain(); } // durante o Render final quem desenha é o path tracer
+function renderFrame() { if (frameHook) frameHook(); else renderMain(); }
 // Sombra de contato como em foto de estúdio com luz macia: o produto é visto de baixo, a
 // partir do chão, e vira duas manchas — uma estreita e escura onde ele encosta (a linha que
 // "assenta" a peça) e uma larga e clara em volta (a penumbra difusa da softbox). Segue o
@@ -3463,6 +3462,13 @@ function material(color, finish, band = null, thick, look = null) {
         + '\n#if defined(USE_TRANSMISSION) && defined(USE_ENVMAP)\n totalDiffuse += material.diffuseColor * (transmitted.rgb / max(max(transmitted.r, max(transmitted.g, transmitted.b)), 0.05)) * getIBLIrradiance(-normal) * ' + (semi ? '0.62' : ps ? '0.0' : '0.8') + (look?.cheio && !pf ? ' * 0.35' : '') + ' * max(pow(1.0 - frEdge, 1.5), 0.75 * dnS); // luz de trás acende o miolo (e o fundo arredondado recebe a luz de cima, em vez de virar cinza), na cor do que está atrás\n#endif'); // só com transmissão (o PNG transparente desliga ela por um instante)
     };
     m.customProgramCacheKey = () => (semi ? 'semi6' : ps ? 'pets2' : pf ? 'petf3' : 'jateado14') + wk + (band ? 'b' + bandKey(band) : '') + (look?.cheio ? 'c' + look.cheio : ''); }
+  // Reflexo das softboxes: duas faixas verticais de luz onde a superfície vira de lado (a da
+  // esquerda mais forte), como no vidro fotografado em estúdio. Nítidas no vidro liso, macias
+  // no jateado. Presas à câmera, como as luzes de um estúdio de foto.
+  const SB = { vidro: [0.07, 0.8], pet: [0.09, 0.5], vidroSemi: [0.16, 0.26], vidroFosco: [0.24, 0.14], petSemi: [0.2, 0.16], petFosco: [0.26, 0.09] }[finish];
+  if (SB) { const prev = m.onBeforeCompile, pk = m.customProgramCacheKey;
+    m.onBeforeCompile = (sh, r) => { prev?.call(m, sh, r); softboxStrips(sh, SB[0], SB[1]); };
+    m.customProgramCacheKey = () => (pk ? pk.call(m) : '') + '|sb' + SB.join('_'); }
   if (finish === 'metal') { m.metalness = 1; m.roughness = 0.3; } // um pouco menos espelhado: sem brilho piscando nas quinas
   if (look?.dif != null) { m.roughness = clamp(look.dif, 0, 100) / 100 * 0.8; if (m.clearcoat) m.clearcoatRoughness = Math.max(0.03, m.roughness * 0.8); if (m.sheen) m.sheenRoughness = Math.max(0.2, m.roughness); }
   if (look?.ior != null && m.transmission > 0) m.ior = clamp(look.ior, 1, 2.4); // refração: quanto maior, mais o vidro distorce o que está atrás
@@ -3475,6 +3481,12 @@ function material(color, finish, band = null, thick, look = null) {
   halfFront(m);
   matCache.set(key, m);
   return m;
+}
+function softboxStrips(sh, w, k) {
+  sh.fragmentShader = sh.fragmentShader.replace('#include <opaque_fragment>', `{ vec3 nS = normalize(normal); float vS = 1.0 - smoothstep(0.3, 0.85, abs(nS.y)); // só nas laterais em pé
+    float sb = (1.0 - smoothstep(0.0, ${w.toFixed(3)}, abs(nS.x + 0.6))) + 0.6 * (1.0 - smoothstep(0.0, ${(w * 0.8).toFixed(3)}, abs(nS.x - 0.52)));
+    outgoingLight += vec3(${k.toFixed(3)}) * sb * vS; }
+#include <opaque_fragment>`);
 }
 function halfFront(m) {
   if (m.transmission > 0 && !m.depthWrite && !m.userData.meiaFrente) {
@@ -5045,7 +5057,7 @@ function liquidMeshes(m, y0, levelAbs, lift = S.wall) {
     out.push(new THREE.Mesh(cap, new THREE.MeshPhysicalMaterial({ color: c.clone().multiplyScalar(0.45), emissive: c.clone().multiplyScalar(0.55), roughness: 0.1, clearcoat: 0.45, clearcoatRoughness: 0.08,
       specularIntensity: 0.7, specularColor: new THREE.Color('#ffffff'), ior: 1.36 }))); } // (espelho total soltava brilhinhos pontilhados)
   else if (cap) out.push(new THREE.Mesh(cap, new THREE.MeshPhysicalMaterial({ color: lc, roughness: 0.08, ...opts, ...inGlass, clearcoat: 0.25, specularColor: lc.clone().lerp(new THREE.Color('#ffffff'), 0.4) })));
-  out.forEach(o => { o.userData.liquid = true; o.name = 'liquido'; o.userData.liqInfo = { m, y0, level, lift, glass }; });
+  out.forEach(o => { o.userData.liquid = true; o.name = 'liquido'; });
   return out;
 }
 
@@ -5199,8 +5211,6 @@ function buildInto(product, S, explodeAmt = 0) {
     }
     mesh.castShadow = true; mesh.receiveShadow = true;
     mesh.userData.idx = idx;
-    // Render final: o corpo de vidro vira oco (parede de fora + de dentro); guarda como refazer a cavidade
-    if (m0.vol && isGlass(finM)) mesh.userData.cavInfo = { m, y0, lift: firstBody && thickBase(finM) ? fundo : S.wall };
     // Cada repetição é alvo de logo, com o número da cópia (0 = a primeira).
     const rep = product.children.filter(o => o.userData.main && o.userData.uid === m.uid).length;
     Object.assign(mesh.userData, { main: true, uid: m.uid, y0, ox: m.ox || 0, rep });
@@ -5506,135 +5516,6 @@ document.addEventListener('keyup', e => { if (e.code === 'Space' && spaceHeld) {
 canvas.addEventListener('pointerdown', () => { if (handOn || spaceHeld) canvas.style.cursor = 'grabbing'; });
 canvas.addEventListener('pointerup', () => { if ((handOn || spaceHeld) && !placing) canvas.style.cursor = 'grab'; });
 $('#gridBtn').onclick = () => { grid.visible = !grid.visible; $('#gridBtn').classList.toggle('on', grid.visible); req(); };
-
-// ───────────────────────── Render final (path tracing) ─────────────────────────
-// A luz é simulada de verdade (raios atravessando o vidro, entrando no líquido, refletindo
-// e fazendo sombra), como no V-Ray/Cycles: a imagem começa granulada e limpa em segundos.
-// Monta uma cena à parte só com materiais físicos: o vidro do corpo fica oco (parede de
-// fora + de dentro), o líquido é um volume cortado no nível que absorve a cor pela espessura,
-// a luz é um HDRI de estúdio e o chão reflete. A vista normal não muda.
-const PT_ENV = new Map();
-let PT = null;
-async function ptEnvTexture() {
-  const sc = sceneOf(), name = sc.luz === 'hdr' && sc.hdrName?.startsWith('ph:') ? sc.hdrName.slice(3) : 'studio_small_09';
-  if (!PT_ENV.has(name)) PT_ENV.set(name, new RGBELoader().loadAsync(phHdrUrl(name)).then(t => { t.mapping = THREE.EquirectangularReflectionMapping; t.userData.E = ptIrradiance(t); return t; }));
-  return PT_ENV.get(name);
-}
-// Luz que o HDRI joga num chão horizontal (irradiância do hemisfério de cima). Serve para
-// calibrar a intensidade: o chão claro fica no tom do fundo da cena, sem estourar.
-function ptIrradiance(t) {
-  const { width: w, height: h, data } = t.image, half = t.type === THREE.HalfFloatType, ch = data.length / (w * h);
-  const val = i => (half ? THREE.DataUtils.fromHalfFloat(data[i]) : data[i]);
-  let E = 0; const sx = Math.max(1, w >> 7), sy = Math.max(1, h >> 7);
-  for (let y = 0; y < h / 2; y += sy) { const th = (y + 0.5) / h * Math.PI, wgt = Math.cos(th) * Math.sin(th) * (Math.PI / h) * sy * (2 * Math.PI / w) * sx;
-    for (let x = 0; x < w; x += sx) { const i = (y * w + x) * ch; E += (0.2126 * val(i) + 0.7152 * val(i + 1) + 0.0722 * val(i + 2)) * wgt; } }
-  return E;
-}
-const ptFlip = g => { // parede de dentro: triângulos ao contrário e normais para dentro da cavidade
-  const p = g.attributes.position.array, n = g.attributes.normal.array;
-  for (let i = 0; i < p.length; i += 9) for (let k = 0; k < 3; k++) { const a = i + 3 + k, b = i + 6 + k; [p[a], p[b]] = [p[b], p[a]]; [n[a], n[b]] = [n[b], n[a]]; }
-  for (let i = 0; i < n.length; i++) n[i] = -n[i];
-  return g;
-};
-function ptLiquidGeo(info) { // volume do líquido: a cavidade (um fio para dentro) cortada no nível
-  const inner = offsetInner(info.m, info.y0, S.wall + 0.35, info.lift); if (!inner) return null; // folga de 0,35 mm do vidro: colado, o cálculo confundia as duas superfícies
-  inner.computeBoundingBox(); const b = inner.boundingBox;
-  if (info.level >= b.max.y - 0.05) return flatPN(inner);
-  const box = new THREE.BoxGeometry(b.max.x - b.min.x + 20, info.level - b.min.y + 2, b.max.z - b.min.z + 20);
-  box.translate((b.min.x + b.max.x) / 2, (info.level + b.min.y - 2) / 2, (b.min.z + b.max.z) / 2);
-  try {
-    const ev = new Evaluator(); ev.attributes = ['position', 'normal']; ev.useGroups = false;
-    const a = flatPN(inner), c = flatPN(box); a.clearGroups(); c.clearGroups();
-    return ev.evaluate(new Brush(a), new Brush(c), INTERSECTION).geometry;
-  } catch { // sem corte (malha fora do padrão): achata o que passa do nível no próprio nível
-    const g = flatPN(inner), q = g.attributes.position.array; for (let i = 1; i < q.length; i += 3) if (q[i] > info.level) q[i] = info.level; g.computeVertexNormals(); return g;
-  }
-}
-function ptMaterial(src, o) {
-  const fin = o.userData.uid ? (S.modules.find(m => m.uid === o.userData.uid)?.own ? S.modules.find(m => m.uid === o.userData.uid).finish : S.finish) : '';
-  // (sem verniz/clearcoat: nesta versão do path tracer ele deixa a superfície preta; o brilho
-  //  do verniz entra baixando um pouco a rugosidade)
-  const cc = src.clearcoat || 0;
-  const m = new THREE.MeshPhysicalMaterial({ color: src.color?.clone() || new THREE.Color('#ffffff'), roughness: Math.max(0.04, (src.roughness ?? 0.5) * (1 - 0.35 * cc)), metalness: src.metalness ?? 0,
-    map: src.map || null, side: src.side ?? THREE.FrontSide });
-  if (src.transmission > 0) { // vidro/PET: incolor transmite tudo; colorido absorve pela espessura (como vidro de verdade)
-    const c = src.color.clone(), s = Math.max(c.r, c.g, c.b) - Math.min(c.r, c.g, c.b);
-    Object.assign(m, { transmission: 1, ior: src.ior || 1.5, thickness: 0, metalness: 0, roughness: isFrost(fin) ? Math.max(0.25, src.roughness) : Math.min(src.roughness, 0.03),
-      // a cor escolhida é a que se vê atravessando as duas paredes de frente; mais vidro no caminho (bordas, fundo grosso) = mais intenso
-      color: new THREE.Color('#ffffff'), attenuationColor: s > 0.06 ? c : new THREE.Color('#ffffff'), attenuationDistance: s > 0.06 ? Math.max(2, 4 * S.wall) : Infinity }); // (2 paredes = cor^0,5, como na vista normal; mais forte somava com o líquido e virava preto)
-  }
-  if (src.emissive && src.emissiveIntensity && src.emissive.getHex()) m.emissive = new THREE.Color(0); // brilho falso da vista normal: aqui a luz é a de verdade
-  return m;
-}
-function ptBuildScene() {
-  const sc = new THREE.Scene(), made = [], seen = new Set();
-  product.updateMatrixWorld(true);
-  const bb = new THREE.Box3().setFromObject(product);
-  product.traverse(o => {
-    if (!o.isMesh || o.isInstancedMesh || !o.visible || !o.geometry?.attributes?.position) return;
-    if (o.name === 'cavidade' || /_pipeta$/.test(o.name) && o.renderOrder === 19) return; // a cavidade já sai no vidro oco; o brilho falso da pipeta não entra
-    const src = Array.isArray(o.material) ? o.material[0] : o.material; if (!src || src.visible === false || src.colorWrite === false) return;
-    let geo, mat;
-    if (o.userData.liqInfo) { // líquido: volume de verdade
-      if (seen.has(o.userData.liqInfo)) return; seen.add(o.userData.liqInfo); // corpo e tampa do líquido: um volume só
-      const info = o.userData.liqInfo, mm = info.m;
-      geo = ptLiquidGeo(info); if (!geo) return;
-      const clear = mm.liqType === 'perfume' || mm.liqType === 'transparente';
-      geo.computeBoundingBox(); const lw = Math.max(5, Math.min(geo.boundingBox.max.x - geo.boundingBox.min.x, geo.boundingBox.max.z - geo.boundingBox.min.z));
-      // a cor escolhida é a que se vê no miolo, atravessando o líquido de lado a lado; nas bordas fica mais intensa
-      mat = clear ? new THREE.MeshPhysicalMaterial({ color: '#ffffff', transmission: 1, roughness: 0, ior: 1.36, thickness: 0,
-          attenuationColor: new THREE.Color(mm.liqColor || '#ffffff'), attenuationDistance: mm.liqType === 'perfume' ? lw : lw * 0.7 })
-        : new THREE.MeshPhysicalMaterial({ color: new THREE.Color(mm.liqColor || '#ffffff'), roughness: 0.25 });
-      if (!info.glass) return; // atrás de plástico opaco o líquido não aparece
-      const mesh = new THREE.Mesh(geo, mat); mesh.applyMatrix4(o.matrixWorld); sc.add(mesh); made.push(mesh);
-      return;
-    }
-    geo = flatPN(o.geometry);
-    if (o.userData.cavInfo) { const ci = o.userData.cavInfo, inner = offsetInner(ci.m, ci.y0, S.wall, ci.lift); // vidro oco
-      if (inner) { const g2 = mergeGeometries([geo, ptFlip(flatPN(inner))]); if (g2) geo = g2; } }
-    mat = ptMaterial(src, o);
-    const mesh = new THREE.Mesh(geo, mat); mesh.applyMatrix4(o.matrixWorld); sc.add(mesh); made.push(mesh);
-  });
-  // chão claro com um pouco de reflexo (foto de estúdio sobre mesa) e fundo na cor da cena
-  const floor = new THREE.Mesh(new THREE.PlaneGeometry(6000, 6000), new THREE.MeshPhysicalMaterial({ color: new THREE.Color(S.bg || '#eeeeee'), roughness: 0.22 }));
-  floor.rotation.x = -Math.PI / 2; floor.position.y = bb.min.y - 0.02; sc.add(floor); made.push(floor);
-  sc.background = new THREE.Color(S.bg || '#eeeeee');
-  return { sc, made };
-}
-async function startFinalRender() {
-  if (PT_ON || spinning) return;
-  const bar = $('#ptBar'); bar.classList.remove('hidden'); $('#ptInfo').textContent = 'Preparando o render…';
-  try {
-    const [{ WebGLPathTracer }, env] = await Promise.all([import('three-gpu-pathtracer'), ptEnvTexture()]);
-    const { sc, made } = ptBuildScene();
-    // luz calibrada pelo fundo: um chão na cor do fundo sai no tom do fundo (antes estourava)
-    sc.environment = env; sc.environmentIntensity = clamp(Math.PI / Math.max(env.userData.E || Math.PI, 1e-3), 0.05, 4);
-    sc.environmentRotation = new THREE.Euler(0, THREE.MathUtils.degToRad(-(sceneOf().luzRot || 0)), 0);
-    const tracer = new WebGLPathTracer(renderer);
-    Object.assign(tracer, { renderDelay: 0, fadeDuration: 0, minSamples: 1, dynamicLowRes: true, lowResScale: 0.25 });
-    tracer.bounces = 8; tracer.transmissiveBounces = 12; tracer.filterGlossyFactor = 0.4; tracer.tiles.set(4, 4); // blocos pequenos por quadro: a placa não trava (perder o contexto apagava a página)
-    tracer.setScene(sc, cam);
-    PT = { tracer, sc, made, camM: cam.matrixWorld.clone(), raf: 0 }; PT_ON = true; $('#ptBtn').classList.add('on');
-    const loop = () => {
-      if (!PT_ON) return;
-      PT.raf = requestAnimationFrame(loop);
-      if (!PT.camM.equals(cam.matrixWorld) || PT.cam !== cam) { PT.camM.copy(cam.matrixWorld); PT.cam = cam; tracer.setCamera(cam); } // mexeu a vista: recomeça
-      tracer.renderSample();
-      $('#ptInfo').textContent = `Render final · ${Math.floor(tracer.samples)} amostras` + (tracer.samples < 64 ? ' (limpando…)' : '');
-    };
-    loop();
-  } catch (e) { console.error(e); toast('Não consegui iniciar o render final'); stopFinalRender(); }
-}
-function stopFinalRender() {
-  if (PT) { cancelAnimationFrame(PT.raf); try { PT.tracer.dispose(); } catch {} PT.made.forEach(o => { o.geometry.dispose(); o.material.dispose(); }); PT = null; }
-  PT_ON = false; $('#ptBar').classList.add('hidden'); $('#ptBtn').classList.remove('on'); req();
-}
-$('#ptBtn').onclick = () => (PT_ON ? stopFinalRender() : startFinalRender());
-$('#ptStop').onclick = stopFinalRender;
-$('#ptPng').onclick = () => {
-  if (!PT) return; PT.tracer.renderSample(); // desenha e já copia (o canvas não guarda o quadro depois)
-  renderer.domElement.toBlob(b => { if (b) download(b, `${(S.name || 'outbox').replace(/[^\w\-]+/g, '_')}_render.png`); }, 'image/png');
-};
 
 // Clique no 3D seleciona o módulo.
 const ray = new THREE.Raycaster(); let downAt = null;
@@ -8323,7 +8204,7 @@ $('#varBtn').onclick = () => {
 };
 $('#genDice').onclick = () => { $('#genSeed').value = Math.floor(Math.random() * 99999) + 1; runGen(); };
 
-window.OUTBOX = { get ao() { return { aoP, aoO, GTAOPass }; }, CS, COAT_U, relief: { normalMapToDisplacement, classifyReliefImage, imageToDisplacement, cleanDisplacementMap, reliefSizeNote }, get hdr() { return HDR; }, ensureHdr, moduleGeo, exportRoot, get S() { return S; }, get swapScroll() { return swapScroll; }, product, layout, scene, sun, stage, ground, renderer, areaKey, areaFill, hemi, detailShow, applyLogos, build, render: () => renderFrame(), get cam() { return cam; }, PRESETS, LIB, loadState, setSideTab, volumes, get sel() { return sel; }, set sel(v) { sel = v; renderStack(); renderEditor(); }, get pt() { return PT; }, startFinalRender, stopFinalRender };
+window.OUTBOX = { get ao() { return { aoP, aoO, GTAOPass }; }, CS, COAT_U, relief: { normalMapToDisplacement, classifyReliefImage, imageToDisplacement, cleanDisplacementMap, reliefSizeNote }, get hdr() { return HDR; }, ensureHdr, moduleGeo, exportRoot, get S() { return S; }, get swapScroll() { return swapScroll; }, product, layout, scene, sun, stage, ground, renderer, areaKey, areaFill, hemi, detailShow, applyLogos, build, render: () => renderFrame(), get cam() { return cam; }, PRESETS, LIB, loadState, setSideTab, volumes, get sel() { return sel; }, set sel(v) { sel = v; renderStack(); renderEditor(); } };
 
 buildDraftPresets();
 resize();
