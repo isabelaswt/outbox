@@ -390,7 +390,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-13.liquido-limpido';
+const BUILD = '2026-11-13.semi-sem-serrilhado';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -3429,7 +3429,7 @@ function material(color, finish, band = null, thick, look = null) {
   // PET semi-fosco: plástico colorido translúcido, acetinado; o que está dentro aparece
   // desfocado e escuro (peças opacas entram na imagem que o plástico embaça), sem véu leitoso.
   if (isFrost(finish)) { const semi = finish === 'vidroSemi', ps = finish === 'petSemi', pf = finish === 'petFosco' || ps; // semi: menos embaçado, brilho mais definido
-    m.roughness = semi ? 0.27 : ps ? 0.24 : pf ? 0.5 : 0.42; m.transmission = semi ? 0.96 : ps ? 1 : pf ? 0.88 : 0.9; m.thickness = thick ?? (pf ? 1.5 : 6); m.ior = pf ? 1.45 : 1.5; m.depthWrite = !semi; // semi: as peças de dentro aparecem apagadas
+    m.roughness = semi ? 0.27 : ps ? 0.24 : pf ? 0.5 : 0.42; m.transmission = semi ? 0.96 : ps ? 1 : pf ? 0.88 : 0.9; m.thickness = thick ?? (pf ? 1.5 : 6); m.ior = pf ? 1.45 : 1.5; m.depthWrite = !semi || !!look?.cheio; // semi vazio: as peças de dentro aparecem apagadas; com conteúdo grava profundidade (sem ela, as faces dos frisos se sobrepunham na borda em serrilhado)
     m.sheen = semi ? 0.12 : ps ? 0.1 : pf ? 0.22 : 0.15; m.sheenRoughness = 0.45; m.sheenColor = new THREE.Color(color).lerp(new THREE.Color('#ffffff'), 0.5); m.specularIntensity = 1;
     if (look?.cheio && !pf) { m.transmission = Math.max(m.transmission, 0.97); m.sheen *= 0.35; } // com conteúdo: menos véu branco (cor escura ficava acinzentada)
     m.clearcoat = semi ? 0.3 : ps ? 0.15 : pf ? 0.06 : 0.18; m.clearcoatRoughness = semi ? 0.3 : ps ? 0.45 : pf ? 0.6 : 0.42; // brilho presente mas espalhado, sem cara de verniz
