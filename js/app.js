@@ -390,7 +390,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-13.base-limpa6';
+const BUILD = '2026-11-13.gel1';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -5008,9 +5008,9 @@ function liquidMeshes(m, y0, levelAbs, lift = S.wall) {
     const bgL = new THREE.Color(S.bg || '#eeeeee'), tv = liqSeen.clone(), f3 = c => `vec3(${c.r.toFixed(3)}, ${c.g.toFixed(3)}, ${c.b.toFixed(3)})`;
     // Perfume = "multiplicar": o que se vê é só o fundo atrás vezes a cor do líquido (sem luz
     // própria nem branco por cima, que deixava leitoso). O brilho fica por conta do vidro.
-    const mult = m.liqType === 'perfume', see = mult ? 1 : clr * 0.75;
+    const mult = m.liqType === 'perfume', gel = !mult && frost, see = mult ? 1 : gel ? 0.25 + clr * 0.7 : clr * 0.75;
     const seeThru = (frost || mult) && clr > 0 ? `
-       { float path = mix(2.8, 1.0, lensN) * (1.0 + ${frost ? '0.6' : '0.22'} * deep); // caminho da luz dentro do líquido (jateado: como estava, aprovado; vidro liso: menos, a base puxava para vermelho)
+       { float path = ${gel ? 'mix(1.35, 0.85, lensN) * (1.0 + 0.15 * deep)' : `mix(2.8, 1.0, lensN) * (1.0 + ${frost ? '0.6' : '0.22'} * deep)`}; // gel: caminho curto, cor luminosa e por igual (como gel em frasco translúcido; o longo deixava verde-escuro chapado) // caminho da luz dentro do líquido (jateado: como estava, aprovado; vidro liso: menos, a base puxava para vermelho)
          vec3 thruL = ${f3(bgL)} * pow(max(${f3(tv)}, vec3(1e-3)), vec3(path)) * (1.04 - 0.14 * deep)${mult ? '' : ' + vec3(0.16) * menisco'}; // (transparente: + o brilho do nível)
          outgoingLight = mix(outgoingLight, thruL${mult ? '' : ' + outgoingLight * 0.1'}, ${see.toFixed(3)});${mult && !frost ? `
          // contorno do líquido aceso (a divisa líquido/vidro reflete a luz): fio claro nas bordas
@@ -5043,11 +5043,11 @@ function liquidMeshes(m, y0, levelAbs, lift = S.wall) {
       `float lensN = smoothstep(0.08, 0.95, abs(dot(normalize(vViewPosition), normal)));
        outgoingLight = mix(outgoingLight * diffuseColor.rgb * 0.95, outgoingLight * 1.18, lensN);
        float dTop = max(${lv} - vLiqY, 0.0), deep = clamp(dTop / ${span}, 0.0, 1.0);
-       outgoingLight *= mix(1.12, 0.72, deep);
+       outgoingLight *= mix(1.12, ${gel ? '0.95' : '0.72'}, deep);
        float menisco = exp(-dTop / 2.2);
        outgoingLight += (diffuseColor.rgb * 0.45 + vec3(0.22)) * menisco;${seeThru}${backRib}
        #include <opaque_fragment>`); };
-    mat.customProgramCacheKey = () => 'liqLente' + lv + '_' + span + seeThru + backRib;
+    mat.customProgramCacheKey = () => 'liqLente' + (gel ? 'g2' : '') + lv + '_' + span + seeThru + backRib;
   }
   if (clear && glass && !frost) mat.depthWrite = false; // o pescante (desenhado depois) aparece através do líquido
   const out = [new THREE.Mesh(inner, mat)];
