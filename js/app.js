@@ -390,7 +390,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-13.semi-sem-serrilhado';
+const BUILD = '2026-11-13.perfume-dentro';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -3328,7 +3328,7 @@ function glassAxis(mesh) {
 // Vidro sem profundidade: o último triângulo desenhado fica por cima. Ordena os
 // triângulos de trás para frente pela câmera (só quando ela muda de direção), assim o
 // mais perto sempre vence e os vales dos gomos não viram tracejado.
-const _cam = new THREE.Vector3(), _inv = new THREE.Matrix4();
+const _cam = new THREE.Vector3(), _inv = new THREE.Matrix4(), _fwd = new THREE.Vector3();
 function sortBackToFront(mesh, geo, camera) {
   const I = geo.index; if (!I || I.count > 900000) return;
   _inv.copy(mesh.matrixWorld).invert(); _cam.setFromMatrixPosition(camera.matrixWorld).applyMatrix4(_inv);
@@ -3341,7 +3341,12 @@ function sortBackToFront(mesh, geo, camera) {
     u.sortTri = { src, c, d: new Float32Array(n), ord: new Uint32Array(n) };
   }
   const { src, c, d, ord } = u.sortTri;
-  for (let t = 0; t < n; t++) { const dx = c[3 * t] - _cam.x, dy = c[3 * t + 1] - _cam.y, dz = c[3 * t + 2] - _cam.z; d[t] = dx * dx + dy * dy + dz * dz; ord[t] = t; }
+  // Ortográfica: profundidade na direção do olhar (raios paralelos). Pela distância até a
+  // câmera (lá longe), a altura de cada face pesava tanto quanto o friso e faces de alturas
+  // diferentes trocavam de ordem em fileiras: listrinhas na borda do canelado.
+  if (camera.isOrthographicCamera) { camera.getWorldDirection(_fwd).transformDirection(_inv);
+    for (let t = 0; t < n; t++) { d[t] = c[3 * t] * _fwd.x + c[3 * t + 1] * _fwd.y + c[3 * t + 2] * _fwd.z; ord[t] = t; } }
+  else for (let t = 0; t < n; t++) { const dx = c[3 * t] - _cam.x, dy = c[3 * t + 1] - _cam.y, dz = c[3 * t + 2] - _cam.z; d[t] = dx * dx + dy * dy + dz * dz; ord[t] = t; }
   ord.sort((a, b) => d[b] - d[a]); // longe primeiro
   const A = I.array; for (let t = 0; t < n; t++) { const o = ord[t] * 3; A[3 * t] = src[o]; A[3 * t + 1] = src[o + 1]; A[3 * t + 2] = src[o + 2]; }
   I.needsUpdate = true; u.sortCam = (last || new THREE.Vector3()).copy(_cam);
@@ -4889,7 +4894,12 @@ function liquidMeshes(m, y0, levelAbs, lift = S.wall) {
   // transmite e refrata o que está atrás (ior do álcool/água) com a espessura do frasco
   // inteiro — é a lente que faz o frasco parecer cheio (fundo ampliado/invertido, bordas
   // densas), com a cor do vidro e, se houver, um tom leve do líquido. Branco = sem cor.
-  if (m.liqType === 'perfume' && glassBody && !isFrost(m.own ? m.finish : S.finish)) {
+  // Perfume no vidro liso como lente transmissiva desenhada POR CIMA do frasco: desligado.
+  // Por cima, ele apagava os frisos e os brilhos do vidro e parecia estar fora do frasco.
+  // Agora segue o caminho do transparente (dentro, com o vidro passando por cima) e a luz
+  // atravessando o líquido (ver seeThru). Para voltar: PERFUME_LENTE = true.
+  const PERFUME_LENTE = false;
+  if (PERFUME_LENTE && m.liqType === 'perfume' && glassBody && !isFrost(m.own ? m.finish : S.finish)) {
     const gc = new THREE.Color(m.own ? m.color : S.color), tint = new THREE.Color(m.liqColor);
     // é desenhado por cima do vidro, então leva também o brilho e a borda densa dele
     const lm = new THREE.MeshPhysicalMaterial({ color: gc.clone().multiply(tint), transmission: 1, roughness: 0.03,
@@ -4971,7 +4981,7 @@ function liquidMeshes(m, y0, levelAbs, lift = S.wall) {
     // pastel chapado de ponta a ponta e o perfume parecia creme.
     const bgL = new THREE.Color(S.bg || '#eeeeee'), tv = liqSeen.clone(), f3 = c => `vec3(${c.r.toFixed(3)}, ${c.g.toFixed(3)}, ${c.b.toFixed(3)})`;
     const see = m.liqType === 'perfume' ? 0.85 : clr * 0.75;
-    const seeThru = frost && clr > 0 ? `
+    const seeThru = (frost || m.liqType === 'perfume') && clr > 0 ? `
        { float path = mix(2.8, 1.0, lensN) * (1.0 + 0.6 * deep); // caminho da luz dentro do líquido
          vec3 thruL = ${f3(bgL)} * pow(max(${f3(tv)}, vec3(1e-3)), vec3(path)) * (1.08 - 0.18 * deep) + vec3(0.16) * menisco; // + o brilho do nível
          outgoingLight = mix(outgoingLight, thruL + outgoingLight * 0.1, ${see.toFixed(3)}); }` : '';
