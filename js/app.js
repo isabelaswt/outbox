@@ -390,7 +390,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-12.canelado-fundo';
+const BUILD = '2026-11-12.vidro-de-cima3';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -3272,6 +3272,16 @@ const bandVert = (sh, band) => { const cv = band?.R > 0;
   sh.vertexShader = sh.vertexShader.replace('#include <common>', `#include <common>\nvarying float vObjY;${cv ? '\nvarying float vBandU;' : ''}`).replace('#include <begin_vertex>', '#include <begin_vertex>\nvObjY = position.y;');
   if (cv) sh.vertexShader = sh.vertexShader.replace('#include <project_vertex>', `#include <project_vertex>\nvBandU = abs(mvPosition.x - (modelViewMatrix * vec4(${band.cx.toFixed(2)}, transformed.y, ${band.cz.toFixed(2)}, 1.0)).x);`);
   sh.fragmentShader = sh.fragmentShader.replace('#include <common>', `#include <common>\nvarying float vObjY;${cv ? '\nvarying float vBandU;' : ''}`); };
+// Piso e canto da cavidade do fundo grosso (vidro transparente): não são desenhados por
+// cima — o que está ali é o conteúdo ou, vazio, o que a transmissão já mostra. Com a
+// câmera de cima eles cobriam o líquido (disco branco, meia-lua escura e anéis pontilhados).
+const floorCut = (sh, band) => { if (!band) return;
+  const y = band.y, top = y + (band.R || 0) + 0.8, f = v => v.toFixed(2);
+  sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vCutN; varying vec2 vCutXZ;')
+    .replace('#include <begin_vertex>', '#include <begin_vertex>\nvCutN = objectNormal; vCutXZ = position.xz;');
+  sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying vec3 vCutN; varying vec2 vCutXZ;')
+    .replace('void main() {', `void main() {\n\t{ vec3 cn = normalize(vCutN); vec2 rr = vCutXZ - vec2(${f(band.cx || 0)}, ${f(band.cz || 0)});\n\t  if (vObjY > ${f(y - 0.3)} && vObjY < ${f(top)} && cn.y > 0.2 && dot(cn.xz, rr) <= 0.02 * length(rr)) discard; } // piso/canto de dentro do fundo grosso`);
+};
 const bandF = band => { const y = band.y;
   const yE = band.R > 0 ? `(${y.toFixed(2)} + ${band.R.toFixed(2)} * (1.0 - sqrt(max(0.0, 1.0 - pow(clamp((vBandU - ${(band.r - band.R).toFixed(2)}) / ${band.R.toFixed(2)}, 0.0, 1.0), 2.0)))))` : y.toFixed(2);
   return `(1.0 - smoothstep(${yE} - 0.9, ${yE} + 0.9, vObjY))`; };
@@ -3284,17 +3294,24 @@ const FIN_ROUGH = { fosco: 0.55, acetinado: 0.3, brilho: 0.14, perolado: 0.3, vi
 const presetDif = f => Math.round((FIN_ROUGH[f] ?? 0.5) / 0.8 * 100), presetIor = f => (String(f).startsWith('pet') ? 1.45 : 1.5);
 // Profundidade (na câmera) do eixo da peça de vidro que está sendo desenhada; a malha
 // atualiza antes de desenhar (ver glassAxis).
-const GLASS_AXIS = { value: -1e9 };
+// Eixo da peça (no mundo) e direção da câmera: a metade de trás é medida em volta do eixo,
+// na altura de cada ponto. Antes era a profundidade de um ponto só (o centro): de frente
+// funcionava, mas com a câmera de cima a parte de baixo da parede de trás passava como
+// "da frente" e era desenhada por cima do líquido (oliva escuro).
+const GLASS_AXIS = { value: 0 }, GLASS_C = { value: new THREE.Vector3() }, GLASS_UP = { value: new THREE.Vector3(0, 1, 0) }, GLASS_CAM = { value: new THREE.Vector3(0, 0, 1) };
 const _ga = new THREE.Vector3();
 function glassAxis(mesh) {
   const f = (r, sc, camera, geo) => {
     if (!geo.boundingSphere) geo.computeBoundingSphere();
-    _ga.copy(geo.boundingSphere.center).applyMatrix4(mesh.matrixWorld).applyMatrix4(camera.matrixWorldInverse);
-    GLASS_AXIS.value = _ga.z;
+    GLASS_C.value.copy(geo.boundingSphere.center).applyMatrix4(mesh.matrixWorld);
+    GLASS_UP.value.set(0, 1, 0).transformDirection(mesh.matrixWorld);
+    if (camera.isOrthographicCamera) camera.getWorldDirection(GLASS_CAM.value).negate();
+    else GLASS_CAM.value.setFromMatrixPosition(camera.matrixWorld).sub(GLASS_C.value).normalize();
+    GLASS_AXIS.value = 1;
     sortBackToFront(mesh, geo, camera);
   };
   f.glass = true; mesh.onBeforeRender = f;
-  mesh.onAfterRender = () => { GLASS_AXIS.value = -1e9; }; // outras malhas com o mesmo material não são cortadas
+  mesh.onAfterRender = () => { GLASS_AXIS.value = 0; }; // outras malhas com o mesmo material não são cortadas
 }
 // Vidro sem profundidade: o último triângulo desenhado fica por cima. Ordena os
 // triângulos de trás para frente pela câmera (só quando ela muda de direção), assim o
@@ -3353,7 +3370,7 @@ function material(color, finish, band = null, thick, look = null) {
   // só sobrava um filete branco em volta do líquido.
   if (finish === 'vidro') { m.roughness = 0.05; m.transmission = 1; m.thickness = thick ?? 4; m.ior = 1.5; m.depthWrite = false;
     const et = new THREE.Color(color).multiply(new THREE.Color(0.58, 0.66, 0.63)), etv = `vec3(${et.r.toFixed(3)}, ${et.g.toFixed(3)}, ${et.b.toFixed(3)})`;
-    m.onBeforeCompile = sh => { wallUniform(sh); if (band) bandVert(sh, band);
+    m.onBeforeCompile = sh => { wallUniform(sh); if (band) { bandVert(sh, band); floorCut(sh, band); }
       // A cor vem da espessura atravessada (absorção), não de uma tinta por igual: de frente
       // (pouco vidro no caminho) a luz passa clara e o frasco acende na cor; nas bordas,
       // com muito vidro no caminho, ela satura e escurece. Com a cor cheia em tudo o vidro
@@ -3361,15 +3378,15 @@ function material(color, finish, band = null, thick, look = null) {
       sh.fragmentShader = sh.fragmentShader.replace('#include <transmission_fragment>', THREE.ShaderChunk.transmission_fragment
         .replace('n, v, material.roughness, material.diffuseColor', 'n, v, material.roughness, vec3(1.0)')
         .replace('totalDiffuse = mix( totalDiffuse, transmitted.rgb, material.transmission );',
-          `float faceV = abs(dot(normalize(vViewPosition), normal)), frE = pow(1.0 - faceV, 1.4);
-\ttransmitted.rgb *= pow(max(material.diffuseColor, vec3(1e-4)), vec3(mix(0.5, 1.7, smoothstep(0.05, 0.85, 1.0 - faceV))));
+          `float faceV = abs(dot(normalize(vViewPosition), normal)), frE = pow(1.0 - faceV, 2.4); // só a borda de verdade escurece (em ângulo médio, como canelado visto de cima, tirava ~30% da luz)
+\ttransmitted.rgb *= pow(max(material.diffuseColor, vec3(1e-4)), vec3(mix(0.5, 1.7, smoothstep(0.3, 0.92, 1.0 - faceV))));
 \ttransmitted.rgb *= 1.0 + 0.3 * faceV * faceV * (1.0 - dot(material.diffuseColor, vec3(0.333))); // o vidro curvo junta a luz de trás no miolo (acende por dentro); no incolor não estoura o fundo
 \tfloat dnS = smoothstep(0.1, 0.75, -inverseTransformDirection(normal, viewMatrix).y); // parte de baixo da curva
 \ttransmitted.rgb *= mix(vec3(1.0), ${etv}, clamp(frE * (0.9 + uWall * 0.5) * (1.0 - 0.6 * dnS), 0.0, 1.0));
 \ttransmitted.rgb = mix(transmitted.rgb, max(transmitted.rgb, sqrt(max(material.diffuseColor, vec3(1e-4))) * 0.86), 0.65 * dnS); // fundo arredondado: a luz do estúdio entra pela base e acende (sem isso virava cinza chumbo)
 \t${band ? `transmitted.rgb *= mix(vec3(1.0), mix(vec3(1.0), material.diffuseColor, 0.35) * 0.82, ${bandF(band)}); // fundo grosso: um pouco mais denso, no mesmo tom (ao quadrado virava vermelho escuro)` : ''}
 \ttotalDiffuse = mix( totalDiffuse, transmitted.rgb, material.transmission );`)); };
-    m.customProgramCacheKey = () => 'vidro6' + color + bandKey(band) + wk; }
+    m.customProgramCacheKey = () => 'vidro8' + color + bandKey(band) + wk; }
   // Vidro fosco (jateado): transmite a luz mas embaça o que está dentro e atrás.
   // Contraste: parte da luz é espalhada pelo jateado (o vidro ganha o degradê do
   // estúdio), a cor fica mais densa com a espessura e o contorno pega um brilho
@@ -3440,13 +3457,17 @@ function halfFront(m) {
   if (m.transmission > 0 && !m.depthWrite && !m.userData.meiaFrente) {
     m.userData.meiaFrente = true; m.needsUpdate = true;
     const prev = m.onBeforeCompile, pk = m.customProgramCacheKey;
-    m.onBeforeCompile = (sh, r) => { prev?.call(m, sh, r); sh.uniforms.uAxisZ = GLASS_AXIS;
+    m.onBeforeCompile = (sh, r) => { prev?.call(m, sh, r); Object.assign(sh.uniforms, { uAxisOn: GLASS_AXIS, uAxisC: GLASS_C, uAxisUp: GLASS_UP, uAxisCam: GLASS_CAM });
       // só paredes laterais (normal deitada): tampo, fundo e a superfície do líquido ficam inteiros
-      sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying float vGlassZ; varying float vGlassNy;')
-        .replace('#include <project_vertex>', '#include <project_vertex>\n\tvGlassZ = mvPosition.z; vGlassNy = normalize(mat3(modelMatrix) * objectNormal).y;');
-      sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying float vGlassZ; varying float vGlassNy; uniform float uAxisZ;')
-        .replace('void main() {', 'void main() {\n\tif (vGlassZ < uAxisZ && abs(vGlassNy) < 0.6) discard; // parede da metade de trás: fica para a transmissão'); };
-    m.customProgramCacheKey = () => (pk ? pk.call(m) : '') + '|meiaFrente';
+      sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vGlassW; varying float vGlassNy;')
+        .replace('#include <project_vertex>', '#include <project_vertex>\n\tvGlassW = (modelMatrix * vec4(transformed, 1.0)).xyz; vGlassNy = normalize(mat3(modelMatrix) * objectNormal).y;');
+      sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying vec3 vGlassW; varying float vGlassNy; uniform float uAxisOn; uniform vec3 uAxisC; uniform vec3 uAxisUp; uniform vec3 uAxisCam;')
+        .replace('void main() {', `void main() {
+	if (uAxisOn > 0.5 && abs(vGlassNy) < 0.6) { // parede da metade de trás (em volta do eixo, na altura do ponto): fica para a transmissão
+	  vec3 rel = vGlassW - uAxisC; rel -= uAxisUp * dot(rel, uAxisUp);
+	  vec3 tc = uAxisCam - uAxisUp * dot(uAxisCam, uAxisUp);
+	  if (length(tc) > 0.05 && dot(rel, tc) < 0.0) discard; }`); };
+    m.customProgramCacheKey = () => (pk ? pk.call(m) : '') + '|meiaFrente2';
   }
 }
 
@@ -4960,7 +4981,13 @@ function liquidMeshes(m, y0, levelAbs, lift = S.wall) {
   const out = [new THREE.Mesh(inner, mat)];
   const cap = level < b.max.y - 0.05 ? levelCap(inner, level - 0.01) : null;
   // topo: reflexo tingido e verniz leve (de lado, o verniz espelhava o estúdio e a faixa saía cinza)
-  if (cap) out.push(new THREE.Mesh(cap, new THREE.MeshPhysicalMaterial({ color: lc, roughness: 0.08, ...opts, ...inGlass, clearcoat: 0.25, specularColor: lc.clone().lerp(new THREE.Color('#ffffff'), 0.4) })));
+  // Transparente no vidro liso: visto de cima é o líquido por dentro (na cor dele, com luz
+  // própria como o miolo do corpo); antes era só uma superfície iluminada e, com a câmera
+  // de cima, virava uma tampa oliva escura sobre o líquido claro.
+  if (cap && clear && glass && !frost) { const c = lc.clone().multiplyScalar(1.05);
+    out.push(new THREE.Mesh(cap, new THREE.MeshPhysicalMaterial({ color: c.clone().multiplyScalar(0.5), emissive: c.clone().multiplyScalar(0.62), roughness: 0.15, clearcoat: 0.2, clearcoatRoughness: 0.1,
+      specularIntensity: 0.6, specularColor: c.clone().lerp(new THREE.Color('#ffffff'), 0.5) }))); }
+  else if (cap) out.push(new THREE.Mesh(cap, new THREE.MeshPhysicalMaterial({ color: lc, roughness: 0.08, ...opts, ...inGlass, clearcoat: 0.25, specularColor: lc.clone().lerp(new THREE.Color('#ffffff'), 0.4) })));
   out.forEach(o => { o.userData.liquid = true; o.name = 'liquido'; });
   return out;
 }
