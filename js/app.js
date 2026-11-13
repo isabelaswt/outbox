@@ -390,7 +390,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-13.contorno-liquido2';
+const BUILD = '2026-11-13.nivel-realista';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -4995,7 +4995,9 @@ function liquidMeshes(m, y0, levelAbs, lift = S.wall) {
          // e o canto curvo de baixo marcado em cima do fundo grosso, como no vidro de verdade
          float fv = abs(dot(normalize(vViewPosition), normal)), dnL = clamp(-inverseTransformDirection(normal, viewMatrix).y, 0.0, 1.0);
          float rimL = smoothstep(0.32, 0.04, fv) * 0.55 + smoothstep(0.3, 0.6, dnL) * (1.0 - smoothstep(0.72, 0.92, dnL)) * 1.35;
-         outgoingLight += mix(${f3(tv)}, vec3(1.0), 0.55) * rimL * 0.42;` : ''} }` : '';
+         outgoingLight += mix(${f3(tv)}, vec3(1.0), 0.55) * rimL * 0.42;
+         // nível: a superfície vista de lado é uma linha escura fina (marca onde o perfume termina)
+         outgoingLight *= 1.0 - 0.88 * exp(-dTop / 0.3);` : ''} }` : '';
     // Parede de trás vista através do líquido: no frasco canelado, os frisos do outro lado
     // aparecem como listras verticais por dentro do líquido (é o que mostra que ele é
     // transparente, como nos perfumes de vidro canelado). Para cada ponto, acha onde o
@@ -5031,8 +5033,10 @@ function liquidMeshes(m, y0, levelAbs, lift = S.wall) {
   // própria como o miolo do corpo); antes era só uma superfície iluminada e, com a câmera
   // de cima, virava uma tampa oliva escura sobre o líquido claro.
   if (cap && clear && glass && !frost) { const c = lc.clone().multiplyScalar(1.05);
-    out.push(new THREE.Mesh(cap, new THREE.MeshPhysicalMaterial({ color: c.clone().multiplyScalar(0.5), emissive: c.clone().multiplyScalar(0.62), roughness: 0.15, clearcoat: 0.2, clearcoatRoughness: 0.1,
-      specularIntensity: 0.6, specularColor: c.clone().lerp(new THREE.Color('#ffffff'), 0.5) }))); }
+    // superfície do líquido: de raspão ela espelha o estúdio (Fresnel alto) e vira o fio claro
+    // logo acima da linha escura do nível, como no frasco de verdade
+    out.push(new THREE.Mesh(cap, new THREE.MeshPhysicalMaterial({ color: c.clone().multiplyScalar(0.45), emissive: c.clone().multiplyScalar(0.55), roughness: 0.04, clearcoat: 1, clearcoatRoughness: 0.03,
+      specularIntensity: 1, specularColor: new THREE.Color('#ffffff'), ior: 1.36 }))); }
   else if (cap) out.push(new THREE.Mesh(cap, new THREE.MeshPhysicalMaterial({ color: lc, roughness: 0.08, ...opts, ...inGlass, clearcoat: 0.25, specularColor: lc.clone().lerp(new THREE.Color('#ffffff'), 0.4) })));
   out.forEach(o => { o.userData.liquid = true; o.name = 'liquido'; });
   return out;
