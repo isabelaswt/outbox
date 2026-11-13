@@ -6,13 +6,15 @@
 <title>OUTBOX</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap">
-<link rel="stylesheet" href="css/app.css?v=2026-11-13.perfume-cor-cheia">
+<link rel="stylesheet" href="css/app.css?v=2026-11-13.render-final4">
 <script type="importmap">
 {"imports":{
   "three":"https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js",
   "three/addons/":"https://cdn.jsdelivr.net/npm/three@0.169.0/examples/jsm/",
   "three-mesh-bvh":"https://cdn.jsdelivr.net/npm/three-mesh-bvh@0.8.3/build/index.module.js",
-  "three-bvh-csg":"https://cdn.jsdelivr.net/npm/three-bvh-csg@0.0.17/build/index.module.js"
+  "three-bvh-csg":"https://cdn.jsdelivr.net/npm/three-bvh-csg@0.0.17/build/index.module.js",
+  "three/examples/jsm/":"https://cdn.jsdelivr.net/npm/three@0.169.0/examples/jsm/",
+  "three-gpu-pathtracer":"https://cdn.jsdelivr.net/npm/three-gpu-pathtracer@0.0.23/build/index.module.js"
 }}
 </script>
 </head>
@@ -239,9 +241,12 @@
     <button class="tb" id="explodeBtn" title="Explodir: separa as peças para ver cada uma" aria-label="Explodir"><i data-i="explode"></i></button>
     <button class="tb" id="handBtn" title="Mão: arrastar move a vista (ou segure a barra de espaço)" aria-label="Mão"><i data-i="hand-stop"></i></button>
     <span class="sep"></span>
+    <button class="tb" id="ptBtn" title="Render final: a luz é simulada de verdade (vidro, líquido, reflexos e sombra), como no V-Ray. Começa granulado e limpa em segundos" aria-label="Render final"><i data-i="aperture"></i></button>
+    <span class="sep"></span>
     <label class="qual" title="Qualidade da visualização: mais alta = mais nítida e mais pesada"><i data-i="sparkles"></i><input type="range" id="viewQ" min="1" max="4" step="1" value="2"><b id="viewQName">Boa</b></label>
   </div>
   <div class="stats" id="stats"></div>
+  <div class="ptBar hidden" id="ptBar"><i data-i="aperture"></i><span id="ptInfo">Render final</span><button class="btn sm pri" id="ptPng">Baixar PNG</button><button class="btn sm" id="ptStop">Sair</button></div>
   <div class="pieceBar hidden" id="pieceBar"><b id="pieceBarName"></b><button data-p="swap" title="Trocar por outra forma">Trocar</button><button data-p="color" title="Cor e acabamento desta peça">Cor</button><button data-p="dup" title="Duplicar">Duplicar</button><button data-p="del" title="Excluir (dá para desfazer)">Excluir</button></div>
   <div class="toast" id="toast"></div>
 </main>
@@ -284,6 +289,6 @@
 </section>
 </div>
 
-<script type="module" src="js/app.js?v=2026-11-13.perfume-cor-cheia"></script>
+<script type="module" src="js/app.js?v=2026-11-13.render-final4"></script>
 </body>
 </html>

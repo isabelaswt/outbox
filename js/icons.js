@@ -1,5 +1,6 @@
 // Ícones Tabler (MIT, tabler.io/icons), contorno 24px, embutidos para não depender de fonte externa.
 export const ICONS = {
+"aperture": "<path d=\"M12 12m-9 0a9 9 0 1 0 18 0a9 9 0 1 0 -18 0\" /><path d=\"M3.6 15h10.55\" /><path d=\"M6.551 4.938l3.26 10.034\" /><path d=\"M17.032 4.636l-8.535 6.201\" /><path d=\"M20.559 14.51l-8.535 -6.201\" /><path d=\"M12.257 20.916l3.261 -10.034\" />",
 "perspective": "<path d=\"M6.141 4.163l12 1.714a1 1 0 0 1 .859 .99v10.266a1 1 0 0 1 -.859 .99l-12 1.714a1 1 0 0 1 -1.141 -.99v-13.694a1 1 0 0 1 1.141 -.99z\" />",
 "grid-4x4": "<path d=\"M3 6h18\" /><path d=\"M3 12h18\" /><path d=\"M3 18h18\" /><path d=\"M6 3v18\" /><path d=\"M12 3v18\" /><path d=\"M18 3v18\" />",
 "explode": "<path d=\"M9 18l3 3l3 -3\" /><path d=\"M12 15v6\" /><path d=\"M15 6l-3 -3l-3 3\" /><path d=\"M12 3v6\" /><path d=\"M5 12h14\" />",
