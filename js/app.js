@@ -390,7 +390,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-13.liquido-suave';
+const BUILD = '2026-11-13.liquido-suave2';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -4988,7 +4988,7 @@ function liquidMeshes(m, y0, levelAbs, lift = S.wall) {
     // própria nem branco por cima, que deixava leitoso). O brilho fica por conta do vidro.
     const mult = m.liqType === 'perfume', see = mult ? 1 : clr * 0.75;
     const seeThru = (frost || mult) && clr > 0 ? `
-       { float path = mix(2.8, 1.0, lensN) * (1.0 + 0.22 * deep); // caminho da luz dentro do líquido (embaixo pouco mais: forte, a base puxava para vermelho)
+       { float path = mix(2.8, 1.0, lensN) * (1.0 + ${frost ? '0.6' : '0.22'} * deep); // caminho da luz dentro do líquido (jateado: como estava, aprovado; vidro liso: menos, a base puxava para vermelho)
          vec3 thruL = ${f3(bgL)} * pow(max(${f3(tv)}, vec3(1e-3)), vec3(path)) * (1.04 - 0.14 * deep)${mult ? '' : ' + vec3(0.16) * menisco'}; // (transparente: + o brilho do nível)
          outgoingLight = mix(outgoingLight, thruL${mult ? '' : ' + outgoingLight * 0.1'}, ${see.toFixed(3)});${mult && !frost ? `
          // contorno do líquido aceso (a divisa líquido/vidro reflete a luz): fio claro nas bordas
