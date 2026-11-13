@@ -390,7 +390,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-13.jateado-fundo-suave';
+const BUILD = '2026-11-13.contorno-liquido2';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -4990,7 +4990,12 @@ function liquidMeshes(m, y0, levelAbs, lift = S.wall) {
     const seeThru = (frost || mult) && clr > 0 ? `
        { float path = mix(2.8, 1.0, lensN) * (1.0 + 0.6 * deep); // caminho da luz dentro do líquido
          vec3 thruL = ${f3(bgL)} * pow(max(${f3(tv)}, vec3(1e-3)), vec3(path)) * (1.04 - 0.14 * deep)${mult ? '' : ' + vec3(0.16) * menisco'}; // (transparente: + o brilho do nível)
-         outgoingLight = mix(outgoingLight, thruL${mult ? '' : ' + outgoingLight * 0.1'}, ${see.toFixed(3)}); }` : '';
+         outgoingLight = mix(outgoingLight, thruL${mult ? '' : ' + outgoingLight * 0.1'}, ${see.toFixed(3)});${mult && !frost ? `
+         // contorno do líquido aceso (a divisa líquido/vidro reflete a luz): fio claro nas bordas
+         // e o canto curvo de baixo marcado em cima do fundo grosso, como no vidro de verdade
+         float fv = abs(dot(normalize(vViewPosition), normal)), dnL = clamp(-inverseTransformDirection(normal, viewMatrix).y, 0.0, 1.0);
+         float rimL = smoothstep(0.32, 0.04, fv) * 0.55 + smoothstep(0.3, 0.6, dnL) * (1.0 - smoothstep(0.72, 0.92, dnL)) * 1.35;
+         outgoingLight += mix(${f3(tv)}, vec3(1.0), 0.55) * rimL * 0.42;` : ''} }` : '';
     // Parede de trás vista através do líquido: no frasco canelado, os frisos do outro lado
     // aparecem como listras verticais por dentro do líquido (é o que mostra que ele é
     // transparente, como nos perfumes de vidro canelado). Para cada ponto, acha onde o
