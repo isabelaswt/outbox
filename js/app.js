@@ -390,7 +390,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-13.perfume-dentro';
+const BUILD = '2026-11-13.vidro-sem-listras2';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -3333,7 +3333,8 @@ function sortBackToFront(mesh, geo, camera) {
   const I = geo.index; if (!I || I.count > 900000) return;
   _inv.copy(mesh.matrixWorld).invert(); _cam.setFromMatrixPosition(camera.matrixWorld).applyMatrix4(_inv);
   const u = geo.userData, last = u.sortCam;
-  if (last && last.distanceToSquared(_cam) < Math.max(1, last.lengthSq() * 0.0004)) return; // mexeu pouco: mantém
+  camera.getWorldDirection(_fwd).transformDirection(_inv);
+  if (last && last.distanceToSquared(_cam) < Math.max(1, last.lengthSq() * 0.0004) && u.sortFwd && u.sortFwd.dot(_fwd) > 0.9995) return; // mexeu pouco: mantém
   const n = I.count / 3;
   if (!u.sortTri) { // centro de cada triângulo e o índice original (uma vez)
     const P = geo.attributes.position, src = I.array.slice(), c = new Float32Array(n * 3);
@@ -3341,15 +3342,14 @@ function sortBackToFront(mesh, geo, camera) {
     u.sortTri = { src, c, d: new Float32Array(n), ord: new Uint32Array(n) };
   }
   const { src, c, d, ord } = u.sortTri;
-  // Ortográfica: profundidade na direção do olhar (raios paralelos). Pela distância até a
-  // câmera (lá longe), a altura de cada face pesava tanto quanto o friso e faces de alturas
-  // diferentes trocavam de ordem em fileiras: listrinhas na borda do canelado.
-  if (camera.isOrthographicCamera) { camera.getWorldDirection(_fwd).transformDirection(_inv);
-    for (let t = 0; t < n; t++) { d[t] = c[3 * t] * _fwd.x + c[3 * t + 1] * _fwd.y + c[3 * t + 2] * _fwd.z; ord[t] = t; } }
-  else for (let t = 0; t < n; t++) { const dx = c[3 * t] - _cam.x, dy = c[3 * t + 1] - _cam.y, dz = c[3 * t + 2] - _cam.z; d[t] = dx * dx + dy * dy + dz * dz; ord[t] = t; }
+  // Profundidade na direção do olhar (ortográfica e perspectiva). Pela distância até a câmera,
+  // a altura de cada face pesava tanto quanto o friso e faces de alturas diferentes trocavam
+  // de ordem em fileiras: listrinhas na borda do canelado (na perspectiva, ainda pior).
+  camera.getWorldDirection(_fwd).transformDirection(_inv);
+  for (let t = 0; t < n; t++) { d[t] = c[3 * t] * _fwd.x + c[3 * t + 1] * _fwd.y + c[3 * t + 2] * _fwd.z; ord[t] = t; }
   ord.sort((a, b) => d[b] - d[a]); // longe primeiro
   const A = I.array; for (let t = 0; t < n; t++) { const o = ord[t] * 3; A[3 * t] = src[o]; A[3 * t + 1] = src[o + 1]; A[3 * t + 2] = src[o + 2]; }
-  I.needsUpdate = true; u.sortCam = (last || new THREE.Vector3()).copy(_cam);
+  I.needsUpdate = true; u.sortCam = (last || new THREE.Vector3()).copy(_cam); u.sortFwd = (u.sortFwd || new THREE.Vector3()).copy(_fwd);
 }
 function material(color, finish, band = null, thick, look = null) {
   if (band && !isGlass(finish)) band = null;
