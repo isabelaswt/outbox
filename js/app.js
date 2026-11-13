@@ -390,7 +390,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-13.render-final4';
+const BUILD = '2026-11-13.render-final5';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -5517,8 +5517,18 @@ const PT_ENV = new Map();
 let PT = null;
 async function ptEnvTexture() {
   const sc = sceneOf(), name = sc.luz === 'hdr' && sc.hdrName?.startsWith('ph:') ? sc.hdrName.slice(3) : 'studio_small_09';
-  if (!PT_ENV.has(name)) PT_ENV.set(name, new RGBELoader().loadAsync(phHdrUrl(name)).then(t => { t.mapping = THREE.EquirectangularReflectionMapping; return t; }));
+  if (!PT_ENV.has(name)) PT_ENV.set(name, new RGBELoader().loadAsync(phHdrUrl(name)).then(t => { t.mapping = THREE.EquirectangularReflectionMapping; t.userData.E = ptIrradiance(t); return t; }));
   return PT_ENV.get(name);
+}
+// Luz que o HDRI joga num chão horizontal (irradiância do hemisfério de cima). Serve para
+// calibrar a intensidade: o chão claro fica no tom do fundo da cena, sem estourar.
+function ptIrradiance(t) {
+  const { width: w, height: h, data } = t.image, half = t.type === THREE.HalfFloatType, ch = data.length / (w * h);
+  const val = i => (half ? THREE.DataUtils.fromHalfFloat(data[i]) : data[i]);
+  let E = 0; const sx = Math.max(1, w >> 7), sy = Math.max(1, h >> 7);
+  for (let y = 0; y < h / 2; y += sy) { const th = (y + 0.5) / h * Math.PI, wgt = Math.cos(th) * Math.sin(th) * (Math.PI / h) * sy * (2 * Math.PI / w) * sx;
+    for (let x = 0; x < w; x += sx) { const i = (y * w + x) * ch; E += (0.2126 * val(i) + 0.7152 * val(i + 1) + 0.0722 * val(i + 2)) * wgt; } }
+  return E;
 }
 const ptFlip = g => { // parede de dentro: triângulos ao contrário e normais para dentro da cavidade
   const p = g.attributes.position.array, n = g.attributes.normal.array;
@@ -5527,7 +5537,7 @@ const ptFlip = g => { // parede de dentro: triângulos ao contrário e normais p
   return g;
 };
 function ptLiquidGeo(info) { // volume do líquido: a cavidade (um fio para dentro) cortada no nível
-  const inner = offsetInner(info.m, info.y0, S.wall + 0.06, info.lift); if (!inner) return null;
+  const inner = offsetInner(info.m, info.y0, S.wall + 0.35, info.lift); if (!inner) return null; // folga de 0,35 mm do vidro: colado, o cálculo confundia as duas superfícies
   inner.computeBoundingBox(); const b = inner.boundingBox;
   if (info.level >= b.max.y - 0.05) return flatPN(inner);
   const box = new THREE.BoxGeometry(b.max.x - b.min.x + 20, info.level - b.min.y + 2, b.max.z - b.min.z + 20);
@@ -5551,7 +5561,7 @@ function ptMaterial(src, o) {
     const c = src.color.clone(), s = Math.max(c.r, c.g, c.b) - Math.min(c.r, c.g, c.b);
     Object.assign(m, { transmission: 1, ior: src.ior || 1.5, thickness: 0, metalness: 0, roughness: isFrost(fin) ? Math.max(0.25, src.roughness) : Math.min(src.roughness, 0.03),
       // a cor escolhida é a que se vê atravessando as duas paredes de frente; mais vidro no caminho (bordas, fundo grosso) = mais intenso
-      color: new THREE.Color('#ffffff'), attenuationColor: s > 0.06 ? c : new THREE.Color('#ffffff'), attenuationDistance: s > 0.06 ? Math.max(1, 2 * S.wall) : Infinity });
+      color: new THREE.Color('#ffffff'), attenuationColor: s > 0.06 ? c : new THREE.Color('#ffffff'), attenuationDistance: s > 0.06 ? Math.max(2, 4 * S.wall) : Infinity }); // (2 paredes = cor^0,5, como na vista normal; mais forte somava com o líquido e virava preto)
   }
   if (src.emissive && src.emissiveIntensity && src.emissive.getHex()) m.emissive = new THREE.Color(0); // brilho falso da vista normal: aqui a luz é a de verdade
   return m;
@@ -5597,11 +5607,12 @@ async function startFinalRender() {
   try {
     const [{ WebGLPathTracer }, env] = await Promise.all([import('three-gpu-pathtracer'), ptEnvTexture()]);
     const { sc, made } = ptBuildScene();
-    sc.environment = env; sc.environmentIntensity = 1;
+    // luz calibrada pelo fundo: um chão na cor do fundo sai no tom do fundo (antes estourava)
+    sc.environment = env; sc.environmentIntensity = clamp(Math.PI / Math.max(env.userData.E || Math.PI, 1e-3), 0.05, 4);
     sc.environmentRotation = new THREE.Euler(0, THREE.MathUtils.degToRad(-(sceneOf().luzRot || 0)), 0);
     const tracer = new WebGLPathTracer(renderer);
     Object.assign(tracer, { renderDelay: 0, fadeDuration: 0, minSamples: 1, dynamicLowRes: true, lowResScale: 0.25 });
-    tracer.bounces = 12; tracer.transmissiveBounces = 16; tracer.filterGlossyFactor = 0.4; tracer.tiles.set(2, 2);
+    tracer.bounces = 8; tracer.transmissiveBounces = 12; tracer.filterGlossyFactor = 0.4; tracer.tiles.set(4, 4); // blocos pequenos por quadro: a placa não trava (perder o contexto apagava a página)
     tracer.setScene(sc, cam);
     PT = { tracer, sc, made, camM: cam.matrixWorld.clone(), raf: 0 }; PT_ON = true; $('#ptBtn').classList.add('on');
     const loop = () => {
