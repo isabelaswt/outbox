@@ -390,7 +390,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-13.ombro-fino';
+const BUILD = '2026-11-13.logo-cavado';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -4359,7 +4359,7 @@ async function applyLogosTo(group, st, alive) {
     // camada de vidro por cima do corpo e virava um retângulo escuro em volta do logo.
     const tm = target.material, glass = tm.transmission > 0 ? (tm.roughness > 0.3 ? 'fosco' : 'claro') : null;
     const skin = emboss ? logoSkin(L, F, M, -0.05, L.depth, true) : logoSkin(L, F, M, 0.025, L.depth, !!glass);
-    const lm = new THREE.Mesh(skin, logoMat(emboss && L.own ? material(L.color, L.finish) : target.material, glass));
+    const lm = new THREE.Mesh(skin, logoMat(L.own ? material(L.color, L.finish) : target.material, L.own ? null : glass)); // cor própria vale também no baixo-relevo (antes o cavado pegava a cor da peça e o dourado sumia)
     if (!emboss) { lm.material = lm.material.clone(); lm.material.depthTest = false; lm.renderOrder = 20; }
     lm.castShadow = true; lm.receiveShadow = true; lm.frustumCulled = false; // o logo nunca é tido como fora da tela
     lm.userData = { logo: true, idx: target.userData.idx }; lm.name = `logo_${L.name}`;
