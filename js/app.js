@@ -390,7 +390,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-13.volta-023f983';
+const BUILD = '2026-11-13.fundo-bola';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -892,6 +892,13 @@ const isFrost = f => f === 'vidroFosco' || f === 'vidroSemi' || f === 'petFosco'
 const isGlass = f => f === 'vidro' || isFrost(f) || f === 'pet';
 // Espessura do fundo por dentro: no vidro, a massa de vidro embaixo (o pescante para em cima dela).
 const floorThick = () => { const b = S.modules.find(v => v.vol); return b && thickBase(b.own ? b.finish : S.finish) ? Math.max(S.wall, b.fundo ?? 6) : S.wall; };
+// Raio do canto do piso da cavidade (fundo grosso). Frasco de base reta: canto curto (até 9 mm).
+// Frasco de fundo arredondado (bola, cápsula): o piso acompanha a curva de fora, menos a
+// parede — antes ficava um piso reto e largo dentro da bola.
+const floorR = (m, lift) => { if (!(lift > S.wall + 0.5)) return 0;
+  const half = Math.min(m.W, m.D) / 2, base = clamp(half * 0.32, 2, 9);
+  const rb = Math.min(m.rBot || 0, m.rBotW > 0 ? m.rBotW : m.rBot || 0) - S.wall;
+  return Math.max(base, Math.min(rb, half - S.wall - 0.5, Math.max(2, (m.h - lift) * 0.85))); };
 const thickBase = f => f === 'vidro' || f === 'vidroFosco' || f === 'vidroSemi'; // fundo grosso: só vidro (PET é fino)
 
 const typeKey = m => m?.type || Object.keys(LIB).find(k => LIB[k].name === m?.name);
@@ -4808,7 +4815,7 @@ function withoutRelief(m) {
 function offsetInner(m, y0, inset, lift) {
   // fundo grosso: o piso da cavidade sobe em curva até a parede (jateado também: com o piso
   // reto o conteúdo terminava num corte reto, diferente do vidro transparente)
-  const R0 = lift > S.wall + 0.5 ? clamp(Math.min(m.W, m.D) / 2 * 0.32, 2, 9) : 0;
+  const R0 = floorR(m, lift);
   // fundo curvo: anéis finos até acima do canto (com poucos anéis a curva saía em degraus)
   // Frisos/canelado são só por fora (como no vidro moldado de verdade): a cavidade e o
   // conteúdo são lisos. Copiando os frisos, o encolhimento da parede dobrava a superfície
@@ -4870,8 +4877,8 @@ function roundInnerFloor(p, yb, R0, seg0 = 0) {
     const y = p[i + 1]; if (y >= yT0) continue;
     const vi = i / 3, dx = p[i] - cx, dz = p[i + 2] - cz, d = Math.hypot(dx, dz);
     const Dw = Dt && vi < ringN * seg ? Dt[vi % seg] : Dt ? d : D[ang(p[i], p[i + 2])]; // ponto do tampo (centro): fica no piso
-    const R = Dt && Dmax > 0 && vi < ringN * seg ? R0 * Dw / Dmax : R0, yT = yb + R;
-    if (!(Dw > R * 1.2)) { if (y < yb) p[i + 1] = yb; continue; }
+    const R = Math.min(Dt && Dmax > 0 && vi < ringN * seg ? R0 * Dw / Dmax : R0, Dw * 0.97), yT = yb + R; // bola: o canto vira a curva inteira
+    if (!(Dw > 0.5 && R > 0.3)) { if (y < yb) p[i + 1] = yb; continue; }
     const Lo = Dw + (yT0 - ymin), Lt = Dw - R + Math.PI * R / 2;
     // caminho sempre crescente pelo perfil (centro → canto → parede): sem dobras na malha
     const path = d + Math.max(0, y - ymin), q = clamp(path / Lo, 0, 1) * Lt;
@@ -5166,7 +5173,7 @@ function buildInto(product, S, explodeAmt = 0) {
     // canto do piso da cavidade (mesma conta de offsetInner) para a faixa do fundo acompanhar
     let band = null;
     if (firstBody && thickBase(finM)) { if (!g.boundingBox) g.computeBoundingBox(); const gb = g.boundingBox;
-      band = { y: y0 + fundo, R: fundo > S.wall + 0.5 ? clamp(Math.min(m.W, m.D) / 2 * 0.32, 2, 9) : 0, r: Math.min(m.W, m.D) / 2 - Math.max(0.35, S.wall - 0.9),
+      band = { y: y0 + fundo, R: floorR(m, fundo), r: Math.min(m.W, m.D) / 2 - Math.max(0.35, S.wall - 0.9),
         cx: (gb.min.x + gb.max.x) / 2, cz: (gb.min.z + gb.max.z) / 2 }; }
     const mesh = new THREE.Mesh(g, material(colM, finM, band, thick, look));
     if (mesh.material.transmission > 0 && !mesh.material.depthWrite) glassAxis(mesh);
