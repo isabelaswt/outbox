@@ -390,7 +390,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-13.fundo-bola';
+const BUILD = '2026-11-13.ombro-fino';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -3405,6 +3405,9 @@ function material(color, finish, band = null, thick, look = null) {
       // colorido virava um bloco marrom, sem transparência.
       sh.fragmentShader = sh.fragmentShader.replace('#include <transmission_fragment>', THREE.ShaderChunk.transmission_fragment
         .replace('n, v, material.roughness, material.diffuseColor', 'n, v, material.roughness, vec3(1.0)')
+        // ombro (vidro virado para cima): parede fina de verdade, sem a lente grossa — com ela o
+        // ombro puxava o líquido de baixo (oval claro deformado no topo e anel rosa acima do nível)
+        .replace('material.thickness = thickness;', 'material.thickness = thickness * mix(1.0, 0.08, smoothstep(0.12, 0.55, inverseTransformDirection(normal, viewMatrix).y));')
         .replace('totalDiffuse = mix( totalDiffuse, transmitted.rgb, material.transmission );',
           `float faceV = abs(dot(normalize(vViewPosition), normal)), frE = pow(1.0 - faceV, 2.4); // só a borda de verdade escurece (em ângulo médio, como canelado visto de cima, tirava ~30% da luz)
 \ttransmitted.rgb *= pow(max(material.diffuseColor, vec3(1e-4)), vec3(mix(0.5, 1.7, smoothstep(0.3, 0.92, 1.0 - faceV))));
@@ -3414,7 +3417,7 @@ function material(color, finish, band = null, thick, look = null) {
 \ttransmitted.rgb = mix(transmitted.rgb, max(transmitted.rgb, sqrt(max(material.diffuseColor, vec3(1e-4))) * 0.86), 0.65 * dnS); // fundo arredondado: a luz do estúdio entra pela base e acende (sem isso virava cinza chumbo)
 \t${band ? `transmitted.rgb *= mix(vec3(1.0), mix(vec3(1.0), material.diffuseColor, 0.35) * 0.82, ${bandF(band)}); // fundo grosso: um pouco mais denso, no mesmo tom (ao quadrado virava vermelho escuro)` : ''}
 \ttotalDiffuse = mix( totalDiffuse, transmitted.rgb, material.transmission );`)); };
-    m.customProgramCacheKey = () => 'vidro8' + color + bandKey(band) + wk; }
+    m.customProgramCacheKey = () => 'vidro9' + color + bandKey(band) + wk; }
   // Vidro fosco (jateado): transmite a luz mas embaça o que está dentro e atrás.
   // Contraste: parte da luz é espalhada pelo jateado (o vidro ganha o degradê do
   // estúdio), a cor fica mais densa com a espessura e o contorno pega um brilho
