@@ -390,7 +390,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-13.perfume-contraste2';
+const BUILD = '2026-11-13.perfume-cor-cheia';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -4989,7 +4989,7 @@ function liquidMeshes(m, y0, levelAbs, lift = S.wall) {
     // própria nem branco por cima, que deixava leitoso). O brilho fica por conta do vidro.
     const mult = m.liqType === 'perfume', see = mult ? 1 : clr * 0.75;
     const seeThru = (frost || mult) && clr > 0 ? `
-       { float path = mix(2.8, 1.0, lensN) * ${frost ? '(1.0 + 0.6 * deep)' : '(1.0 + 0.5 * (1.0 - deep))'}; // caminho da luz dentro do líquido
+       { float path = ${frost ? 'mix(2.8, 1.0, lensN) * (1.0 + 0.6 * deep)' : 'mix(3.2, 1.7, lensN) * (1.0 + 0.5 * (1.0 - deep))'}; // caminho da luz dentro do líquido (vidro liso: o frasco inteiro de perfume no caminho satura a cor, mesmo no miolo)
          // jateado: como estava (aprovado). Vidro liso, como na foto de perfume: topo denso e escuro
          // (a tampa e o ombro tapam a luz) e a cor clareando e acendendo para baixo (a luz entra
          // pelo fundo de vidro); logo abaixo do nível, uma faixa mais escura dá o contraste do topo.
