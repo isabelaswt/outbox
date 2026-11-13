@@ -390,7 +390,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-12.cavidade-lisa';
+const BUILD = '2026-11-12.recuo-area-lisa';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -1174,7 +1174,11 @@ function labelPanel(m) {
   if (!m.labPanel || m.labPanel === 'nenhuma' || !canLabel(m)) return null;
   const h = m.h, H = clamp(m.labPanelH || 56, 4, h), W = Math.max(4, m.labPanelW || 46);
   const yc = clamp(h * (m.labY ?? 50) / 100, H / 2, h - H / 2);
-  return { shape: m.labPanel, W, H, yc, D: Math.max(0, m.labPanelD || 0), back: m.labPanelBack !== false, edge: 1.4 };
+  // com frisos/canelado o recuo conta a partir do fundo do friso (do topo, a área ficava
+  // acima dos vales e parecia saltada em vez de recuada)
+  const ribs = (m.ribs || []).filter(b => b.k > 0 && b.d > 0);
+  const rib = ribs.length ? ly => { let d = 0; for (const b of ribs) if (ly >= b.y0 && ly <= b.y1) d = Math.max(d, b.d * smooth(0, ribEnd(b), Math.min(ly - b.y0, b.y1 - ly))); return d; } : null;
+  return { shape: m.labPanel, W, H, yc, D: Math.max(0, m.labPanelD || 0), rib, back: m.labPanelBack !== false, edge: 1.4 };
 }
 function panelDist(P, s, dy) {
   const hw = P.W / 2, hh = P.H / 2, ax = Math.abs(s), ay = Math.abs(dy);
@@ -1224,7 +1228,8 @@ function loft(rings, seg, disp, uniform = false) {
       if (r.lobes >= 3 && r.lobeK > 0) { const f = lobeF(r.lobes, r.lobeK)(th) * (1 - pm) + pm; x *= f; z *= f; } // área lisa: na crista dos gomos
       let dy = 0;
       if (disp && !r.noDisp) [x, z, dy = 0] = disp(x, r.ly, z, th, r, pm);
-      if (pm && r.pan.D) { const q = Math.hypot(x, z) || 1, k = Math.max(0.05, 1 - r.pan.D * pm / q); x *= k; z *= k; } // recuo da área
+      const pD = pm ? r.pan.D + (r.pan.rib ? r.pan.rib(r.ly) : 0) : 0;
+      if (pD) { const q = Math.hypot(x, z) || 1, k = Math.max(0.05, 1 - pD * pm / q); x *= k; z *= k; } // recuo da área (a partir do fundo do friso)
       out[j] = [x + (r.cx || 0), r.y + dy, z + (r.cz || 0)];
     }
     return out;
@@ -4799,8 +4804,11 @@ function offsetInner(m, y0, inset, lift) {
   // Frisos/canelado são só por fora (como no vidro moldado de verdade): a cavidade e o
   // conteúdo são lisos. Copiando os frisos, o encolhimento da parede dobrava a superfície
   // sobre ela mesma nos vales (tracejados e interseções no líquido).
-  const g0 = moduleGeo({ ...withoutRelief(m), ribs: [], ridges: 0, groove: 0, _dense: R0 ? lift + R0 + 3 : 0 }, y0, { lo: false }); if (!g0) return null;
-  inset += Math.max(0, ...(m.ribs || []).map(b => b.d || 0)); // a parede conta a partir do vale do friso (friso fundo não fura até o conteúdo)
+  // A área lisa (recuo do rótulo) também é só por fora: por dentro o conteúdo copiava o recorte.
+  const g0 = moduleGeo({ ...withoutRelief(m), ribs: [], ridges: 0, groove: 0, labPanel: 'nenhuma', _dense: R0 ? lift + R0 + 3 : 0 }, y0, { lo: false }); if (!g0) return null;
+  const ribMax = Math.max(0, ...(m.ribs || []).map(b => b.d || 0)), pan = labelPanel(m);
+  // a parede conta a partir do vale do friso; na área recuada sobra pelo menos 0,6 mm de vidro
+  inset += ribMax + (pan ? Math.max(0, pan.D + 0.6 - S.wall) : 0);
   const g = g0.index ? g0 : g0; if (!g.attributes.normal) g.computeVertexNormals();
   const p = g.attributes.position.array, n = g.attributes.normal.array, yb = y0 + lift;
   // anel por anel: conta os pontos de um anel ANTES de deslocar (depois, com gomos
@@ -5759,7 +5767,7 @@ const MF = [
     ['labPanelW', 'Largura da área lisa', 6, 300, 0.5, 'mm', m => canLabel(m) && m.labPanel && m.labPanel !== 'nenhuma'],
     ['labPanelH', 'Altura da área lisa', 6, 300, 0.5, 'mm', m => canLabel(m) && m.labPanel && m.labPanel !== 'nenhuma'],
     ['labY', 'Posição da área (centro, % da altura da peça)', 0, 100, 1, '%', m => canLabel(m) && m.labPanel && m.labPanel !== 'nenhuma' && (!m.labType || m.labType === 'nenhum')],
-    ['labPanelD', 'Recuo (0 = rente aos gomos)', 0, 6, 0.1, 'mm', m => canLabel(m) && m.labPanel && m.labPanel !== 'nenhuma'],
+    ['labPanelD', 'Recuo (0 = rente aos gomos ou ao fundo dos frisos)', 0, 6, 0.1, 'mm', m => canLabel(m) && m.labPanel && m.labPanel !== 'nenhuma'],
     ['labPanelBack', 'Área lisa também no verso', 'check', 0, 0, 0, m => canLabel(m) && m.labPanel && m.labPanel !== 'nenhuma'],
     ['labPanelGap', 'Folga do adesivo até a borda da área (o adesivo segue o formato e o tamanho da área)', 0, 20, 0.5, 'mm', m => !!labelOnPanel(m)],
   ]],
