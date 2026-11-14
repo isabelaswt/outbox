@@ -390,7 +390,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-13.faixa-oval';
+const BUILD = '2026-11-14.hdr-frente';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -2458,7 +2458,21 @@ const ortho = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 20000);
 let cam = persp, controls, orthoHalf = 150, needs = true;
 const req = () => { needs = true; };
 let frameHook = null; // vídeo: um quadro composto (ex.: revelação da malha) no lugar do render simples
-function renderFrame() { if (frameHook) frameHook(); else renderMain(); }
+// Luz HDR de estúdio: calibrada baixa para o vidro não estourar, deixava as peças opacas
+// (branco brilho, cores) cinzentas. Elas recebem mais do ambiente; vidro, PET, líquido e metal não.
+let OPAQUE_ENV = 1;
+function opaqueGain() {
+  let he = null; try { he = HDR.env; } catch {} // (HDR é declarado mais abaixo no arquivo)
+  OPAQUE_ENV = scene.environment && scene.environment === he ? 1.35 : 1; // só com o HDRI de estúdio em uso
+  [product, sideRoot].forEach(r => r?.traverse(o => { const mt = o.material;
+    if (!o.isMesh || !mt || Array.isArray(mt) || !('envMapIntensity' in mt)) return;
+    if (mt.transmission > 0 || mt.thickness > 0 || mt.transparent || mt.metalness > 0.5 || o.userData.liquid) return;
+    // (com scene.environment o three ignora o envMapIntensity do material: o ambiente vai no próprio material)
+    if (OPAQUE_ENV === 1) { if (mt.userData.og) { mt.envMap = null; mt.envMapIntensity = 1; mt.needsUpdate = true; delete mt.userData.og; } return; }
+    if (mt.envMap !== scene.environment) { mt.envMap = scene.environment; mt.needsUpdate = true; }
+    mt.envMapIntensity = scene.environmentIntensity * OPAQUE_ENV; mt.envMapRotation?.copy(scene.environmentRotation); mt.userData.og = 1; }));
+}
+function renderFrame() { opaqueGain(); if (frameHook) frameHook(); else renderMain(); }
 // Sombra de contato como em foto de estúdio com luz macia: o produto é visto de baixo, a
 // partir do chão, e vira duas manchas — uma estreita e escura onde ele encosta (a linha que
 // "assenta" a peça) e uma larga e clara em volta (a penumbra difusa da softbox). Segue o
@@ -7640,7 +7654,12 @@ function setLighting(keep) {
   scene.environment = keep.env; scene.environmentIntensity = keep.envI; hemi.intensity = keep.hemi; sun.intensity = keep.sun; sun.position.copy(keep.sunPos);
   if (scene.environmentRotation && keep.envRot) scene.environmentRotation.copy(keep.envRot);
 }
+// HDRI: o 0° vira a luz principal dele (a softbox mais forte) para a frente-esquerda do
+// produto — antes cada HDRI caía de um jeito e, em vários, as peças opacas ficavam cinzentas
+// até girar a luz (medido: ângulo ideal = azimute da luz principal − 44°).
 function setEnvRotation(deg) {
+  let h = null; try { h = HDR; } catch {}
+  if (h?.env && scene.environment === h.env && h.keyU != null) deg += (h.keyU - 0.5) * 360 - 44;
   if (scene.environmentRotation) scene.environmentRotation.set(0, THREE.MathUtils.degToRad(deg), 0);
 }
 function envStrength(v) {
@@ -7733,6 +7752,20 @@ function hdrNorm(tex) {
     const mean = ws ? s / ws : 1; return clamp(0.55 / Math.max(mean, 1e-3), 0.06, 1.2);
   } catch { return 1; }
 }
+// Direção da luz principal do HDRI: coluna (azimute) mais clara, da linha do horizonte para
+// cima, suavizada (±20°). Serve para virar as softboxes para a frente do produto no 0°.
+function hdrKeyU(tex) {
+  try {
+    const d = tex.image?.data, W = tex.image?.width, H = tex.image?.height; if (!d || !W || !H) return null;
+    const half = d instanceof Uint16Array, f = half ? THREE.DataUtils.fromHalfFloat : x => x, ch = d.length / (W * H);
+    const col = new Float64Array(W);
+    for (let y = Math.floor(H * 0.12); y < Math.floor(H * 0.62); y++) { const w = Math.sin(Math.PI * (y + 0.5) / H);
+      for (let x = 0; x < W; x++) { const i = (y * W + x) * ch; const L = 0.2126 * f(d[i]) + 0.7152 * f(d[i + 1]) + 0.0722 * f(d[i + 2]); if (isFinite(L)) col[x] += Math.min(L, 50) * w; } }
+    const r = Math.max(1, Math.round(W / 18)); let best = -1, bu = 0;
+    for (let x = 0; x < W; x++) { let s = 0; for (let k = -r; k <= r; k++) s += col[(x + k + W) % W]; if (s > best) { best = s; bu = (x + 0.5) / W; } }
+    return bu;
+  } catch { return null; }
+}
 async function loadHdr(blob, name) {
   const exr = /\.exr$/i.test(name), url = URL.createObjectURL(blob);
   // .hdr (Radiance) ou .exr (OpenEXR, o que sai do Blender/KeyShot); o leitor de EXR só
@@ -7740,7 +7773,7 @@ async function loadHdr(blob, name) {
   let Loader = RGBELoader;
   if (exr) try { Loader = (await import('three/addons/loaders/EXRLoader.js')).EXRLoader; } catch { URL.revokeObjectURL(url); toast('Não consegui abrir o leitor de EXR'); return false; }
   return new Promise(res => new Loader().load(url, tex => {
-    HDR.norm = hdrNorm(tex);
+    HDR.norm = hdrNorm(tex); HDR.keyU = hdrKeyU(tex);
     const env = pmrem.fromEquirectangular(tex).texture;
     tex.dispose(); HDR.env?.dispose(); if (HDR.url) URL.revokeObjectURL(HDR.url);
     HDR.env = env; HDR.url = url; HDR.name = name;
