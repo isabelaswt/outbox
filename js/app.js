@@ -390,7 +390,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-15.tampa-gargalo';
+const BUILD = '2026-11-15.abertura-junta';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -5836,16 +5836,15 @@ const MF = [
     GT(['discDimple', 'Concavidade de apertar', 0, 4, 0.1, 'mm', m => m.topType === 'disc']),
     GT(['groove', 'Linha de abertura (mm do topo, 0 = sem)', 0, 100, 0.5, 'mm']),
     GT(['grooveD', 'Profundidade da linha', 0.1, 3, 0.1, 'mm', m => m.groove > 0]),
-  ]],
-  ['Entalhe', [
+    // entalhe junto da linha de abertura (antes ficava em Detalhes, longe da linha que ele segue)
     GT(['notch', 'Entalhe de abertura (pega do dedo)', 'check']),
-    GT(['notchLock', 'Começa na linha de abertura', 'check', 0, 0, 0, m => m.notch]),
-    GT(['notchY', 'Começa a (mm do topo)', 0, 100, 0.5, 'mm', m => m.notch && !(m.notchLock && m.groove > 0)]),
-    GT(['notchW', 'Largura', 2, 120, 0.5, 'mm', m => m.notch]),
-    GT(['notchH', 'Altura', 1, 60, 0.5, 'mm', m => m.notch]),
-    GT(['notchD', 'Profundidade', 0.2, 8, 0.1, 'mm', m => m.notch]),
-    GT(['notchP', 'Meia-lua → fenda', 2, 12, 0.1, '', m => m.notch]),
-    GT(['notchUp', 'Acima da linha', 'check', 0, 0, 0, m => m.notch]),
+    GT(['notchLock', 'Entalhe começa na linha de abertura', 'check', 0, 0, 0, m => m.notch]),
+    GT(['notchY', 'Entalhe começa a (mm do topo)', 0, 100, 0.5, 'mm', m => m.notch && !(m.notchLock && m.groove > 0)]),
+    GT(['notchW', 'Entalhe: largura', 2, 120, 0.5, 'mm', m => m.notch]),
+    GT(['notchH', 'Entalhe: altura', 1, 60, 0.5, 'mm', m => m.notch]),
+    GT(['notchD', 'Entalhe: profundidade', 0.2, 8, 0.1, 'mm', m => m.notch]),
+    GT(['notchP', 'Entalhe: meia-lua → fenda', 2, 12, 0.1, '', m => m.notch]),
+    GT(['notchUp', 'Entalhe acima da linha', 'check', 0, 0, 0, m => m.notch]),
   ]],
   ['Frisos', [
     G(['ridges', 'Frisos na faixa reta do meio', 0, 120, 1, '']),
@@ -5974,7 +5973,7 @@ function renderStack() {
   });
 }
 
-const DETAIL_GROUPS = new Set(['Gomos', 'Frisos', 'Entalhe', 'Encaixe']);
+const DETAIL_GROUPS = new Set(['Gomos', 'Frisos', 'Encaixe']);
 function renderEditor() {
   const ed = $('#editor'); ed.innerHTML = '';
   const artHost = $('#artPiece'); artHost.innerHTML = '';
