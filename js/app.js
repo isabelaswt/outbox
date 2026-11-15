@@ -390,7 +390,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-15.esvaziar';
+const BUILD = '2026-11-15.tampa-gargalo';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -5982,6 +5982,7 @@ function renderEditor() {
   const colorHost = $('#pieceColor'); $('#pieceLiquid').innerHTML = '';
   sel = ownerOf(sel);
   const m = S.modules[sel]; if (!m) { $('#inspTitle').textContent = 'Peça selecionada'; return; }
+  if (m.kind === 'gargalo') neckPrevW.set(m, m.W);
   $('#inspTitle').textContent = m.name || 'Peça selecionada';
   const top = document.createElement('div');
   top.innerHTML = `<div class="row"><input type="text" value="" title="Nome da peça"></div>`;
@@ -6249,6 +6250,7 @@ function renderEditor() {
         if (k === 'reliefAdv') return renderEditorKeepScroll(); // mostra/esconde os ajustes avançados do relevo
         if (k === 'neckStd') { delete m.wantStd; if (NECKS[m.neckStd]) Object.assign(m, NECKS[m.neckStd], { D: NECKS[m.neckStd].W }); }
         if ((m.kind === 'gargalo' || m.kind === 'spray') && k === 'W') m.D = m.W;
+        if (m.kind === 'gargalo' && (k === 'W' || k === 'neckStd')) capFollowNeck(m);
         // Um pescante só por frasco: os controles do corpo e os da válvula mexem no
         // mesmo (antes, com válvula de pescante próprio, os do corpo não faziam nada).
         const PESC = { bpescD: 'pescD', bpescGap: 'pescGap', bpescCurve: 'pescCurve', bpescWave: 'pescWave' };
@@ -6357,7 +6359,20 @@ function renderLabelArt(grp, m) {
 // Maior padrão de gargalo que cabe no topo do corpo (anel incluído).
 // Largura útil do topo para o gargalo. Topo arredondado (Boston, cápsula) ainda tem
 // a coroa: metade da largura serve (antes dava 22 mm e o 24/410 virava 18/410).
-function neckTopW(m) { const w = Math.min(m.W, m.D) * (m.taper || 100) / 100; return Math.max(22, w - 2 * (m.rTopW || m.rTop || 0) + 8, w * 0.5); }
+function neckTopW(m) {
+  // corpo de perfil (torno/silhueta, Draft): o topo é o que o perfil diz lá em cima, não a
+  // largura total — num torno de base larga e topo estreito saía um gargalo 89/400 enorme
+  if (m.kind === 'perfil' && m.prof?.length) { const q = profAt(m, m.h - Math.max(0, m.cutTop || 0) - 0.3); return Math.max(14, 2 * Math.max(q.a, q.b) + 6); }
+  const w = Math.min(m.W, m.D) * (m.taper || 100) / 100; return Math.max(22, w - 2 * (m.rTopW || m.rTop || 0) + 8, w * 0.5); }
+// Tampa/válvula acompanha o gargalo quando a largura dele é mudada à mão (na mesma razão,
+// como na troca de corpo); antes o gargalo diminuía e a tampa ficava do tamanho antigo.
+const neckPrevW = new WeakMap();
+function capFollowNeck(neck) {
+  const old = neckPrevW.get(neck); neckPrevW.set(neck, neck.W);
+  if (!(old > 0) || Math.abs(old - neck.W) < 1e-6) return;
+  const c = S.modules[S.modules.indexOf(neck) + 1]; if (!c || c.vol || c.kind === 'gargalo') return;
+  scaleModule(c, neck.W / old); syncSphereRadius(c, c.roundLock);
+}
 function neckFor(m) {
   const topW = neckTopW(m);
   return Object.keys(NECKS).filter(k => NECKS[k].W + 2 * (NECKS[k].ringW ?? 1.8) <= topW).sort((a, b) => NECKS[b].W - NECKS[a].W)[0] || '24/410';
@@ -6456,6 +6471,7 @@ function renderBodyNeck(ed, m) {
     renderEditorKeepScroll(); renderStack(); queueBuild();
   });
   if (!neck) return;
+  neckPrevW.set(neck, neck.W);
   const defs = MF.flatMap(([, d]) => d);
   const pick = k => defs.find(d => d[0] === k && (!d[6] || d[6](neck)));
   for (const k of ['neckStd', 'W', 'h', 'ringH', 'ringW', 'pitch', 'turns', 'threadD', 'embed', 'neckFillet']) {
@@ -6464,6 +6480,7 @@ function renderBodyNeck(ed, m) {
     field(grp, neck, d, (key, structural) => {
       if (key === 'neckStd') { delete neck.wantStd; if (NECKS[neck.neckStd]) Object.assign(neck, NECKS[neck.neckStd], { D: NECKS[neck.neckStd].W }); }
       if (key === 'W') neck.D = neck.W;
+      if (key === 'W' || key === 'neckStd') capFollowNeck(neck);
       if (structural || key === 'neckStd') renderEditorKeepScroll();
       renderStack(); queueBuild();
     });
