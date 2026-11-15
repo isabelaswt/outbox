@@ -390,7 +390,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-15.miniatura-bege';
+const BUILD = '2026-11-15.miniatura-cor';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -7198,9 +7198,9 @@ async function refreshCloudList() {
   renderLineup(); galleryKey = ''; renderPresets();
 }
 // Miniaturas de frente: as salvas antes (3/4 em perspectiva) são refeitas uma vez, aos poucos.
-const thumbFront = () => store.get('shape.thumbFront', {});
+const thumbFront = () => store.get('shape.thumbFront2', {}); // 2: refeitas de novo depois de isolar a miniatura do projeto aberto (cor do próprio projeto)
 const thumbStale = it => !it.thumb || !thumbFront()[it.name];
-const markFront = name => { const o = thumbFront(); o[name] = 1; store.set('shape.thumbFront', o); };
+const markFront = name => { const o = thumbFront(); o[name] = 1; store.set('shape.thumbFront2', o); };
 // Miniatura que falta (modelos salvos antes da lista leve): desenha e manda só ela.
 async function fillThumb(it, st) {
   if (!cloud || (!thumbStale(it) && it.tab) || !st) return '';
