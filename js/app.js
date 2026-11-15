@@ -390,7 +390,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-15.pescante-fundo';
+const BUILD = '2026-11-15.miniatura-frente';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -7197,13 +7197,17 @@ async function refreshCloudList() {
   try { cloudList = (await api('models.php?a=list')).models || []; } catch {}
   renderLineup(); galleryKey = ''; renderPresets();
 }
+// Miniaturas de frente: as salvas antes (3/4 em perspectiva) são refeitas uma vez, aos poucos.
+const thumbFront = () => store.get('shape.thumbFront', {});
+const thumbStale = it => !it.thumb || !thumbFront()[it.name];
+const markFront = name => { const o = thumbFront(); o[name] = 1; store.set('shape.thumbFront', o); };
 // Miniatura que falta (modelos salvos antes da lista leve): desenha e manda só ela.
 async function fillThumb(it, st) {
-  if (!cloud || (it.thumb && it.tab) || !st) return '';
-  let t = it.thumb || ''; if (!t) try { t = thumbOf(st) || ''; } catch {}
+  if (!cloud || (!thumbStale(it) && it.tab) || !st) return '';
+  let t = thumbStale(it) ? '' : it.thumb || ''; if (!t) try { t = thumbOf(st) || ''; } catch {}
   if (!t) return '';
   const tab = galGroup(st, it.name, 's');
-  try { await api('models.php?a=thumb', { name: it.name, thumb: t, tab }); it.thumb = t; it.tab = tab; } catch { return ''; }
+  try { await api('models.php?a=thumb', { name: it.name, thumb: t, tab }); it.thumb = t; it.tab = tab; markFront(it.name); } catch { return ''; }
   return t;
 }
 // Galeria: miniatura que falta é feita aos poucos, uma por vez, e guardada no servidor.
@@ -7221,7 +7225,7 @@ function queueCloudThumb(it) {
     try { const had = x.name in cloud, st = await getSaved(x.name); await fillThumb(x, st); if (!had && x.name !== fileName()) delete cloud[x.name]; } catch {}
     if (!x.thumb) x.tried = true; // deu erro: não tenta de novo nesta sessão
     if (x.tab !== tab0) tabsChanged = true;
-    if (x.thumb) document.querySelectorAll('.card').forEach(c => { if (c.title === x.name) { const im = c.querySelector('img'); if (im && !im.src) im.src = x.thumb; } });
+    if (x.thumb) document.querySelectorAll('.card').forEach(c => { if (c.title === x.name) { const im = c.querySelector('img'); if (im) im.src = x.thumb; } });
     setTimeout(next, 80);
   };
   setTimeout(next, 300);
@@ -7305,10 +7309,10 @@ function openSavedDialog() {
       }
     };
     sec('Projetos', main); sec('Cópias automáticas (autosave)', auto);
-    const miss = cloud ? items.filter(x => !x.thumb) : [];
+    const miss = cloud ? items.filter(x => thumbStale(x)) : [];
     if (miss.length) {
       const b = document.createElement('button'); b.className = 'btn sm'; b.style.gridColumn = '1/-1';
-      b.textContent = `Gerar as miniaturas que faltam (${miss.length})`;
+      b.textContent = `Gerar miniaturas de frente (${miss.length})`;
       b.onclick = async () => { // um por vez: baixa, desenha, guarda a miniatura e solta o modelo da memória
         b.disabled = true; let k = 0;
         for (const it of miss) {
@@ -7340,7 +7344,7 @@ thumbScene.environmentIntensity = 0.5;
 thumbScene.add(new THREE.HemisphereLight(0xffffff, 0xb3a898, 0.3));
 const tSun = new THREE.DirectionalLight(0xfff6ea, 2.3); tSun.position.set(-260, 380, 240); thumbScene.add(tSun);
 const tRim = new THREE.DirectionalLight(0xe8eef5, 0.8); tRim.position.set(300, 220, -260); thumbScene.add(tRim);
-const thumbCam = new THREE.PerspectiveCamera(26, TW / TH, 1, 8000);
+const thumbCam = new THREE.OrthographicCamera(-1, 1, 1, -1, 1, 20000); // miniatura sempre de frente e ortográfica (como a vista Frente · ortográfica)
 const thumbCache = new Map();
 function thumbKey(st) {
   return JSON.stringify(st, (k, v) => k === 'uid' ? undefined : v);
@@ -7357,8 +7361,9 @@ function thumbOf(st) {
       sg.position.x = x - bb.min.x; x += bb.max.x - bb.min.x + (ns.gap || 25); g.add(sg); }
   } else buildInto(g, ns);
   const b = new THREE.Box3().setFromObject(g), sz = b.getSize(new THREE.Vector3()), c = b.getCenter(new THREE.Vector3());
-  const dist = (Math.max(sz.y, sz.x / (TW / TH)) * 0.5 * 1.18) / Math.tan(THREE.MathUtils.degToRad(13)) + Math.max(sz.x, sz.z) / 2;
-  thumbCam.position.copy(c).addScaledVector(new THREE.Vector3(0.75, 0.3, 1).normalize(), dist); thumbCam.lookAt(c);
+  const hh = Math.max(sz.y, sz.x / (TW / TH)) * 0.5 * 1.12;
+  Object.assign(thumbCam, { left: -hh * TW / TH, right: hh * TW / TH, top: hh, bottom: -hh }); thumbCam.updateProjectionMatrix();
+  thumbCam.position.set(c.x, c.y, c.z + Math.max(sz.z, 10) * 2 + 500); thumbCam.lookAt(c);
   thumbR.render(thumbScene, thumbCam);
   const url = thumbR.domElement.toDataURL('image/png');
   g.traverse(o => o.geometry?.dispose()); thumbScene.remove(g);
@@ -7491,7 +7496,7 @@ function renderPresets() {
     for (const it of list) {
       const card = document.createElement('div'); card.className = 'card' + (fileName() === it.name ? ' on' : ''); card.title = it.name;
       card.innerHTML = '<img class="ph" alt=""><div></div>'; card.querySelector('div').textContent = it.name;
-      const img = card.querySelector('img'); if (it.thumb) img.src = it.thumb; if (!it.thumb || !it.tab) queueCloudThumb(it); // falta miniatura ou aba: feita uma vez
+      const img = card.querySelector('img'); if (it.thumb) img.src = it.thumb; if (thumbStale(it) || !it.tab) queueCloudThumb(it); // falta miniatura (ou é a antiga, de 3/4) ou aba: feita uma vez
       card.onclick = async () => { try { toast(`Abrindo ${it.name}…`); const st = await getSaved(it.name); loadState(st, it.name); } catch { toast('Não consegui abrir esse projeto'); } };
       card.draggable = true;
       card.ondragstart = e => { e.dataTransfer.setData('text/x-outbox-card', JSON.stringify({ name: it.name, kind: 's' })); e.dataTransfer.effectAllowed = 'copyMove'; };
@@ -7541,7 +7546,7 @@ $('#savePreset').onclick = async () => {
   const name = fileName().trim() || 'Sem nome'; S.file = name;
   if (cloud) {
     let thumb = ''; try { thumb = thumbOf(S) || ''; } catch {}
-    try { await api('models.php?a=save', { name, data: S, thumb, tab: galGroup(S, name, 's') }); } catch (e) { return toast(e.status === 401 ? 'Sua sessão expirou: entre de novo' : 'Não consegui salvar'); }
+    try { await api('models.php?a=save', { name, data: S, thumb, tab: galGroup(S, name, 's') }); if (thumb) markFront(name); } catch (e) { return toast(e.status === 401 ? 'Sua sessão expirou: entre de novo' : 'Não consegui salvar'); }
     cloud[name] = structuredClone(S); refreshCloudList();
   } else { const sv = saved(); sv[name] = structuredClone(S); store.set('shape.presets', sv); }
   galleryKey = ''; renderPresets(); toast(`Salvo: ${name}`); // miniatura do salvo é refeita
