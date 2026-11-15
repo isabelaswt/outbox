@@ -390,7 +390,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-15.frente-orto2';
+const BUILD = '2026-11-15.miniatura-bege';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -7349,17 +7349,24 @@ const thumbCache = new Map();
 function thumbKey(st) {
   return JSON.stringify(st, (k, v) => k === 'uid' ? undefined : v);
 }
+const beigeOf = st => ({ ...st, color: BEIGE, finish: 'fosco', logos: [], side: (st.side || []).map(beigeOf),
+  modules: (st.modules || []).map(m => ({ ...m, own: false, liq: false, labType: 'nenhum', labImg: '', labImgB: '', reliefImg: '' })) });
 function thumbOf(st) {
   const key = thumbKey(st);
   if (thumbCache.has(key)) return thumbCache.get(key);
   const g = new THREE.Group(); thumbScene.add(g);
   const ns = normalize(structuredClone(st));
+  // partes da montagem leem o projeto global (vidro, líquido, fundo): durante a miniatura
+  // ele é o próprio modelo — antes a miniatura pegava a cor/vidro do projeto aberto na tela
+  const S0 = S; S = ns;
+  try {
   if (ns.side?.length) { // arquivo com lado a lado: a miniatura mostra todos os produtos na ordem
     const all = [{ slot: ns.slot || 0, it: ns }, ...ns.side.map(it => ({ slot: it.slot || 0, it }))].sort((a, b) => a.slot - b.slot);
     let x = 0;
     for (const e of all) { const sg = new THREE.Group(); buildInto(sg, e.it, 0); const bb = new THREE.Box3().setFromObject(sg); if (bb.isEmpty()) continue;
       sg.position.x = x - bb.min.x; x += bb.max.x - bb.min.x + (ns.gap || 25); g.add(sg); }
   } else buildInto(g, ns);
+  } finally { S = S0; }
   const b = new THREE.Box3().setFromObject(g), sz = b.getSize(new THREE.Vector3()), c = b.getCenter(new THREE.Vector3());
   const hh = Math.max(sz.y, sz.x / (TW / TH)) * 0.5 * 1.12;
   Object.assign(thumbCam, { left: -hh * TW / TH, right: hh * TW / TH, top: hh, bottom: -hh }); thumbCam.updateProjectionMatrix();
@@ -7469,7 +7476,8 @@ function renderPresets() {
       card.draggable = true; // arrastar para uma aba
       card.ondragstart = e => { e.dataTransfer.setData('text/x-outbox-card', JSON.stringify({ name, kind })); e.dataTransfer.effectAllowed = 'copyMove'; };
       gal.appendChild(card);
-      queueThumb(card.querySelector('img'), st);
+      // modelos base: miniatura em bege fosco, sem conteúdo (é para ler a forma, como nas trocas)
+      queueThumb(card.querySelector('img'), kind === 'b' ? beigeOf(st) : st);
     }
   };
   const inTab = kind => ([n, st]) => galTab === 'Todos' || galGroup(st, n, kind) === galTab;
