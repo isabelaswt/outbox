@@ -390,7 +390,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-15.miniatura-frente';
+const BUILD = '2026-11-15.frente-orto2';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -2455,7 +2455,7 @@ const stage = new THREE.Group(); scene.add(stage); // cenário da apresentação
 
 const persp = new THREE.PerspectiveCamera(28, 1, 1, 20000);
 const ortho = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 20000);
-let cam = persp, controls, orthoHalf = 150, needs = true;
+let cam = ortho, controls, orthoHalf = 150, needs = true; // abre de frente e ortográfica (como o desenho técnico)
 const req = () => { needs = true; };
 let frameHook = null; // vídeo: um quadro composto (ex.: revelação da malha) no lugar do render simples
 // Luz HDR de estúdio: calibrada baixa para o vidro não estourar, deixava as peças opacas
@@ -5461,7 +5461,7 @@ $('#stats').addEventListener('click', e => { if (e.target.closest('.stSum')) sto
 
 // ───────────────────────── câmeras e vistas ─────────────────────────
 const VIEWS = { front: [0, 0.02, 1], side: [1, 0.02, 0], three: [0.75, 0.32, 1], top: [0, 1, 0.001] };
-let curView = 'three';
+let curView = 'front';
 let fitPending = false;
 function fit(viewName = curView) {
   curView = viewName;
@@ -7518,8 +7518,10 @@ function loadState(s, name) {
   S = normalize(structuredClone({ wall: S.wall, bg: S.bg, side: [], ...s }));
   if (name) { S.file = name; if (!S.side.length) S.name = name; } // arquivo = tudo o que está nele (todos os produtos)
   store.set('shape.openGroups', {}); // produto aberto: grupos de controles começam fechados
-  sel = 0; renderAll(); build(); fit();
+  sel = 0; renderAll(); build(); openFrontOrtho();
 }
+// Projeto aberto ou novo: sempre de frente e ortográfica
+function openFrontOrtho() { cam = ortho; $('#orthoBtn')?.classList.add('on'); fit('front'); }
 // Novo produto: começa do zero (modelo base, sem lado a lado, sem logos, sem nome,
 // para o "Salvar" não sobrescrever o anterior). Luz e fundo do estúdio ficam.
 $('#newProduct').onclick = () => {
@@ -7528,7 +7530,7 @@ $('#newProduct').onclick = () => {
   const base = { color: BEIGE, finish: 'fosco', modules: [M('reto', { h: 120 }), NECK('24/410'), M('flip')] };
   S = normalize(structuredClone({ wall: S.wall, bg: S.bg, scene: S.scene, ...base, side: [], logos: [], name: '' }));
   S.name = ''; S.file = ''; sel = 0; lastAuto = ''; store.set('shape.openGroups', {});
-  renderAll(); build(); fit(); saveStatus(''); setSideTab('build');
+  renderAll(); build(); openFrontOrtho(); saveStatus(''); setSideTab('build');
   toast('Produto novo: troque e acrescente peças em Montar, depois salve com um nome');
 };
 $('#openSaved').onclick = openSavedDialog;
@@ -8290,7 +8292,7 @@ try { renderAll(); build(); } catch (e) { // último produto do navegador quebro
   try { localStorage.removeItem('shape.autosave'); } catch {}
   S = normalize(defaultState()); try { renderAll(); build(); } catch (e2) { console.error(e2); }
 }
-fit('three');
+fit('front'); // abre de frente e ortográfica
 
 // ───────────────────────── contas ─────────────────────────
 // Login e modelos ficam no PHP + MySQL da Hostinger (pasta api/). Servido sem PHP
