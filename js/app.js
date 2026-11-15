@@ -390,7 +390,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-14.biblioteca';
+const BUILD = '2026-11-15.esvaziar';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -988,7 +988,7 @@ function normalize(s) {
     if (typeof m.roundLock !== 'boolean') m.roundLock = true;
     syncSphereRadius(m, m.roundLock);
   });
-  if (!s.modules.length) s.modules = [M('reto')];
+  if (!Array.isArray(s.modules)) s.modules = [M('reto')]; // vazio é permitido (montar do zero); só arquivo sem peças vira corpo reto
   return s;
 }
 
@@ -5938,6 +5938,7 @@ function moveUnit(i, dir) {
 }
 function renderStack() {
   const box = $('#stack'); box.innerHTML = '';
+  if (!S.modules.length) { box.innerHTML = '<div class="tip" style="margin:6px 0">Nenhuma peça. Escolha um corpo abaixo e clique em <b>+ Corpo</b> para começar.</div>'; return; }
   sel = ownerOf(sel);
   [...S.modules.keys()].reverse().forEach(i => {
     if (ownerOf(i) !== i) return;
@@ -5965,7 +5966,7 @@ function renderStack() {
       if (a === 'up') sel = moveUnit(i, 1);
       else if (a === 'down') sel = moveUnit(i, -1);
       else if (a === 'dup') { S.modules.splice(i + n, 0, ...part.map(x => ({ ...structuredClone(x), uid: newUid() }))); sel = i + n; }
-      else if (a === 'del') { if (S.modules.length > n) { S.logos = S.logos.filter(L => !part.some(x => x.uid === L.uid)); S.modules.splice(i, n); sel = ownerOf(clamp(i - 1, 0, S.modules.length - 1)); renderLogos(); setTimeout(() => toastUndo(`${m.name} excluída`), 50); } }
+      else if (a === 'del') { S.logos = S.logos.filter(L => !part.some(x => x.uid === L.uid)); S.modules.splice(i, n); sel = S.modules.length ? ownerOf(clamp(i - 1, 0, S.modules.length - 1)) : 0; renderLogos(); setTimeout(() => toastUndo(`${m.name} excluída`), 50); } // a última também sai: dá para esvaziar e montar do zero
       else { sel = i; openInspector(); }
       renderStack(); renderEditor(); if (a) queueBuild();
     };
