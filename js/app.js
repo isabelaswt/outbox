@@ -390,7 +390,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-15.abertura-junta';
+const BUILD = '2026-11-15.pescante-fundo';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -5281,8 +5281,13 @@ function buildInto(product, S, explodeAmt = 0) {
           sm.name = `${String(idx + 1).padStart(2, '0')}_carcaca`; product.add(sm);
         }
       }
-      const len = yTop - (y0 - base[i].y0) - (floor + floorThick() + m.pescGap);
-      const pg = pescanteGeo(m, yTop - len, yTop);
+      let len = yTop - (y0 - base[i].y0) - (floor + floorThick() + m.pescGap);
+      // lê o fundo real do frasco já montado (peças empilhadas, encaixes, vãos): o tubo
+      // nunca passa dele — antes, em alguns frascos, atravessava o fundo e saía embaixo
+      { let yb = Infinity; product.children.forEach(o => { if (!o.userData.main || !S.modules[o.userData.idx]?.vol) return;
+          if (!o.geometry.boundingBox) o.geometry.computeBoundingBox(); yb = Math.min(yb, o.geometry.boundingBox.min.y + o.position.y); });
+        if (isFinite(yb)) len = Math.min(len, yTop - (y0 - base[i].y0) - (yb + floorThick() + m.pescGap)); }
+      const pg = len > 2 ? pescanteGeo(m, yTop - len, yTop) : null;
       if (pg && m.sprayType === 'gloss') {
         // Gloss: haste de plástico branco e ponta de feltro na cor do produto (opacas:
         // aparecem pelo vidro; em frasco opaco só no Explodir).
