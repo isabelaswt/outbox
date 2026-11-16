@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-16.dos1';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-16.dos3';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -346,6 +346,8 @@ const LIB = {
              actW: 24, headH: 12, nozzleL: 26, armW: 10.5, armT: 4.6, droop: 1.2, outletD: 2.8 },
   pump:    { name: 'Válvula pump', kind: 'spray', sprayType: 'pato', W: 26.3, D: 26.3, h: 14.5, collarR: 1, ridges: 44, ridgeD: 0.3,
              stemD: 9, stemH: 12, actW: 20, headH: 11, armT: 4, armW: 9, nozzleL: 22, droop: 1 },
+  pumpDosadora: { name: 'Válvula pump dosadora', kind: 'spray', sprayType: 'dosadora', W: 24, D: 24, h: 12, collarR: 0.6, ridges: 0,
+             stemD: 17, guideH: 4.5, stemH: 0, actW: 14.5, headH: 13, armT: 3.2, armW: 5.5, nozzleL: 3, droop: 2.4 },
   locao:   { name: 'Pump loção (bico curvo)', kind: 'spray', sprayType: 'locao', W: 24.5, D: 24.5, h: 10.8, collarR: 0.8, stemD: 15.5, stemH: 7.3,
              actW: 18.8, headH: 19.7, domeH: 4.5, nozzleL: 30, droop: 6, spoutD: 3 },
   pumpFrisos: { name: 'Pump loção com frisos', kind: 'spray', sprayType: 'draftpump', W: 38, D: 38, h: 17.5, collarR: 1,
@@ -572,7 +574,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-16.dos1';
+const BUILD = '2026-11-16.dos3';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -1765,6 +1767,21 @@ function sprayGeo(m, y0, { lo = false } = {}) {
     const drill = cyl(0.42, 0, 3.2); drill.rotateX(Math.PI / 2); drill.translate(0, yo, zf - 2.2);
     const [actC, c1] = cutHole(act, drill), [btnC, c2] = cutHole(btn, drill);
     head.push(actC, btnC); holes.push(c1, c2);
+  } else if (m.sprayType === 'dosadora') {
+    // Pump dosadora (base, sérum, loção): colar liso, ombro mais estreito com friso, atuador cilíndrico de topo
+    // inclinado (desce para a frente) que termina num bico curto curvado para baixo — sem gatilho, sem spray
+    const sh = m.guideH || 4;
+    head.push(ring(m.stemD, sh + sink, top - sink, { rBot: 0, rTop: 0.5, groove: sh * 0.5, grooveD: 0.3 }));
+    const yA = top + sh, R = m.actW / 2, lowF = 0.8;
+    const act = moduleGeo({ ...BASE, kind: 'giro', W: m.actW, D: m.actW, h: m.headH, rBot: 0.4, rTop: Math.min(1, m.actW * 0.06), tilt: [1, lowF] }, yA, { lo });
+    head.push(act);
+    const N = lo ? 10 : 30, seg = lo ? 14 : 32, bill = [], x0 = R * 0.35, x1 = R + m.nozzleL, yc = yA + m.headH * lowF - m.armT * 0.5 - 0.15;
+    for (let i = 0; i <= N; i++) {
+      const t = i / N, x = x0 + (x1 - x0) * t, a = m.armW / 2 * (1 - 0.15 * t), b = m.armT / 2 * (1 - 0.12 * t), cy = yc - m.droop * Math.pow(t, 1.8), rg = [];
+      for (let j = 0; j < seg; j++) { const [zz, yy] = sp(a, b, 3, j / seg * TAU); rg.push([x, cy + yy, zz]); }
+      bill.push(rg);
+    }
+    head.push(loftPts(bill));
   } else if (m.sprayType === 'pato') {
     // Pump bico pato: torre de trava, haste fina, cabeça redonda e bico achatado
     // saindo da lateral, com corte reto e saída em fenda na ponta.
@@ -2274,6 +2291,12 @@ function moduleGeo(m0, y0, opts = {}) {
     }
   }
   if (!inset && !lo && m.spout) { const [tube, hole] = spoutGeo(m, y0); g = mergeGeometries([g, tube]); extras.push(hole); }
+  // argola para gancho/corrente no topo (Moma Charm, Oscar Charm): anel em pé, levemente achatado, com o pé embutido na tampa
+  if (!inset && m.argola && g) { const a = m.argola, tor = new THREE.TorusGeometry(a.R, a.r, lo ? 10 : 20, lo ? 24 : 56);
+    tor.scale(1, 1, 0.8); tor.translate(m.ox || 0, y0 + m.h + a.R + a.r - 0.6, 0);
+    for (const k in tor.attributes) if (!g.attributes[k]) tor.deleteAttribute(k);
+    for (const k in g.attributes) if (!tor.attributes[k]) g.deleteAttribute(k);
+    const t2 = g.index ? tor : tor.toNonIndexed(); g = mergeGeometries([g, t2]) || g; }
   if (m.ox) { g.translate(m.ox, 0, 0); extras.forEach(e => e.translate(m.ox, 0, 0)); if (g.userData.lid) g.userData.lid.ox = m.ox; }
   g.userData.extras = extras; // peças em material escuro (furos)
   return g;
@@ -5751,14 +5774,14 @@ function compactParts(product, L, S0) {
     const base = L.find(e => e.idx === idx - 1), bObjs = base ? mine(base.idx) : [];
     if (bObjs.length) {
       const r = clamp(Math.min(base.m.h, m.h) * 0.22, 1.1, 2.2), Lh = Math.min(W * (m.sides ? 0.4 : 0.32), m.sides ? 44 : 24), g3 = Lh / 3, gap = 0.35;
-      const kn = (x0, x1) => { const g = new THREE.CylinderGeometry(r, r, x1 - x0, 40); g.rotateZ(Math.PI / 2); g.translate(cx + (x0 + x1) / 2, y0, z + r * 0.15); return g; };
-      const pin = new THREE.CylinderGeometry(r * 0.38, r * 0.38, Lh - 0.6, 24); pin.rotateZ(Math.PI / 2); pin.translate(cx, y0, z + r * 0.15);
+      const kn = (x0, x1) => { const g = new THREE.CylinderGeometry(r, r, x1 - x0, 40); g.rotateZ(Math.PI / 2); g.translate(cx + (x0 + x1) / 2, y0, z + r * 0.7); return g; };
+      const pin = new THREE.CylinderGeometry(r * 0.38, r * 0.38, Lh - 0.6, 24); pin.rotateZ(Math.PI / 2); pin.translate(cx, y0, z + r * 0.7);
       const mB = bObjs[0].material, mT = objs[0].material;
       add(kn(-Lh / 2, -g3 / 2 - gap), mB, base.idx, 'dobradica', 0, 0, 0); add(kn(g3 / 2 + gap, Lh / 2), mB, base.idx, 'dobradica', 0, 0, 0);
       add(pin, mirrorMat, base.idx, 'pino', 0, 0, 0);
       add(kn(-g3 / 2, g3 / 2), mT, idx, 'dobradica', 0, 0, 0); objs.push(product.children.at(-1));
     }
-    objs.forEach(o => { o.userData.hinge = { y0, z: z + (bObjs.length ? clamp(Math.min(base.m.h, m.h) * 0.22, 1.1, 2.2) * 0.15 : 0), p: o.position.clone(), q: o.quaternion.clone() }; });
+    objs.forEach(o => { o.userData.hinge = { y0, z: z + (bObjs.length ? clamp(Math.min(base.m.h, m.h) * 0.22, 1.1, 2.2) * 0.7 : 0), p: o.position.clone(), q: o.quaternion.clone() }; });
     if (ang > 0) setHinge(objs, ang);
   });
   if (!aberto) return;
@@ -8390,7 +8413,7 @@ const INCOM_TABS = ['Todos', 'Beleza', 'Perfume', 'Fármaco'];
 const INCOM_LINES = ['Compactos', 'Paletas', 'Batons', 'Líquidos labiais', 'Máscaras', 'Sticks', 'Conta-gotas', 'Dispensadores', 'Deluxes', 'Potes', 'Tampas de perfume', 'Frascos', 'Frasnagas'];
 // Válvula que cabe vestida pela tampa: virola com largura wv e altura total até hv
 // (alturas no tamanho padrão medidas na geometria de cada válvula).
-const VALVE_H = { contaGotas: 36.5, pump: 37.5, spray: 41, sprayClassico: 25.2 };
+const VALVE_H = { contaGotas: 36.5, pump: 37.5, spray: 41, sprayClassico: 25.2, pumpDosadora: 29.5 };
 function fitValve(t, wv, hv, o = {}) {
   const d = LIB[t], kx = wv / d.W, kv = Math.min(1, hv / VALVE_H[t]), v = { W: r1(wv), D: r1(wv) };
   ['actW', 'stemD', 'guideW', 'houseD', 'armW', 'armT', 'nozzleL'].forEach(k => { if (d[k] != null) v[k] = r1(d[k] * Math.min(1, kx)); });
@@ -8468,7 +8491,7 @@ function incomProduct(r) {
     if (tt && pr) { const sl = profSlice(pr, tt[0], tt[1], W); sl.amax /= gmax;
       // contorno alisado: o desenho vem em degraus de ~0,1 mm (traço inclinado rasterizado) e a luz
       // marcava cada degrau como uma listra em volta do corpo; degraus de verdade (anel, ombro) ficam
-      const sp = smoothProfile(sl.prof, x.h, W * sl.amax, 3.2), mx = Math.max(...sp.map(q => q[1])) || 1; sp.forEach(q => { q[1] /= mx; q[2] /= mx; }); // alisar não pode afinar a largura
+      const sp = smoothProfile(sl.prof, x.h, W * sl.amax, 3.2), mx = Math.max(...sp.map(q => q[1])) || 1; sp.forEach(q => { q[1] /= mx; q[2] /= mx; q[4] = 0; }); // alisar não pode afinar a largura; produto é simétrico (o desenho deslocava o centro em décimos e somava largura)
       x = { ...x, W: r2(Math.min(W, W * sl.amax)), D: r2(Math.min(D, D * sl.amax)), prof: sp, smoothProf: false, taper: 100, taperB: 100, bulge: 0, rTop: Math.min(x.rTop ?? 1, 0.6), rBot: Math.min(x.rBot ?? 1, 0.5) };
       if (pr.d && tt[1] >= 1) x.topDip = r1(pr.d * H); }
     const m = M('reto', polyFit(x)); if (m.prof) m.W0 = m.W; return m;
@@ -8482,9 +8505,10 @@ function incomProduct(r) {
       // de cima da base e metade na de baixo da tampa
       const s0 = r.t === 'cr' ? {} : sq(/Quinteto/.test(r.n) ? 0.34 : r.t === 'cqr' ? 0.22 : 0.04), hb = H * 0.55, ht = H * 0.45, nw = r1(Math.min(22, Math.min(W, D) * 0.32));
       // paleta: abertura retangular larga (~42% da frente) só na base, logo abaixo da tampa, como no desenho
-      const pal = r.c === 'Paletas' && r.t !== 'cr', dB = pal ? { rect: true, top: true, w: r1(W * 0.42), h: r1(Math.min(4.5, hb * 0.58)), d: 2.4 } : { top: true, w: nw, h: r1(Math.min(3.5, hb * 0.45)), d: 1.6 };
-      ms = [P('Base', W, D, hb, { ...s0, rBot: r.t === 'cr' ? 1.5 : 1, rTop: 0.6, godes: godesOf(r), dedo: dB }),
-        P('Tampa', W, D, ht, { ...s0, rBot: 0.6, rTop: r.t === 'cr' ? 2 : 1.2, hinge: true, abre: 0, oco: true, visor: /com Visor|Quinteto/i.test(r.n), espelho: !/com Visor|Crystal|Quinteto/i.test(r.n), ...(pal ? {} : { dedo: { top: false, w: nw, h: r1(Math.min(2.6, ht * 0.4)), d: 1.1 } }) })]; break; }
+      // a dobradiça sai 0,3 do raio para trás: a caixa perde isso na profundidade e o total bate com o catálogo
+      const Dc = r2(D - 0.3 * clamp(Math.min(hb, ht) * 0.22, 1.1, 2.2)), pal = r.c === 'Paletas' && r.t !== 'cr', dB = pal ? { rect: true, top: true, w: r1(W * 0.42), h: r1(Math.min(4.5, hb * 0.58)), d: 2.4 } : { top: true, w: nw, h: r1(Math.min(3.5, hb * 0.45)), d: 1.6 };
+      ms = [P('Base', W, Dc, hb, { ...s0, rBot: r.t === 'cr' ? 1.5 : 1, rTop: 0.6, godes: godesOf(r), dedo: dB }),
+        P('Tampa', W, Dc, ht, { ...s0, rBot: 0.6, rTop: r.t === 'cr' ? 2 : 1.2, hinge: true, abre: 0, oco: true, visor: /com Visor|Quinteto/i.test(r.n), espelho: !/com Visor|Crystal|Quinteto/i.test(r.n), ...(pal ? {} : { dedo: { top: false, w: nw, h: r1(Math.min(2.6, ht * 0.4)), d: 1.1 } }) })]; break; }
     case 'dsq': if (/Twist/.test(r.n)) {
       // Twist: base branca e corpo giratório (girando, o acionador aparece); refil com pump por dentro
       const [fs] = incomFrac(pr, [0.23]);
@@ -8498,17 +8522,17 @@ function incomProduct(r) {
       const cap = P(twist ? 'Acionador' : 'Sobretampa', W, D, H * (1 - f1), { ...sh, ...(twist ? {} : { ...clear, oco: true, ocoWall: 0.8, ocoTop: 0.9 }), rBot: 0.5, rTop: r.t === 'bulb' ? W / 2 * 0.95 : r.t === 'cgr' ? W * 0.3 : 2, _t: [f1, 1] });
       const wIn = inner * 2 * (r.t === 'dsq' ? 0.62 : 0.56);
       // conta-gotas na linha Conta-gotas; spray nos Deluxes; pump dosadora nos Dispensadores
-      const v = r.c === 'Conta-gotas' ? fitValveIn('contaGotas', cap, Math.min(22, wIn)) : r.c === 'Deluxes' ? fitValveIn('spray', cap, Math.min(26, wIn)) : fitValveIn('pump', cap, Math.min(26.3, wIn));
-      // dispensador: válvula dosadora (colar liso, haste grossa, atuador com bico curto no alto, um pouco para baixo)
-      if (r.c === 'Dispensadores') Object.assign(v, { name: 'Válvula dosadora', ridges: 0, collarR: 0.6, stemD: r1(v.actW * 0.7), nozzleL: 3.4, armW: r1(Math.max(4, v.actW * 0.3)), armT: 3.2, droop: 1.4, nozzleY: 0.8 });
+      // dispensador: válvula pump dosadora (a do catálogo e das fotos), não spray nem pump de bico pato
+      const v = r.c === 'Conta-gotas' ? fitValveIn('contaGotas', cap, Math.min(22, wIn)) : r.c === 'Deluxes' ? fitValveIn('spray', cap, Math.min(26, wIn)) : fitValveIn('pumpDosadora', cap, Math.min(26.3, wIn));
       ms = [P('Frasco', W, D, H * f0, { ...sh, vol: true, rBot: rb, rTop: 1, ...(r.t === 'cgt' ? { taperB: 86 } : {}), _t: [0, f0] }), P('Anel', W, D, H * (f1 - f0), { ...sh, _t: [f0, f1] }), v, cap]; break; }
     case 'onoff': { const [f] = incomFrac(pr, [0.62]), hc = H * (1 - f), dn = 4.4;
       // bico do acionador (lotion) saindo de lado no alto da capa, como na foto do catálogo
       ms = [P('Frasco', W, D, H * f, { vol: true, rBot: 2, bpesc: true, bpescMola: true, _t: [0, f] }),
-        P('Acionador e capa', W, D, hc, { rTop: 3, _t: [f, 1], spout: { t: r1(1 - (dn / 2 + 1.6) / hc) , L: 4.2, droop: 0, D: dn, dir: 0 } })]; break; }
+        P('Acionador e capa', W, D, hc, { rTop: 3, _t: [f, 1], spout: { t: r1(1 - (dn / 2 + 1.6) / hc) , L: 4.2, droop: 0, D: dn, dir: 0 } })];
+      { const c = ms[1], sp0 = c.spout; sp0.L = r2(1 + c.W / 2 - capHalfAt(c, sp0.t * c.h) - 0.35); } break; } // ponta do bico rente ao corpo (a medida do catálogo é o diâmetro)
     case 'flacon': case 'flaconb': { const b = r.t === 'flaconb', [f] = incomFrac(pr, [0.56]), rem = 1 - f;
       ms = [P('Frasco', W, D, H * f, { vol: true, rBot: 2, rTop: W * 0.18, _t: [0, f] }),
-        M('contaGotas', { name: b ? 'Conta-gotas de botão' : 'Conta-gotas', W: r1(W * 0.62), D: r1(W * 0.62), h: r1(H * rem * (b ? 0.68 : 0.36)), actW: r1(W * (b ? 0.5 : 0.42)), actH: r1(H * rem * (b ? 0.32 : 0.64) + 0.5) })]; break; }
+        M('contaGotas', { name: b ? 'Conta-gotas de botão' : 'Conta-gotas', W: r1(W * 0.62), D: r1(W * 0.62), h: r2(H * rem * (b ? 0.68 : 0.36)), actW: r1(W * (b ? 0.5 : 0.42)), actH: r2(H * rem * (b ? 0.32 : 0.64) + 0.5) })]; break; } // +0,5: o conta-gotas encaixa 0,5 mm no gargalo
     case 'fr': case 'frr': case 'frsq': case 'frsqr': case 'frt': case 'frsh': case 'frap': case 'frflat': {
       const o = { fr: { rBot: 3, rTop: W * 0.15 }, frr: { rBot: W * 0.3, rTop: W * 0.15 }, frsq: { ...sq(0.06), rTop: 3 }, frsqr: { ...sq(0.2), rTop: 4 },
         frt: { taperB: 82, rBot: W * 0.25, rTop: 4 }, frsh: { rTop: W * 0.35, rBot: 3 }, frap: { taper: 70, rTop: 6, rBot: 6 }, frflat: { ...sq(0.1), rTop: 6 } }[r.t];
@@ -8530,10 +8554,13 @@ function incomProduct(r) {
       const s0 = r.t === 'glosssq' ? sq(0.08) : {}, [f] = SPLIT_FIX[r.pg] ? [SPLIT_FIX[r.pg]] : incomFrac(pr, [0.52]), capH = H * (1 - f), masc = r.c === 'Máscaras';
       // gloss: frasco transparente (PET G/SAN, como no catálogo) com o gloss colorido dentro; máscara: frasco opaco
       const gl = masc ? {} : { own: true, finish: 'pet', color: '#ffffff', liq: true, liqType: 'cremoso', liqLevel: 88, liqColor: corDe(GLOSS_CORES, r.n) };
-      const cap = P('Tampa', W, D, capH, { ...s0, rTop: r.t === 'gloss' ? W * 0.2 : 1.2, _t: [f, 1] });
+      // Charm: a argola do topo não é parte do giro (virava um botão torneado); a tampa termina reta onde ela começa
+      const tl = /Charm/.test(r.n) && pr ? (pr.p.find(q => q[0] > f + 0.1 && (q[1] + q[2]) / 2 < 0.6 * Math.max(...pr.p.map(z => (z[1] + z[2]) / 2))) || [1])[0] : 1;
+      const arg = tl < 1 ? (() => { const hl = H * (1 - tl), rr = 1.0; return { R: Math.round(Math.max(1.6, (hl + 0.6 - 2 * rr) / 2) * 1000) / 1000, r: rr }; })() : null;
+      const cap = P('Tampa', W, D, H * (tl - f), { ...s0, rTop: arg ? 1.2 : r.t === 'gloss' ? W * 0.2 : 1.2, ...(arg ? { argola: arg } : {}), _t: [f, tl] });
       const wv = r1(Math.max(5, Math.min(Math.min(W, D) * 0.55, 2 * (capHalfAt(cap, 0) - 1.6))));
       ms = [P('Frasco', W, D, H * f, { ...s0, vol: true, rBot: 1.5, ...gl, _t: [0, f] }),
-        M('tampaGloss', { name: masc ? 'Haste com escova' : 'Haste com aplicador', W: wv, D: wv, h: r1(capH - 2.5), pescD: r1(Math.min(3, wv * 0.3)),
+        M('tampaGloss', { name: masc ? 'Haste com escova' : 'Haste com aplicador', W: wv, D: wv, h: r1(cap.h - 2.5), pescD: r1(Math.min(3, wv * 0.3)),
           tipL: masc ? r1(Math.min(24, H * 0.2)) : 13, tipW: r1(Math.min(masc ? 7.5 : 6.5, Math.min(W, D) - 6)), tipColor: masc ? '#2b2b2b' : '#e2cdb8' }), cap]; break; }
     case 'baton': case 'batonsq': {
       // Batom como no catálogo: base, tubo de metal (mecanismo) saindo dela, bala de 12,1 mm com a ponta
