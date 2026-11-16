@@ -18,7 +18,7 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION } from 'three-bvh-csg';
-import { icon } from './icons.js?v=2026-11-16.graus2';
+import { icon } from './icons.js?v=2026-11-16.volume-deitado';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -391,7 +391,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-16.graus2';
+const BUILD = '2026-11-16.volume-deitado';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -2478,13 +2478,46 @@ function opaqueGain() {
 // Plano do nível do líquido: guardado no espaço da peça e levado para o mundo a cada quadro,
 // com a posição/rotação atual do frasco (subindo pelo gizmo o líquido descia, cortado no lugar).
 const clipLocal = new WeakMap(), _cp0 = new THREE.Vector3(), _dn = new THREE.Vector3(0, -1, 0);
+// Volume do líquido abaixo de um plano horizontal y = h (posições já no mundo). Cada
+// triângulo cortado no plano soma o tetraedro até um ponto do próprio plano: a "tampa" do
+// corte fica no plano e não conta — dá o volume exato de uma malha fechada.
+function volBelow(P, I, h) {
+  let V = 0; const poly = [], tmp = [];
+  const n = I ? I.length : P.length / 3;
+  for (let t = 0; t < n; t += 3) {
+    poly.length = 0;
+    for (let k = 0; k < 3; k++) { const i = (I ? I[t + k] : t + k) * 3; poly.push([P[i], P[i + 1], P[i + 2]]); }
+    tmp.length = 0;
+    for (let k = 0; k < 3; k++) { const a = poly[k], b = poly[(k + 1) % 3], ia = a[1] <= h, ib = b[1] <= h;
+      if (ia) tmp.push(a); if (ia !== ib) { const f = (h - a[1]) / (b[1] - a[1]); tmp.push([a[0] + (b[0] - a[0]) * f, h, a[2] + (b[2] - a[2]) * f]); } }
+    for (let k = 1; k + 1 < tmp.length; k++) { const a = tmp[0], b = tmp[k], c = tmp[k + 1];
+      const ax = a[0], ay = a[1] - h, az = a[2], bx = b[0], by = b[1] - h, bz = b[2], cx = c[0], cy = c[1] - h, cz = c[2];
+      V += (ax * (by * cz - bz * cy) - ay * (bx * cz - bz * cx) + az * (bx * cy - by * cx)) / 6; }
+  }
+  return Math.abs(V);
+}
+// Altura da superfície que guarda o volume de pé (frasco girado ou deitado): busca binária
+const liqPose = new WeakMap();
+function levelForPose(o, loc) {
+  const g = o.geometry, pa = g.attributes.position, key = o.matrixWorld.elements.map(v => v.toFixed(4)).join(',');
+  let c = liqPose.get(o); if (c && c.key === key) return c.h;
+  if (!c || c.geo !== g) { // volume de pé (no espaço da peça), uma vez por geometria
+    c = { geo: g, V0: volBelow(pa.array, g.index?.array, -loc.constant * loc.normal.y) }; }
+  const W = new Float32Array(pa.count * 3), v = new THREE.Vector3(); let lo = Infinity, hi = -Infinity;
+  for (let i = 0; i < pa.count; i++) { v.fromBufferAttribute(pa, i).applyMatrix4(o.matrixWorld); W[i * 3] = v.x; W[i * 3 + 1] = v.y; W[i * 3 + 2] = v.z; if (v.y < lo) lo = v.y; if (v.y > hi) hi = v.y; }
+  const I = g.index?.array; let a = lo, b = hi;
+  for (let it = 0; it < 22 && b - a > 0.05; it++) { const m = (a + b) / 2; volBelow(W, I, m) < c.V0 ? a = m : b = m; }
+  c.key = key; c.h = (a + b) / 2; liqPose.set(o, c); return c.h;
+}
 function syncClips() {
   [product, sideRoot].forEach(r => r?.traverse(o => { if (o.userData?.levelCap) { o.updateMatrixWorld(); o.visible = o.matrixWorld.elements[5] / Math.hypot(o.matrixWorld.elements[4], o.matrixWorld.elements[5], o.matrixWorld.elements[6]) > 0.9994; } // inclinado (> ~2°): a tampa reta do nível sairia torta
     const cp = o.isMesh && o.material?.clippingPlanes; if (!cp) return;
-    // superfície sempre horizontal (como líquido de verdade), passando pelo centro do nível
-    // levado junto com o frasco: sobe, anda e gira com ele sem o nível "escorregar"
+    // superfície sempre horizontal (como líquido de verdade); de pé ela só acompanha o frasco,
+    // girado/deitado ela fica na altura que guarda o mesmo volume (antes o nível despencava)
+    o.updateMatrixWorld(); const e = o.matrixWorld.elements, up = e[5] / Math.hypot(e[4], e[5], e[6]);
     for (const pl of cp) { const loc = clipLocal.get(pl); if (!loc) continue;
-      const p0 = loc.coplanarPoint(_cp0); o.updateMatrixWorld(); p0.applyMatrix4(o.matrixWorld); pl.setFromNormalAndCoplanarPoint(_dn, p0); } }));
+      if (up > 0.9994) { const p0 = loc.coplanarPoint(_cp0); p0.applyMatrix4(o.matrixWorld); pl.setFromNormalAndCoplanarPoint(_dn, p0); }
+      else pl.set(_dn, levelForPose(o, loc)); } }));
 }
 // O gizmo mede a velocidade do giro pela distância da câmera; a ortográfica fica a 3 m e o
 // giro saía lentíssimo. Câmera auxiliar igual, a uma distância proporcional ao zoom (~45° a
