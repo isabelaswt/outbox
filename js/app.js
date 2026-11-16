@@ -391,7 +391,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-16.gizmo2';
+const BUILD = '2026-11-16.gizmo-y';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -3576,7 +3576,7 @@ function applyStageTilt(sc, cx, cz) {
     if (!bb.isEmpty()) { product.position.x -= (bb.min.x + bb.max.x) / 2 - cx; product.updateMatrixWorld(true); } // continua centrado onde estava
   } else place(sc.cenaTilt || 0);
   if (qU && !sc.deitar) { const bb = new THREE.Box3().setFromObject(product); if (!bb.isEmpty()) { product.position.x -= (bb.min.x + bb.max.x) / 2 - cx; product.position.z -= (bb.min.z + bb.max.z) / 2 - cz; } } // girado: fica no mesmo lugar
-  if (Array.isArray(sc.pos)) { product.position.x += sc.pos[0] || 0; product.position.z += sc.pos[1] || 0; }
+  if (Array.isArray(sc.pos)) { product.position.x += sc.pos[0] || 0; product.position.z += sc.pos[1] || 0; product.position.y += Math.max(0, sc.pos[2] || 0); } // altura: nunca abaixo do chão
   product.updateMatrixWorld(true);
   stagePivot = [cx, cz]; syncGizmo();
 }
@@ -3600,13 +3600,14 @@ function ensureGizmo() {
   gizmo.addEventListener('change', req);
   gizmo.addEventListener('dragging-changed', e => {
     if (controls) controls.enabled = !e.value;
-    if (e.value) { const sc = S.scene = S.scene || {}; gDrag = { p: gizmoObj.position.clone(), pos: [...(sc.pos || [0, 0])] }; }
+    if (e.value) { const sc = S.scene = S.scene || {}; const p0 = sc.pos || []; gDrag = { p: gizmoObj.position.clone(), pos: [p0[0] || 0, p0[1] || 0, p0[2] || 0] }; }
     else { gDrag = null; syncGizmo(); saveLocalSoon(); record(); req(); }
   });
   gizmo.addEventListener('objectChange', () => {
     const sc = S.scene = S.scene || {};
     if (gizmoMode === 'rotate') sc.rq = gizmoObj.quaternion.toArray().map(v => Math.round(v * 1e5) / 1e5);
-    else if (gDrag) sc.pos = [r1(gDrag.pos[0] + gizmoObj.position.x - gDrag.p.x), r1(gDrag.pos[1] + gizmoObj.position.z - gDrag.p.z)];
+    else if (gDrag) { const y = Math.max(0, r1(gDrag.pos[2] + gizmoObj.position.y - gDrag.p.y));
+      sc.pos = [r1(gDrag.pos[0] + gizmoObj.position.x - gDrag.p.x), r1(gDrag.pos[1] + gizmoObj.position.z - gDrag.p.z), y]; }
     applyStageTilt(sceneOf(), stagePivot[0], stagePivot[1]); req();
   });
   const h = gizmo.getHelper ? gizmo.getHelper() : gizmo; h.name = 'gizmo'; scene.add(h);
@@ -3618,7 +3619,7 @@ function setGizmo(on, mode) {
   gizmoOn = !!on;
   if (gizmo) {
     if (gizmoOn) { gizmo.camera = cam; gizmo.setMode(gizmoMode === 'move' ? 'translate' : 'rotate');
-      gizmo.showY = gizmoMode !== 'move'; // mover só no chão (o produto continua apoiado)
+      gizmo.showY = true; // mover também para cima e para baixo (nunca abaixo do chão)
       gizmo.attach(gizmoObj); syncGizmo(); }
     else gizmo.detach();
     (gizmo.getHelper ? gizmo.getHelper() : gizmo).visible = gizmoOn;
