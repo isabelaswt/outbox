@@ -405,6 +405,9 @@ function closeTop(P0) {
   if ((last[1] + last[2]) / 2 > 0.16) return P;
   let i0 = n - 1; while (i0 > 0 && (P[i0][1] + P[i0][2]) / 2 < 0.25) i0--;
   const t0 = P[i0][0], l0 = P[i0][1], r0 = P[i0][2], span = 1 - t0; if (!(span > 0.005)) return P;
+  // só tampa simétrica no topo (gota, ovo): na assimétrica (Antonov, ponta de lado) cada lado
+  // fechando por conta própria virava uma lâmina fina no alto
+  if (Math.abs(l0 - r0) > 0.06 || Math.abs(last[1] - last[2]) > 0.06) return P;
   const out = P.slice(0, i0 + 1);
   for (let k = 1; k <= 14; k++) { const u = k / 14, e = Math.sqrt(Math.max(0, 1 - u * u)); out.push([t0 + span * u, Math.max(0.006, l0 * e), Math.max(0.006, r0 * e)]); }
   return out;
@@ -502,7 +505,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-16.topo-sem-dente';
+const BUILD = '2026-11-16.topo-sem-dente2';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
