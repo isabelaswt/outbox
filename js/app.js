@@ -18,7 +18,7 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION } from 'three-bvh-csg';
-import { icon } from './icons.js?v=2026-11-16.parede-material2';
+import { icon } from './icons.js?v=2026-11-16.liquido-topo';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -391,7 +391,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-16.parede-material2';
+const BUILD = '2026-11-16.liquido-topo';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -2516,6 +2516,9 @@ function syncClips() {
     // superfície sempre horizontal (como líquido de verdade); de pé ela só acompanha o frasco,
     // girado/deitado ela fica na altura que guarda o mesmo volume (antes o nível despencava)
     o.updateMatrixWorld(); const e = o.matrixWorld.elements, up = e[5] / Math.hypot(e[4], e[5], e[6]);
+    // inclinado/deitado: o corte do nível fica aberto (sem a tampa reta); o líquido mostra o
+    // lado de dentro e o corte aparece cheio de líquido (de topo, antes ficava só a borda)
+    { const want = up > 0.9994 ? THREE.FrontSide : THREE.DoubleSide; if (o.userData.liquid && o.material.side !== want) { o.material.side = want; o.material.needsUpdate = true; } }
     for (const pl of cp) { const loc = clipLocal.get(pl); if (!loc) continue;
       if (up > 0.9994) { const p0 = loc.coplanarPoint(_cp0); p0.applyMatrix4(o.matrixWorld); pl.setFromNormalAndCoplanarPoint(_dn, p0); }
       else pl.set(_dn, levelForPose(o, loc)); } }));
