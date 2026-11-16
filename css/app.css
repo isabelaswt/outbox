@@ -404,3 +404,10 @@ summary,.grp>summary{padding:11px 0}
 @media (max-width:1100px) and (min-width:821px){ .app:not(.insp-off) .bar{left:12px;transform:none;max-width:calc(100% - 362px)} }
 /* celular: barra de modos deitada (a regra antiga ficava antes da definição da barra e perdia) */
 @media (max-width:820px){ .rail{flex-direction:row;justify-content:center;padding:4px;overflow-x:auto} .rail .railEnd{margin:0 0 0 auto;flex-direction:row} .stats{max-width:calc(100% - 24px)} .stats .stSum b{overflow:hidden;text-overflow:ellipsis} }
+
+/* Marca: logo SWT no canto e "Outbox by SWT" em Helvetica Now (a fonte da SWT) */
+@font-face{font-family:'Helvetica Now Display';src:url(../assets/fonts/HelveticaNowDisplay-Medium.ttf) format('truetype');font-weight:500;font-style:normal;font-display:swap}
+.topbar .brand{align-items:center;gap:9px}
+.topbar .brand .swtLogo{width:30px;height:30px;margin:-6px -4px -6px -6px;display:block}
+.topbar .brand h1{font-family:'Helvetica Now Display','Helvetica Neue',Helvetica,Arial,sans-serif;font-weight:500;font-size:15px;letter-spacing:-.01em;text-transform:none;white-space:nowrap}
+.topbar .brand h1 span{color:#8a8a8f;font-weight:500}

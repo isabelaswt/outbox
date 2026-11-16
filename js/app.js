@@ -390,7 +390,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-15.ficha-2d2';
+const BUILD = '2026-11-15.marca-swt';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -7956,7 +7956,7 @@ async function fichaTecnica() {
   renderMain(); const persp34 = document.createElement('canvas');
   { const d = renderer.domElement, k = Math.min(1, 900 / Math.max(d.width, d.height)); persp34.width = d.width * k; persp34.height = d.height * k; persp34.getContext('2d').drawImage(d, 0, 0, persp34.width, persp34.height); }
   grid.visible = refMesh.visible = ground.visible = sideRoot.visible = stage.visible = false; scene.background = new THREE.Color('#ffffff');
-  const K = Math.min(6, 340 / (sz.y + 32), 300 / (sz.x + 70), 300 / (sz.z + 64)); // px por mm, a mesma nas três vistas (cotas legíveis)
+  const K = Math.min(12, (920 - 160) / (2 * sz.x + sz.z + 28), 840 / (sz.y + 8)); // px por mm, a mesma nas três vistas — A3 deitada: as três lado a lado enchem a coluna da esquerda (≈ 245 × 225 mm)
   // Desenho técnico 2D: em vez do render colorido, linhas pretas no branco — contorno,
   // divisas entre peças e arestas (frisos, gomos, vincos). Sai de duas passadas (normais e
   // profundidade): onde a direção da superfície vira de repente ou a profundidade salta, é linha.
@@ -8029,7 +8029,7 @@ async function fichaTecnica() {
   // tabela de peças (de cima para baixo, como na pilha)
   const esc = t => String(t ?? '').replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[ch]);
   const fin = f => (FINISHES.find(q => q[0] === f) || [, f])[1];
-  const rows = [...L].reverse().map(e => {
+  const rows = [...new Map([...L].reverse().map(e => [e.m.uid || e.m, e])).values()].map(e => { // peça repetida entra uma vez (com o ×N)
     const m = e.m, rep = Math.max(1, m.rep || 1), col = m.own ? m.color : S.color, f = m.own ? m.finish : S.finish;
     const tipo = m.kind === 'gargalo' ? 'Gargalo' : categoryOf(m)?.[0] || 'Peça';
     const extra = [m.kind === 'gargalo' && m.neckStd && m.neckStd !== 'livre' ? `acabamento ${m.neckStd}` : '', rep > 1 ? `${rep}× repetida` : '', m.vol ? 'faz parte do frasco' : '',
@@ -8038,23 +8038,23 @@ async function fichaTecnica() {
   }).join('');
   const date = new Date().toLocaleDateString('pt-BR'), who = ME?.name || ME?.email || '';
   win.document.open(); win.document.write(`<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Ficha técnica — ${esc(fileName() || S.name)}</title>
-<style>@page{size:A4;margin:12mm}body{font:12px/1.4 system-ui,-apple-system,Segoe UI,Helvetica,Arial,sans-serif;color:#1a1a1a;margin:0;padding:18px}
-header{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:2px solid #1a1a1a;padding-bottom:8px;margin-bottom:12px}h1{font-size:18px;margin:0}header small{color:#666}
-.views{display:grid;grid-template-columns:auto auto auto;gap:10px;align-items:end;justify-content:start}.views figure{margin:0;text-align:center}.views img{border:1px solid #eee}
-figcaption{font-size:10px;text-transform:uppercase;letter-spacing:.6px;color:#777;margin-top:3px}.row2{display:grid;grid-template-columns:1fr 1.2fr;gap:14px;margin-top:12px;align-items:start}
-.p34 img{width:100%;border:1px solid #eee;border-radius:6px}table{border-collapse:collapse;width:100%}td,th{border-bottom:1px solid #e6e6e6;padding:4px 6px;text-align:left;vertical-align:top}th{font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:#777}
+<style>@page{size:A3 landscape;margin:10mm}body{font:12.5px/1.4 system-ui,-apple-system,Segoe UI,Helvetica,Arial,sans-serif;color:#1a1a1a;margin:0;padding:18px}
+.sheet{width:400mm;height:277mm;display:flex;flex-direction:column;box-sizing:border-box;margin:0 auto}
+header{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:2px solid #1a1a1a;padding-bottom:8px;margin-bottom:14px}h1{font-size:22px;margin:0}header small{color:#666}
+.cols{flex:1;display:grid;grid-template-columns:auto minmax(0,1fr);gap:22px;min-height:0}
+.views{display:flex;gap:14px;align-items:flex-end;justify-content:flex-start;align-self:start}.views figure{margin:0;text-align:center}.views img{border:1px solid #eee;max-height:236mm;width:auto}
+figcaption{font-size:10.5px;text-transform:uppercase;letter-spacing:.6px;color:#777;margin-top:4px}.side{display:flex;flex-direction:column;gap:12px;min-width:0}
+.p34 img{width:100%;max-height:160mm;object-fit:contain;background:#f4f4f4;border:1px solid #eee;border-radius:6px}table{border-collapse:collapse;width:100%}td,th{border-bottom:1px solid #e6e6e6;padding:4px 6px;text-align:left;vertical-align:top}th{font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:#777}
 .sw{display:inline-block;width:10px;height:10px;border-radius:50%;border:1px solid #0002;margin-right:5px;vertical-align:-1px}.kv td:first-child{color:#666}.note{color:#888;font-size:10px;margin-top:10px}
-.bar{position:fixed;top:10px;right:10px}.bar button{font:inherit;padding:7px 12px;border-radius:8px;border:1px solid #1a1a1a;background:#1a1a1a;color:#fff;cursor:pointer}@media print{.bar{display:none}body{padding:0}}</style></head><body>
+.bar{position:fixed;top:10px;right:10px}.bar button{font:inherit;padding:7px 12px;border-radius:8px;border:1px solid #1a1a1a;background:#1a1a1a;color:#fff;cursor:pointer}@media print{.bar{display:none}body{padding:0}}@media screen{.sheet{box-shadow:0 0 0 1px #ddd;padding:10mm;width:420mm;height:297mm}body{background:#f2f2f2}}</style></head><body><div class="sheet">
 <div class="bar"><button onclick="print()">Salvar PDF / imprimir</button></div>
 <header><div><h1>${esc(fileName() || S.name || 'Produto')}</h1><small>${esc(S.name && S.name !== fileName() ? S.name + ' · ' : '')}Ficha técnica · OUTBOX</small></div><small>${date}${who ? ' · ' + esc(who) : ''}</small></header>
-<div class="views">${views.map(([n, src, w, h]) => `<figure><img src="${src}" width="${w}" height="${h}"><figcaption>${n}</figcaption></figure>`).join('')}</div>
-<div class="row2"><div class="p34"><img src="${persp34.toDataURL('image/png')}"></div><div>
+<div class="cols"><div class="views">${views.map(([n, src, w, h]) => `<figure><img src="${src}" width="${w}" height="${h}"><figcaption>${n}</figcaption></figure>`).join('')}</div>
+<div class="side"><div class="p34"><img src="${persp34.toDataURL('image/png')}"></div><div>
 <table class="kv"><tr><td>Altura total</td><td><b>${mm(sz.y)}</b></td></tr><tr><td>Largura máxima</td><td><b>${mm(sz.x)}</b></td></tr><tr><td>Profundidade máxima</td><td><b>${mm(sz.z)}</b></td></tr>
-<tr><td>Volume externo do frasco</td><td><b>${v.ext ? Math.round(v.ext) + ' ml' : '—'}</b></td></tr><tr><td>Capacidade estimada</td><td><b>${v.cap ? Math.round(v.cap) + ' ml' : '—'}</b></td></tr><tr><td>Parede considerada</td><td>${mm(S.wall)}</td></tr></table></div></div>
-<h3 style="margin:16px 0 4px;font-size:12px;text-transform:uppercase;letter-spacing:.6px">Peças (de cima para baixo)</h3>
-<table><tr><th>Peça</th><th>Tipo</th><th>L × P × A</th><th>Cor</th><th>Acabamento</th><th>Detalhes</th></tr>${rows}</table>
-<div class="note">Medidas do modelo 3D (mm). A capacidade é estimada pela parede informada e não substitui o desenho técnico do fornecedor.</div>
-</body></html>`); win.document.close();
+<tr><td>Volume externo do frasco</td><td><b>${v.ext ? Math.round(v.ext) + ' ml' : '—'}</b></td></tr><tr><td>Capacidade estimada</td><td><b>${v.cap ? Math.round(v.cap) + ' ml' : '—'}</b></td></tr><tr><td>Parede considerada</td><td>${mm(S.wall)}</td></tr></table></div>
+<div><div class="note">Medidas do modelo 3D (mm). A capacidade é estimada pela parede informada e não substitui o desenho técnico do fornecedor.</div></div></div></div>
+</div></body></html>`); win.document.close();
 }
 $('#dlSpec').onclick = () => { document.querySelectorAll('.pop.open').forEach(p => p.classList.remove('open')); fichaTecnica(); };
 const collectReliefSources = st => [...(st.modules || []), ...(st.side || []).flatMap(it => it.modules || [])].map(m => m.reliefImg).filter(Boolean);
