@@ -18,8 +18,8 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION } from 'three-bvh-csg';
-import { icon } from './icons.js?v=2026-11-16.incom10';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF } from './incom.js?v=2026-11-16.incom10';
+import { icon } from './icons.js?v=2026-11-16.incom12';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF } from './incom.js?v=2026-11-16.incom12';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -386,14 +386,24 @@ const newUid = () => Math.random().toString(36).slice(2, 10);
 // Converte para a medida externa sair igual à do fornecedor (medido na geometria: c + (1 − c)·arredondamento).
 function polyFit(o) { const n = o.sides || 0; if (n === 4 || n === 8) { const c = Math.cos(Math.PI / n), f = c + (1 - c) * (o.sideR || 0); o.W = r1(o.W / f); o.D = r1(o.D / f); } return o; }
 // Tampas reais da Incom (catálogo 2026): medidas do fornecedor, forma aproximada com as peças do OUTBOX
+const hasStep = () => false; // contorno denso (0,1 mm): sem suavizar, os degraus ficam com quina
+// Forma vista de cima, conferida nas fotos do catálogo (o desenho técnico só mostra a frente):
+// deitada = cilindro deitado (de lado é um círculo); disco = disco em pé (espessura constante).
+const CAP_FIX = { incom_bamboo: { deitada: true }, incom_golden: { disco: true }, incom_thenue: { disco: true }, incom_wheel: { disco: true },
+  incom_drop: { disco: true, Dk: 0.55 }, incom_antonov: { D: 34 }, incom_bilbao: { sides: 4, sideR: 0.35 }, incom_rams: { sides: 0 } };
 function incomShape(r) {
   const base = polyFit(incomShape0(r)), pr = INCOM_CAP_PROF[r.k]; if (!pr) return base;
   // Contorno real do desenho técnico, girado no torno (lados retos continuam quando a tampa é
   // quadrada/sextavada/oitavada). Lado esquerdo e direito diferentes viram deslocamento do centro.
-  const W = pr.W ?? r.W, D = r.D ?? W, o = { W, D, h: r.H, rTop: 0.5, rBot: 0.3, sides: base.sides || 0, sideR: base.sideR ?? 0.1 };
+  const fx = CAP_FIX[r.k] || {}, W = pr.W ?? r.W;
+  const D = fx.deitada ? r.H : fx.D ?? (fx.Dk ? r1(W * fx.Dk) : r.D ?? W);
+  const o = { W, D, h: r.H, rTop: 0.5, rBot: 0.3, sides: fx.sides ?? (base.sides || 0), sideR: fx.sideR ?? base.sideR ?? 0.1 };
   polyFit(o);
-  o.W0 = o.W; o.smoothProf = false;
-  o.prof = pr.p.map(([t, l, rr]) => { const a = (l + rr) / 2; return [t, a, a, 2, r1((rr - l) / 2 * o.W / 2), 0]; });
+  o.W0 = o.W;
+  o.prof = pr.p.map(([t, l, rr]) => { const a = (l + rr) / 2;
+    const b = fx.deitada ? Math.sqrt(Math.max(0.0004, 1 - (2 * t - 1) ** 2)) : fx.disco ? 1 : a;
+    return [t, a, b, fx.deitada ? 8 : fx.disco ? 4 : 2, r1((rr - l) / 2 * o.W / 2), 0]; });
+  o.smoothProf = false; if (pr.d) o.topDip = r1(pr.d * r.H); if (pr.tl) o.tilt = pr.tl;
   return o;
 }
 function incomShape0(r) {
@@ -425,7 +435,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-16.incom10';
+const BUILD = '2026-11-16.incom12';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -1257,6 +1267,13 @@ function panelMask(P, ly, th, R) {
   if (P.back) d = Math.min(d, panelDist(P, wrap(th + Math.PI / 2) * R, dy));
   const t = clamp(0.5 - d / P.edge, 0, 1); return t * t * (3 - 2 * t);
 }
+// Topo inclinado em reta: a peça é feita com o topo reto e a altura de cada ponto encolhe da
+// esquerda (t[0]) para a direita (t[1]), como no desenho técnico (Bilbao, Dora).
+function tiltTop(g, y0, t) {
+  const p = g.attributes.position; g.computeBoundingBox(); const x0 = g.boundingBox.min.x, w = (g.boundingBox.max.x - x0) || 1;
+  for (let i = 0; i < p.count; i++) { const f = t[0] + (t[1] - t[0]) * (p.getX(i) - x0) / w; p.setY(i, y0 + (p.getY(i) - y0) * f); }
+  p.needsUpdate = true; g.computeVertexNormals(); g.computeBoundingBox();
+}
 function loft(rings, seg, disp, uniform = false) {
   // Gomos: a malha tem um vértice exatamente em cada vale (a quina entre gomos). Sem
   // isso o vale caía entre vértices, em lugar diferente a cada faixa, e no vidro
@@ -1992,6 +2009,9 @@ function moduleGeo(m0, y0, opts = {}) {
   });
   if (!lo && !inset) for (const b of m.ribs || []) kmax = Math.max(kmax, b.k || 0);
   if (rings.length < 2) return null;
+  // Topo côncavo (tampa em prato): do aro de cima o topo desce em curva até o meio
+  if (m.topDip > 0 && !inset) { const T = rings[rings.length - 1], N = 10;
+    for (let i = 1; i <= N; i++) { const s = 1 - i / N, k = Math.max(s, 0.02); rings.push({ ...T, a: T.a * k, b: T.b * k, cx: (T.cx || 0) * k, cz: (T.cz || 0) * k, y: T.y - m.topDip * (1 - s * s), ly: T.ly - m.topDip * (1 - s * s), noDisp: true }); } }
   const pan = lo ? null : labelPanel(m0);
   if (pan) rings.forEach(r => { r.pan = pan; });
   const saddle = !inset && m.topType === 'disc' && m.discDip > 0, reliefDetailed = !inset && !!m.reliefImg && m.reliefDepth > 0;
@@ -2026,6 +2046,7 @@ function moduleGeo(m0, y0, opts = {}) {
   let g, extras = [];
   if (flipOpen) [g, extras] = flipOpenGeo(m, y0, rings, seg, disp, ang);
   else g = loft(rings, seg, disp, !!(disp && (kmax || m.ridges > 0)));
+  if (m.tilt && g) tiltTop(g, y0, m.tilt);
   // Puxador na frente da tampinha, logo acima da linha (onde o dedo abre).
   if (!inset && !flipOpen && m.aba && m.topType === 'flip' && m.groove > 0 && !isProf) {
     const up = m.lidSide !== 'baixo', yg = m.h - m.groove, yl = yg + (up ? 0.9 : -0.9);
@@ -7856,7 +7877,8 @@ function incomProduct(r) {
   const P = (name, w, d, h, o = {}) => {
     let x = { ...B, name, W: r1(w), D: r1(d ?? w), h: r1(h), ...o }; const tt = x._t; delete x._t;
     if (tt && pr) { const sl = profSlice(pr, tt[0], tt[1], W);
-      x = { ...x, W: r1(W * sl.amax), D: r1(D * sl.amax), prof: sl.prof, smoothProf: false, taper: 100, taperB: 100, bulge: 0, rTop: Math.min(x.rTop ?? 1, 0.6), rBot: Math.min(x.rBot ?? 1, 0.5) }; }
+      x = { ...x, W: r1(W * sl.amax), D: r1(D * sl.amax), prof: sl.prof, smoothProf: false, taper: 100, taperB: 100, bulge: 0, rTop: Math.min(x.rTop ?? 1, 0.6), rBot: Math.min(x.rBot ?? 1, 0.5) };
+      if (pr.d && tt[1] >= 1) x.topDip = r1(pr.d * H); }
     const m = M('reto', polyFit(x)); if (m.prof) m.W0 = m.W; return m;
   };
   const sq = (k = 0.05) => ({ sides: 4, sideR: k }), clear = { own: true, finish: 'pet', color: '#ffffff' };
@@ -7924,7 +7946,7 @@ function perfumeValve(cap, mm) {
   for (let tries = 0; tries < 12; tries++, wv *= 0.92) {
     const rCol = wv / 2 + 0.5;
     for (let kv = 1; kv >= 0.45; kv -= 0.05) {
-      const hTot = VALVE_H.sprayClassico * kv; if (hTot > cap.h - 2) continue;
+      const hTot = VALVE_H.sprayClassico * kv; if (hTot > cap.h * (cap.tilt ? Math.min(...cap.tilt) : 1) - 2.5) continue;
       let ok = true; for (let y = 0; y <= hTot + 1.5 && ok; y += 0.5) ok = capHalfAt(cap, y) - wall >= rCol; // a cavidade é um cilindro reto na largura da virola
       if (ok) return fitValve('sprayClassico', r1(wv), hTot);
     }
