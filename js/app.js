@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-16.pote3';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-16.paleta2';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -560,7 +560,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-16.pote3';
+const BUILD = '2026-11-16.paleta2';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -5581,11 +5581,25 @@ function updateUndoBtns() {
 // Monta as peças de um modelo num grupo (cena principal ou miniatura).
 // Compactos e paletas: godês na base e espelho na tampa; com "Abrir a tampa" ela gira na
 // dobradiça de trás (tudo da tampa junto), para ver o que tem dentro.
+// Cor de exemplo do pó em cada godê, como vem na maquiagem: um godê = pó compacto (tom de pele);
+// dois = blush e bronzer; três e quatro = blush, contorno e iluminador; cinco ou mais = sombras
+// (nudes, terrosos e rosados, alguns cintilantes)
+const MAKE_CORES = { 1: ['#d9ae8c'], 2: ['#e0928a', '#b8805e'], 3: ['#e3958c', '#a8714f', '#ecd2b8'], 4: ['#e8a59b', '#c8806b', '#9c6a4d', '#efd6bf'],
+  n: ['#ecd3bf', '#d8ad8f', '#c48a6c', '#a86b4f', '#7e4f3b', '#e6a59f', '#c97a72', '#9b5056', '#cfa36a', '#4a3530'] };
+const MAKE_BRILHO = new Set(['#ecd2b8', '#efd6bf', '#cfa36a', '#c97a72', '#d8ad8f']), godeMats = new Map();
+function godeCor(j, n) {
+  const L = MAKE_CORES[n] || MAKE_CORES.n, c = L[j % L.length];
+  if (!godeMats.has(c)) godeMats.set(c, MAKE_BRILHO.has(c) ? new THREE.MeshStandardMaterial({ color: c, roughness: 0.5, metalness: 0.25 }) : new THREE.MeshStandardMaterial({ color: c, roughness: 0.95 }));
+  return godeMats.get(c);
+}
 const godeMat = new THREE.MeshStandardMaterial({ color: '#d2bea6', roughness: 0.96 }), godeRim = new THREE.MeshStandardMaterial({ color: '#bdb0a0', roughness: 0.45 });
 const mirrorMat = new THREE.MeshStandardMaterial({ color: '#ffffff', metalness: 1, roughness: 0.04 });
 function localBox(objs) { const bb = new THREE.Box3(); objs.forEach(o => { o.updateMatrix(); o.geometry.computeBoundingBox(); bb.union(o.geometry.boundingBox.clone().applyMatrix4(o.matrix)); }); return bb; }
 // Tampa de compacto oca por baixo: parede de 1,8 mm e teto de 1,4 mm (era um bloco maciço)
 const OCO = { wall: 1.8, top: 1.4 };
+// Miniatura da galeria: sem os cortes 3D (oco, rebaixo, abertura do dedo) — fechados eles não
+// aparecem e eram o que pesava ao abrir a biblioteca (180 modelos)
+let THUMB_LITE = false;
 function ocoGeo(g, m, y0) {
   g.computeBoundingBox(); const b = g.boundingBox, w = b.max.x - b.min.x - 2 * OCO.wall, d = b.max.z - b.min.z - 2 * OCO.wall, hh = m.h - OCO.top;
   if (!(w > 2 && d > 2 && hh > 0.5)) return g;
@@ -5606,6 +5620,9 @@ function ocoGeo(g, m, y0) {
 function ocoTopoGeo(g, m, y0, neck, lift) {
   const ni = x => { const y = x.index ? x.toNonIndexed() : x; for (const k in y.attributes) if (k !== 'position' && k !== 'normal') y.deleteAttribute(k); return y; };
   const inner = moduleGeo(m, y0, { inset: S.wall, lift, lo: false }); if (!inner) return g;
+  // o oco termina uma parede abaixo do topo (ombro de verdade em volta da boca): com o topo do oco
+  // no mesmo plano do topo do pote, o corte 3D entrava num cálculo sem fim e travava a página (Bold)
+  { const yb = y0 + lift, k = Math.max(0.2, (m.h - lift - S.wall) / Math.max(0.1, m.h - lift)); inner.translate(0, -yb, 0); inner.scale(1, k, 1); inner.translate(0, yb, 0); }
   let [outer, inn] = cutHole(g, inner); if (outer === g) return g;
   g = mergeGeometries([ni(outer), ni(inn)]) || g;
   const E = Math.max(neck.W / 2 - neck.threadD, 1), rIn = Math.min(neckBore(neck), E - 1.2);
@@ -5617,10 +5634,18 @@ const visorBox = (m, w, d) => { const f = Math.max(4.5, Math.min(w, d) * 0.12); 
 // Abertura para o dedo: concha oval cortada na borda da frente (em cima da base, embaixo da tampa)
 function dedoGeo(g, o, y0, h) {
   g.computeBoundingBox(); const b = g.boundingBox, zf = b.max.z, cx = (b.max.x + b.min.x) / 2;
-  const cut = new THREE.SphereGeometry(1, 64, 32); cut.scale(o.w / 2, o.h, o.d * 1.6); cut.translate(cx, y0 + (o.top ? h : 0), zf + o.d * 0.6);
+  let cut;
+  if (o.rect) { // paleta: rebaixo retangular largo na borda de cima da base, cantos arredondados (desenho do catálogo)
+    cut = new RoundedBoxGeometry(o.w, o.h * 2 + 2, o.d * 2, 4, Math.min(1.2, o.d * 0.45)); cut.translate(cx, y0 + h + 1, zf);
+  } else { cut = new THREE.SphereGeometry(1, 64, 32); cut.scale(o.w / 2, o.h, o.d * 1.6); cut.translate(cx, y0 + (o.top ? h : 0), zf + o.d * 0.6); }
   const [outer, inner] = cutHole(g, cut); if (outer === g) return g;
   const ni = x => { const y = x.index ? x.toNonIndexed() : x; for (const k in y.attributes) if (k !== 'position' && k !== 'normal') y.deleteAttribute(k); return y; };
   return mergeGeometries([ni(outer), ni(inner)]) || g;
+}
+function setHinge(objs, ang) {
+  objs.forEach(o => { const h = o.userData.hinge; if (!h) return; o.position.copy(h.p); o.quaternion.copy(h.q); o.updateMatrix();
+    const T = new THREE.Matrix4().makeTranslation(0, h.y0, h.z).multiply(new THREE.Matrix4().makeRotationX(-clamp(ang, 0, 180) * Math.PI / 180)).multiply(new THREE.Matrix4().makeTranslation(0, -h.y0, -h.z));
+    o.applyMatrix4(T); o.updateMatrixWorld(true); });
 }
 function compactParts(product, L, S0) {
   const mine = idx => product.children.filter(o => o.isMesh && o.userData.idx === idx);
@@ -5636,34 +5661,42 @@ function compactParts(product, L, S0) {
       if (m.godes.cells) { // contorno de cada godê do desenho da bandeja (Quinteto em cata-vento, 6 + 1…)
         const ar = m.godes.ar || 1, sc = Math.min((w - 2 * mg) / ar, d - 2 * mg); const TW = sc * ar, TD = sc, WD = 1.8;
         const shapeOf = (c, inset) => { const P = c.map(([x, y]) => [x * TW, y * TD]), cx0 = P.reduce((t, q) => t + q[0], 0) / P.length, cy0 = P.reduce((t, q) => t + q[1], 0) / P.length;
-          const sh = new THREE.Shape(); P.forEach(([x, y], q) => { const dx = x - cx0, dy = y - cy0, l = Math.hypot(dx, dy) || 1, k = Math.max(0.2, 1 - inset / l); const X = cx0 + dx * k, Y = cy0 + dy * k; q ? sh.lineTo(X, Y) : sh.moveTo(X, Y); }); return sh; };
-        const ext = (c, inset, hh, y) => { const g = new THREE.ExtrudeGeometry(shapeOf(c, inset), { depth: hh, bevelEnabled: false, curveSegments: 4 }); g.deleteAttribute('uv'); g.rotateX(-Math.PI / 2); g.translate(cx, y, cz); return g; };
-        m.godes.cells.forEach(c => {
+          const Q = P.map(([x, y]) => { const dx = x - cx0, dy = y - cy0, l = Math.hypot(dx, dy) || 1, k = Math.max(0.2, 1 - inset / l); return [cx0 + dx * k, cy0 + dy * k]; });
+          // cantos arredondados, como o godê de verdade (o desenho da bandeja vem em quinas vivas)
+          const rc = Math.max(0.6, 2.2 - inset * 0.6), n = Q.length, sh = new THREE.Shape();
+          Q.forEach((B, q) => { const A = Q[(q - 1 + n) % n], C = Q[(q + 1) % n], l1 = Math.hypot(A[0] - B[0], A[1] - B[1]), l2 = Math.hypot(C[0] - B[0], C[1] - B[1]);
+            if (!(l1 > 1e-3 && l2 > 1e-3)) { q ? sh.lineTo(B[0], B[1]) : sh.moveTo(B[0], B[1]); return; }
+            const r = Math.min(rc, l1 * 0.45, l2 * 0.45), p1 = [B[0] + (A[0] - B[0]) / l1 * r, B[1] + (A[1] - B[1]) / l1 * r], p2 = [B[0] + (C[0] - B[0]) / l2 * r, B[1] + (C[1] - B[1]) / l2 * r];
+            q ? sh.lineTo(p1[0], p1[1]) : sh.moveTo(p1[0], p1[1]); sh.quadraticCurveTo(B[0], B[1], p2[0], p2[1]); });
+          sh.closePath(); return sh; };
+        const ext = (c, inset, hh, y) => { const g = new THREE.ExtrudeGeometry(shapeOf(c, inset), { depth: hh, bevelEnabled: false, curveSegments: 6 }); g.deleteAttribute('uv'); g.rotateX(-Math.PI / 2); g.translate(cx, y, cz); return g; };
+        m.godes.cells.forEach((c, j) => {
           wells.push(ext(c, 0.2, WD + 2, top - WD));
-          add(ext(c, 0.5, WD + 0.1, top - WD), godeRim, idx, 'bandeja', 0, 0, 0);
-          add(ext(c, 1.5, WD - 0.2, top - WD), godeMat, idx, 'gode', 0, 0, 0);
+          add(ext(c, 0.5, WD - 0.35, top - WD), godeRim, idx, 'bandeja', 0, 0, 0);
+          add(ext(c, 1.5, WD - 0.1, top - WD), godeCor(j, m.godes.cells.length), idx, 'gode', 0, 0, 0);
         });
       } else
-      rows.forEach((cols, i) => { const cw = aw / cols; for (let j = 0; j < cols; j++) {
+      rows.forEach((cols, i) => { const cw = aw / cols, nG = rows.reduce((t, c) => t + c, 0), k0 = rows.slice(0, i).reduce((t, c) => t + c, 0); for (let j = 0; j < cols; j++) {
         const x = cx - aw / 2 + cw * (j + 0.5), z = cz - ad / 2 + ch * (i + 0.5);
         // o godê assenta num rebaixo de 1,8 mm da base: aro (bandeja) quase rente e o pó um pouco abaixo dele
         const WD = 1.8;
         if (rect && !one) {
-          wells.push(new RoundedBoxGeometry(cw - 0.4, WD + 2, ch - 0.4, 2, 0.8).translate(x, top - WD + (WD + 2) / 2, z));
-          add(new RoundedBoxGeometry(cw - 1, WD + 0.1, ch - 1, 2, 0.6), godeRim, idx, 'bandeja', x, top - WD + (WD + 0.1) / 2, z);
-          add(new RoundedBoxGeometry(cw - 2.4, WD - 0.2, ch - 2.4, 2, 0.8), godeMat, idx, 'gode', x, top - WD + (WD - 0.2) / 2, z);
+          wells.push(new RoundedBoxGeometry(cw - 0.4, WD + 2, ch - 0.4, 4, 2).translate(x, top - WD + (WD + 2) / 2, z));
+          add(new RoundedBoxGeometry(cw - 1, WD - 0.35, ch - 1, 4, Math.min(1.7, (WD - 0.35) / 2)), godeRim, idx, 'bandeja', x, top - WD + (WD - 0.35) / 2, z);
+          add(new RoundedBoxGeometry(cw - 2.4, WD - 0.1, ch - 2.4, 4, 0.7), godeCor(k0 + j, nG), idx, 'gode', x, top - WD + (WD - 0.1) / 2, z);
         } else {
           const r = (one ? Math.min(aw, ad) : Math.min(cw, ch)) / 2 - 0.5;
           wells.push(new THREE.CylinderGeometry(r + 0.3, r + 0.3, WD + 2, 72).translate(x, top - WD + (WD + 2) / 2, z));
-          add(new THREE.CylinderGeometry(r, r, WD + 0.1, 72), godeRim, idx, 'bandeja', x, top - WD + (WD + 0.1) / 2, z);
-          add(new THREE.CylinderGeometry(r - 1.1, r - 1.1, WD - 0.2, 72), godeMat, idx, 'gode', x, top - WD + (WD - 0.2) / 2, z);
+          add(new THREE.CylinderGeometry(r, r, WD - 0.35, 72), godeRim, idx, 'bandeja', x, top - WD + (WD - 0.35) / 2, z);
+          add(new THREE.CylinderGeometry(r - 1.1, r - 1.1, WD - 0.1, 72), godeCor(k0 + j, nG), idx, 'gode', x, top - WD + (WD - 0.1) / 2, z);
         }
       } });
       // rebaixos cortados na base (só nas malhas da peça, não nos godês recém-postos)
-      objs.forEach(o => { let gg = o.geometry; for (const c of wells) { const [outer, inner] = cutHole(gg, c); if (outer === gg) continue;
-        const ni = x => { const y = x.index ? x.toNonIndexed() : x; for (const k in y.attributes) if (k !== 'position' && k !== 'normal') y.deleteAttribute(k); return y; };
-        gg = mergeGeometries([ni(outer), ni(inner)]) || gg; }
-        if (gg !== o.geometry) { o.geometry.dispose(); o.geometry = gg; } });
+      // todos os rebaixos num corte só (um corte por godê levava mais de 1 s na Flat Dez)
+      const ni = x => { const y = x.index ? x.toNonIndexed() : x; for (const k in y.attributes) if (k !== 'position' && k !== 'normal') y.deleteAttribute(k); return y; };
+      const allWells = wells.length > 1 ? mergeGeometries(wells.map(ni)) : wells[0];
+      if (!THUMB_LITE && allWells) objs.forEach(o => { const [outer, inner] = cutHole(o.geometry, allWells); if (outer === o.geometry) return;
+        const gg = mergeGeometries([ni(outer), ni(inner)]); if (gg) { o.geometry.dispose(); o.geometry = gg; } });
     }
     if (m.visor && m.oco) { // placa transparente da janela, por dentro do teto
       const v = visorBox(m, w, d), pw = v.w + 3, pd = v.d + 3;
@@ -5679,11 +5712,24 @@ function compactParts(product, L, S0) {
   const aberto = !!S0?.aberto;
   L.forEach(({ m, idx, y0 }) => {
     const ang = m.abre > 0 ? m.abre : aberto ? 105 : 0;
-    if (m.hidden || !m.hinge || !(ang > 0)) return;
+    if (m.hidden || !m.hinge) return;
     const objs = mine(idx); if (!objs.length) return;
-    const z = localBox(objs).min.z, T = new THREE.Matrix4().makeTranslation(0, y0, z)
-      .multiply(new THREE.Matrix4().makeRotationX(-clamp(ang, 0, 180) * Math.PI / 180)).multiply(new THREE.Matrix4().makeTranslation(0, -y0, -z));
-    objs.forEach(o => { o.applyMatrix4(T); o.updateMatrixWorld(true); });
+    // guarda a posição fechada e o eixo: o slider da barra gira a tampa sem remontar a peça
+    const z = localBox(objs).min.z, bb = localBox(objs), W = bb.max.x - bb.min.x, cx = (bb.max.x + bb.min.x) / 2;
+    // dobradiça atrás: dois nós presos à base nas pontas e um nó da tampa no meio, no mesmo eixo
+    // (o nó da tampa gira em volta dele mesmo); pino de metal aparecendo nas juntas
+    const base = L.find(e => e.idx === idx - 1), bObjs = base ? mine(base.idx) : [];
+    if (bObjs.length) {
+      const r = clamp(Math.min(base.m.h, m.h) * 0.22, 1.1, 2.2), Lh = Math.min(W * (m.sides ? 0.4 : 0.32), m.sides ? 44 : 24), g3 = Lh / 3, gap = 0.35;
+      const kn = (x0, x1) => { const g = new THREE.CylinderGeometry(r, r, x1 - x0, 40); g.rotateZ(Math.PI / 2); g.translate(cx + (x0 + x1) / 2, y0, z + r * 0.15); return g; };
+      const pin = new THREE.CylinderGeometry(r * 0.38, r * 0.38, Lh + 0.6, 24); pin.rotateZ(Math.PI / 2); pin.translate(cx, y0, z + r * 0.15);
+      const mB = bObjs[0].material, mT = objs[0].material;
+      add(kn(-Lh / 2, -g3 / 2 - gap), mB, base.idx, 'dobradica', 0, 0, 0); add(kn(g3 / 2 + gap, Lh / 2), mB, base.idx, 'dobradica', 0, 0, 0);
+      add(pin, mirrorMat, base.idx, 'pino', 0, 0, 0);
+      add(kn(-g3 / 2, g3 / 2), mT, idx, 'dobradica', 0, 0, 0); objs.push(product.children.at(-1));
+    }
+    objs.forEach(o => { o.userData.hinge = { y0, z: z + (bObjs.length ? clamp(Math.min(base.m.h, m.h) * 0.22, 1.1, 2.2) * 0.15 : 0), p: o.position.clone(), q: o.quaternion.clone() }; });
+    if (ang > 0) setHinge(objs, ang);
   });
   if (!aberto) return;
   L.forEach(({ m, idx }) => { // bala do batom sobe
@@ -5750,9 +5796,9 @@ function buildInto(product, S, explodeAmt = 0) {
     // gargalo sobre corpo de vidro de outro tipo (perfil, placa): entra só 1 mm (senão aparecia dentro)
     if (m0.kind === 'gargalo' && !under && L[i - 1]?.m.vol && isGlass(L[i - 1].m.own ? L[i - 1].m.finish : S.finish)) m = { ...m, embed: Math.min(m.embed ?? 8, 1) };
     let g = moduleGeo(m, y0, { logoQuality: hasLogo, body: under }); if (!g) return;
-    if (m0.oco) g = ocoGeo(g, m, y0);
-    if (m0.ocoTopo && L[i + 1]?.m.kind === 'gargalo') g = ocoTopoGeo(g, m, y0, L[i + 1].m, thickBase(m.own ? m.finish : S.finish) ? Math.max(S.wall, m0.fundo ?? 6) : S.wall);
-    if (m0.dedo) g = dedoGeo(g, m0.dedo, y0, m.h);
+    if (m0.oco && !THUMB_LITE) g = ocoGeo(g, m, y0);
+    if (m0.ocoTopo && !THUMB_LITE && L[i + 1]?.m.kind === 'gargalo') g = ocoTopoGeo(g, m, y0, L[i + 1].m, thickBase(m.own ? m.finish : S.finish) ? Math.max(S.wall, m0.fundo ?? 6) : S.wall);
+    if (m0.dedo && !THUMB_LITE) g = dedoGeo(g, m0.dedo, y0, m.h);
     if (vestsValve(S, idx) && L[i - 1]?.idx === idx - 1) { // cavidade no tamanho da válvula (folga de 0,5 mm)
       const vg = sprayGeo(L[i - 1].m, L[i - 1].y0, { lo: true }); vg.computeBoundingBox(); const vb = vg.boundingBox;
       const vr = Math.max(Math.abs(vb.min.x), Math.abs(vb.max.x), Math.abs(vb.min.z), Math.abs(vb.max.z)) + 0.5;
@@ -6356,9 +6402,20 @@ document.querySelectorAll('[data-view]').forEach(b => b.onclick = () => fit(b.da
 $('#orthoBtn').onclick = () => setOrtho(cam !== ortho);
 $('#explodeBtn').onclick = () => { explode = !explode; $('#explodeBtn').classList.toggle('on', explode); build(); fit(); };
 // Abrir / fechar: aparece só em produto que abre (compacto com dobradiça, batom com tampa e bala)
-function syncOpenBtn() { const b = $('#openBtn'); if (!b) return; const ok = S.modules.some(m => m.hinge || m.capa);
-  b.classList.toggle('hidden', !ok); b.classList.toggle('on', ok && !!S.aberto); b.textContent = ok && S.aberto ? 'Fechar' : 'Abrir'; }
-$('#openBtn').onclick = () => { S.aberto = !S.aberto; build(); fit(); saveLocalSoon(); };
+const hingeAng = () => { const m = S.modules.find(x => x.hinge); return !m ? 0 : m.abre > 0 ? m.abre : S.aberto ? 105 : 0; };
+function syncOpenBtn() { const b = $('#openBtn'), r = $('#openAng'); if (!b) return; const ok = S.modules.some(m => m.hinge || m.capa), hinge = S.modules.some(m => m.hinge);
+  const open = !!S.aberto || hingeAng() > 0;
+  b.classList.toggle('hidden', !ok); b.classList.toggle('on', ok && open); b.textContent = ok && open ? 'Fechar' : 'Abrir';
+  if (r) { r.classList.toggle('hidden', !hinge); if (document.activeElement !== r) r.value = hingeAng(); } }
+// Fechar zera também o ângulo do slider (senão a tampa ficava no ângulo dele)
+$('#openBtn').onclick = () => { const open = !!S.aberto || hingeAng() > 0; S.aberto = !open; S.modules.forEach(m => { if (m.hinge) m.abre = 0; }); build(); fit(); saveLocalSoon(); };
+// Slider: gira só a tampa (sem remontar); ao soltar, guarda o ângulo na peça
+$('#openAng').oninput = e => { const v = +e.target.value;
+  S.modules.forEach(m => { if (m.hinge) m.abre = v; }); S.aberto = v > 0;
+  const idx = new Set(S.modules.map((m, i) => (m.hinge ? i : -1)).filter(i => i >= 0));
+  setHinge(product.children.filter(o => o.isMesh && idx.has(o.userData.idx)), v);
+  const b = $('#openBtn'); b.classList.toggle('on', v > 0); b.textContent = v > 0 ? 'Fechar' : 'Abrir'; renderFrame(); };
+$('#openAng').onchange = () => { build(); saveLocalSoon(); };
 $('#handBtn').onclick = () => { handOn = !handOn; applyHand(); };
 function applyViewQ(rebuild) {
   $('#viewQ').value = VIEWQ; $('#viewQName').textContent = ['Rápida', 'Boa', 'Alta', 'Render'][VIEWQ - 1];
@@ -8254,7 +8311,7 @@ function thumbOf(st) {
   const ns = normalize(structuredClone(st));
   // partes da montagem leem o projeto global (vidro, líquido, fundo): durante a miniatura
   // ele é o próprio modelo — antes a miniatura pegava a cor/vidro do projeto aberto na tela
-  const S0 = S; S = ns;
+  const S0 = S; S = ns; THUMB_LITE = true;
   try {
   if (ns.side?.length) { // arquivo com lado a lado: a miniatura mostra todos os produtos na ordem
     const all = [{ slot: ns.slot || 0, it: ns }, ...ns.side.map(it => ({ slot: it.slot || 0, it }))].sort((a, b) => a.slot - b.slot);
@@ -8262,7 +8319,7 @@ function thumbOf(st) {
     for (const e of all) { const sg = new THREE.Group(); buildInto(sg, e.it, 0); const bb = new THREE.Box3().setFromObject(sg); if (bb.isEmpty()) continue;
       sg.position.x = x - bb.min.x; x += bb.max.x - bb.min.x + (ns.gap || 25); g.add(sg); }
   } else buildInto(g, ns);
-  } finally { S = S0; }
+  } finally { S = S0; THUMB_LITE = false; }
   const b = new THREE.Box3().setFromObject(g), sz = b.getSize(new THREE.Vector3()), c = b.getCenter(new THREE.Vector3());
   const hh = Math.max(sz.y, sz.x / (TW / TH)) * 0.5 * 1.12;
   Object.assign(thumbCam, { left: -hh * TW / TH, right: hh * TW / TH, top: hh, bottom: -hh }); thumbCam.updateProjectionMatrix();
@@ -8369,8 +8426,10 @@ function incomProduct(r) {
       // tampa oca (casca) e base com rebaixo do godê; abertura para o dedo na frente, metade na borda
       // de cima da base e metade na de baixo da tampa
       const s0 = r.t === 'cr' ? {} : sq(r.t === 'cqr' ? 0.22 : 0.04), hb = H * 0.55, ht = H * 0.45, nw = r1(Math.min(22, Math.min(W, D) * 0.32));
-      ms = [P('Base', W, D, hb, { ...s0, rBot: r.t === 'cr' ? 1.5 : 1, rTop: 0.6, godes: godesOf(r), dedo: { top: true, w: nw, h: r1(Math.min(3.5, hb * 0.45)), d: 1.6 } }),
-        P('Tampa', W, D, ht, { ...s0, rBot: 0.6, rTop: r.t === 'cr' ? 2 : 1.2, hinge: true, abre: 0, oco: true, visor: /com Visor|Quinteto/i.test(r.n), espelho: !/com Visor|Crystal|Quinteto/i.test(r.n), dedo: { top: false, w: nw, h: r1(Math.min(2.6, ht * 0.4)), d: 1.1 } })]; break; }
+      // paleta: abertura retangular larga (~42% da frente) só na base, logo abaixo da tampa, como no desenho
+      const pal = r.c === 'Paletas' && r.t !== 'cr', dB = pal ? { rect: true, top: true, w: r1(W * 0.42), h: r1(Math.min(4.5, hb * 0.58)), d: 2.4 } : { top: true, w: nw, h: r1(Math.min(3.5, hb * 0.45)), d: 1.6 };
+      ms = [P('Base', W, D, hb, { ...s0, rBot: r.t === 'cr' ? 1.5 : 1, rTop: 0.6, godes: godesOf(r), dedo: dB }),
+        P('Tampa', W, D, ht, { ...s0, rBot: 0.6, rTop: r.t === 'cr' ? 2 : 1.2, hinge: true, abre: 0, oco: true, visor: /com Visor|Quinteto/i.test(r.n), espelho: !/com Visor|Crystal|Quinteto/i.test(r.n), ...(pal ? {} : { dedo: { top: false, w: nw, h: r1(Math.min(2.6, ht * 0.4)), d: 1.1 } }) })]; break; }
     case 'cg': case 'cgt': case 'cgr': case 'dsq': case 'bulb': {
       const sh = r.t === 'dsq' ? sq(0.08) : {}, rb = r.t === 'bulb' ? W / 2 * 0.95 : r.t === 'cgr' ? W * 0.3 : 2, twist = /Twist/.test(r.n);
       let [f0, f1] = incomFrac(pr, [0.58, 0.63]); if (f1 < f0 + 0.01) f1 = f0 + 0.05;

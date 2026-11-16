@@ -469,3 +469,7 @@ html,body{overflow-x:hidden}
 /* botão de texto na barra da vista (Abrir/Fechar) */
 .bar .tb.tbTxt{width:auto;padding:0 10px;font:inherit;font-size:13px}
 .bar .tb.tbTxt.on{background:var(--ink);color:#fff}
+
+/* slider de abrir a tampa (compactos), ao lado do botão Abrir */
+.bar .openAng{width:84px;margin:0 6px 0 2px;accent-color:var(--ink);cursor:pointer}
+.bar .openAng.hidden{display:none}
