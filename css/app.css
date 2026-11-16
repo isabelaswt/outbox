@@ -473,3 +473,9 @@ html,body{overflow-x:hidden}
 /* slider de abrir a tampa (compactos), ao lado do botão Abrir */
 .bar .openAng{width:84px;margin:0 6px 0 2px;accent-color:var(--ink);cursor:pointer}
 .bar .openAng.hidden{display:none}
+
+/* "Calculando…" enquanto o app monta algo pesado */
+.busy{position:fixed;top:64px;left:50%;transform:translateX(-50%);z-index:60;display:flex;align-items:center;gap:8px;padding:7px 14px;border-radius:999px;background:var(--ink);color:#fff;font-size:12px;box-shadow:0 4px 16px rgba(0,0,0,.12);pointer-events:none}
+.busy.hidden{display:none}
+.busy .spin{width:12px;height:12px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:busySpin .8s linear infinite}
+@keyframes busySpin{to{transform:rotate(360deg)}}

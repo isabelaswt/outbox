@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-16.logo1';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-16.dos1';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -30,6 +30,17 @@ function unlock() {
   $('#login')?.classList.add('hidden');
 }
 const TAU = Math.PI * 2;
+// "Calculando…": aparece enquanto o app monta algo pesado (logo, abrir, trocar de modelo). O círculo gira
+// por CSS (no compositor), então continua girando mesmo com o cálculo ocupando a página.
+let busyN = 0, busyEl = null;
+function busyOn() {
+  if (!busyEl) { busyEl = document.createElement('div'); busyEl.className = 'busy hidden'; busyEl.setAttribute('role', 'status'); busyEl.innerHTML = '<span class="spin"></span>Calculando…'; document.body.append(busyEl); }
+  busyN++; busyEl.classList.remove('hidden');
+}
+function busyOff() { busyN = Math.max(0, busyN - 1); if (!busyN) busyEl?.classList.add('hidden'); }
+// espera o aviso aparecer na tela antes do cálculo (dois quadros; aba oculta não desenha, então há um teto)
+const busyFrame = () => new Promise(res => { let ok = false; const go = () => { if (!ok) { ok = true; res(); } }; requestAnimationFrame(() => requestAnimationFrame(go)); setTimeout(go, 80); });
+async function busy(fn) { busyOn(); await busyFrame(); try { return fn(); } finally { busyOff(); } }
 const clamp = (v, a, b) => Math.min(Math.max(v, a), b);
 const smooth = (a, b, x) => { const t = clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
 const r1 = v => Math.round(v * 10) / 10;
@@ -561,7 +572,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-16.logo1';
+const BUILD = '2026-11-16.dos1';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -4814,6 +4825,8 @@ async function applyLogosTo(group, st, alive) {
   if (!st.logos?.length) return;
   const masks = await Promise.all(st.logos.map(L => logoMask(L.svg)));
   if (!alive()) return;
+  busyOn(); await busyFrame(); if (!alive()) { busyOff(); return; } // relevo do logo pesa: mostra o "Calculando…" antes
+  try {
   const px = group.position.clone(), pq = group.quaternion.clone(); // mede de pé (produto pode estar inclinado no cenário)
   group.position.set(0, 0, 0); group.quaternion.identity();
   // tampa aberta (dobradiça): o logo é medido com ela fechada e depois gira junto (ficava parado no ar)
@@ -4822,8 +4835,9 @@ async function applyLogosTo(group, st, alive) {
   group.updateMatrixWorld(true);
   st.logos.forEach((L, li) => {
     const M = masks[li]; if (!L.n || !M) return;
+    // logo no pó/blush: o godê é uma parte da peça (part), escolhida no clique
     const mains = group.children.filter(o => o.userData.main && o.userData.uid === L.uid);
-    const target = mains.find(o => o.userData.rep === (L.rep || 0)) || mains[0]; if (!target) return;
+    const target = L.part ? group.children.find(o => o.userData.part === L.part && o.userData.uid === L.uid) : mains.find(o => o.userData.rep === (L.rep || 0)) || mains[0]; if (!target) return;
     target.geometry.disposeBoundsTree?.(); target.geometry.computeBoundsTree(); usedBVH.add(target.geometry); // sempre novo: no vidro/PET a ordem dos triângulos muda a cada quadro
     const F = logoFrame(L, target, M);
     const emboss = L.depth >= 0;
@@ -4847,6 +4861,7 @@ async function applyLogosTo(group, st, alive) {
   group.position.copy(px); group.quaternion.copy(pq); group.updateMatrixWorld(true);
   usedBVH.forEach(g => g.disposeBoundsTree?.()); usedBVH.clear(); // índice velho atrapalharia o clique depois (reposicionar)
   req();
+  } finally { busyOff(); }
 }
 const usedBVH = new Set();
 // ───────────────────────── rótulo ─────────────────────────
@@ -5071,7 +5086,7 @@ canvas.addEventListener('pointermove', e => {
     const ev = moveQueued; moveQueued = null; if (!placing) return;
     const r = canvas.getBoundingClientRect();
     ray.setFromCamera(new THREE.Vector2((ev.clientX - r.left) / r.width * 2 - 1, -(ev.clientY - r.top) / r.height * 2 + 1), cam);
-    const hit = ray.intersectObjects(product.children.filter(o => o.userData.main))[0];
+    const hit = ray.intersectObjects(product.children.filter(o => o.userData.main || o.userData.part))[0];
     hit ? showPreview(hit) : clearPreview();
   });
 });
@@ -5611,17 +5626,20 @@ const OCO = { wall: 1.8, top: 1.4 };
 // aparecem e eram o que pesava ao abrir a biblioteca (180 modelos)
 let THUMB_LITE = false;
 function ocoGeo(g, m, y0) {
-  g.computeBoundingBox(); const b = g.boundingBox, w = b.max.x - b.min.x - 2 * OCO.wall, d = b.max.z - b.min.z - 2 * OCO.wall, hh = m.h - OCO.top;
+  const OW = m.ocoWall ?? OCO.wall, OT = m.ocoTop ?? OCO.top; // sobretampa de PET G: casca bem mais fina que a tampa do compacto
+  g.computeBoundingBox(); const b = g.boundingBox, w = b.max.x - b.min.x - 2 * OW, d = b.max.z - b.min.z - 2 * OW, hh = m.h - OT;
   if (!(w > 2 && d > 2 && hh > 0.5)) return g;
   const cx = (b.max.x + b.min.x) / 2, cz = (b.max.z + b.min.z) / 2;
-  const cut = m.sides ? new RoundedBoxGeometry(w, hh + 1, d, 3, Math.min(3, Math.min(w, d) * (m.sideR || 0.1) * 0.5 + 0.6)) : new THREE.CylinderGeometry(Math.min(w, d) / 2, Math.min(w, d) / 2, hh + 1, 96);
-  cut.translate(cx, y0 - 1 + (hh + 1) / 2, cz);
+  // oco = a própria forma da tampa encolhida pela parede (com caixa de cantos fixos, nas tampas de canto
+  // bem arredondado o corte saía pela quina e deixava furos nos cantos)
+  let cut = moduleGeo({ ...m, h: hh + 1, rBot: 0, topDip: 0, quadDish: 0, dedo: null, oco: false, spout: null }, y0 - 1, { inset: OW, lo: false });
+  if (!cut) { cut = m.sides ? new RoundedBoxGeometry(w, hh + 1, d, 3, Math.min(3, Math.min(w, d) * (m.sideR || 0.1) * 0.5 + 0.6)) : new THREE.CylinderGeometry(Math.min(w, d) / 2, Math.min(w, d) / 2, hh + 1, 96); cut.translate(cx, y0 - 1 + (hh + 1) / 2, cz); }
   const ni = x => { const y = x.index ? x.toNonIndexed() : x; for (const k in y.attributes) if (k !== 'position' && k !== 'normal') y.deleteAttribute(k); return y; };
   let [outer, inner] = cutHole(g, cut); if (outer === g) return g;
   g = mergeGeometries([ni(outer), ni(inner)]) || g;
   if (m.visor) { // janela no teto (visor): moldura de ~12% da largura em volta
-    const v = visorBox(m, w + 2 * OCO.wall, d + 2 * OCO.wall), win = m.sides ? new RoundedBoxGeometry(v.w, OCO.top + 3, v.d, 3, Math.min(4, Math.min(v.w, v.d) * 0.12)) : new THREE.CylinderGeometry(v.w / 2, v.w / 2, OCO.top + 3, 96);
-    win.translate(cx, y0 + m.h - OCO.top / 2, cz);
+    const v = visorBox(m, w + 2 * OW, d + 2 * OW), win = m.sides ? new RoundedBoxGeometry(v.w, OT + 3, v.d, 3, Math.min(4, Math.min(v.w, v.d) * 0.12)) : new THREE.CylinderGeometry(v.w / 2, v.w / 2, OT + 3, 96);
+    win.translate(cx, y0 + m.h - OT / 2, cz);
     [outer, inner] = cutHole(g, win); if (outer !== g) g = mergeGeometries([ni(outer), ni(inner)]) || g;
   }
   return g;
@@ -5703,6 +5721,8 @@ function compactParts(product, L, S0) {
       } });
       // rebaixos cortados na base (só nas malhas da peça, não nos godês recém-postos)
       // todos os rebaixos num corte só (um corte por godê levava mais de 1 s na Flat Dez)
+      // cada godê aceita logo (relevo no pó): mesma referência de posição da peça
+      { const ud = objs[0].userData; let g = 0; product.children.forEach(o => { if (o.userData.idx === idx && /_gode$/.test(o.name)) Object.assign(o.userData, { uid: ud.uid, y0: ud.y0, ox: ud.ox || 0, rep: 0, part: `gode${g++}` }); }); }
       const ni = x => { const y = x.index ? x.toNonIndexed() : x; for (const k in y.attributes) if (k !== 'position' && k !== 'normal') y.deleteAttribute(k); return y; };
       const allWells = wells.length > 1 ? mergeGeometries(wells.map(ni)) : wells[0];
       if (!THUMB_LITE && allWells) objs.forEach(o => { const [outer, inner] = cutHole(o.geometry, allWells); if (outer === o.geometry) return;
@@ -5732,7 +5752,7 @@ function compactParts(product, L, S0) {
     if (bObjs.length) {
       const r = clamp(Math.min(base.m.h, m.h) * 0.22, 1.1, 2.2), Lh = Math.min(W * (m.sides ? 0.4 : 0.32), m.sides ? 44 : 24), g3 = Lh / 3, gap = 0.35;
       const kn = (x0, x1) => { const g = new THREE.CylinderGeometry(r, r, x1 - x0, 40); g.rotateZ(Math.PI / 2); g.translate(cx + (x0 + x1) / 2, y0, z + r * 0.15); return g; };
-      const pin = new THREE.CylinderGeometry(r * 0.38, r * 0.38, Lh + 0.6, 24); pin.rotateZ(Math.PI / 2); pin.translate(cx, y0, z + r * 0.15);
+      const pin = new THREE.CylinderGeometry(r * 0.38, r * 0.38, Lh - 0.6, 24); pin.rotateZ(Math.PI / 2); pin.translate(cx, y0, z + r * 0.15);
       const mB = bObjs[0].material, mT = objs[0].material;
       add(kn(-Lh / 2, -g3 / 2 - gap), mB, base.idx, 'dobradica', 0, 0, 0); add(kn(g3 / 2 + gap, Lh / 2), mB, base.idx, 'dobradica', 0, 0, 0);
       add(pin, mirrorMat, base.idx, 'pino', 0, 0, 0);
@@ -5809,7 +5829,7 @@ function buildInto(product, S, explodeAmt = 0) {
     if (m0.oco && !THUMB_LITE) g = ocoGeo(g, m, y0);
     if (m0.ocoTopo && !THUMB_LITE && L[i + 1]?.m.kind === 'gargalo') g = ocoTopoGeo(g, m, y0, L[i + 1].m, thickBase(m.own ? m.finish : S.finish) ? Math.max(S.wall, m0.fundo ?? 6) : S.wall);
     if (m0.dedo && !THUMB_LITE) g = dedoGeo(g, m0.dedo, y0, m.h);
-    if (!THUMB_LITE && vestsValve(S, idx) && L[i - 1]?.idx === idx - 1) { // cavidade no tamanho da válvula (folga de 0,5 mm)
+    if (!THUMB_LITE && !m0.oco && vestsValve(S, idx) && L[i - 1]?.idx === idx - 1) { // cavidade no tamanho da válvula (folga de 0,5 mm); casca oca (oco) já tem o vão
       const vg = sprayGeo(L[i - 1].m, L[i - 1].y0, { lo: true }); vg.computeBoundingBox(); const vb = vg.boundingBox;
       const vr = Math.max(Math.abs(vb.min.x), Math.abs(vb.max.x), Math.abs(vb.min.z), Math.abs(vb.max.z)) + 0.5;
       // altura da válvula (vale também explodido), mas a tampa mantém um topo fechado de 2 mm:
@@ -5849,7 +5869,7 @@ function buildInto(product, S, explodeAmt = 0) {
     // tampa que veste a válvula tem o oco dela por dentro: lente bem mais fina (com a espessura de
     // peça maciça a válvula aparecia ampliada, abrindo em sino, como se fosse enorme)
     const ocaV = !m0.vol && vestsValve(S, idx);
-    const thick = !isGlass(finM) || overcap ? undefined : r1(!m0.vol ? (ocaV ? clamp(Math.min(m.W, m.D) * 0.12, 3, 6) : clamp(Math.min(m.W, m.D) * 0.35, 4, 18)) : clamp(Math.min(m.W, m.D) * 0.3, 4, 30));
+    const thick = !isGlass(finM) || overcap || m0.oco ? undefined : r1(!m0.vol ? (ocaV ? clamp(Math.min(m.W, m.D) * 0.12, 3, 6) : clamp(Math.min(m.W, m.D) * 0.35, 4, 18)) : clamp(Math.min(m.W, m.D) * 0.3, 4, 30));
     const own = ms.own ? ms : S, cheio = m0.vol && m0.liq && isFrost(finM) ? (m0.liqColor || '#ffffff') : false; // cor do conteúdo: tinge de leve a base jateada
     const inteira = !!m0.furo && isGlass(finM);
     const look = own.difus != null || own.ior != null || cheio || inteira ? { dif: own.difus, ior: own.ior, cheio, inteira } : null;
@@ -6418,14 +6438,14 @@ function syncOpenBtn() { const b = $('#openBtn'), r = $('#openAng'); if (!b) ret
   b.classList.toggle('hidden', !ok); b.classList.toggle('on', ok && open); b.textContent = ok && open ? 'Fechar' : 'Abrir';
   if (r) { r.classList.toggle('hidden', !hinge); if (document.activeElement !== r) r.value = hingeAng(); } }
 // Fechar zera também o ângulo do slider (senão a tampa ficava no ângulo dele)
-$('#openBtn').onclick = () => { const open = !!S.aberto || hingeAng() > 0; S.aberto = !open; S.modules.forEach(m => { if (m.hinge) m.abre = 0; }); build(); fit(); saveLocalSoon(); };
+$('#openBtn').onclick = () => { const open = !!S.aberto || hingeAng() > 0; S.aberto = !open; S.modules.forEach(m => { if (m.hinge) m.abre = 0; }); busy(() => { build(); fit(); }); saveLocalSoon(); };
 // Slider: gira só a tampa (sem remontar); ao soltar, guarda o ângulo na peça
 $('#openAng').oninput = e => { const v = +e.target.value;
   S.modules.forEach(m => { if (m.hinge) m.abre = v; }); S.aberto = v > 0;
   const idx = new Set(S.modules.map((m, i) => (m.hinge ? i : -1)).filter(i => i >= 0));
   setHinge(product.children.filter(o => o.isMesh && idx.has(o.userData.idx)), v);
   const b = $('#openBtn'); b.classList.toggle('on', v > 0); b.textContent = v > 0 ? 'Fechar' : 'Abrir'; renderFrame(); };
-$('#openAng').onchange = () => { build(); saveLocalSoon(); };
+$('#openAng').onchange = () => { busy(build); saveLocalSoon(); };
 $('#handBtn').onclick = () => { handOn = !handOn; applyHand(); };
 function applyViewQ(rebuild) {
   $('#viewQ').value = VIEWQ; $('#viewQName').textContent = ['Rápida', 'Boa', 'Alta', 'Render'][VIEWQ - 1];
@@ -6495,16 +6515,16 @@ canvas.addEventListener('pointerup', e => {
   const r = canvas.getBoundingClientRect();
   ray.setFromCamera(new THREE.Vector2((e.clientX - r.left) / r.width * 2 - 1, -(e.clientY - r.top) / r.height * 2 + 1), cam);
   if (placing) {
-    const hit = ray.intersectObjects(product.children.filter(o => o.userData.main))[0];
+    const hit = ray.intersectObjects(product.children.filter(o => o.userData.main || o.userData.part))[0];
     if (!hit) return toast('Clique em cima do shape');
     const { uid, y0, ox } = hit.object.userData;
     const lp = product.worldToLocal(hit.point.clone()); // produto inclinado no cenário: guarda de pé
     const hg = hit.object.userData.hinge; // tampa aberta: guarda o ponto na posição fechada (o logo gira com ela)
     if (hg) { const one = new THREE.Vector3(1, 1, 1), now = new THREE.Matrix4().compose(hit.object.position, hit.object.quaternion, one);
       lp.applyMatrix4(new THREE.Matrix4().compose(hg.p, hg.q, one).multiply(now.invert())); }
-    Object.assign(placing, { uid, rep: hit.object.userData.rep || 0, p: [lp.x - ox, lp.y - y0, lp.z], n: hit.face.normal.toArray() });
+    Object.assign(placing, { uid, part: hit.object.userData.part || null, rep: hit.object.userData.rep || 0, p: [lp.x - ox, lp.y - y0, lp.z], n: hit.face.normal.toArray() });
     stopPlacing();
-    renderLogos(); saveLocalSoon(); build();
+    renderLogos(); saveLocalSoon(); busy(build);
     return;
   }
   const hit = ray.intersectObjects(product.children)[0], sh = ray.intersectObject(sideRoot, true)[0];
@@ -8377,12 +8397,18 @@ function fitValve(t, wv, hv, o = {}) {
   ['h', 'actH', 'stemH', 'headH', 'guideH'].forEach(k => { if (d[k] != null) v[k] = r1(d[k] * kv); });
   return M(t, { ...v, ...o });
 }
+// Quinteto: quadrado do meio girado 45° e quatro peças em cata-vento — cada aresta do quadrado segue
+// até a borda (desenho da bandeja do catálogo); cantos de fora chanfrados para acompanhar a caixa redonda
+const QUINTETO = (() => { const c = 0.2, e = 0.5, k = 0.1, T = [0, c], R = [c, 0], B = [0, -c], L = [-c, 0];
+  const PT = [-(e - c), e], PR = [e, e - c], PB = [e - c, -e], PL = [-e, -(e - c)];
+  return [[T, R, B, L], [PT, [e - k, e], [e, e - k], PR, R, T], [PR, [e, -e + k], [e - k, -e], PB, B, R],
+    [PB, [-e + k, -e], [-e, -e + k], PL, L, B], [PL, [-e, e - k], [-e + k, e], PT, T, L]]; })();
 // Godês dos compactos e paletas: fileiras (quantos em cada) e formato, pelo nome do modelo
 function godesOf(r) {
   const n = r.n, rect = /Flat|Big|Retangular/.test(n) && !/Redondo/.test(n);
   const rows = /Dez/.test(n) ? [5, 5] : /6 \+ 1/.test(n) ? [4, 3] : /Sexteto/.test(n) ? [3, 3] : /Quinteto/.test(n) ? [3, 2]
     : /Quarteto|Big 4/.test(n) ? [2, 2] : /Big 9/.test(n) ? [3, 3, 3] : /Trio/.test(n) ? [3] : /Duo/.test(n) ? [2] : [1];
-  const tr = INCOM_TRAYS[r.k];
+  const tr = /Quinteto/.test(n) ? { c: QUINTETO, ar: 1 } : INCOM_TRAYS[r.k];
   return tr ? { rows, rect, cells: tr.c, ar: tr.ar } : { rows, rect };
 }
 // Produtos do catálogo Incom 2026 como modelos prontos (biblioteca Incom): medidas externas totais do
@@ -8425,15 +8451,25 @@ function fitValveIn(t, cap, wv0) {
 // divisões entre peças do próprio desenho. O que fica dentro (conta-gotas, pump, spray, haste, bala,
 // godês) entra montado: aparece pela tampa transparente, ao abrir ou no Explodir. Compactos e
 // paletas têm o desenho em perspectiva no catálogo: ficam com a forma básica.
+// Divisão tampa × frasco lida a olho no desenho técnico (a extração automática não achou a linha)
+const SPLIT_FIX = { 96: 0.58, 98: 0.58, 100: 0.52, 102: 0.52, 103: 0.63, 104: 0.5, 107: 0.57, 108: 0.65, 123: 0.58, 124: 0.65, 125: 0.56, 126: 0.66, 130: 0.66, 131: 0.5 };
+// Cor de exemplo do conteúdo (maquiagem): sempre a mesma para o mesmo modelo
+const BATOM_CORES = ['#9b1b30', '#e0604e', '#c43a3a', '#d9667f', '#7a2846', '#b5525a'];
+const GLOSS_CORES = ['#b8323f', '#d77a7a', '#a3473a', '#c9707e', '#8c2f45', '#e09a8a', '#b85c4f', '#d45f74'];
+const corDe = (L, n) => L[[...n].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7) % L.length];
 function incomProduct(r) {
   const W = r.W, D = r.D ?? r.W, H = r.H, B = { pesc: false, bpesc: false, liq: false, vol: false, rTop: 1, rBot: 1 };
-  const pr = INCOM_PROD_PROF[r.k];
+  const pr = INCOM_PROD_PROF[r.k], r2 = v => Math.round(v * 100) / 100;
+  // medidas exatas do catálogo: a parte mais larga do desenho vale a largura cheia (a média dos dois lados
+  // dava 0,998 → 37,9 em vez de 38) e as alturas das peças não são arredondadas a 0,1 (somavam 111,6 em vez de 111,7)
+  const gmax = pr ? Math.max(...pr.p.map(q => (q[1] + q[2]) / 2)) : 1;
   const P = (name, w, d, h, o = {}) => {
-    let x = { ...B, name, W: r1(w), D: r1(d ?? w), h: r1(h), ...o }; const tt = x._t; delete x._t;
-    if (tt && pr) { const sl = profSlice(pr, tt[0], tt[1], W);
+    let x = { ...B, name, W: r1(w), D: r1(d ?? w), h: o._t ? r2(h) : r1(h), ...o }; const tt = x._t; delete x._t;
+    if (tt && pr) { const sl = profSlice(pr, tt[0], tt[1], W); sl.amax /= gmax;
       // contorno alisado: o desenho vem em degraus de ~0,1 mm (traço inclinado rasterizado) e a luz
       // marcava cada degrau como uma listra em volta do corpo; degraus de verdade (anel, ombro) ficam
-      x = { ...x, W: r1(W * sl.amax), D: r1(D * sl.amax), prof: smoothProfile(sl.prof, x.h, W * sl.amax, 3.2), smoothProf: false, taper: 100, taperB: 100, bulge: 0, rTop: Math.min(x.rTop ?? 1, 0.6), rBot: Math.min(x.rBot ?? 1, 0.5) };
+      const sp = smoothProfile(sl.prof, x.h, W * sl.amax, 3.2), mx = Math.max(...sp.map(q => q[1])) || 1; sp.forEach(q => { q[1] /= mx; q[2] /= mx; }); // alisar não pode afinar a largura
+      x = { ...x, W: r2(Math.min(W, W * sl.amax)), D: r2(Math.min(D, D * sl.amax)), prof: sp, smoothProf: false, taper: 100, taperB: 100, bulge: 0, rTop: Math.min(x.rTop ?? 1, 0.6), rBot: Math.min(x.rBot ?? 1, 0.5) };
       if (pr.d && tt[1] >= 1) x.topDip = r1(pr.d * H); }
     const m = M('reto', polyFit(x)); if (m.prof) m.W0 = m.W; return m;
   };
@@ -8444,7 +8480,7 @@ function incomProduct(r) {
     case 'cq': case 'cqr': case 'cr': {
       // tampa oca (casca) e base com rebaixo do godê; abertura para o dedo na frente, metade na borda
       // de cima da base e metade na de baixo da tampa
-      const s0 = r.t === 'cr' ? {} : sq(r.t === 'cqr' ? 0.22 : 0.04), hb = H * 0.55, ht = H * 0.45, nw = r1(Math.min(22, Math.min(W, D) * 0.32));
+      const s0 = r.t === 'cr' ? {} : sq(/Quinteto/.test(r.n) ? 0.34 : r.t === 'cqr' ? 0.22 : 0.04), hb = H * 0.55, ht = H * 0.45, nw = r1(Math.min(22, Math.min(W, D) * 0.32));
       // paleta: abertura retangular larga (~42% da frente) só na base, logo abaixo da tampa, como no desenho
       const pal = r.c === 'Paletas' && r.t !== 'cr', dB = pal ? { rect: true, top: true, w: r1(W * 0.42), h: r1(Math.min(4.5, hb * 0.58)), d: 2.4 } : { top: true, w: nw, h: r1(Math.min(3.5, hb * 0.45)), d: 1.6 };
       ms = [P('Base', W, D, hb, { ...s0, rBot: r.t === 'cr' ? 1.5 : 1, rTop: 0.6, godes: godesOf(r), dedo: dB }),
@@ -8457,10 +8493,14 @@ function incomProduct(r) {
     case 'cg': case 'cgt': case 'cgr': case 'bulb': {
       const sh = r.t === 'dsq' ? sq(0.08) : {}, rb = r.t === 'bulb' ? W / 2 * 0.95 : r.t === 'cgr' ? W * 0.3 : 2, twist = false;
       let [f0, f1] = incomFrac(pr, [0.58, 0.63]); if (f1 < f0 + 0.01) f1 = f0 + 0.05;
-      const cap = P(twist ? 'Acionador' : 'Sobretampa', W, D, H * (1 - f1), { ...sh, ...(twist ? {} : clear), rBot: 0.5, rTop: r.t === 'bulb' ? W / 2 * 0.95 : r.t === 'cgr' ? W * 0.3 : 2, _t: [f1, 1] });
+      // sobretampa de plástico transparente: casca fina oca seguindo a forma de fora (o oco em cilindro reto aparecia
+      // como uma parede por dentro, como nas tampas maciças de Surlyn)
+      const cap = P(twist ? 'Acionador' : 'Sobretampa', W, D, H * (1 - f1), { ...sh, ...(twist ? {} : { ...clear, oco: true, ocoWall: 0.8, ocoTop: 0.9 }), rBot: 0.5, rTop: r.t === 'bulb' ? W / 2 * 0.95 : r.t === 'cgr' ? W * 0.3 : 2, _t: [f1, 1] });
       const wIn = inner * 2 * (r.t === 'dsq' ? 0.62 : 0.56);
       // conta-gotas na linha Conta-gotas; spray nos Deluxes; pump dosadora nos Dispensadores
       const v = r.c === 'Conta-gotas' ? fitValveIn('contaGotas', cap, Math.min(22, wIn)) : r.c === 'Deluxes' ? fitValveIn('spray', cap, Math.min(26, wIn)) : fitValveIn('pump', cap, Math.min(26.3, wIn));
+      // dispensador: válvula dosadora (colar liso, haste grossa, atuador com bico curto no alto, um pouco para baixo)
+      if (r.c === 'Dispensadores') Object.assign(v, { name: 'Válvula dosadora', ridges: 0, collarR: 0.6, stemD: r1(v.actW * 0.7), nozzleL: 3.4, armW: r1(Math.max(4, v.actW * 0.3)), armT: 3.2, droop: 1.4, nozzleY: 0.8 });
       ms = [P('Frasco', W, D, H * f0, { ...sh, vol: true, rBot: rb, rTop: 1, ...(r.t === 'cgt' ? { taperB: 86 } : {}), _t: [0, f0] }), P('Anel', W, D, H * (f1 - f0), { ...sh, _t: [f0, f1] }), v, cap]; break; }
     case 'onoff': { const [f] = incomFrac(pr, [0.62]), hc = H * (1 - f), dn = 4.4;
       // bico do acionador (lotion) saindo de lado no alto da capa, como na foto do catálogo
@@ -8487,22 +8527,30 @@ function incomProduct(r) {
       ms = [P('Frasco', W, D, H * f, { vol: true, rBot: 3, rTop: 1, ...o, _t: [0, f] }), P('Tampa', W * (r.t === 'frnt' ? 0.88 : 1), D, H * (1 - f), { rTop: r.t === 'frnr' ? W * 0.4 : 2, _t: [f, 1] })]; break; }
     case 'tube': ms = [P('Frasco', W, D, H - 14, { vol: true, taper: 70, rTop: 3, rBot: 2, _t: [0, (H - 14) / H] }), P('Gargalo', W * 0.45, null, 14, { rTop: 1, _t: [(H - 14) / H, 1] })]; break;
     case 'gloss': case 'glosssq': { // a tampa veste a haste com o aplicador (ou a escova, na máscara), que desce até o fundo
-      const s0 = r.t === 'glosssq' ? sq(0.08) : {}, [f] = incomFrac(pr, [0.52]), capH = H * (1 - f), masc = r.c === 'Máscaras';
+      const s0 = r.t === 'glosssq' ? sq(0.08) : {}, [f] = SPLIT_FIX[r.pg] ? [SPLIT_FIX[r.pg]] : incomFrac(pr, [0.52]), capH = H * (1 - f), masc = r.c === 'Máscaras';
+      // gloss: frasco transparente (PET G/SAN, como no catálogo) com o gloss colorido dentro; máscara: frasco opaco
+      const gl = masc ? {} : { own: true, finish: 'pet', color: '#ffffff', liq: true, liqType: 'cremoso', liqLevel: 88, liqColor: corDe(GLOSS_CORES, r.n) };
       const cap = P('Tampa', W, D, capH, { ...s0, rTop: r.t === 'gloss' ? W * 0.2 : 1.2, _t: [f, 1] });
       const wv = r1(Math.max(5, Math.min(Math.min(W, D) * 0.55, 2 * (capHalfAt(cap, 0) - 1.6))));
-      ms = [P('Frasco', W, D, H * f, { ...s0, vol: true, rBot: 1.5, _t: [0, f] }),
+      ms = [P('Frasco', W, D, H * f, { ...s0, vol: true, rBot: 1.5, ...gl, _t: [0, f] }),
         M('tampaGloss', { name: masc ? 'Haste com escova' : 'Haste com aplicador', W: wv, D: wv, h: r1(capH - 2.5), pescD: r1(Math.min(3, wv * 0.3)),
           tipL: masc ? r1(Math.min(24, H * 0.2)) : 13, tipW: r1(Math.min(masc ? 7.5 : 6.5, Math.min(W, D) - 6)), tipColor: masc ? '#2b2b2b' : '#e2cdb8' }), cap]; break; }
     case 'baton': case 'batonsq': {
       // Batom como no catálogo: base, tubo de metal (mecanismo) saindo dela, bala de 12,1 mm com a ponta
       // chanfrada, recolhida dentro do tubo, e a tampa que desce até a base vestindo tudo. "Abrir" tira a
       // tampa e deita ao lado, e a bala sobe.
-      const s0 = r.t === 'batonsq' ? sq(0.06) : {}, [f] = incomFrac(pr, [0.4]), hc = H * (1 - f);
-      const ws = r1(Math.min(W * 0.72, 12.1 + 4.6)), wb = r1(Math.min(12.1, ws - 2.6)), hs = r1(hc - 5), lb = r1(Math.min(22, hs * 0.75));
-      ms = [P('Base', W, D, H * f, { ...s0, _t: [0, f] }),
+      // base curta (junta do desenho/foto), colar interno onde a tampa encaixa, tubo de metal, bala colorida;
+      // Lipview e Spy: visor no fundo da base mostrando a cor do batom
+      const s0 = r.t === 'batonsq' ? sq(0.06) : {}, f = { Ella: 0.24, Long: 0.23, 'Long Lipview': 0.23, Spy: 0.17, Squared: 0.21 }[r.n] ?? 0.23, hc = H * (1 - f);
+      // proporções da foto do Squared aberto: colar ~13% e tubo ~58% da altura da tampa; a bala sobe ~85% do comprimento
+      const cor = corDe(BATOM_CORES, r.n), hcol = r1(clamp(hc * 0.13, 4, 8)), wcol = r1(Math.min(W, D) - 2 * OCO.wall - 0.8);
+      const ws = r1(Math.min(wcol - 1.6, 12.1 + 4.6)), wb = r1(Math.min(12.1, ws - 2.6)), hs = r1(hc * 0.58), lb = r1(Math.min(24, hc * 0.42, hs - 2)), visor = /Lipview|Spy/.test(r.n);
+      ms = [...(visor ? [P('Visor de cor (fundo)', r1(Math.min(W, D) * 0.55), null, 1.2, { rTop: 0.2, rBot: 0.4, own: true, color: cor, finish: 'brilho' })] : []),
+        P('Base', W, D, H * f, { ...s0, ...(visor ? { gap: -1 } : {}), _t: [0, f] }),
+        P('Colar interno', wcol, r.t === 'batonsq' ? wcol : null, hcol, { ...s0, rTop: 0.6, rBot: 0.2 }),
         P('Tubo (mecanismo)', ws, null, hs, { rTop: 0.5, rBot: 0.3, own: true, color: '#d6d8da', finish: 'metal' }),
-        P('Bala (batom)', wb, null, lb, { rTop: 0.8, rBot: 0.3, gap: r1(-(lb + 1.2)), tilt: [1, 0.55], sobe: r1(lb * 0.72), own: true, color: '#d7a99a', finish: 'brilho' }),
-        P('Tampa', W, D, hc, { ...s0, rTop: 1.5, gap: r1(-(hs - 1.2)), capa: true, oco: true, _t: [f, 1] })]; break; }
+        P('Bala (batom)', wb, null, lb, { rTop: 0.8, rBot: 0.3, gap: r1(-(lb + 1.2)), tilt: [1, 0.55], sobe: r1(lb * 0.85), own: true, color: cor, finish: 'brilho' }),
+        P('Tampa', W, D, hc, { ...s0, rTop: 1.5, gap: r1(-(hs + hcol - 1.2)), capa: true, oco: true, _t: [f, 1] })]; break; }
     case 'pote': case 'potesq': {
       // Pote como o de verdade: corpo oco com creme dentro (conteúdo editável), boca com rosca em hélice e
       // tampa de rosca oca assentada no ombro. "Abrir" tira a tampa e deixa virada ao lado.
@@ -8512,10 +8560,10 @@ function incomProduct(r) {
       const nw = r1(face - 2 * OCO.wall - 0.8), nh = r1(Math.max(4, hc - OCO.top - 0.8));
       const neck = M('gargalo', { name: 'Boca com rosca', neckStd: 'livre', W: nw, D: nw, h: nh, pitch: 3.2, turns: 1.25, threadD: 0.9, ringH: 0, ringW: 0, embed: 4, neckFillet: 0, tuboAberto: true });
       ms = [P('Pote', W, D, hp, { ...s0, vol: true, rBot: 3, ocoTopo: true, liq: true, liqType: 'cremoso', liqLevel: 80, liqColor: '#f2ebe0', _t: [0, f] }), neck, cap]; break; }
-    case 'stick': { const [f] = incomFrac(pr, [0.5]), bh = H * (1 - f) * 0.84; ms = [P('Base', W, D, H * f, { rBot: 2, _t: [0, f] }), P('Bastão (produto)', W * 0.78, null, bh, { rTop: W * 0.2 }), P('Tampa', W, D, H * (1 - f), { rTop: 3, gap: r1(-bh), _t: [f, 1] })]; break; }
+    case 'stick': { const [f] = SPLIT_FIX[r.pg] ? [SPLIT_FIX[r.pg]] : incomFrac(pr, [0.5]), bh = H * (1 - f) * 0.84; ms = [P('Base', W, D, H * f, { rBot: 2, _t: [0, f] }), P('Bastão (produto)', W * 0.78, null, bh, { rTop: W * 0.2 }), P('Tampa', W, D, H * (1 - f), { rTop: 3, gap: r1(-bh), _t: [f, 1] })]; break; }
     default: ms = [P('Corpo', W, D, H, { vol: true, _t: [0, 1] })];
   }
-  Object.assign(ms[0], { forn: 'Incom', ref: r.n.toUpperCase(), fmat: r.mat, fterm: r.vol, fpg: r.pg, fest: r.est, fW: r.W, fD: r.D ?? r.W, fH: r.H, fcat: r.c });
+  Object.assign(ms.find(m => /^(Base|Frasco|Pote|Corpo)/.test(m.name)) || ms[0], { forn: 'Incom', ref: r.n.toUpperCase(), fmat: r.mat, fterm: r.vol, fpg: r.pg, fest: r.est, fW: r.W, fD: r.D ?? r.W, fH: r.H, fcat: r.c });
   const fapp = ['Frascos', 'Frasnagas'].includes(r.c) || r.t.startsWith('flacon') ? 'Fármaco' : 'Beleza';
   // pote de acrílico (SAN/PMMA/PCTG) tem parede grossa; o de PP/PE, fina
   const wall = r.t.startsWith('pote') ? (/SAN|PMMA|PCTG/.test(r.mat) ? 3.2 : 1.6) : undefined;
@@ -8690,7 +8738,7 @@ function renderPresets() {
       card.className = 'card' + (fileName() === name ? ' on' : '');
       card.title = name;
       card.innerHTML = `<img class="ph" alt=""><div>${name}</div>`;
-      card.onclick = () => { loadState(st, name); };
+      card.onclick = () => busy(() => loadState(st, name));
       card.draggable = true; // arrastar para uma aba
       card.ondragstart = e => { e.dataTransfer.setData('text/x-outbox-card', JSON.stringify({ name, kind })); e.dataTransfer.effectAllowed = 'copyMove'; };
       gal.appendChild(card);
