@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-16.dos3';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-16.dos5';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -347,7 +347,7 @@ const LIB = {
   pump:    { name: 'Válvula pump', kind: 'spray', sprayType: 'pato', W: 26.3, D: 26.3, h: 14.5, collarR: 1, ridges: 44, ridgeD: 0.3,
              stemD: 9, stemH: 12, actW: 20, headH: 11, armT: 4, armW: 9, nozzleL: 22, droop: 1 },
   pumpDosadora: { name: 'Válvula pump dosadora', kind: 'spray', sprayType: 'dosadora', W: 24, D: 24, h: 12, collarR: 0.6, ridges: 0,
-             stemD: 17, guideH: 4.5, stemH: 0, actW: 14.5, headH: 13, armT: 3.2, armW: 5.5, nozzleL: 3, droop: 2.4 },
+             stemD: 17, guideH: 4, stemH: 0, actW: 14.5, headH: 13, armT: 3.2, armW: 5.5, nozzleL: 3.2, droop: 3.4 },
   locao:   { name: 'Pump loção (bico curvo)', kind: 'spray', sprayType: 'locao', W: 24.5, D: 24.5, h: 10.8, collarR: 0.8, stemD: 15.5, stemH: 7.3,
              actW: 18.8, headH: 19.7, domeH: 4.5, nozzleL: 30, droop: 6, spoutD: 3 },
   pumpFrisos: { name: 'Pump loção com frisos', kind: 'spray', sprayType: 'draftpump', W: 38, D: 38, h: 17.5, collarR: 1,
@@ -574,7 +574,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-16.dos3';
+const BUILD = '2026-11-16.dos5';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -1768,17 +1768,22 @@ function sprayGeo(m, y0, { lo = false } = {}) {
     const [actC, c1] = cutHole(act, drill), [btnC, c2] = cutHole(btn, drill);
     head.push(actC, btnC); holes.push(c1, c2);
   } else if (m.sprayType === 'dosadora') {
-    // Pump dosadora (base, sérum, loção): colar liso, ombro mais estreito com friso, atuador cilíndrico de topo
-    // inclinado (desce para a frente) que termina num bico curto curvado para baixo — sem gatilho, sem spray
-    const sh = m.guideH || 4;
-    head.push(ring(m.stemD, sh + sink, top - sink, { rBot: 0, rTop: 0.5, groove: sh * 0.5, grooveD: 0.3 }));
-    const yA = top + sh, R = m.actW / 2, lowF = 0.8;
-    const act = moduleGeo({ ...BASE, kind: 'giro', W: m.actW, D: m.actW, h: m.headH, rBot: 0.4, rTop: Math.min(1, m.actW * 0.06), tilt: [1, lowF] }, yA, { lo });
-    head.push(act);
-    const N = lo ? 10 : 30, seg = lo ? 14 : 32, bill = [], x0 = R * 0.35, x1 = R + m.nozzleL, yc = yA + m.headH * lowF - m.armT * 0.5 - 0.15;
+    // Pump dosadora (base, sérum, loção), como nas fotos de referência: colar liso, degrau baixo e ombro mais
+    // estreito com friso, atuador cilíndrico de topo inclinado para a frente; o próprio topo avança como uma aba
+    // larga e achatada que se curva para baixo (o bico) — não é um tubinho saindo da lateral
+    const sh = m.guideH || 4, lipW = Math.min(m.W - 1.5, m.stemD + 2.2);
+    head.push(ring(lipW, 1.4 + sink, top - sink, { rBot: 0, rTop: 0.4 }));
+    head.push(ring(m.stemD, sh, top + 1.2, { rBot: 0, rTop: 0.5, groove: sh * 0.45, grooveD: 0.25 }));
+    const yA = top + 1.2 + sh, R = m.actW / 2, lowF = 0.78, H = m.headH;
+    head.push(moduleGeo({ ...BASE, kind: 'giro', W: m.actW, D: m.actW, h: H, rBot: 0.4, rTop: Math.min(0.9, m.actW * 0.05), tilt: [1, lowF] }, yA, { lo }));
+    const yTop = x => yA + H * (1 - (1 - lowF) * clamp((x + R) / (2 * R), 0, 1)) - 0.05; // topo inclinado na posição x
+    const N = lo ? 12 : 40, seg = lo ? 16 : 40, bill = [], x0 = R * 0.15, L = m.nozzleL, x1 = R + L, b0 = Math.max(1, H * 0.09);
     for (let i = 0; i <= N; i++) {
-      const t = i / N, x = x0 + (x1 - x0) * t, a = m.armW / 2 * (1 - 0.15 * t), b = m.armT / 2 * (1 - 0.12 * t), cy = yc - m.droop * Math.pow(t, 1.8), rg = [];
-      for (let j = 0; j < seg; j++) { const [zz, yy] = sp(a, b, 3, j / seg * TAU); rg.push([x, cy + yy, zz]); }
+      const t = i / N, x = x0 + (x1 - x0) * t, out = clamp((x - R * 0.8) / (x1 - R * 0.8), 0, 1);
+      // larga e funda junto do atuador (some dentro dele), fina e mais estreita na ponta: o bico nasce do topo
+      const a = R * (0.8 - 0.36 * out), b = b0 * (1 + 2.2 * Math.pow(1 - out, 2)) * (1 - 0.2 * out), top0 = yTop(Math.min(x, R)) - (x > R ? (H * (1 - lowF) / (2 * R)) * (x - R) : 0);
+      const cy = top0 - m.droop * Math.pow(out, 1.7) - b, rg = [];
+      for (let j = 0; j < seg; j++) { const [zz, yy] = sp(a, b, 4, j / seg * TAU); rg.push([x, cy + yy, zz]); }
       bill.push(rg);
     }
     head.push(loftPts(bill));
@@ -5852,7 +5857,7 @@ function buildInto(product, S, explodeAmt = 0) {
     if (m0.oco && !THUMB_LITE) g = ocoGeo(g, m, y0);
     if (m0.ocoTopo && !THUMB_LITE && L[i + 1]?.m.kind === 'gargalo') g = ocoTopoGeo(g, m, y0, L[i + 1].m, thickBase(m.own ? m.finish : S.finish) ? Math.max(S.wall, m0.fundo ?? 6) : S.wall);
     if (m0.dedo && !THUMB_LITE) g = dedoGeo(g, m0.dedo, y0, m.h);
-    if (!THUMB_LITE && !m0.oco && vestsValve(S, idx) && L[i - 1]?.idx === idx - 1) { // cavidade no tamanho da válvula (folga de 0,5 mm); casca oca (oco) já tem o vão
+    if (!THUMB_LITE && !m0.oco && !m0.casca && vestsValve(S, idx) && L[i - 1]?.idx === idx - 1) { // cavidade no tamanho da válvula (folga de 0,5 mm); casca oca (oco) já tem o vão
       const vg = sprayGeo(L[i - 1].m, L[i - 1].y0, { lo: true }); vg.computeBoundingBox(); const vb = vg.boundingBox;
       const vr = Math.max(Math.abs(vb.min.x), Math.abs(vb.max.x), Math.abs(vb.min.z), Math.abs(vb.max.z)) + 0.5;
       // altura da válvula (vale também explodido), mas a tampa mantém um topo fechado de 2 mm:
@@ -5892,7 +5897,7 @@ function buildInto(product, S, explodeAmt = 0) {
     // tampa que veste a válvula tem o oco dela por dentro: lente bem mais fina (com a espessura de
     // peça maciça a válvula aparecia ampliada, abrindo em sino, como se fosse enorme)
     const ocaV = !m0.vol && vestsValve(S, idx);
-    const thick = !isGlass(finM) || overcap || m0.oco ? undefined : r1(!m0.vol ? (ocaV ? clamp(Math.min(m.W, m.D) * 0.12, 3, 6) : clamp(Math.min(m.W, m.D) * 0.35, 4, 18)) : clamp(Math.min(m.W, m.D) * 0.3, 4, 30));
+    const thick = !isGlass(finM) || overcap || m0.oco || m0.casca ? undefined : r1(!m0.vol ? (ocaV ? clamp(Math.min(m.W, m.D) * 0.12, 3, 6) : clamp(Math.min(m.W, m.D) * 0.35, 4, 18)) : clamp(Math.min(m.W, m.D) * 0.3, 4, 30));
     const own = ms.own ? ms : S, cheio = m0.vol && m0.liq && isFrost(finM) ? (m0.liqColor || '#ffffff') : false; // cor do conteúdo: tinge de leve a base jateada
     const inteira = !!m0.furo && isGlass(finM);
     const look = own.difus != null || own.ior != null || cheio || inteira ? { dif: own.difus, ior: own.ior, cheio, inteira } : null;
@@ -8413,7 +8418,7 @@ const INCOM_TABS = ['Todos', 'Beleza', 'Perfume', 'Fármaco'];
 const INCOM_LINES = ['Compactos', 'Paletas', 'Batons', 'Líquidos labiais', 'Máscaras', 'Sticks', 'Conta-gotas', 'Dispensadores', 'Deluxes', 'Potes', 'Tampas de perfume', 'Frascos', 'Frasnagas'];
 // Válvula que cabe vestida pela tampa: virola com largura wv e altura total até hv
 // (alturas no tamanho padrão medidas na geometria de cada válvula).
-const VALVE_H = { contaGotas: 36.5, pump: 37.5, spray: 41, sprayClassico: 25.2, pumpDosadora: 29.5 };
+const VALVE_H = { contaGotas: 36.5, pump: 37.5, spray: 41, sprayClassico: 25.2, pumpDosadora: 30.2 };
 function fitValve(t, wv, hv, o = {}) {
   const d = LIB[t], kx = wv / d.W, kv = Math.min(1, hv / VALVE_H[t]), v = { W: r1(wv), D: r1(wv) };
   ['actW', 'stemD', 'guideW', 'houseD', 'armW', 'armT', 'nozzleL'].forEach(k => { if (d[k] != null) v[k] = r1(d[k] * Math.min(1, kx)); });
@@ -8517,9 +8522,9 @@ function incomProduct(r) {
     case 'cg': case 'cgt': case 'cgr': case 'bulb': {
       const sh = r.t === 'dsq' ? sq(0.08) : {}, rb = r.t === 'bulb' ? W / 2 * 0.95 : r.t === 'cgr' ? W * 0.3 : 2, twist = false;
       let [f0, f1] = incomFrac(pr, [0.58, 0.63]); if (f1 < f0 + 0.01) f1 = f0 + 0.05;
-      // sobretampa de plástico transparente: casca fina oca seguindo a forma de fora (o oco em cilindro reto aparecia
-      // como uma parede por dentro, como nas tampas maciças de Surlyn)
-      const cap = P(twist ? 'Acionador' : 'Sobretampa', W, D, H * (1 - f1), { ...sh, ...(twist ? {} : { ...clear, oco: true, ocoWall: 0.8, ocoTop: 0.9 }), rBot: 0.5, rTop: r.t === 'bulb' ? W / 2 * 0.95 : r.t === 'cgr' ? W * 0.3 : 2, _t: [f1, 1] });
+      // sobretampa de plástico transparente: casca de uma superfície só (cavada, a parede de dentro aparecia como
+      // uma segunda linha; com o oco da válvula, como uma parede por dentro, igual às tampas maciças de Surlyn)
+      const cap = P(twist ? 'Acionador' : 'Sobretampa', W, D, H * (1 - f1), { ...sh, ...(twist ? {} : { ...clear, casca: true }), rBot: 0.5, rTop: r.t === 'bulb' ? W / 2 * 0.95 : r.t === 'cgr' ? W * 0.3 : 2, _t: [f1, 1] });
       const wIn = inner * 2 * (r.t === 'dsq' ? 0.62 : 0.56);
       // conta-gotas na linha Conta-gotas; spray nos Deluxes; pump dosadora nos Dispensadores
       // dispensador: válvula pump dosadora (a do catálogo e das fotos), não spray nem pump de bico pato
