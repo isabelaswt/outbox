@@ -505,7 +505,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-16.topo-sem-dente2';
+const BUILD = '2026-11-16.tampa-acompanha';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -2304,7 +2304,8 @@ function layout(s, explode = 0) {
     let y0 = 0;
     for (let r = 0; r < nRep; r++) {
       y0 = r === 0 && onNeck ? neck.y0 + neck.m.ringH + m.gap : cur + (r === 0 ? m.gap : m.repGap);
-      if (r === 0 && vestsValve(s, idx)) { const v = out.findLast(o => o.idx === idx - 1); if (v) y0 = v.y0 + m.gap; }
+      // tampa assentada na virola: acompanha a válvula atual (diminuir o spray desce a tampa junto)
+      if (r === 0 && vestsValve(s, idx)) { const v = out.findLast(o => o.idx === idx - 1); if (v) y0 = v.y0 + (m0.seatV ? v.m.h + (/Cash/.test(v.m.name || '') ? (v.m.guideH || 0) : 0) + (m.gap || 0) : m.gap); }
       // Gargalo sobre ombro arredondado: desce com o fechamento até a borda dele
       // assentar no ombro (senão sobra um vão com o gargalo à mostra).
       // Em vidro/PET o gargalo fica no topo (afundado, aparecia dentro do frasco): a saia
@@ -3634,7 +3635,7 @@ function material(color, finish, band = null, thick, look = null) {
   // uniform compartilhado: mudar a parede não recompila shader nem cria material novo.
   WALL_U.value = clamp(S?.wall ?? 1.2, 0.3, 4);
   const wk = '';
-  const lk = look ? `|d${look.dif ?? ''}|i${look.ior ?? ''}${look.cheio ? '|c' + look.cheio : ''}` : '';
+  const lk = look ? `|d${look.dif ?? ''}|i${look.ior ?? ''}${look.cheio ? '|c' + look.cheio : ''}${look.inteira ? '|v' : ''}` : '';
   const key = color + finish + (band ? '|b' + bandKey(band) : '') + (thick ? '|t' + thick : '') + lk;
   if (matCache.has(key)) return matCache.get(key);
   const m = new THREE.MeshPhysicalMaterial({ color, roughness: 0.5, metalness: 0 });
@@ -3753,7 +3754,8 @@ function material(color, finish, band = null, thick, look = null) {
   // de frente para a câmera (os lados dos vales) e eram desenhadas por cima da parede da
   // frente, em pedaços (o tracejado perto da borda). Só a metade da frente desenha; o que
   // está atrás aparece pela transmissão, como antes.
-  halfFront(m);
+  // peça vazada (furo de lado a lado): desenha inteira — a parede de trás do furo é o que se vê por ele
+  if (look?.inteira && m.transmission > 0) m.depthWrite = true; else halfFront(m);
   matCache.set(key, m);
   return m;
 }
@@ -5612,7 +5614,8 @@ function buildInto(product, S, explodeAmt = 0) {
     const ocaV = !m0.vol && vestsValve(S, idx);
     const thick = !isGlass(finM) || overcap ? undefined : r1(!m0.vol ? (ocaV ? clamp(Math.min(m.W, m.D) * 0.12, 3, 6) : clamp(Math.min(m.W, m.D) * 0.35, 4, 18)) : clamp(Math.min(m.W, m.D) * 0.3, 4, 30));
     const own = ms.own ? ms : S, cheio = m0.vol && m0.liq && isFrost(finM) ? (m0.liqColor || '#ffffff') : false; // cor do conteúdo: tinge de leve a base jateada
-    const look = own.difus != null || own.ior != null || cheio ? { dif: own.difus, ior: own.ior, cheio } : null;
+    const inteira = !!m0.furo && isGlass(finM);
+    const look = own.difus != null || own.ior != null || cheio || inteira ? { dif: own.difus, ior: own.ior, cheio, inteira } : null;
     // Tampa jateada/fosca vestindo a válvula: só a casca de fora. A parede da cavidade
     // aparecia nítida através do jateado, como se estivesse na frente; sem ela, o que está
     // dentro (a válvula) aparece embaçado pelo vidro, como na peça real.
@@ -8283,7 +8286,7 @@ function incomPerfume(r) {
   const bw = r1(clamp(Math.max(cap.W, cap.D ?? cap.W) * 1.3, 42, 72));
   return { color: BEIGE, finish: 'fosco', forn: 'Incom', fcat: 'Tampas de perfume', fapp: 'Perfume', modules: [
     M('reto', { name: 'Frasco (genérico, não é Incom)', W: bw, D: r1(bw * 0.62), n: 3.4, h: r1(bw * 1.05), rTop: 3, rBot: 3, vol: true, liq: false, pesc: false, bpesc: false }),
-    ...(v => [v.valve, M(r.k, { gap: v.gap })])(incomValve(cap, r.term, mm))] };
+    ...(v => [v.valve, M(r.k, v.gap > 0 ? { seatV: true, gap: 0 } : { gap: 0 })])(incomValve(cap, r.term, mm))] };
 }
 INCOM_CAPS.forEach(r => { PRESETS[`Incom ${r.n} (tampa de perfume)`] = incomPerfume(r); });
 // abas antigas que viraram outras (escolhas já gravadas continuam valendo)
