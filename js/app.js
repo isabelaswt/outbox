@@ -347,7 +347,7 @@ const LIB = {
   pump:    { name: 'Válvula pump', kind: 'spray', sprayType: 'pato', W: 26.3, D: 26.3, h: 14.5, collarR: 1, ridges: 44, ridgeD: 0.3,
              stemD: 9, stemH: 12, actW: 20, headH: 11, armT: 4, armW: 9, nozzleL: 22, droop: 1 },
   pumpDosadora: { name: 'Válvula pump dosadora', kind: 'spray', sprayType: 'dosadora', W: 24, D: 24, h: 12, collarR: 1.2, ridges: 0,
-             stemD: 9, stemH: 0, guideW: 17, guideH: 6.2, actW: 12.7, headH: 10.5, armT: 3, armW: 8, nozzleL: 1.6, droop: 0.7 },
+             stemD: 9, stemH: 0, guideW: 17, guideH: 6.2, actW: 12.7, headH: 10.5, armT: 3, armW: 8, nozzleL: 2.6, droop: 0.8 },
   locao:   { name: 'Pump loção (bico curvo)', kind: 'spray', sprayType: 'locao', W: 24.5, D: 24.5, h: 10.8, collarR: 0.8, stemD: 15.5, stemH: 7.3,
              actW: 18.8, headH: 19.7, domeH: 4.5, nozzleL: 30, droop: 6, spoutD: 3 },
   pumpFrisos: { name: 'Pump loção com frisos', kind: 'spray', sprayType: 'draftpump', W: 38, D: 38, h: 17.5, collarR: 1,
@@ -574,7 +574,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-16.dosadora-catalogo2';
+const BUILD = '2026-11-16.dosadora-para-cima';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -1773,7 +1773,7 @@ function sprayGeo(m, y0, { lo = false } = {}) {
     // frente, com o nariz curto que avança e se curva para baixo e o furinho de saída na ponta
     const gW = m.guideW > 0 ? m.guideW : m.W * 0.71, gH = m.guideH > 0 ? m.guideH : m.W * 0.26;
     head.push(ring(gW, gH + sink, top - sink, { rBot: 0, rTop: Math.min(0.8, gH * 0.15), groove: gH * 0.5, grooveD: 0.3 }));
-    const yA = top + gH - 0.4, R = m.actW / 2, H = m.headH + 0.4, backF = 0.88;
+    const yA = top + gH - 0.4, R = m.actW / 2, H = m.headH + 0.4, backF = 0.74;
     head.push(moduleGeo({ ...BASE, kind: 'giro', W: m.actW, D: m.actW, h: H, rBot: 0, rTop: Math.min(1.6, m.actW * 0.1), tilt: [backF, 1] }, yA, { lo }));
     const yTop = x => yA + H * (backF + (1 - backF) * clamp((x + R) / (2 * R), 0, 1)) - 0.05; // topo inclinado na posição x
     const N = lo ? 12 : 40, seg = lo ? 16 : 40, bill = [], x0 = R * 0.2, L = m.nozzleL, x1 = R + L, b0 = Math.max(0.9, H * 0.17);
@@ -1781,7 +1781,8 @@ function sprayGeo(m, y0, { lo = false } = {}) {
     for (let i = 0; i <= N; i++) {
       const t = i / N, x = x0 + (x1 - x0) * t, out = clamp((x - R * 0.7) / (x1 - R * 0.7), 0, 1);
       const a = R * (0.74 - 0.14 * out), b = b0 * (1 + 0.8 * Math.pow(1 - out, 2)) * (1 - 0.15 * out), rg = []; // nariz grosso, continuação do topo
-      const cy = yTop(Math.min(x, R)) - m.droop * Math.pow(out, 2) - b; cyTip = cy;
+      // o bico continua a rampa do topo PARA CIMA (ponta é o ponto mais alto), como nas fotos
+      const cy = yTop(Math.min(x, R)) + (x > R ? (H * (1 - backF) / (2 * R)) * (x - R) : 0) + Math.abs(m.droop) * Math.pow(out, 1.6) - b; cyTip = cy;
       for (let j = 0; j < seg; j++) { const [zz, yy] = sp(a, b, 4, j / seg * TAU); rg.push([x, cy + yy, zz]); }
       bill.push(rg);
     }
