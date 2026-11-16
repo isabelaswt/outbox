@@ -18,7 +18,7 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION } from 'three-bvh-csg';
-import { icon } from './icons.js?v=2026-11-16.volume-deitado';
+import { icon } from './icons.js?v=2026-11-16.conteudo-aberto';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -391,7 +391,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-16.volume-deitado';
+const BUILD = '2026-11-16.conteudo-aberto';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -6739,7 +6739,7 @@ function renderColorBox(m) {
 }
 function renderBodyLiquid(ed, m) {
   const openG = store.get('shape.openGroups', {});
-  const grp = document.createElement('details'); grp.className = 'grp'; grp.open = !!openG['Conteúdo'];
+  const grp = document.createElement('details'); grp.className = 'grp'; grp.open = openG['Conteúdo'] !== false; // aberto por padrão (fica no fim da Superfície); fecha só se você fechar
   grp.innerHTML = '<summary>Conteúdo</summary>'; // líquido ou recheio sólido
   grp.addEventListener('toggle', () => { const o = store.get('shape.openGroups', {}); o['Conteúdo'] = grp.open; store.set('shape.openGroups', o); });
   const before = [...ed.querySelectorAll('.grp')].find(g => ['Encaixe', 'Cor'].includes(g.querySelector('summary').textContent));
