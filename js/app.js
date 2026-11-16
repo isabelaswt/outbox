@@ -391,7 +391,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-16.gizmo-y';
+const BUILD = '2026-11-16.liquido-acompanha2';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -925,6 +925,8 @@ function normalize(s) {
   const OLD_PINKS = ['#e0306e', '#c42b52', '#f28bb5', '#d8246a'], unpink = c => (OLD_PINKS.includes((c || '').toLowerCase()) ? BEIGE : c);
   s.color = unpink(s.color);
   s.wall ??= 1.2; s.bg ??= '#f1f0ed'; s.color ??= BEIGE; s.finish ??= 'fosco'; s.name ??= 'Sem nome';
+  // pose (rotação/posição do gizmo) é de cada produto, não da cena: projetos antigos guardavam na cena
+  if (s.scene && (s.scene.rq || s.scene.pos)) { if (!s.rq && s.scene.rq) s.rq = s.scene.rq; if (!s.pos && s.scene.pos) s.pos = s.scene.pos; delete s.scene.rq; delete s.scene.pos; }
   s.logos ??= [];
   // Lado a lado: outros produtos da linha (cada um com o próprio modelo e cor).
   s.slot ??= 0; s.gap ??= 25;
@@ -2473,7 +2475,17 @@ function opaqueGain() {
     if (mt.envMap !== scene.environment) { mt.envMap = scene.environment; mt.needsUpdate = true; }
     mt.envMapIntensity = scene.environmentIntensity * OPAQUE_ENV; mt.envMapRotation?.copy(scene.environmentRotation); mt.userData.og = 1; }));
 }
-function renderFrame() { opaqueGain(); if (gizmo) gizmo.camera = cam; if (frameHook) frameHook(); else renderMain(); }
+// Plano do nível do líquido: guardado no espaço da peça e levado para o mundo a cada quadro,
+// com a posição/rotação atual do frasco (subindo pelo gizmo o líquido descia, cortado no lugar).
+const clipLocal = new WeakMap(), _cp0 = new THREE.Vector3(), _dn = new THREE.Vector3(0, -1, 0);
+function syncClips() {
+  [product, sideRoot].forEach(r => r?.traverse(o => { const cp = o.isMesh && o.material?.clippingPlanes; if (!cp) return;
+    // superfície sempre horizontal (como líquido de verdade), passando pelo centro do nível
+    // levado junto com o frasco: sobe, anda e gira com ele sem o nível "escorregar"
+    for (const pl of cp) { const loc = clipLocal.get(pl); if (!loc) continue;
+      const p0 = loc.coplanarPoint(_cp0); o.updateMatrixWorld(); p0.applyMatrix4(o.matrixWorld); pl.setFromNormalAndCoplanarPoint(_dn, p0); } }));
+}
+function renderFrame() { opaqueGain(); syncClips(); if (gizmo) gizmo.camera = cam; if (frameHook) frameHook(); else renderMain(); }
 // Sombra de contato como em foto de estúdio com luz macia: o produto é visto de baixo, a
 // partir do chão, e vira duas manchas — uma estreita e escura onde ele encosta (a linha que
 // "assenta" a peça) e uma larga e clara em volta (a penumbra difusa da softbox). Segue o
@@ -3178,7 +3190,7 @@ function semiTubeMat(liq) {
   g.userData.uLvl = { value: 1e9 };
   g.onBeforeCompile = sh => { sh.uniforms.uLvl = g.userData.uLvl;
     sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vTN; varying vec3 vTV; varying float vWY;')
-      .replace('#include <project_vertex>', '#include <project_vertex>\nvTN = normalize(normalMatrix * normal); vTV = -mvPosition.xyz; vWY = (modelMatrix * vec4(transformed, 1.0)).y;');
+      .replace('#include <project_vertex>', '#include <project_vertex>\nvTN = normalize(normalMatrix * normal); vTV = -mvPosition.xyz; vWY = transformed.y; // altura na peça (o nível também é da peça)');
     sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying vec3 vTN; varying vec3 vTV; varying float vWY; uniform float uLvl;')
       .replace('#include <opaque_fragment>', `${liq ? `outgoingLight = mix(outgoingLight, vec3(${air.r.toFixed(3)}, ${air.g.toFixed(3)}, ${air.b.toFixed(3)}), step(uLvl, vWY)); // acima do nível: no ar
        ` : ''}float fresT = pow(1.0 - abs(dot(normalize(vTV), normalize(vTN))), 2.2); // só a beirada do tubo
@@ -3557,7 +3569,7 @@ function applyStageTilt(sc, cx, cz) {
       for (let i = 0; i < pa.count; i += st) { v.fromBufferAttribute(pa, i).applyMatrix4(o.matrixWorld); if (v.y < all) all = v.y; if (isBody && v.y < body) body = v.y; } });
     return { all, body }; };
   // rotação livre do gizmo (no mundo, depois de deitar/inclinar) e posição no chão (x, z)
-  const qU = Array.isArray(sc.rq) && sc.rq.length === 4 ? new THREE.Quaternion().fromArray(sc.rq).normalize() : null;
+  const qU = Array.isArray(S.rq) && S.rq.length === 4 ? new THREE.Quaternion().fromArray(S.rq).normalize() : null; // pose do produto em edição
   const place = deg => {
     product.quaternion.identity(); product.position.set(0, 0, 0);
     if (deg || qU) { const q = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), -THREE.MathUtils.degToRad(deg));
@@ -3576,7 +3588,7 @@ function applyStageTilt(sc, cx, cz) {
     if (!bb.isEmpty()) { product.position.x -= (bb.min.x + bb.max.x) / 2 - cx; product.updateMatrixWorld(true); } // continua centrado onde estava
   } else place(sc.cenaTilt || 0);
   if (qU && !sc.deitar) { const bb = new THREE.Box3().setFromObject(product); if (!bb.isEmpty()) { product.position.x -= (bb.min.x + bb.max.x) / 2 - cx; product.position.z -= (bb.min.z + bb.max.z) / 2 - cz; } } // girado: fica no mesmo lugar
-  if (Array.isArray(sc.pos)) { product.position.x += sc.pos[0] || 0; product.position.z += sc.pos[1] || 0; product.position.y += Math.max(0, sc.pos[2] || 0); } // altura: nunca abaixo do chão
+  if (Array.isArray(S.pos)) { product.position.x += S.pos[0] || 0; product.position.z += S.pos[1] || 0; product.position.y += Math.max(0, S.pos[2] || 0); } // altura: nunca abaixo do chão
   product.updateMatrixWorld(true);
   stagePivot = [cx, cz]; syncGizmo();
 }
@@ -3589,7 +3601,7 @@ function syncGizmo() {
   if (!gizmoOn || gDrag) return;
   const bb = new THREE.Box3().setFromObject(product); if (bb.isEmpty()) return;
   bb.getCenter(gizmoObj.position);
-  const sc = S.scene || {}; gizmoMode === 'rotate' && Array.isArray(sc.rq) ? gizmoObj.quaternion.fromArray(sc.rq) : gizmoObj.quaternion.identity();
+  gizmoMode === 'rotate' && Array.isArray(S.rq) ? gizmoObj.quaternion.fromArray(S.rq) : gizmoObj.quaternion.identity();
   gizmoObj.updateMatrixWorld(true);
 }
 function ensureGizmo() {
@@ -3600,11 +3612,11 @@ function ensureGizmo() {
   gizmo.addEventListener('change', req);
   gizmo.addEventListener('dragging-changed', e => {
     if (controls) controls.enabled = !e.value;
-    if (e.value) { const sc = S.scene = S.scene || {}; const p0 = sc.pos || []; gDrag = { p: gizmoObj.position.clone(), pos: [p0[0] || 0, p0[1] || 0, p0[2] || 0] }; }
+    if (e.value) { const p0 = S.pos || []; gDrag = { p: gizmoObj.position.clone(), pos: [p0[0] || 0, p0[1] || 0, p0[2] || 0] }; }
     else { gDrag = null; syncGizmo(); saveLocalSoon(); record(); req(); }
   });
   gizmo.addEventListener('objectChange', () => {
-    const sc = S.scene = S.scene || {};
+    const sc = S;
     if (gizmoMode === 'rotate') sc.rq = gizmoObj.quaternion.toArray().map(v => Math.round(v * 1e5) / 1e5);
     else if (gDrag) { const y = Math.max(0, r1(gDrag.pos[2] + gizmoObj.position.y - gDrag.p.y));
       sc.pos = [r1(gDrag.pos[0] + gizmoObj.position.x - gDrag.p.x), r1(gDrag.pos[1] + gizmoObj.position.z - gDrag.p.z), y]; }
@@ -3627,7 +3639,7 @@ function setGizmo(on, mode) {
   const bar = document.getElementById('gizmoBar'); if (bar) { bar.hidden = !gizmoOn; bar.querySelectorAll('[data-g]').forEach(b => b.classList.toggle('on', b.dataset.g === gizmoMode)); }
   req();
 }
-function resetGizmoPose() { const sc = S.scene = S.scene || {}; delete sc.rq; delete sc.pos; applyStageTilt(sceneOf(), stagePivot[0], stagePivot[1]); syncGizmo(); saveLocalSoon(); record(); req(); }
+function resetGizmoPose() { delete S.rq; delete S.pos; applyStageTilt(sceneOf(), stagePivot[0], stagePivot[1]); syncGizmo(); saveLocalSoon(); record(); req(); }
 function buildStage() {
   placeAreaLights();
   stage.children.slice().forEach(o => { o.geometry?.dispose(); stage.remove(o); });
@@ -5020,7 +5032,7 @@ function liquidMeshes(m, y0, levelAbs, lift = S.wall) {
   inner.computeBoundingBox();
   const b = inner.boundingBox, level = levelAbs ?? b.min.y + (b.max.y - b.min.y) * clamp(m.liqLevel, 0, 100) / 100;
   if (level <= b.min.y + 0.05) { inner.dispose(); return []; } // cópia acima do nível: vazia
-  const clip = [new THREE.Plane(new THREE.Vector3(0, -1, 0), level)];
+  const clip = [new THREE.Plane(new THREE.Vector3(0, -1, 0), level)]; clip.forEach(pl => clipLocal.set(pl, pl.clone())); // nível na peça (acompanha o frasco ao mover/girar)
   // Perfume / água: líquido límpido de verdade. Em vez de um corpo colorido, ele mesmo
   // transmite e refrata o que está atrás (ior do álcool/água) com a espessura do frasco
   // inteiro — é a lente que faz o frasco parecer cheio (fundo ampliado/invertido, bordas
@@ -5426,7 +5438,7 @@ function buildInto(product, S, explodeAmt = 0) {
     else if (o.userData.liquid && o.name === 'liquido') { o.renderOrder = 2; o.material.depthWrite = false; }
   });
   // tubo escuro só dentro do líquido: acima do nível (no ar) ele volta a quase sumir
-  if (semiTube?.userData.uLvl) { let lv = 1e9; product.children.forEach(o => { const cp = o.userData.liquid && o.material?.clippingPlanes?.[0]; if (cp) lv = Math.min(lv, cp.constant); }); semiTube.userData.uLvl.value = lv; }
+  if (semiTube?.userData.uLvl) { let lv = 1e9; product.children.forEach(o => { const cp = o.userData.liquid && o.material?.clippingPlanes?.[0]; if (cp) lv = Math.min(lv, (clipLocal.get(cp) || cp).constant); }); semiTube.userData.uLvl.value = lv; }
 }
 
 function bounds() { return new THREE.Box3().setFromObject(product); }
@@ -5442,15 +5454,29 @@ function boundsAll() {
 // ordem de "slot", com S.gap mm entre as caixas.
 function buildLineup() {
   sideRoot.children.slice().forEach(g => { g.traverse(o => o.geometry?.dispose()); sideRoot.remove(g); });
-  const groups = S.side.map(it => { const g = new THREE.Group(); buildInto(g, it, 0); applyLabelsTo(g, it); sideRoot.add(g); return g; });
+  const groups = S.side.map(it => { const g = new THREE.Group(); buildInto(g, it, 0); applyLabelsTo(g, it); sideRoot.add(g); poseGroup(g, it); return g; });
   const all = [{ slot: S.slot, g: product }, ...S.side.map((it, i) => ({ slot: it.slot, g: groups[i] }))].sort((a, b) => a.slot - b.slot);
   let x = 0; const pos = new Map();
   for (const e of all) { const b = new THREE.Box3().setFromObject(e.g); if (b.isEmpty()) continue; pos.set(e.g, x - b.min.x); x += b.max.x - b.min.x + S.gap; }
   const shift = pos.get(product) || 0;
-  groups.forEach(g => { g.position.x = (pos.get(g) ?? 0) - shift; });
+  groups.forEach((g, i) => { g.position.x += (pos.get(g) ?? 0) - shift; const p = S.side[i].pos; // cada um com a própria pose
+    if (Array.isArray(p)) { g.position.x += p[0] || 0; g.position.z += p[1] || 0; g.position.y += Math.max(0, p[2] || 0); } });
   groups.forEach((g, i) => applyLogosTo(g, S.side[i], () => g.parent === sideRoot));
 }
-const LINE_KEYS = ['name', 'color', 'finish', 'modules', 'logos', 'slot'];
+// Pose de um produto ao lado: gira em volta do centro da base e apoia no chão (como o principal)
+function poseGroup(g, it) {
+  if (!(Array.isArray(it.rq) && it.rq.length === 4)) return;
+  const b0 = new THREE.Box3().setFromObject(g); if (b0.isEmpty()) return;
+  const P = new THREE.Vector3((b0.min.x + b0.max.x) / 2, 0, (b0.min.z + b0.max.z) / 2), q = new THREE.Quaternion().fromArray(it.rq).normalize();
+  g.quaternion.copy(q); g.position.copy(P).sub(P.clone().applyQuaternion(q)); g.updateMatrixWorld(true);
+  let low = Infinity; const v = new THREE.Vector3();
+  g.traverse(o => { if (!o.isMesh || !o.visible || !o.geometry?.attributes.position) return; const pa = o.geometry.attributes.position, st = Math.max(1, Math.floor(pa.count / 4000));
+    for (let k = 0; k < pa.count; k += st) { v.fromBufferAttribute(pa, k).applyMatrix4(o.matrixWorld); if (v.y < low) low = v.y; } });
+  if (isFinite(low)) g.position.y -= low;
+  const b1 = new THREE.Box3().setFromObject(g); g.position.x -= (b1.min.x + b1.max.x) / 2 - P.x; g.position.z -= (b1.min.z + b1.max.z) / 2 - P.z;
+  g.updateMatrixWorld(true);
+}
+const LINE_KEYS = ['name', 'color', 'finish', 'modules', 'logos', 'slot', 'rq', 'pos']; // rq/pos: pose do gizmo, de cada produto
 function editSide(i) {
   const it = S.side[i], cur = {};
   LINE_KEYS.forEach(k => { cur[k] = S[k]; S[k] = it[k]; });
@@ -5464,7 +5490,7 @@ function copyProduct(src, name, slot) {
   const st = normalize(structuredClone({ wall: S.wall, bg: S.bg, ...src, side: [] })), ids = new Map();
   const modules = st.modules.map(m => { const u = newUid(); ids.set(m.uid, u); return { ...m, uid: u }; });
   const logos = (st.logos || []).map(L => ({ ...L, uid: ids.get(L.uid) || L.uid }));
-  return { name, color: st.color, finish: st.finish, modules, logos, slot, wall: st.wall };
+  return { name, color: st.color, finish: st.finish, modules, logos, slot, wall: st.wall, ...(st.rq ? { rq: [...st.rq] } : {}) }; // cópia leva o ângulo; a posição é a da fileira
 }
 function renderLineup() {
   const box = $('#lineup'); box.innerHTML = '';
