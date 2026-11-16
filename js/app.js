@@ -18,7 +18,7 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION } from 'three-bvh-csg';
-import { icon } from './icons.js?v=2026-11-16.troca-conteudo';
+import { icon } from './icons.js?v=2026-11-16.aba-volume';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -391,7 +391,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-16.troca-conteudo';
+const BUILD = '2026-11-16.aba-volume';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -7016,7 +7016,7 @@ setInspTab(store.get('shape.inspTab', 'forma'));
 // Busca (Cmd/Ctrl+K): qualquer ajuste, painel, modelo pronto ou ação pelo nome, como nos
 // programas de 3D online. Escolher um ajuste abre o painel/aba/grupo dele e pisca o campo.
 const cmdNorm = t => String(t || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/\s+/g, ' ').trim();
-const TAB_NAME = { lib: 'Modelos', build: 'Peças', line: 'Linha', measure: 'Medidas', scene: 'Cena' };
+const TAB_NAME = { lib: 'Modelos', build: 'Peças', line: 'Linha', measure: 'Volume', scene: 'Cena' }; // "Medidas" fica só no inspetor (medidas da peça)
 const TAB_ICON = { lib: 'layout-grid', build: 'stack-2', line: 'columns-3', measure: 'ruler-measure', scene: 'bulb' };
 const ITAB_NAME = { forma: 'Peça › Forma', det: 'Peça › Detalhes', sup: 'Peça › Superfície', arte: 'Peça › Logo' };
 const ITAB_ICON = { forma: 'shape', det: 'wave-sine', sup: 'droplet', arte: 'tag' };
@@ -7035,7 +7035,7 @@ function cmdEntries() {
     A('Ortográfica / perspectiva', 'eye', click('#orthoBtn'), 'Vista'), A('Grade 10 mm', 'eye', click('#gridBtn'), 'Vista'), A('Explodir as peças', 'eye', click('#explodeBtn'), 'Vista'),
     A('Carregar logo (SVG)', 'tag', () => { openInspector(); setInspTab('arte'); $('#logoBtn').click(); }, 'Peça › Logo'),
     A('Gerador de opções', 'layout-grid', click('#startGen'), 'Modelos'), A('Desenho → torno (silhueta)', 'layout-grid', click('#startSilh'), 'Modelos'),
-    A('Subir STL', 'cube', click('#stlGalBtn'), 'Modelos'), A('Imagem de referência', 'ruler-measure', click('#refBtn'), 'Medidas'),
+    A('Subir STL', 'cube', click('#stlGalBtn'), 'Modelos'), A('Imagem de referência', 'ruler-measure', click('#refBtn'), 'Volume'),
     A('Lixeira', 'trash', click('#trashBtn')), A('Atalhos do teclado', 'keyboard', click('#keysBtn')),
     A('Baixar JSON do projeto', 'download', click('#exportJson'), 'Mais'), A('Abrir JSON', 'folder-open', click('#importJsonBtn'), 'Mais'),
   ];
