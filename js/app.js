@@ -18,7 +18,7 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION } from 'three-bvh-csg';
-import { icon } from './icons.js?v=2026-11-16.conteudo-aberto';
+import { icon } from './icons.js?v=2026-11-16.troca-conteudo';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -391,7 +391,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-16.conteudo-aberto';
+const BUILD = '2026-11-16.troca-conteudo';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -6799,6 +6799,8 @@ function adaptSwap(old, nw, label) {
     const f = old.W / nw.W;
     scaleModule(nw, f);
     nw.W = old.W; nw.D = old.D; nw.h = old.h;
+    // o conteúdo continua (trocar a forma não esvazia o frasco)
+    ['liq', 'liqType', 'liqLevel', 'liqColor', 'liqClear', 'liqInset', 'liqSize', 'liqColor2'].forEach(k => { if (old[k] !== undefined) nw[k] = old[k]; });
     return nw;
   }
   if (nw.kind === 'spray') {
