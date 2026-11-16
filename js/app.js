@@ -18,8 +18,8 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION } from 'three-bvh-csg';
-import { icon } from './icons.js?v=2026-11-16.incom9';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF } from './incom.js?v=2026-11-16.incom9';
+import { icon } from './icons.js?v=2026-11-16.incom10';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF } from './incom.js?v=2026-11-16.incom10';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -425,7 +425,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-16.incom9';
+const BUILD = '2026-11-16.incom10';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -7815,9 +7815,50 @@ function godesOf(r) {
 // Produtos do catálogo Incom 2026 como modelos prontos (biblioteca Incom): medidas externas totais do
 // fornecedor; base × tampa e detalhes aproximados com as peças do OUTBOX. O que fica dentro (conta-gotas,
 // pump, spray, haste, bala, godês) entra montado: aparece pela tampa transparente, ao abrir ou no Explodir.
+// Divisões entre peças: as linhas do desenho técnico mais perto das proporções padrão de cada
+// modelo (até 12% da altura de distância); sem linha no desenho, fica a proporção padrão.
+function incomFrac(pr, def) {
+  if (!pr?.s?.length) return def;
+  const used = new Set();
+  return def.map(d => { let best = -1; pr.s.forEach((v, i) => { if (!used.has(i) && Math.abs(v - d) <= 0.12 && (best < 0 || Math.abs(v - d) < Math.abs(pr.s[best] - d))) best = i; });
+    if (best < 0) return d; used.add(best); return pr.s[best]; });
+}
+// Fatia do contorno do produto montado entre t0 e t1 (frações da altura) para uma peça de fora:
+// perfil em fração da largura mais larga da fatia, deslocamento do centro em mm.
+function profSlice(pr, t0, t1, Wfull) {
+  const P = pr.p, at = t => { let i = 0; while (i < P.length - 2 && P[i + 1][0] < t) i++; const A = P[i], B = P[i + 1] || A, f = B[0] > A[0] ? clamp((t - A[0]) / (B[0] - A[0]), 0, 1) : 0; return [t, A[1] + (B[1] - A[1]) * f, A[2] + (B[2] - A[2]) * f]; };
+  const rows = [at(t0), ...P.filter(q => q[0] > t0 + 1e-4 && q[0] < t1 - 1e-4), at(t1)];
+  const amax = Math.max(...rows.map(q => (q[1] + q[2]) / 2));
+  return { amax, prof: rows.map(([t, l, rr]) => [Math.round((t - t0) / (t1 - t0) * 1e4) / 1e4, (l + rr) / 2 / amax, (l + rr) / 2 / amax, 2, r1((rr - l) / 2 * Wfull / 2), 0]) };
+}
+// Válvula que cabe dentro da peça que a veste (sobretampa/tampa com contorno), sem furar a parede
+function fitValveIn(t, cap, wv0) {
+  const d = LIB[t], wall = 1.5;
+  let wv = Math.min(wv0, 2 * (capHalfAt(cap, 0) - wall - 0.5));
+  for (let k = 0; k < 14; k++, wv *= 0.93) {
+    for (let kv = 1; kv >= 0.45; kv -= 0.05) {
+      const hTot = VALVE_H[t] * kv; if (hTot > cap.h - 2.5) continue;
+      const reach = Math.max(wv / 2, t === 'pump' ? d.actW * Math.min(1, wv / d.W) / 2 + 2.5 : 0) + 0.5;
+      let ok = true; for (let y = 0; y <= hTot + 1.5 && ok; y += 0.5) ok = capHalfAt(cap, y) - wall >= reach;
+      if (ok) { const v = fitValve(t, r1(wv), hTot); if (t === 'pump') v.nozzleL = 2.5; return v; }
+    }
+  }
+  const v = fitValve(t, 8, cap.h * 0.4); if (t === 'pump') v.nozzleL = 2; return v;
+}
+// Produtos do catálogo Incom 2026 como modelos prontos (biblioteca Incom): medidas externas totais do
+// fornecedor e, nas peças de fora, o contorno do desenho técnico (girado no torno), cortado nas
+// divisões entre peças do próprio desenho. O que fica dentro (conta-gotas, pump, spray, haste, bala,
+// godês) entra montado: aparece pela tampa transparente, ao abrir ou no Explodir. Compactos e
+// paletas têm o desenho em perspectiva no catálogo: ficam com a forma básica.
 function incomProduct(r) {
   const W = r.W, D = r.D ?? r.W, H = r.H, B = { pesc: false, bpesc: false, liq: false, vol: false, rTop: 1, rBot: 1 };
-  const P = (name, w, d, h, o = {}) => M('reto', polyFit({ ...B, name, W: r1(w), D: r1(d ?? w), h: r1(h), ...o }));
+  const pr = INCOM_PROD_PROF[r.k];
+  const P = (name, w, d, h, o = {}) => {
+    let x = { ...B, name, W: r1(w), D: r1(d ?? w), h: r1(h), ...o }; const tt = x._t; delete x._t;
+    if (tt && pr) { const sl = profSlice(pr, tt[0], tt[1], W);
+      x = { ...x, W: r1(W * sl.amax), D: r1(D * sl.amax), prof: sl.prof, smoothProf: false, taper: 100, taperB: 100, bulge: 0, rTop: Math.min(x.rTop ?? 1, 0.6), rBot: Math.min(x.rBot ?? 1, 0.5) }; }
+    const m = M('reto', polyFit(x)); if (m.prof) m.W0 = m.W; return m;
+  };
   const sq = (k = 0.05) => ({ sides: 4, sideR: k }), clear = { own: true, finish: 'pet', color: '#ffffff' };
   const inner = Math.min(W, D) / 2;
   let ms;
@@ -7826,36 +7867,36 @@ function incomProduct(r) {
     case 'cr': ms = [P('Base', W, D, H * 0.55, { rBot: 1.5, rTop: 0.6, godes: godesOf(r) }), P('Tampa', W, D, H * 0.45, { rBot: 0.6, rTop: 2, hinge: true, abre: 0, espelho: !/Visor|Crystal/i.test(r.n + r.mat) })]; break;
     case 'cg': case 'cgt': case 'cgr': case 'dsq': case 'bulb': {
       const sh = r.t === 'dsq' ? sq(0.08) : {}, rb = r.t === 'bulb' ? W / 2 * 0.95 : r.t === 'cgr' ? W * 0.3 : 2, twist = /Twist/.test(r.n);
-      const capH = H * 0.37, room = capH - 2.5 - (r.t === 'bulb' ? inner * 0.35 : 0), wIn = inner * 2 * (r.t === 'dsq' ? 0.62 : 0.56);
-      let v; // conta-gotas na linha Conta-gotas; spray nos Deluxes; pump dosadora nos Dispensadores
-      if (r.c === 'Conta-gotas') v = fitValve('contaGotas', Math.min(22, wIn), room);
-      else if (r.c === 'Deluxes') v = fitValve('spray', Math.min(26, wIn), room);
-      else { v = fitValve('pump', Math.min(26.3, wIn), room); v.nozzleL = r1(Math.max(2, Math.min(v.nozzleL, inner - 3.5 - v.actW / 2))); }
-      ms = [P('Frasco', W, D, H * 0.58, { ...sh, vol: true, rBot: rb, rTop: 1, ...(r.t === 'cgt' ? { taperB: 86 } : {}) }), P('Anel', W, D, H * 0.05, sh), v,
-        P(twist ? 'Acionador' : 'Sobretampa', W, D, capH, { ...sh, ...(twist ? {} : clear), rBot: 0.5, rTop: r.t === 'bulb' ? W / 2 * 0.95 : r.t === 'cgr' ? W * 0.3 : 2 })]; break; }
-    case 'onoff': ms = [P('Frasco', W, D, H * 0.62, { vol: true, rBot: 2, bpesc: true, bpescMola: true }), P('Acionador e capa', W, D, H * 0.38, { rTop: 3 })]; break;
-    case 'flacon': case 'flaconb': { const b = r.t === 'flaconb';
-      ms = [P('Frasco', W, D, H * 0.56, { vol: true, rBot: 2, rTop: W * 0.18 }),
-        M('contaGotas', { name: b ? 'Conta-gotas de botão' : 'Conta-gotas', W: r1(W * 0.62), D: r1(W * 0.62), h: r1(H * (b ? 0.3 : 0.16)), actW: r1(W * (b ? 0.5 : 0.42)), actH: r1(H * (b ? 0.14 : 0.28) + 0.5) })]; break; }
+      let [f0, f1] = incomFrac(pr, [0.58, 0.63]); if (f1 < f0 + 0.01) f1 = f0 + 0.05;
+      const cap = P(twist ? 'Acionador' : 'Sobretampa', W, D, H * (1 - f1), { ...sh, ...(twist ? {} : clear), rBot: 0.5, rTop: r.t === 'bulb' ? W / 2 * 0.95 : r.t === 'cgr' ? W * 0.3 : 2, _t: [f1, 1] });
+      const wIn = inner * 2 * (r.t === 'dsq' ? 0.62 : 0.56);
+      // conta-gotas na linha Conta-gotas; spray nos Deluxes; pump dosadora nos Dispensadores
+      const v = r.c === 'Conta-gotas' ? fitValveIn('contaGotas', cap, Math.min(22, wIn)) : r.c === 'Deluxes' ? fitValveIn('spray', cap, Math.min(26, wIn)) : fitValveIn('pump', cap, Math.min(26.3, wIn));
+      ms = [P('Frasco', W, D, H * f0, { ...sh, vol: true, rBot: rb, rTop: 1, ...(r.t === 'cgt' ? { taperB: 86 } : {}), _t: [0, f0] }), P('Anel', W, D, H * (f1 - f0), { ...sh, _t: [f0, f1] }), v, cap]; break; }
+    case 'onoff': { const [f] = incomFrac(pr, [0.62]); ms = [P('Frasco', W, D, H * f, { vol: true, rBot: 2, bpesc: true, bpescMola: true, _t: [0, f] }), P('Acionador e capa', W, D, H * (1 - f), { rTop: 3, _t: [f, 1] })]; break; }
+    case 'flacon': case 'flaconb': { const b = r.t === 'flaconb', [f] = incomFrac(pr, [0.56]), rem = 1 - f;
+      ms = [P('Frasco', W, D, H * f, { vol: true, rBot: 2, rTop: W * 0.18, _t: [0, f] }),
+        M('contaGotas', { name: b ? 'Conta-gotas de botão' : 'Conta-gotas', W: r1(W * 0.62), D: r1(W * 0.62), h: r1(H * rem * (b ? 0.68 : 0.36)), actW: r1(W * (b ? 0.5 : 0.42)), actH: r1(H * rem * (b ? 0.32 : 0.64) + 0.5) })]; break; }
     case 'fr': case 'frr': case 'frsq': case 'frsqr': case 'frt': case 'frsh': case 'frap': case 'frflat': {
       const o = { fr: { rBot: 3, rTop: W * 0.15 }, frr: { rBot: W * 0.3, rTop: W * 0.15 }, frsq: { ...sq(0.06), rTop: 3 }, frsqr: { ...sq(0.2), rTop: 4 },
         frt: { taperB: 82, rBot: W * 0.25, rTop: 4 }, frsh: { rTop: W * 0.35, rBot: 3 }, frap: { taper: 70, rTop: 6, rBot: 6 }, frflat: { ...sq(0.1), rTop: 6 } }[r.t];
-      ms = [P('Frasco', W, D, H - 16.6, { vol: true, ...o }), NECK('18/410', { h: 16.6 })]; break; }
+      ms = [P('Frasco', W, D, H - 16.6, { vol: true, ...o, _t: [0, (H - 16.6) / H] }), NECK('18/410', { h: 16.6 })]; break; }
     case 'frn': case 'frnt': case 'frnr': case 'frnflat': {
-      const o = r.t === 'frnt' ? { taper: 88 } : {};
-      ms = [P('Frasco', W, D, H * 0.66, { vol: true, rBot: 3, rTop: 1, ...o }), P('Tampa', W * (r.t === 'frnt' ? 0.88 : 1), D, H * 0.34, { rTop: r.t === 'frnr' ? W * 0.4 : 2 })]; break; }
-    case 'tube': ms = [P('Frasco', W, D, H - 14, { vol: true, taper: 70, rTop: 3, rBot: 2 }), P('Gargalo', W * 0.45, null, 14, { rTop: 1 })]; break;
+      const o = r.t === 'frnt' ? { taper: 88 } : {}, [f] = incomFrac(pr, [0.66]);
+      ms = [P('Frasco', W, D, H * f, { vol: true, rBot: 3, rTop: 1, ...o, _t: [0, f] }), P('Tampa', W * (r.t === 'frnt' ? 0.88 : 1), D, H * (1 - f), { rTop: r.t === 'frnr' ? W * 0.4 : 2, _t: [f, 1] })]; break; }
+    case 'tube': ms = [P('Frasco', W, D, H - 14, { vol: true, taper: 70, rTop: 3, rBot: 2, _t: [0, (H - 14) / H] }), P('Gargalo', W * 0.45, null, 14, { rTop: 1, _t: [(H - 14) / H, 1] })]; break;
     case 'gloss': case 'glosssq': { // a tampa veste a haste com o aplicador (ou a escova, na máscara), que desce até o fundo
-      const s0 = r.t === 'glosssq' ? sq(0.08) : {}, capH = H * 0.48, wv = r1(Math.min(W, D) * 0.55), masc = r.c === 'Máscaras';
-      ms = [P('Frasco', W, D, H * 0.52, { ...s0, vol: true, rBot: 1.5 }),
+      const s0 = r.t === 'glosssq' ? sq(0.08) : {}, [f] = incomFrac(pr, [0.52]), capH = H * (1 - f), masc = r.c === 'Máscaras';
+      const cap = P('Tampa', W, D, capH, { ...s0, rTop: r.t === 'gloss' ? W * 0.2 : 1.2, _t: [f, 1] });
+      const wv = r1(Math.max(5, Math.min(Math.min(W, D) * 0.55, 2 * (capHalfAt(cap, 0) - 1.6))));
+      ms = [P('Frasco', W, D, H * f, { ...s0, vol: true, rBot: 1.5, _t: [0, f] }),
         M('tampaGloss', { name: masc ? 'Haste com escova' : 'Haste com aplicador', W: wv, D: wv, h: r1(capH - 2.5), pescD: r1(Math.min(3, wv * 0.3)),
-          tipL: masc ? r1(Math.min(24, H * 0.2)) : 13, tipW: r1(Math.min(masc ? 7.5 : 6.5, Math.min(W, D) - 6)), tipColor: masc ? '#2b2b2b' : '#e2cdb8' }),
-        P('Tampa', W, D, capH, { ...s0, rTop: r.t === 'gloss' ? W * 0.2 : 1.2 })]; break; }
-    case 'baton': case 'batonsq': { const s0 = r.t === 'batonsq' ? sq(0.06) : {}; // tampa desce vestindo a bala
-      ms = [P('Base', W, D, H * 0.4, s0), P('Bala (batom)', W * 0.52, null, H * 0.5, { rTop: W * 0.2, rBot: 0.5 }), P('Tampa', W, D, H * 0.6, { ...s0, rTop: 1.5, gap: r1(-H * 0.5) })]; break; }
-    case 'pote': case 'potesq': { const s0 = r.t === 'potesq' ? sq(0.1) : {}; ms = [P('Pote', W * 0.98, D * 0.98, H * 0.62, { ...s0, vol: true, rBot: 3 }), P('Tampa', W, D, H * 0.38, { ...s0, rTop: 2 })]; break; }
-    case 'stick': ms = [P('Base', W, D, H * 0.5, { rBot: 2 }), P('Bastão (produto)', W * 0.78, null, H * 0.42, { rTop: W * 0.2 }), P('Tampa', W, D, H * 0.5, { rTop: 3, gap: r1(-H * 0.42) })]; break;
-    default: ms = [P('Corpo', W, D, H, { vol: true })];
+          tipL: masc ? r1(Math.min(24, H * 0.2)) : 13, tipW: r1(Math.min(masc ? 7.5 : 6.5, Math.min(W, D) - 6)), tipColor: masc ? '#2b2b2b' : '#e2cdb8' }), cap]; break; }
+    case 'baton': case 'batonsq': { const s0 = r.t === 'batonsq' ? sq(0.06) : {}, [f] = incomFrac(pr, [0.4]), bh = H * (1 - f) * 0.83; // tampa desce vestindo a bala
+      ms = [P('Base', W, D, H * f, { ...s0, _t: [0, f] }), P('Bala (batom)', W * 0.52, null, bh, { rTop: W * 0.2, rBot: 0.5 }), P('Tampa', W, D, H * (1 - f), { ...s0, rTop: 1.5, gap: r1(-bh), _t: [f, 1] })]; break; }
+    case 'pote': case 'potesq': { const s0 = r.t === 'potesq' ? sq(0.1) : {}, [f] = incomFrac(pr, [0.62]); ms = [P('Pote', W * 0.98, D * 0.98, H * f, { ...s0, vol: true, rBot: 3, _t: [0, f] }), P('Tampa', W, D, H * (1 - f), { ...s0, rTop: 2, _t: [f, 1] })]; break; }
+    case 'stick': { const [f] = incomFrac(pr, [0.5]), bh = H * (1 - f) * 0.84; ms = [P('Base', W, D, H * f, { rBot: 2, _t: [0, f] }), P('Bastão (produto)', W * 0.78, null, bh, { rTop: W * 0.2 }), P('Tampa', W, D, H * (1 - f), { rTop: 3, gap: r1(-bh), _t: [f, 1] })]; break; }
+    default: ms = [P('Corpo', W, D, H, { vol: true, _t: [0, 1] })];
   }
   Object.assign(ms[0], { forn: 'Incom', ref: r.n.toUpperCase(), fmat: r.mat, fterm: r.vol, fpg: r.pg, fest: r.est, fW: r.W, fD: r.D ?? r.W, fH: r.H, fcat: r.c });
   const fapp = ['Frascos', 'Frasnagas'].includes(r.c) || r.t.startsWith('flacon') ? 'Fármaco' : 'Beleza';
