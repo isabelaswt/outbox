@@ -18,7 +18,7 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION } from 'three-bvh-csg';
-import { icon } from './icons.js?v=2026-11-16.gizmo-barra2';
+import { icon } from './icons.js?v=2026-11-16.graus2';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -391,7 +391,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-16.gizmo-barra2';
+const BUILD = '2026-11-16.graus2';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -2486,7 +2486,17 @@ function syncClips() {
     for (const pl of cp) { const loc = clipLocal.get(pl); if (!loc) continue;
       const p0 = loc.coplanarPoint(_cp0); o.updateMatrixWorld(); p0.applyMatrix4(o.matrixWorld); pl.setFromNormalAndCoplanarPoint(_dn, p0); } }));
 }
-function renderFrame() { opaqueGain(); syncClips(); if (gizmo) gizmo.camera = cam; if (frameHook) frameHook(); else renderMain(); }
+// O gizmo mede a velocidade do giro pela distância da câmera; a ortográfica fica a 3 m e o
+// giro saía lentíssimo. Câmera auxiliar igual, a uma distância proporcional ao zoom (~45° a
+// cada 100 px arrastados), só para o gizmo.
+const gizmoCam = new THREE.OrthographicCamera();
+function gizmoCamera() {
+  if (!cam.isOrthographicCamera || !controls) return cam;
+  gizmoCam.copy(cam); const vh = (cam.top - cam.bottom) / (cam.zoom || 1), dir = cam.position.clone().sub(controls.target).normalize();
+  gizmoCam.position.copy(controls.target).addScaledVector(dir, Math.max(60, vh * 3.7)); gizmoCam.near = 0.1; gizmoCam.far = 20000;
+  gizmoCam.updateProjectionMatrix(); gizmoCam.updateMatrixWorld(true); return gizmoCam;
+}
+function renderFrame() { opaqueGain(); syncClips(); if (gizmo) gizmo.camera = gizmoCamera(); if (frameHook) frameHook(); else renderMain(); }
 // Sombra de contato como em foto de estúdio com luz macia: o produto é visto de baixo, a
 // partir do chão, e vira duas manchas — uma estreita e escura onde ele encosta (a linha que
 // "assenta" a peça) e uma larga e clara em volta (a penumbra difusa da softbox). Segue o
@@ -3621,15 +3631,16 @@ function ensureGizmo() {
   scene.add(gizmoObj);
   gizmo = new TransformControls(cam, canvas);
   gizmo.setSpace('world'); gizmo.size = 0.85;
+  gizmo.setRotationSnap(THREE.MathUtils.degToRad(15)); // encaixa em 15°, 30°, 45°… (Shift segurado: livre)
   gizmo.addEventListener('change', req);
   gizmo.addEventListener('dragging-changed', e => {
     if (controls) controls.enabled = !e.value;
     if (e.value) { const p0 = S.pos || []; gDrag = { p: gizmoObj.position.clone(), pos: [p0[0] || 0, p0[1] || 0, p0[2] || 0] }; }
-    else { gDrag = null; syncGizmo(); saveLocalSoon(); record(); req(); }
+    else { gDrag = null; syncGizmo(); saveLocalSoon(); record(); req(); showAngle(null); }
   });
   gizmo.addEventListener('objectChange', () => {
     const sc = S;
-    if (gizmoMode === 'rotate') sc.rq = gizmoObj.quaternion.toArray().map(v => Math.round(v * 1e5) / 1e5);
+    if (gizmoMode === 'rotate') { sc.rq = gizmoObj.quaternion.toArray().map(v => Math.round(v * 1e5) / 1e5); showAngle(gizmo.rotationAngle, gizmo.axis); }
     else if (gDrag) { const y = Math.max(0, r1(gDrag.pos[2] + gizmoObj.position.y - gDrag.p.y));
       sc.pos = [r1(gDrag.pos[0] + gizmoObj.position.x - gDrag.p.x), r1(gDrag.pos[1] + gizmoObj.position.z - gDrag.p.z), y]; }
     applyStageTilt(sceneOf(), stagePivot[0], stagePivot[1]); req();
@@ -3637,12 +3648,26 @@ function ensureGizmo() {
   const h = gizmo.getHelper ? gizmo.getHelper() : gizmo; h.name = 'gizmo'; scene.add(h);
   return gizmo;
 }
+// Graus do giro ao lado do cursor enquanto arrasta (ex.: "Z · 30°")
+let gPtr = [0, 0];
+canvas.addEventListener('pointermove', e => { const r = canvas.getBoundingClientRect(); gPtr = [e.clientX - r.left, e.clientY - r.top]; });
+function showAngle(rad, axis) {
+  let el = document.getElementById('gizmoAngle');
+  if (rad == null) { if (el) el.hidden = true; return; }
+  if (!el) { el = document.createElement('div'); el.id = 'gizmoAngle'; canvas.parentElement.appendChild(el); }
+  const deg = Math.round(THREE.MathUtils.radToDeg(rad) * 10) / 10, ax = { X: 'X', Y: 'Y', Z: 'Z', E: 'tela', XYZE: 'livre' }[axis] || '';
+  el.textContent = `${ax ? ax + ' · ' : ''}${deg > 0 ? '+' : ''}${deg.toLocaleString('pt-BR')}°`; el.hidden = false;
+  el.style.left = `${gPtr[0] + 16}px`; el.style.top = `${gPtr[1] + 14}px`;
+}
+// Shift segurado: giro livre, sem encaixe
+addEventListener('keydown', e => { if (e.key === 'Shift' && gizmo) gizmo.setRotationSnap(null); });
+addEventListener('keyup', e => { if (e.key === 'Shift' && gizmo) gizmo.setRotationSnap(THREE.MathUtils.degToRad(15)); });
 function setGizmo(on, mode) {
   if (mode) gizmoMode = mode;
   if (on && !gizmo) ensureGizmo();
   gizmoOn = !!on;
   if (gizmo) {
-    if (gizmoOn) { gizmo.camera = cam; gizmo.setMode(gizmoMode === 'move' ? 'translate' : 'rotate');
+    if (gizmoOn) { gizmo.camera = gizmoCamera(); gizmo.setMode(gizmoMode === 'move' ? 'translate' : 'rotate');
       gizmo.showY = true; // mover também para cima e para baixo (nunca abaixo do chão)
       gizmo.attach(gizmoObj); syncGizmo(); }
     else gizmo.detach();
