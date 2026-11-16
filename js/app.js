@@ -391,7 +391,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-16.liquido-acompanha2';
+const BUILD = '2026-11-16.liquido-inclinado';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -2479,7 +2479,8 @@ function opaqueGain() {
 // com a posição/rotação atual do frasco (subindo pelo gizmo o líquido descia, cortado no lugar).
 const clipLocal = new WeakMap(), _cp0 = new THREE.Vector3(), _dn = new THREE.Vector3(0, -1, 0);
 function syncClips() {
-  [product, sideRoot].forEach(r => r?.traverse(o => { const cp = o.isMesh && o.material?.clippingPlanes; if (!cp) return;
+  [product, sideRoot].forEach(r => r?.traverse(o => { if (o.userData?.levelCap) { o.updateMatrixWorld(); o.visible = o.matrixWorld.elements[5] / Math.hypot(o.matrixWorld.elements[4], o.matrixWorld.elements[5], o.matrixWorld.elements[6]) > 0.9994; } // inclinado (> ~2°): a tampa reta do nível sairia torta
+    const cp = o.isMesh && o.material?.clippingPlanes; if (!cp) return;
     // superfície sempre horizontal (como líquido de verdade), passando pelo centro do nível
     // levado junto com o frasco: sobe, anda e gira com ele sem o nível "escorregar"
     for (const pl of cp) { const loc = clipLocal.get(pl); if (!loc) continue;
@@ -3220,29 +3221,39 @@ const pipetteFrostMat = glassTubeMat(0.02, 0.22);
 // Peças internas (pescante, mola, carcaça) em "multiplicar": só escurecem o que está
 // atrás, na cor do líquido/vidro (de frente quase somem, nas bordas desenham a forma).
 // Antes eram um plástico claro por cima e ficavam leitosas/brancas.
-function multTubeMat(a0, a1, tint) {
+// wet: parte mergulhada no líquido (abaixo de uLvl, altura na peça) quase some — vidro dentro
+// de líquido transparente perde o contorno (antes a pipeta aparecia inteira, como no ar)
+const wetPart = (g, sh, v) => { sh.uniforms.uLvl = g.userData.uLvl;
+  sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying float vOY;').replace('#include <begin_vertex>', '#include <begin_vertex>\nvOY = position.y;');
+  sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying float vOY; uniform float uLvl;');
+  return `float wet = 1.0 - smoothstep(uLvl - 0.6, uLvl + 0.6, vOY); ${v}`; };
+function multTubeMat(a0, a1, tint, wet = 0) {
   const t = new THREE.Color(tint);
   const g = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, depthWrite: false, side: THREE.DoubleSide,
     blending: THREE.MultiplyBlending, premultipliedAlpha: true, toneMapped: false });
+  if (wet) g.userData.uLvl = { value: -1e9 };
   g.onBeforeCompile = sh => {
+    const w = wet ? wetPart(g, sh, `k *= mix(1.0, ${wet.toFixed(2)}, wet);`) : '';
     sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vMN; varying vec3 vMV;')
       .replace('#include <project_vertex>', '#include <project_vertex>\nvMN = normalize(normalMatrix * normal); vMV = -mvPosition.xyz;');
     sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying vec3 vMN; varying vec3 vMV;')
       .replace('#include <opaque_fragment>', `float fres = pow(1.0 - abs(dot(normalize(vMV), normalize(vMN))), 2.6); // miolo quase transparente, sombra só nas bordas
-       float k = mix(${a0.toFixed(3)}, ${a1.toFixed(3)}, fres);
+       float k = mix(${a0.toFixed(3)}, ${a1.toFixed(3)}, fres); ${w}
        gl_FragColor = vec4(mix(vec3(1.0), vec3(${t.r.toFixed(3)}, ${t.g.toFixed(3)}, ${t.b.toFixed(3)}), k), 1.0);`)
       .replace('#include <tonemapping_fragment>', '').replace('#include <colorspace_fragment>', '');
   };
-  g.customProgramCacheKey = () => `mult${a0}_${a1}_${t.getHexString()}`;
+  g.customProgramCacheKey = () => `mult${a0}_${a1}_${t.getHexString()}_w${wet}`;
   return g;
 }
 // Reflexo de vidro (camada que só clareia, por cima): duas linhas finas verticais
 // das luzes do estúdio e um brilho leve de borda — é o que faz a pipeta ler como vidro.
-function glassGlintMat(k = 1, tint = '#ffffff') {
+function glassGlintMat(k = 1, tint = '#ffffff', wet = 0) {
   const tc = new THREE.Color(tint), tv = `vec3(${tc.r.toFixed(3)}, ${tc.g.toFixed(3)}, ${tc.b.toFixed(3)})`;
   const g = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, depthWrite: false, side: THREE.FrontSide,
     blending: THREE.AdditiveBlending, toneMapped: false });
+  if (wet) g.userData.uLvl = { value: -1e9 };
   g.onBeforeCompile = sh => {
+    const w = wet ? wetPart(g, sh, '') : '';
     sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vGN; varying vec3 vGV;')
       .replace('#include <project_vertex>', '#include <project_vertex>\nvGN = normalize(normalMatrix * normal); vGV = -mvPosition.xyz;');
     sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying vec3 vGN; varying vec3 vGV;')
@@ -3250,7 +3261,8 @@ function glassGlintMat(k = 1, tint = '#ffffff') {
        float s1 = pow(max(dot(reflect(-v, n), normalize(vec3(-0.55, 0.15, 0.82))), 0.0), 60.0);
        float s2 = pow(max(dot(reflect(-v, n), normalize(vec3(0.6, 0.1, 0.8))), 0.0), 90.0);
        float fr = pow(1.0 - abs(dot(v, n)), 3.0);
-       float b = (s1 * 0.85 + s2 * 0.45 + fr * 0.12 + 0.03) * ${k.toFixed(2)};
+       float b = (s1 * 0.85 + s2 * 0.45 + fr * 0.12 + 0.03) * ${k.toFixed(2)};${wet ? `
+       ${w} b *= mix(1.0, ${wet.toFixed(2)}, wet); // dentro do líquido o vidro quase não brilha` : ''}
        gl_FragColor = vec4(${tv} * b, 1.0);`)
       .replace('#include <tonemapping_fragment>', '').replace('#include <colorspace_fragment>', '');
   };
@@ -5125,8 +5137,8 @@ function liquidMeshes(m, y0, levelAbs, lift = S.wall) {
     const bgL = new THREE.Color(S.bg || '#eeeeee'), tv = liqSeen.clone(), f3 = c => `vec3(${c.r.toFixed(3)}, ${c.g.toFixed(3)}, ${c.b.toFixed(3)})`;
     // Perfume = "multiplicar": o que se vê é só o fundo atrás vezes a cor do líquido (sem luz
     // própria nem branco por cima, que deixava leitoso). O brilho fica por conta do vidro.
-    const mult = m.liqType === 'perfume', gel = !mult && frost, see = mult ? 1 : gel ? 0.25 + clr * 0.7 : clr * 0.75;
-    const seeThru = (frost || mult) && clr > 0 ? `
+    const mult = m.liqType === 'perfume', gel = !mult, see = mult ? 1 : gel ? 0.25 + clr * 0.7 : clr * 0.75;
+    const seeThru = (frost || mult || gel) && clr > 0 ? `
        { float path = ${gel ? 'mix(1.35, 0.85, lensN) * (1.0 + 0.15 * deep)' : `mix(2.8, 1.0, lensN) * (1.0 + ${frost ? '0.6' : '0.22'} * deep)`}; // gel: caminho curto, cor luminosa e por igual (como gel em frasco translúcido; o longo deixava verde-escuro chapado) // caminho da luz dentro do líquido (jateado: como estava, aprovado; vidro liso: menos, a base puxava para vermelho)
          vec3 thruL = ${f3(bgL)} * pow(max(${f3(tv)}, vec3(1e-3)), vec3(path)) * (1.04 - 0.14 * deep)${mult ? '' : ' + vec3(0.16) * menisco'}; // (transparente: + o brilho do nível)
          outgoingLight = mix(outgoingLight, thruL${mult ? '' : ' + outgoingLight * 0.1'}, ${see.toFixed(3)});${mult && !frost ? `
@@ -5159,12 +5171,17 @@ function liquidMeshes(m, y0, levelAbs, lift = S.wall) {
       sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying float vLiqY;' + (backRib ? ' varying float vLiqLat; varying vec3 vLiqRight; varying vec3 vLiqToCam;' : '')).replace('#include <opaque_fragment>',
       `float lensN = smoothstep(0.08, 0.95, abs(dot(normalize(vViewPosition), normal)));
        outgoingLight = mix(outgoingLight * diffuseColor.rgb * 0.95, outgoingLight * 1.18, lensN);
-       float dTop = max(${lv} - vLiqY, 0.0), deep = clamp(dTop / ${span}, 0.0, 1.0);
+       #if NUM_CLIPPING_PLANES > 0
+       float dTop = max(clippingPlanes[0].w - dot(vClipPosition, clippingPlanes[0].xyz), 0.0); // distância até a superfície de verdade (horizontal, mesmo com o frasco inclinado)
+       #else
+       float dTop = max(${lv} - vLiqY, 0.0);
+       #endif
+       float deep = clamp(dTop / ${span}, 0.0, 1.0);
        outgoingLight *= mix(1.12, ${gel ? '0.95' : '0.72'}, deep);
        float menisco = exp(-dTop / 2.2);
        outgoingLight += (diffuseColor.rgb * 0.45 + vec3(0.22)) * menisco;${seeThru}${backRib}
        #include <opaque_fragment>`); };
-    mat.customProgramCacheKey = () => 'liqLente' + (gel ? 'g2' : '') + lv + '_' + span + seeThru + backRib;
+    mat.customProgramCacheKey = () => 'liqLente3' + (gel ? 'g2' : '') + lv + '_' + span + seeThru + backRib;
   }
   if (clear && glass && !frost) mat.depthWrite = false; // o pescante (desenhado depois) aparece através do líquido
   const out = [new THREE.Mesh(inner, mat)];
@@ -5179,7 +5196,7 @@ function liquidMeshes(m, y0, levelAbs, lift = S.wall) {
     out.push(new THREE.Mesh(cap, new THREE.MeshPhysicalMaterial({ color: c.clone().multiplyScalar(0.45), emissive: c.clone().multiplyScalar(0.55), roughness: 0.1, clearcoat: 0.45, clearcoatRoughness: 0.08,
       specularIntensity: 0.7, specularColor: new THREE.Color('#ffffff'), ior: 1.36 }))); } // (espelho total soltava brilhinhos pontilhados)
   else if (cap) out.push(new THREE.Mesh(cap, new THREE.MeshPhysicalMaterial({ color: lc, roughness: 0.08, ...opts, ...inGlass, clearcoat: 0.25, specularColor: lc.clone().lerp(new THREE.Color('#ffffff'), 0.4) })));
-  out.forEach(o => { o.userData.liquid = true; o.name = 'liquido'; });
+  out.forEach(o => { o.userData.liquid = true; o.name = 'liquido'; if (o.geometry === cap) o.userData.levelCap = true; }); // tampa do nível: some com o frasco inclinado
   return out;
 }
 
@@ -5400,10 +5417,10 @@ function buildInto(product, S, explodeAmt = 0) {
         const dim = clamp(lum * 1.8, 0.06, 1), gTint = seen.clone().lerp(new THREE.Color('#ffffff'), clamp(lum, 0, 1) * 0.6);
         const pipBase = frost ? new THREE.Color('#a8adaf') : liqBody ? new THREE.Color(liqBody.liqColor).multiplyScalar(0.5) : new THREE.Color('#7d8486');
         const pipMat = frost ? multTubeMat(0.01, 0.16, pipBase.multiply(gTint))
-          : liqBody ? multTubeMat(0.03, 0.62, pipBase.multiply(gTint)) : multTubeMat(0.02 + 0.08 * (1 - dim), 0.55, pipBase.multiply(gTint));
+          : liqBody ? multTubeMat(0.03, 0.62, pipBase.multiply(gTint), 0.28) : multTubeMat(0.02 + 0.08 * (1 - dim), 0.55, pipBase.multiply(gTint));
         const pm = new THREE.Mesh(pg, pipMat); pm.userData.idx = idx;
         pm.name = `${String(idx + 1).padStart(2, '0')}_pipeta`; pm.renderOrder = 18; product.add(pm);
-        const gl = new THREE.Mesh(pg, glassGlintMat((frost ? 0.25 : 1) * dim, gTint)); gl.userData.idx = idx; // reflexo do vidro por cima
+        const gl = new THREE.Mesh(pg, glassGlintMat((frost ? 0.25 : 1) * dim, gTint, liqBody && !frost ? 0.12 : 0)); gl.userData.idx = idx; // reflexo do vidro por cima (mergulhado no líquido quase não brilha)
         gl.name = `${String(idx + 1).padStart(2, '0')}_pipeta`; gl.renderOrder = 19; product.add(gl);
       } else if (pg) add(pg, 'pescante');
     }
@@ -5437,6 +5454,9 @@ function buildInto(product, S, explodeAmt = 0) {
     if (o.material === semiTube) o.renderOrder = 3;
     else if (o.userData.liquid && o.name === 'liquido') { o.renderOrder = 2; o.material.depthWrite = false; }
   });
+  // pipeta mergulhada: nível (na peça) para a parte dentro do líquido quase sumir
+  { let lv = null; product.children.forEach(o => { const cp = o.userData.liquid && o.material?.clippingPlanes?.[0]; if (cp) { const c = (clipLocal.get(cp) || cp).constant; lv = lv == null ? c : Math.min(lv, c); } });
+    product.children.forEach(o => { const u = o.material?.userData?.uLvl; if (u && o.material !== semiTube) u.value = lv ?? -1e9; }); }
   // tubo escuro só dentro do líquido: acima do nível (no ar) ele volta a quase sumir
   if (semiTube?.userData.uLvl) { let lv = 1e9; product.children.forEach(o => { const cp = o.userData.liquid && o.material?.clippingPlanes?.[0]; if (cp) lv = Math.min(lv, (clipLocal.get(cp) || cp).constant); }); semiTube.userData.uLvl.value = lv; }
 }
