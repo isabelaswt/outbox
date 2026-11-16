@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-16.paleta2';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-16.disp5';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -447,7 +447,8 @@ function smoothProfile(rows0, H, Wmm = 20, sgMax = 0.9) {
     for (let j = Math.max(0, c - R); j <= Math.min(nd, c + R); j++) { const k = Math.exp(-0.5 * ((j - c) / sg) ** 2); w += k; a += k * dense[j][0]; b += k * dense[j][1]; cx += k * dense[j][2]; nn += k * dense[j][4]; }
     const q = dense[c][3];
     // formato da seção (n) também em média: pegado do ponto mais perto, mudava aos saltos e a luz marcava listras
-    out.push([Math.round(i / N * 1e4) / 1e4, Math.round(a / w * 1e4) / 1e4, Math.round(b / w * 1e4) / 1e4, Math.round(nn / w * 1000) / 1000, Math.round(cx / w * 100) / 100, q[5]]);
+    // largura com 6 casas: com 4 o contorno virava escadinha de 0,002 mm a cada 0,15 mm e a luz marcava faixas
+    out.push([Math.round(i / N * 1e5) / 1e5, Math.round(a / w * 1e6) / 1e6, Math.round(b / w * 1e6) / 1e6, Math.round(nn / w * 1000) / 1000, Math.round(cx / w * 1000) / 1000, q[5]]);
   }
   return out;
 }
@@ -560,7 +561,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-16.paleta2';
+const BUILD = '2026-11-16.disp5';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -5795,11 +5796,11 @@ function buildInto(product, S, explodeAmt = 0) {
     const under = m0.kind === 'gargalo' && L[i - 1]?.m.vol && L[i - 1].m.kind === 'giro' ? { m: L[i - 1].m, y0: L[i - 1].y0 } : null;
     // gargalo sobre corpo de vidro de outro tipo (perfil, placa): entra só 1 mm (senão aparecia dentro)
     if (m0.kind === 'gargalo' && !under && L[i - 1]?.m.vol && isGlass(L[i - 1].m.own ? L[i - 1].m.finish : S.finish)) m = { ...m, embed: Math.min(m.embed ?? 8, 1) };
-    let g = moduleGeo(m, y0, { logoQuality: hasLogo, body: under }); if (!g) return;
+    let g = moduleGeo(m, y0, { logoQuality: hasLogo, body: under, ...(THUMB_LITE ? { lo: true } : {}) }); if (!g) return; // miniatura: malha leve
     if (m0.oco && !THUMB_LITE) g = ocoGeo(g, m, y0);
     if (m0.ocoTopo && !THUMB_LITE && L[i + 1]?.m.kind === 'gargalo') g = ocoTopoGeo(g, m, y0, L[i + 1].m, thickBase(m.own ? m.finish : S.finish) ? Math.max(S.wall, m0.fundo ?? 6) : S.wall);
     if (m0.dedo && !THUMB_LITE) g = dedoGeo(g, m0.dedo, y0, m.h);
-    if (vestsValve(S, idx) && L[i - 1]?.idx === idx - 1) { // cavidade no tamanho da válvula (folga de 0,5 mm)
+    if (!THUMB_LITE && vestsValve(S, idx) && L[i - 1]?.idx === idx - 1) { // cavidade no tamanho da válvula (folga de 0,5 mm)
       const vg = sprayGeo(L[i - 1].m, L[i - 1].y0, { lo: true }); vg.computeBoundingBox(); const vb = vg.boundingBox;
       const vr = Math.max(Math.abs(vb.min.x), Math.abs(vb.max.x), Math.abs(vb.min.z), Math.abs(vb.max.z)) + 0.5;
       // altura da válvula (vale também explodido), mas a tampa mantém um topo fechado de 2 mm:
@@ -8332,9 +8333,13 @@ function thumbOf(st) {
 }
 let thumbQueue = [], pumping = false;
 function pumpThumbs() {
-  const job = thumbQueue.shift(); if (!job) { pumping = false; return; }
-  // uma miniatura com erro não pode travar a fila (as seguintes ficavam em branco)
-  try { if (job.img.isConnected) job.img.src = thumbOf(job.st); } catch (e) { console.warn('miniatura', e); }
+  // várias por rodada (até ~25 ms) e uma pausa: a página segue respondendo e a galeria enche rápido
+  const t0 = performance.now();
+  do {
+    const job = thumbQueue.shift(); if (!job) { pumping = false; return; }
+    // uma miniatura com erro não pode travar a fila (as seguintes ficavam em branco)
+    try { if (job.img.isConnected) job.img.src = thumbOf(job.st); } catch (e) { console.warn('miniatura', e); }
+  } while (performance.now() - t0 < 25);
   setTimeout(pumpThumbs, 16);
 }
 // Começa no próximo ciclo: a grade que pediu a miniatura já está na tela.
@@ -8414,7 +8419,9 @@ function incomProduct(r) {
   const P = (name, w, d, h, o = {}) => {
     let x = { ...B, name, W: r1(w), D: r1(d ?? w), h: r1(h), ...o }; const tt = x._t; delete x._t;
     if (tt && pr) { const sl = profSlice(pr, tt[0], tt[1], W);
-      x = { ...x, W: r1(W * sl.amax), D: r1(D * sl.amax), prof: sl.prof, smoothProf: false, taper: 100, taperB: 100, bulge: 0, rTop: Math.min(x.rTop ?? 1, 0.6), rBot: Math.min(x.rBot ?? 1, 0.5) };
+      // contorno alisado: o desenho vem em degraus de ~0,1 mm (traço inclinado rasterizado) e a luz
+      // marcava cada degrau como uma listra em volta do corpo; degraus de verdade (anel, ombro) ficam
+      x = { ...x, W: r1(W * sl.amax), D: r1(D * sl.amax), prof: smoothProfile(sl.prof, x.h, W * sl.amax, 3.2), smoothProf: false, taper: 100, taperB: 100, bulge: 0, rTop: Math.min(x.rTop ?? 1, 0.6), rBot: Math.min(x.rBot ?? 1, 0.5) };
       if (pr.d && tt[1] >= 1) x.topDip = r1(pr.d * H); }
     const m = M('reto', polyFit(x)); if (m.prof) m.W0 = m.W; return m;
   };
@@ -8430,15 +8437,23 @@ function incomProduct(r) {
       const pal = r.c === 'Paletas' && r.t !== 'cr', dB = pal ? { rect: true, top: true, w: r1(W * 0.42), h: r1(Math.min(4.5, hb * 0.58)), d: 2.4 } : { top: true, w: nw, h: r1(Math.min(3.5, hb * 0.45)), d: 1.6 };
       ms = [P('Base', W, D, hb, { ...s0, rBot: r.t === 'cr' ? 1.5 : 1, rTop: 0.6, godes: godesOf(r), dedo: dB }),
         P('Tampa', W, D, ht, { ...s0, rBot: 0.6, rTop: r.t === 'cr' ? 2 : 1.2, hinge: true, abre: 0, oco: true, visor: /com Visor|Quinteto/i.test(r.n), espelho: !/com Visor|Crystal|Quinteto/i.test(r.n), ...(pal ? {} : { dedo: { top: false, w: nw, h: r1(Math.min(2.6, ht * 0.4)), d: 1.1 } }) })]; break; }
-    case 'cg': case 'cgt': case 'cgr': case 'dsq': case 'bulb': {
-      const sh = r.t === 'dsq' ? sq(0.08) : {}, rb = r.t === 'bulb' ? W / 2 * 0.95 : r.t === 'cgr' ? W * 0.3 : 2, twist = /Twist/.test(r.n);
+    case 'dsq': if (/Twist/.test(r.n)) {
+      // Twist: base branca e corpo giratório (girando, o acionador aparece); refil com pump por dentro
+      const [fs] = incomFrac(pr, [0.23]);
+      ms = [P('Base', W, D, H * fs, { ...sq(0.08), vol: true, rBot: 1.5, _t: [0, fs] }), P('Corpo giratório (acionador)', W, D, H * (1 - fs), { ...sq(0.08), rTop: 1, _t: [fs, 1] })]; break; }
+    // falls through
+    case 'cg': case 'cgt': case 'cgr': case 'bulb': {
+      const sh = r.t === 'dsq' ? sq(0.08) : {}, rb = r.t === 'bulb' ? W / 2 * 0.95 : r.t === 'cgr' ? W * 0.3 : 2, twist = false;
       let [f0, f1] = incomFrac(pr, [0.58, 0.63]); if (f1 < f0 + 0.01) f1 = f0 + 0.05;
       const cap = P(twist ? 'Acionador' : 'Sobretampa', W, D, H * (1 - f1), { ...sh, ...(twist ? {} : clear), rBot: 0.5, rTop: r.t === 'bulb' ? W / 2 * 0.95 : r.t === 'cgr' ? W * 0.3 : 2, _t: [f1, 1] });
       const wIn = inner * 2 * (r.t === 'dsq' ? 0.62 : 0.56);
       // conta-gotas na linha Conta-gotas; spray nos Deluxes; pump dosadora nos Dispensadores
       const v = r.c === 'Conta-gotas' ? fitValveIn('contaGotas', cap, Math.min(22, wIn)) : r.c === 'Deluxes' ? fitValveIn('spray', cap, Math.min(26, wIn)) : fitValveIn('pump', cap, Math.min(26.3, wIn));
       ms = [P('Frasco', W, D, H * f0, { ...sh, vol: true, rBot: rb, rTop: 1, ...(r.t === 'cgt' ? { taperB: 86 } : {}), _t: [0, f0] }), P('Anel', W, D, H * (f1 - f0), { ...sh, _t: [f0, f1] }), v, cap]; break; }
-    case 'onoff': { const [f] = incomFrac(pr, [0.62]); ms = [P('Frasco', W, D, H * f, { vol: true, rBot: 2, bpesc: true, bpescMola: true, _t: [0, f] }), P('Acionador e capa', W, D, H * (1 - f), { rTop: 3, _t: [f, 1] })]; break; }
+    case 'onoff': { const [f] = incomFrac(pr, [0.62]), hc = H * (1 - f), dn = 4.4;
+      // bico do acionador (lotion) saindo de lado no alto da capa, como na foto do catálogo
+      ms = [P('Frasco', W, D, H * f, { vol: true, rBot: 2, bpesc: true, bpescMola: true, _t: [0, f] }),
+        P('Acionador e capa', W, D, hc, { rTop: 3, _t: [f, 1], spout: { t: r1(1 - (dn / 2 + 1.6) / hc) , L: 4.2, droop: 0, D: dn, dir: 0 } })]; break; }
     case 'flacon': case 'flaconb': { const b = r.t === 'flaconb', [f] = incomFrac(pr, [0.56]), rem = 1 - f;
       ms = [P('Frasco', W, D, H * f, { vol: true, rBot: 2, rTop: W * 0.18, _t: [0, f] }),
         M('contaGotas', { name: b ? 'Conta-gotas de botão' : 'Conta-gotas', W: r1(W * 0.62), D: r1(W * 0.62), h: r1(H * rem * (b ? 0.68 : 0.36)), actW: r1(W * (b ? 0.5 : 0.42)), actH: r1(H * rem * (b ? 0.32 : 0.64) + 0.5) })]; break; }
