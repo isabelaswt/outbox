@@ -443,3 +443,10 @@ aside{border-right:1px solid var(--rule)}
    busca, campos) continuam arredondados como antes */
 .pop,.openBox,.cmdBox,.cmdItem,.qtip,.tabs,.login-card{border-radius:0}
 .pop,.openBox,.cmdBox{box-shadow:0 1px 0 rgba(20,20,25,.04);border:1px solid var(--rule)}
+
+/* Gizmo: barrinha no alto do 3D (girar / mover / zerar) */
+.gizmoBar{position:absolute;top:12px;right:12px;z-index:6;display:flex;align-items:center;gap:2px;padding:4px;background:#fff;border:1px solid var(--rule,#e2e1de);border-radius:12px;box-shadow:0 4px 18px rgba(20,20,25,.08)}
+.gizmoBar[hidden]{display:none}
+.gizmoBar button{font:inherit;font-size:12px;border:0;background:transparent;color:#4a4a4f;padding:6px 11px;border-radius:8px;cursor:pointer}
+.gizmoBar button:hover{background:#f2f2f0}.gizmoBar button.on{background:var(--ink,#18181b);color:#fff}
+.gizmoBar span{width:1px;height:18px;background:#e6e5e2;margin:0 3px}

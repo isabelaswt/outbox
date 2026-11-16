@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { TransformControls } from 'three/addons/controls/TransformControls.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { RectAreaLightUniformsLib } from 'three/addons/lights/RectAreaLightUniformsLib.js';
@@ -390,7 +391,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-15.deitar2';
+const BUILD = '2026-11-16.gizmo2';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -2472,7 +2473,7 @@ function opaqueGain() {
     if (mt.envMap !== scene.environment) { mt.envMap = scene.environment; mt.needsUpdate = true; }
     mt.envMapIntensity = scene.environmentIntensity * OPAQUE_ENV; mt.envMapRotation?.copy(scene.environmentRotation); mt.userData.og = 1; }));
 }
-function renderFrame() { opaqueGain(); if (frameHook) frameHook(); else renderMain(); }
+function renderFrame() { opaqueGain(); if (gizmo) gizmo.camera = cam; if (frameHook) frameHook(); else renderMain(); }
 // Sombra de contato como em foto de estúdio com luz macia: o produto é visto de baixo, a
 // partir do chão, e vira duas manchas — uma estreita e escura onde ele encosta (a linha que
 // "assenta" a peça) e uma larga e clara em volta (a penumbra difusa da softbox). Segue o
@@ -3555,12 +3556,15 @@ function applyStageTilt(sc, cx, cz) {
       const isBody = o.userData.main && S.modules[o.userData.idx]?.vol, pa = o.geometry.attributes.position, st = Math.max(1, Math.floor(pa.count / 4000));
       for (let i = 0; i < pa.count; i += st) { v.fromBufferAttribute(pa, i).applyMatrix4(o.matrixWorld); if (v.y < all) all = v.y; if (isBody && v.y < body) body = v.y; } });
     return { all, body }; };
+  // rotação livre do gizmo (no mundo, depois de deitar/inclinar) e posição no chão (x, z)
+  const qU = Array.isArray(sc.rq) && sc.rq.length === 4 ? new THREE.Quaternion().fromArray(sc.rq).normalize() : null;
   const place = deg => {
     product.quaternion.identity(); product.position.set(0, 0, 0);
-    if (deg) { const q = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), -THREE.MathUtils.degToRad(deg));
+    if (deg || qU) { const q = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), -THREE.MathUtils.degToRad(deg));
+      if (qU) q.premultiply(qU);
       product.quaternion.copy(q); product.position.copy(P).sub(P.clone().applyQuaternion(q)); }
     product.updateMatrixWorld(true);
-    if (!deg) return 0;
+    if (!deg && !qU) return 0;
     const L = lows(); if (isFinite(L.all)) { product.position.y -= L.all; product.updateMatrixWorld(true); } // apoiado no chão
     return isFinite(L.body) ? L.body - L.all : 0; // quanto o corpo fica no ar (apoiado no bico, na tampa…)
   };
@@ -3571,8 +3575,58 @@ function applyStageTilt(sc, cx, cz) {
     const bb = new THREE.Box3().setFromObject(product);
     if (!bb.isEmpty()) { product.position.x -= (bb.min.x + bb.max.x) / 2 - cx; product.updateMatrixWorld(true); } // continua centrado onde estava
   } else place(sc.cenaTilt || 0);
+  if (qU && !sc.deitar) { const bb = new THREE.Box3().setFromObject(product); if (!bb.isEmpty()) { product.position.x -= (bb.min.x + bb.max.x) / 2 - cx; product.position.z -= (bb.min.z + bb.max.z) / 2 - cz; } } // girado: fica no mesmo lugar
+  if (Array.isArray(sc.pos)) { product.position.x += sc.pos[0] || 0; product.position.z += sc.pos[1] || 0; }
   product.updateMatrixWorld(true);
+  stagePivot = [cx, cz]; syncGizmo();
 }
+// ── Gizmo: clicar no produto mostra anéis (girar) ou setas no chão (mover), como nos
+// programas 3D. O produto continua apoiado no chão (sombra real) e a posição/rotação
+// ficam salvas na cena do projeto. W = mover, E = girar, Esc = fechar.
+let stagePivot = [0, 0], gizmo = null, gizmoOn = false, gizmoMode = 'rotate', gDrag = null;
+const gizmoObj = new THREE.Object3D(); gizmoObj.name = 'gizmoAlvo';
+function syncGizmo() {
+  if (!gizmoOn || gDrag) return;
+  const bb = new THREE.Box3().setFromObject(product); if (bb.isEmpty()) return;
+  bb.getCenter(gizmoObj.position);
+  const sc = S.scene || {}; gizmoMode === 'rotate' && Array.isArray(sc.rq) ? gizmoObj.quaternion.fromArray(sc.rq) : gizmoObj.quaternion.identity();
+  gizmoObj.updateMatrixWorld(true);
+}
+function ensureGizmo() {
+  if (gizmo) return gizmo;
+  scene.add(gizmoObj);
+  gizmo = new TransformControls(cam, canvas);
+  gizmo.setSpace('world'); gizmo.size = 0.85;
+  gizmo.addEventListener('change', req);
+  gizmo.addEventListener('dragging-changed', e => {
+    if (controls) controls.enabled = !e.value;
+    if (e.value) { const sc = S.scene = S.scene || {}; gDrag = { p: gizmoObj.position.clone(), pos: [...(sc.pos || [0, 0])] }; }
+    else { gDrag = null; syncGizmo(); saveLocalSoon(); record(); req(); }
+  });
+  gizmo.addEventListener('objectChange', () => {
+    const sc = S.scene = S.scene || {};
+    if (gizmoMode === 'rotate') sc.rq = gizmoObj.quaternion.toArray().map(v => Math.round(v * 1e5) / 1e5);
+    else if (gDrag) sc.pos = [r1(gDrag.pos[0] + gizmoObj.position.x - gDrag.p.x), r1(gDrag.pos[1] + gizmoObj.position.z - gDrag.p.z)];
+    applyStageTilt(sceneOf(), stagePivot[0], stagePivot[1]); req();
+  });
+  const h = gizmo.getHelper ? gizmo.getHelper() : gizmo; h.name = 'gizmo'; scene.add(h);
+  return gizmo;
+}
+function setGizmo(on, mode) {
+  if (mode) gizmoMode = mode;
+  if (on && !gizmo) ensureGizmo();
+  gizmoOn = !!on;
+  if (gizmo) {
+    if (gizmoOn) { gizmo.camera = cam; gizmo.setMode(gizmoMode === 'move' ? 'translate' : 'rotate');
+      gizmo.showY = gizmoMode !== 'move'; // mover só no chão (o produto continua apoiado)
+      gizmo.attach(gizmoObj); syncGizmo(); }
+    else gizmo.detach();
+    (gizmo.getHelper ? gizmo.getHelper() : gizmo).visible = gizmoOn;
+  }
+  const bar = document.getElementById('gizmoBar'); if (bar) { bar.hidden = !gizmoOn; bar.querySelectorAll('[data-g]').forEach(b => b.classList.toggle('on', b.dataset.g === gizmoMode)); }
+  req();
+}
+function resetGizmoPose() { const sc = S.scene = S.scene || {}; delete sc.rq; delete sc.pos; applyStageTilt(sceneOf(), stagePivot[0], stagePivot[1]); syncGizmo(); saveLocalSoon(); record(); req(); }
 function buildStage() {
   placeAreaLights();
   stage.children.slice().forEach(o => { o.geometry?.dispose(); stage.remove(o); });
@@ -3660,6 +3714,8 @@ function renderScene() {
   if (S.scene.cena !== 'nenhum') field(f, S.scene, ['cenaCor', 'Cor do cenário', 'color'], ch);
   field(f, S.scene, ['deitar', 'Deitar o produto (apoiado no chão, sombra real)', 'check'], k => { ch(k); renderScene(); fit(); });
   if (!S.scene.deitar) field(f, S.scene, ['cenaTilt', 'Inclinar o produto (− esquerda, + direita)', -35, 35, 1, '°'], ch);
+  { const b = document.createElement('button'); b.className = 'btn sm'; b.textContent = 'Zerar posição e rotação do produto';
+    b.title = 'Clique no produto no 3D para girar (E) ou mover (W) com o gizmo'; b.onclick = () => resetGizmoPose(); f.appendChild(b); }
   if (['pedestal', 'bloco', 'degraus'].includes(S.scene.cena)) field(f, S.scene, ['cenaH', 'Altura do pedestal', 5, 150, 1, 'mm'], ch);
   field(f, S.scene, ['luz', 'Luz (vale para tela, imagem e vídeo)', 'select', [['macia', 'Macia — foto de produto limpa (e-commerce, render de marca)'], ['lateral', 'Lateral recortada — luz projetada, sombra de um lado'], ['studio', 'Estúdio claro (padrão)'], ['premium', 'Premium (vidro e perfume, contraste)'], ['produto', 'Produto (e-commerce, faixa macia)'], ['padrao', 'Volume (mais contraste de lado)'],
     ['soft', 'Suave'], ['contrast', 'Contraste'], ['sol', 'Sol (sombra longa)'], ['drama', 'Dramática'], ['faixa', 'Faixas de estúdio (reflexo vertical)'],
@@ -4052,7 +4108,7 @@ async function recordSpin(sec, mode = '360') {
     canvas.style.objectFit = 'contain'; // na tela, o quadro do vídeo aparece na proporção certa (não esticado)
   }
   const restoreSize = () => { canvas.style.objectFit = ''; renderer.setPixelRatio(pr0); renderer.setSize(size0.x, size0.y, false); persp.aspect = size0.x / size0.y; persp.updateProjectionMatrix(); };
-  spinning = true; const btn = $('#spinBtn'); btn.disabled = true; btn.textContent = 'Gravando…';
+  setGizmo(false); spinning = true; const btn = $('#spinBtn'); btn.disabled = true; btn.textContent = 'Gravando…';
   const keep = { grid: grid.visible, ref: refMesh.visible, pos: cam.position.clone(), ground: ground.visible, stage: stage.visible };
   grid.visible = false; refMesh.visible = false; controls.enabled = false;
   ground.visible = false; stage.visible = false; // vídeo: o produto flutua limpo, sem sombra no chão
@@ -5570,6 +5626,16 @@ function openKeys() {
 $('#keysBtn').onclick = () => { document.querySelectorAll('.pop.open').forEach(p => p.classList.remove('open')); openKeys(); };
 // Segurar espaço = mão temporária (fora de campos de texto).
 const typing = () => /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement?.tagName);
+// Gizmo: barrinha e atalhos (W mover, E girar, Esc fechar)
+document.querySelectorAll('#gizmoBar [data-g]').forEach(b => b.onclick = () => {
+  const g = b.dataset.g; if (g === 'close') setGizmo(false); else if (g === 'reset') resetGizmoPose(); else setGizmo(true, g);
+});
+document.addEventListener('keydown', e => {
+  if (!gizmoOn || typing() || e.metaKey || e.ctrlKey || e.altKey) return;
+  if (e.key === 'w' || e.key === 'W') setGizmo(true, 'move');
+  else if (e.key === 'e' || e.key === 'E') setGizmo(true, 'rotate');
+  else if (e.key === 'Escape') setGizmo(false);
+});
 document.addEventListener('keydown', e => { if (e.code === 'Space' && !typing() && !spaceHeld) { spaceHeld = true; applyHand(); e.preventDefault(); } });
 document.addEventListener('keyup', e => { if (e.code === 'Space' && spaceHeld) { spaceHeld = false; applyHand(); } });
 canvas.addEventListener('pointerdown', () => { if (handOn || spaceHeld) canvas.style.cursor = 'grabbing'; });
@@ -5581,6 +5647,7 @@ const ray = new THREE.Raycaster(); let downAt = null;
 canvas.addEventListener('pointerdown', e => { downAt = [e.clientX, e.clientY]; });
 canvas.addEventListener('pointerup', e => {
   if (!downAt || Math.hypot(e.clientX - downAt[0], e.clientY - downAt[1]) > 4) return;
+  if (gizmoOn && (gizmo?.axis || gizmo?.dragging)) return; // clique no próprio gizmo
   barOn = false; req(); // a barrinha só aparece com o botão direito numa peça
   const r = canvas.getBoundingClientRect();
   ray.setFromCamera(new THREE.Vector2((e.clientX - r.left) / r.width * 2 - 1, -(e.clientY - r.top) / r.height * 2 + 1), cam);
@@ -5600,7 +5667,8 @@ canvas.addEventListener('pointerup', e => {
     const i = sideRoot.children.indexOf(g); if (i >= 0) editSide(i);
     return;
   }
-  if (hit) { sel = ownerOf(hit.object.userData.idx); openInspector(); renderStack(); renderEditor(); barOn = e.button === 2; req(); }
+  if (hit) { sel = ownerOf(hit.object.userData.idx); openInspector(); renderStack(); renderEditor(); barOn = e.button === 2; if (e.button === 0) setGizmo(true); req(); }
+  else if (e.button === 0) setGizmo(false); // clique no vazio: some o gizmo
 });
 canvas.addEventListener('contextmenu', e => e.preventDefault());
 // Duplo clique aproxima a câmera do ponto clicado.
@@ -7885,6 +7953,7 @@ $('#hdrFile').onchange = async e => {
 };
 
 $('#dlPng').onclick = () => {
+  setGizmo(false); // o gizmo não sai na imagem
   const res = +$('#pngRes').value, size = renderer.getSize(new THREE.Vector2()), pr = renderer.getPixelRatio();
   const aspect = size.x / size.y;
   const w = aspect >= 1 ? res : Math.round(res * aspect), h = aspect >= 1 ? Math.round(res / aspect) : res;
@@ -7969,6 +8038,7 @@ $('#dlPng').onclick = () => {
 // vista 3/4, a tabela de peças (medidas, gargalo, cor, acabamento) e o volume. Abre numa
 // janela nova, pronta para "Salvar como PDF" ou imprimir.
 async function fichaTecnica() {
+  setGizmo(false);
   const win = window.open('', '_blank');
   if (!win) return toast('Permita janelas novas (pop-ups) para abrir a ficha');
   win.document.write('<p style="font:14px system-ui;padding:24px">Gerando a ficha técnica…</p>');
