@@ -389,24 +389,43 @@ function polyFit(o) { const n = o.sides || 0; if (n === 4 || n === 8) { const c 
 const hasStep = () => false; // contorno denso (0,1 mm): sem suavizar, os degraus ficam com quina
 // Forma vista de cima, conferida nas fotos do catálogo (o desenho técnico só mostra a frente):
 // deitada = cilindro deitado (de lado é um círculo); disco = disco em pé (espessura constante).
-const CAP_FIX = { incom_aramis: { quadTop: 0.81, quadN: 5 }, incom_bamboo: { deitada: true }, incom_golden: { disco: true }, incom_thenue: { disco: true }, incom_wheel: { disco: true },
-  incom_drop: { disco: true, Dk: 0.55 }, incom_antonov: { D: 34 }, incom_bilbao: { sides: 4, sideR: 0.35 }, incom_rams: { sides: 0 } };
+const CAP_FIX = { incom_aramis: { quadTop: 0.81, quadN: 5 }, incom_cubic: { quadFrom: 0.19, quadN: 7 }, incom_bamboo: { deitada: true }, incom_golden: { disco: true }, incom_thenue: { disco: true }, incom_wheel: { disco: true },
+  incom_drop: { disco: true, Dk: 0.55, furo: { y0: 0.385, y1: 0.917, w: 0.488 } }, incom_antonov: { D: 34 }, incom_bilbao: { sides: 4, sideR: 0.35 }, incom_rams: { sides: 0 } };
 // Contorno do desenho técnico sem "escada": o traço extraído do PDF oscila uns centésimos e,
 // ligado em retas, a luz marcava cada mudança de inclinação como uma faixa. Média ponderada curta
 // (~0,3 mm na altura) e reamostragem fina (0,15 mm): degraus e anéis ficam, com o arredondado de molde.
-function smoothProfile(rows0, H) {
+// O mesmo degrau lido em alturas um pouco diferentes à esquerda e à direita do desenho (chanfro
+// fino de cada lado) virava, na média dos dois lados, uma aba de meia largura. Degraus de mesmo
+// sentido a menos de ~6% da altura um do outro passam a acontecer juntos, na altura média.
+function alignSteps(P0) {
+  const P = P0.map(q => q.slice()), J = (c) => { const out = []; for (let i = 1; i < P.length; i++) { const d = P[i][c] - P[i - 1][c]; if (Math.abs(d) > 0.08) out.push({ i, t: P[i][0], d }); } return out; };
+  const jl = J(1), jr = J(2), used = new Set();
+  for (const a of jl) {
+    const b = jr.find(x => !used.has(x) && Math.sign(x.d) === Math.sign(a.d) && Math.abs(x.t - a.t) < 0.06 && Math.abs(x.t - a.t) > 1e-6); if (!b) continue; used.add(b);
+    const tm = (a.t + b.t) / 2, early = a.t < b.t ? [a, 1] : [b, 2], late = a.t < b.t ? [b, 2] : [a, 1];
+    const preE = P[early[0].i - 1][early[1]], postL = P[late[0].i][late[1]];
+    for (let k = 0; k < P.length; k++) { const t = P[k][0]; if (t < early[0].t || t >= late[0].t) continue;
+      if (t < tm) P[k][early[1]] = preE; else P[k][late[1]] = postL; }
+  }
+  return P;
+}
+function smoothProfile(rows0, H, Wmm = 20) {
   if (!rows0 || rows0.length < 4 || !(H > 0)) return rows0;
-  const rows = rows0.slice().sort((p, q) => p[0] - q[0]);
+  const rows = rows0.slice().sort((p, q) => p[0] - q[0]); rows.W = Wmm;
   // 1) contorno denso por interpolação linear (0,05 mm) — o extraído tem trechos esparsos
   const at = t => { let i = 0; while (i < rows.length - 2 && rows[i + 1][0] < t) i++; const A = rows[i], B = rows[i + 1] || A, f = B[0] > A[0] ? clamp((t - A[0]) / (B[0] - A[0]), 0, 1) : 0;
     return [A[1] + (B[1] - A[1]) * f, A[2] + (B[2] - A[2]) * f, A[4] + (B[4] - A[4]) * f, f < 0.5 ? A : B]; };
   const nd = Math.max(16, Math.ceil(H / 0.05)), dense = [];
   for (let i = 0; i <= nd; i++) dense.push(at(i / nd));
-  // 2) média gaussiana (~0,3 mm) e 3) reamostra a cada 0,15 mm
-  const sg = 0.3 / H * nd, R = Math.ceil(3 * sg), N = Math.max(8, Math.ceil(H / 0.15)), out = [];
+  // 2) média gaussiana adaptativa: forte (~0,9 mm) nos trechos de curva longa, onde a oscilação
+  //    do traço virava quina e faixa no metal; leve (~0,2 mm) perto dos degraus de verdade
+  //    (anel, ressalto, base), que continuam nítidos. 3) reamostra a cada 0,15 mm.
+  const Wh = W0 => W0, dmm = H / nd, step = new Uint8Array(nd + 1);
+  for (let j = 1; j <= nd; j++) if (Math.abs(dense[j][0] - dense[j - 1][0]) * (rows.W || 20) / 2 / dmm > 1.2) { for (let q = Math.max(0, j - Math.ceil(0.6 / dmm)); q <= Math.min(nd, j + Math.ceil(0.6 / dmm)); q++) step[q] = 1; }
+  const N = Math.max(8, Math.ceil(H / 0.15)), out = [];
   for (let i = 0; i <= N; i++) {
-    const c = Math.round(i / N * nd); let w = 0, a = 0, b = 0, cx = 0;
-    for (let j = Math.max(0, c - R); j <= Math.min(nd, c + R); j++) { const k = Math.exp(-0.5 * ((j - c) / sg) ** 2); w += k; a += k * dense[j][0]; b += k * dense[j][1]; cx += k * dense[j][2]; }
+    const c = Math.round(i / N * nd), sg = (step[c] ? 0.2 : 0.9) / dmm, R = Math.ceil(3 * sg); let w = 0, a = 0, b = 0, cx = 0;
+    for (let j = Math.max(0, c - R); j <= Math.min(nd, c + R); j++) { if (!step[c] && step[j]) continue; const k = Math.exp(-0.5 * ((j - c) / sg) ** 2); w += k; a += k * dense[j][0]; b += k * dense[j][1]; cx += k * dense[j][2]; }
     const q = dense[c][3];
     out.push([Math.round(i / N * 1e4) / 1e4, Math.round(a / w * 1e4) / 1e4, Math.round(b / w * 1e4) / 1e4, q[3], Math.round(cx / w * 100) / 100, q[5]]);
   }
@@ -421,13 +440,16 @@ function incomShape(r) {
   const o = { W, D, h: r.H, rTop: 0.5, rBot: 0.3, sides: fx.sides ?? (base.sides || 0), sideR: fx.sideR ?? base.sideR ?? 0.1 };
   polyFit(o);
   o.W0 = o.W;
-  o.prof = pr.p.map(([t, l, rr]) => { const a = (l + rr) / 2;
+  o.prof = alignSteps(pr.p).map(([t, l, rr]) => { const a = (l + rr) / 2;
     const b = fx.deitada ? Math.sqrt(Math.max(0.0004, 1 - (2 * t - 1) ** 2)) : fx.disco ? 1 : a;
     return [t, a, b, fx.deitada ? 8 : fx.disco ? 4 : 2, r1((rr - l) / 2 * o.W / 2), 0]; });
   o.smoothProf = false; if (pr.d) o.topDip = r1(pr.d * r.H); if (pr.tl) o.tilt = pr.tl;
   // Bloco de cima quadrado (de quinas arredondadas) com prato radial: a curva do topo vista de frente
   if (fx.quadTop) { o.prof.forEach(q => { if (q[0] >= fx.quadTop) q[3] = fx.quadN || 5; }); o.quadTop = fx.quadTop; o.quadDish = o.topDip || 1.4; o.topDip = 0.02; }
-  o.prof = smoothProfile(o.prof, r.H);
+  // Bloco quadrado de quinas arredondadas sobre base redonda (Cubic): superelipse só no trecho do bloco
+  if (fx.furo) o.furo = fx.furo;
+  if (fx.quadFrom != null) { o.sides = 0; o.prof.forEach(q => { q[3] = q[0] >= fx.quadFrom ? (fx.quadN || 7) : 2; }); }
+  o.prof = smoothProfile(o.prof, r.H, o.W);
   return o;
 }
 function incomShape0(r) {
@@ -459,7 +481,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-16.disco-topo';
+const BUILD = '2026-11-16.furo-drop';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -1310,6 +1332,17 @@ function quadDish(g, y0, m) {
   }
   p.needsUpdate = true; g.computeVertexNormals(); g.computeBoundingBox();
 }
+// Furo vazado em gota atravessando a peça de frente a trás (Drop): ponta em cima, redondo embaixo.
+// furo = { y0, y1, w } em frações da altura e da largura (medidas no desenho técnico).
+function furoGota(g, y0, m) {
+  const f = m.furo, yb = y0 + m.h * f.y0, yt = y0 + m.h * f.y1, rr = m.W * f.w / 2, yc = yb + rr, d = yt - yc, cx = m.ox || 0;
+  if (!(d > rr * 1.05)) return g;
+  const ac = Math.acos(rr / d), aR = Math.PI / 2 - ac, aL = Math.PI / 2 + ac, sh = new THREE.Shape();
+  sh.moveTo(cx, yt); sh.lineTo(cx + rr * Math.cos(aR), yc + rr * Math.sin(aR)); sh.absarc(cx, yc, rr, aR, aL - 2 * Math.PI, true); sh.lineTo(cx, yt);
+  const dep = Math.max(m.W, m.D) + 10, cut = new THREE.ExtrudeGeometry(sh, { depth: dep, bevelEnabled: false, curveSegments: 48 }); cut.translate(0, 0, -dep / 2); cut.deleteAttribute('uv');
+  const ud = g.userData, [o, i] = cutHole(g, cut); if (o === g) return g;
+  const out = mergeGeometries([o, i]) || g; out.userData = ud; return out;
+}
 function tiltTop(g, y0, t) {
   const p = g.attributes.position; g.computeBoundingBox(); const x0 = g.boundingBox.min.x, w = (g.boundingBox.max.x - x0) || 1;
   for (let i = 0; i < p.count; i++) { const f = t[0] + (t[1] - t[0]) * (p.getX(i) - x0) / w; p.setY(i, y0 + (p.getY(i) - y0) * f); }
@@ -2089,6 +2122,7 @@ function moduleGeo(m0, y0, opts = {}) {
   else g = loft(rings, seg, disp, !!(disp && (kmax || m.ridges > 0)));
   if (m.tilt && g) tiltTop(g, y0, m.tilt);
   if (m.quadDish && g && !inset) quadDish(g, y0, m);
+  if (m.furo && g && !inset && !lo) g = furoGota(g, y0, m);
   // Puxador na frente da tampinha, logo acima da linha (onde o dedo abre).
   if (!inset && !flipOpen && m.aba && m.topType === 'flip' && m.groove > 0 && !isProf) {
     const up = m.lidSide !== 'baixo', yg = m.h - m.groove, yl = yg + (up ? 0.9 : -0.9);
