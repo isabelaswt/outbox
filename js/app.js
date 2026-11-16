@@ -435,7 +435,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-16.incom12';
+const BUILD = '2026-11-16.faca-grafica';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -5663,7 +5663,8 @@ function buildLineup() {
 // ───────────────────────── caixa (cartucho) ─────────────────────────
 // Cartucho tuck reverso sob medida: medidas internas = produto (de pé) + folga. Aparece em
 // 3D ao lado do frasco e gera a faca 1:1 (corte cheio, vinco tracejado) em SVG e PDF.
-const BOX0 = { on: false, folga: 1.5, folgaH: 2, cartao: 0.45, cor: '#f4f1ea', lingua: 15, cola: 15 };
+const BOX0 = { on: false, folga: 1.5, folgaH: 2, cartao: 0.45, cor: '#f4f1ea', lingua: 15, cola: 15,
+  sangria: 3, alivio: true, cotas: true, prancha: false, projeto: '', produto: '', cor1: '', cor1h: '#174737', cor2: '', cor2h: '#c6accf', ano: '' };
 const boxOf = () => ({ ...BOX0, ...(S.caixa || {}) });
 const boxRoot = new THREE.Group(); boxRoot.name = 'caixa'; scene.add(boxRoot);
 function productSize() {
@@ -5691,44 +5692,153 @@ function buildBox() {
   boxRoot.position.set(x, d.Ao / 2, 0);
 }
 // Faca: tudo em mm. Painéis: cola · verso · lateral · frente · lateral. Em cima: tampa no verso e
-// abas de pó nas laterais; embaixo: tampa na frente e abas de pó.
-function dieline() {
-  const d = boxDims(), c = d.c, t = d.t, Lw = r1(d.L + t), Pw = r1(d.P + t), Ah = r1(d.A + t), T = Math.min(c.lingua, Pw * 0.9), g = c.cola, m = 12;
+// abas de pó nas laterais; embaixo: tampa na frente e abas de pó. A geometria sai em pontos
+// (curvas amostradas) para servir igual ao SVG, ao PDF e ao DXF, e para calcular a sangria.
+function boxGeom() {
+  const d = boxDims(), c = d.c, t = d.t, Lw = r1(d.L + t), Pw = r1(d.P + t), Ah = r1(d.A + t), T = Math.min(c.lingua, Pw * 0.9), g = c.cola;
   const dh = r1(Math.min(Pw - 1.5, Lw * 0.55)), r = Math.min(T * 0.6, 7);
-  const x0 = m, xA = x0 + g, xB = xA + Lw, xC = xB + Pw, xD = xC + Lw, xE = xD + Pw;
-  const yTop = m + Pw + T + 2, yBot = yTop + Ah, W = xE + m, H = yBot + Pw + T + 2 + m + 14;
-  const f = n => (Math.round(n * 100) / 100).toString();
-  const P = []; const M = (x, y) => P.push(`M${f(x)} ${f(y)}`), Lt = (x, y) => P.push(`L${f(x)} ${f(y)}`), Q = (cx, cy, x, y) => P.push(`Q${f(cx)} ${f(cy)} ${f(x)} ${f(y)}`);
+  const x0 = 0, xA = x0 + g, xB = xA + Lw, xC = xB + Pw, xD = xC + Lw, xE = xD + Pw, yTop = Pw + T, yBot = yTop + Ah;
+  const pts = [], L = (x, y) => pts.push([x, y]);
+  const Q = (cx, cy, x, y) => { const [ax, ay] = pts[pts.length - 1]; for (let i = 1; i <= 10; i++) { const u = i / 10, v = 1 - u; pts.push([v * v * ax + 2 * v * u * cx + u * u * x, v * v * ay + 2 * v * u * cy + u * u * y]); } };
   // contorno de corte (sentido horário a partir da cola)
-  M(xA, yTop); Lt(xA, yTop - Pw); // tampa de cima (verso)
-  Lt(xA + 1.5, yTop - Pw); Lt(xA + 1.5, yTop - Pw - T + r); Q(xA + 1.5, yTop - Pw - T, xA + 1.5 + r, yTop - Pw - T);
-  Lt(xB - 1.5 - r, yTop - Pw - T); Q(xB - 1.5, yTop - Pw - T, xB - 1.5, yTop - Pw - T + r); Lt(xB - 1.5, yTop - Pw); Lt(xB, yTop - Pw); Lt(xB, yTop);
-  Lt(xB + 1, yTop - dh); Lt(xC - 5, yTop - dh); Lt(xC, yTop - dh * 0.35); Lt(xC, yTop); // aba de pó
-  Lt(xD, yTop); // frente: reta em cima
-  Lt(xD, yTop - dh * 0.35); Lt(xD + 5, yTop - dh); Lt(xE - 1, yTop - dh); Lt(xE, yTop); // aba de pó
-  Lt(xE, yBot); // lateral direita
-  Lt(xE - 1, yBot + dh); Lt(xD + 5, yBot + dh); Lt(xD, yBot + dh * 0.35); Lt(xD, yBot); // aba de pó de baixo
-  Lt(xD, yBot + Pw); Lt(xD - 1.5, yBot + Pw); Lt(xD - 1.5, yBot + Pw + T - r); Q(xD - 1.5, yBot + Pw + T, xD - 1.5 - r, yBot + Pw + T); // tampa de baixo (frente)
-  Lt(xC + 1.5 + r, yBot + Pw + T); Q(xC + 1.5, yBot + Pw + T, xC + 1.5, yBot + Pw + T - r); Lt(xC + 1.5, yBot + Pw); Lt(xC, yBot + Pw); Lt(xC, yBot);
-  Lt(xC, yBot + dh * 0.35); Lt(xC - 5, yBot + dh); Lt(xB + 1, yBot + dh); Lt(xB, yBot); // aba de pó
-  Lt(xA, yBot); // verso: reta embaixo
-  Lt(x0, yBot - 6); Lt(x0, yTop + 6); Lt(xA, yTop); // aba de cola
-  const cut = P.join(' ') + ' Z';
-  const V = []; const seg = (a, b, c2, e2) => V.push(`M${f(a)} ${f(b)} L${f(c2)} ${f(e2)}`);
-  [xA, xB, xC, xD].forEach(x => seg(x, yTop, x, yBot)); // vincos verticais
-  seg(xA, yTop, xB, yTop); seg(xB, yTop, xC, yTop); seg(xD, yTop, xE, yTop); seg(xA, yTop - Pw, xB, yTop - Pw); // em cima
-  seg(xB, yBot, xC, yBot); seg(xC, yBot, xD, yBot); seg(xD, yBot, xE, yBot); seg(xC, yBot + Pw, xD, yBot + Pw); // embaixo
-  const lab = (x, y, txt, s = 4) => `<text x="${f(x)}" y="${f(y)}" font-size="${s}" text-anchor="middle" fill="#9a9a9a" font-family="Helvetica, Arial, sans-serif">${txt}</text>`;
-  const ym = (yTop + yBot) / 2, name = (fileName() || S.name || 'Produto').replace(/[<&>]/g, '');
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${f(W)}mm" height="${f(H)}mm" viewBox="0 0 ${f(W)} ${f(H)}">
-<rect width="100%" height="100%" fill="#fff"/>
-<path d="${cut}" fill="none" stroke="#e4002b" stroke-width="0.25"/>
-<path d="${V.join(' ')}" fill="none" stroke="#0057b8" stroke-width="0.25" stroke-dasharray="2 1.2"/>
-${lab((x0 + xA) / 2, ym, 'COLA', 3)}${lab((xA + xB) / 2, ym, 'VERSO')}${lab((xB + xC) / 2, ym, 'LATERAL', 3.2)}${lab((xC + xD) / 2, ym, 'FRENTE')}${lab((xD + xE) / 2, ym, 'LATERAL', 3.2)}
-${lab((xA + xB) / 2, yTop - Pw / 2, 'tampa', 3.2)}${lab((xC + xD) / 2, yBot + Pw / 2, 'fundo', 3.2)}
-<text x="${m}" y="${f(H - 6)}" font-size="3.4" fill="#555" font-family="Helvetica, Arial, sans-serif">${name} · cartucho tuck reverso · interno ${f(d.L)} × ${f(d.P)} × ${f(d.A)} mm · cartão ${f(t)} mm · faca ${f(W - 2 * m)} × ${f(H - 2 * m - 14)} mm · corte (vermelho) · vinco (azul tracejado) · OUTBOX</text>
-</svg>`;
-  return { svg, W, H, d };
+  L(xA, yTop); L(xA, yTop - Pw); // tampa de cima (verso)
+  L(xA + 1.5, yTop - Pw); L(xA + 1.5, yTop - Pw - T + r); Q(xA + 1.5, yTop - Pw - T, xA + 1.5 + r, yTop - Pw - T);
+  L(xB - 1.5 - r, yTop - Pw - T); Q(xB - 1.5, yTop - Pw - T, xB - 1.5, yTop - Pw - T + r); L(xB - 1.5, yTop - Pw); L(xB, yTop - Pw); L(xB, yTop);
+  L(xB + 1, yTop - dh); L(xC - 5, yTop - dh); L(xC, yTop - dh * 0.35); L(xC, yTop); // aba de pó
+  L(xD, yTop); // frente: reta em cima
+  L(xD, yTop - dh * 0.35); L(xD + 5, yTop - dh); L(xE - 1, yTop - dh); L(xE, yTop); // aba de pó
+  L(xE, yBot); // lateral direita
+  L(xE - 1, yBot + dh); L(xD + 5, yBot + dh); L(xD, yBot + dh * 0.35); L(xD, yBot); // aba de pó de baixo
+  L(xD, yBot + Pw); L(xD - 1.5, yBot + Pw); L(xD - 1.5, yBot + Pw + T - r); Q(xD - 1.5, yBot + Pw + T, xD - 1.5 - r, yBot + Pw + T); // tampa de baixo (frente)
+  L(xC + 1.5 + r, yBot + Pw + T); Q(xC + 1.5, yBot + Pw + T, xC + 1.5, yBot + Pw + T - r); L(xC + 1.5, yBot + Pw); L(xC, yBot + Pw); L(xC, yBot);
+  L(xC, yBot + dh * 0.35); L(xC - 5, yBot + dh); L(xB + 1, yBot + dh); L(xB, yBot); // aba de pó
+  L(xA, yBot); // verso: reta embaixo
+  L(x0, yBot - 6); L(x0, yTop + 6); // aba de cola (fecha em xA, yTop)
+  const cut = pts.filter((q, i) => i === 0 || Math.hypot(q[0] - pts[i - 1][0], q[1] - pts[i - 1][1]) > 1e-4);
+  // vincos
+  const crease = [];
+  [xA, xB, xC, xD].forEach(x => crease.push([[x, yTop], [x, yBot]]));
+  crease.push([[xA, yTop], [xB, yTop]], [[xB, yTop], [xC, yTop]], [[xD, yTop], [xE, yTop]], [[xA, yTop - Pw], [xB, yTop - Pw]]);
+  crease.push([[xB, yBot], [xC, yBot]], [[xC, yBot], [xD, yBot]], [[xD, yBot], [xE, yBot]], [[xC, yBot + Pw], [xD, yBot + Pw]]);
+  // cortes de alívio (travas de fricção): fendas curtas nas pontas do vinco da língua, que
+  // seguram a tampa fechada e deixam a dobra assentar sem rasgar o cartão
+  const relief = [];
+  if (c.alivio) {
+    const sl = Math.min(3, Lw * 0.08);
+    relief.push([[xA + 1.5, yTop - Pw], [xA + 1.5 + sl, yTop - Pw]], [[xB - 1.5 - sl, yTop - Pw], [xB - 1.5, yTop - Pw]]);
+    relief.push([[xC + 1.5, yBot + Pw], [xC + 1.5 + sl, yBot + Pw]], [[xD - 1.5 - sl, yBot + Pw], [xD - 1.5, yBot + Pw]]);
+  }
+  const bleed = c.sangria > 0 ? offsetPoly(cut, c.sangria) : null;
+  const labels = [[(x0 + xA) / 2, (yTop + yBot) / 2, 'COLA', 3], [(xA + xB) / 2, (yTop + yBot) / 2, 'VERSO', 4], [(xB + xC) / 2, (yTop + yBot) / 2, 'LATERAL', 3.2],
+    [(xC + xD) / 2, (yTop + yBot) / 2, 'FRENTE', 4], [(xD + xE) / 2, (yTop + yBot) / 2, 'LATERAL', 3.2], [(xA + xB) / 2, yTop - Pw / 2, 'tampa', 3.2], [(xC + xD) / 2, yBot + Pw / 2, 'fundo', 3.2]];
+  const all = bleed ? cut.concat(bleed) : cut, bx = [Math.min(...all.map(q => q[0])), Math.min(...all.map(q => q[1])), Math.max(...all.map(q => q[0])), Math.max(...all.map(q => q[1]))];
+  const cx = [Math.min(...cut.map(q => q[0])), Math.min(...cut.map(q => q[1])), Math.max(...cut.map(q => q[0])), Math.max(...cut.map(q => q[1]))];
+  return { d, cut, crease, relief, bleed, labels, bx, cx, X: { x0, xA, xB, xC, xD, xE }, Y: { yTop, yBot }, Lw, Pw, Ah };
+}
+// Sangria: a faca preenchida e engrossada "dist" para todos os lados (como o deslocamento de
+// contorno dos programas de vetor), desenhada numa imagem e contornada de volta em mm. Vãos
+// mais estreitos que a sangria ficam preenchidos, sem laços nem cruzamentos.
+function offsetPoly(P, dist) {
+  const k = 8, xs = P.map(q => q[0]), ys = P.map(q => q[1]), x0 = Math.min(...xs) - dist - 2, y0 = Math.min(...ys) - dist - 2;
+  const W = Math.ceil((Math.max(...xs) - x0 + dist + 2) * k), H = Math.ceil((Math.max(...ys) - y0 + dist + 2) * k);
+  const cv = document.createElement('canvas'); cv.width = W; cv.height = H; const cx = cv.getContext('2d');
+  cx.beginPath(); P.forEach(([x, y], i) => (i ? cx.lineTo : cx.moveTo).call(cx, (x - x0) * k, (y - y0) * k)); cx.closePath();
+  cx.fillStyle = '#000'; cx.fill(); cx.lineWidth = 2 * dist * k; cx.lineJoin = 'round'; cx.strokeStyle = '#000'; cx.stroke();
+  const a = cx.getImageData(0, 0, W, H).data, on = (x, y) => x >= 0 && y >= 0 && x < W && y < H && a[(y * W + x) * 4 + 3] > 127;
+  // contorno de fora (quadrados que marcham pelas quinas dos pixels), a partir do primeiro pixel cheio
+  let sx = -1, sy = -1; for (let y = 0; y < H && sx < 0; y++) for (let x = 0; x < W; x++) if (on(x, y)) { sx = x; sy = y; break; }
+  if (sx < 0) return P;
+  const path = []; let x = sx, y = sy, dx = 0, dy = 0, pdx = 0, pdy = 0;
+  for (let it = 0; it < 4 * (W + H) * 50; it++) {
+    let c = 0; if (on(x - 1, y - 1)) c |= 1; if (on(x, y - 1)) c |= 2; if (on(x - 1, y)) c |= 4; if (on(x, y)) c |= 8;
+    if (c === 1 || c === 5 || c === 13) { dx = 0; dy = -1; } else if (c === 8 || c === 10 || c === 11) { dx = 0; dy = 1; }
+    else if (c === 4 || c === 12 || c === 14) { dx = -1; dy = 0; } else if (c === 2 || c === 3 || c === 7) { dx = 1; dy = 0; }
+    else if (c === 6) { if (pdx === 0 && pdy === -1) { dx = -1; dy = 0; } else { dx = 1; dy = 0; } }
+    else if (c === 9) { if (pdx === 1 && pdy === 0) { dx = 0; dy = -1; } else { dx = 0; dy = 1; } }
+    else break;
+    if (dx !== pdx || dy !== pdy) path.push([x, y]);
+    pdx = dx; pdy = dy; x += dx; y += dy;
+    if (x === sx && y === sy) break;
+  }
+  // de volta para mm e simplifica (Douglas–Peucker, 0,05 mm)
+  const pts = path.map(([x, y]) => [x / k + x0, y / k + y0]);
+  const simp = (Q, tol) => { if (Q.length < 3) return Q; let mi = 0, md = 0; const [ax, ay] = Q[0], [bx, by] = Q[Q.length - 1], L = Math.hypot(bx - ax, by - ay) || 1;
+    for (let i = 1; i < Q.length - 1; i++) { const d = Math.abs((bx - ax) * (ay - Q[i][1]) - (ax - Q[i][0]) * (by - ay)) / L; if (d > md) { md = d; mi = i; } }
+    return md > tol ? simp(Q.slice(0, mi + 1), tol).slice(0, -1).concat(simp(Q.slice(mi), tol)) : [Q[0], Q[Q.length - 1]]; };
+  const h = pts.length >> 1; return simp(pts.slice(0, h + 1), 0.05).slice(0, -1).concat(simp(pts.slice(h), 0.05).slice(0, -1));
+}
+let swtLogoSvg = ''; fetch('assets/swt-logo.svg').then(r => r.text()).then(t => { swtLogoSvg = t; }).catch(() => {});
+// SVG da faca (prancha = moldura, legenda e quadro com os dados do projeto, como na prancha da gráfica)
+function dieline(opts = {}) {
+  const G = boxGeom(), c = G.d.c, prancha = opts.prancha ?? c.prancha, f = n => (Math.round(n * 100) / 100).toString();
+  const pad = prancha ? 22 : 12, cot = c.cotas ? 14 : 0, foot = prancha ? 34 : 14;
+  const ox = pad + cot - G.bx[0], oy = pad - G.bx[1];
+  const fw = G.bx[2] - G.bx[0], fh = G.bx[3] - G.bx[1];
+  let W = fw + 2 * pad + 2 * cot, H = fh + 2 * pad + cot + foot;
+  if (prancha) { W = Math.max(W, 200); H = Math.max(H, 150); }
+  const tx = ([x, y]) => `${f(x + ox)} ${f(y + oy)}`;
+  const poly = P => 'M' + P.map(tx).join(' L') + ' Z', segs = S2 => S2.map(([a, b]) => `M${tx(a)} L${tx(b)}`).join(' ');
+  const ink = '#183433', font = 'Helvetica, Arial, sans-serif';
+  const txt = (x, y, t, sz = 3.4, anchor = 'start', fill = '#555', w = 400, rot = '') => `<text x="${f(x)}" y="${f(y)}" font-size="${sz}" font-weight="${w}" text-anchor="${anchor}" fill="${fill}" font-family="${font}"${rot}>${String(t).replace(/[<&>]/g, '')}</text>`;
+  const out = [];
+  out.push(`<rect width="100%" height="100%" fill="#fff"/>`);
+  if (G.bleed) out.push(`<g id="SANGRIA"><path d="${poly(G.bleed)}" fill="none" stroke="#00a651" stroke-width="0.2" stroke-dasharray="1.6 1"/></g>`);
+  out.push(`<g id="CORTE"><path d="${poly(G.cut)}" fill="none" stroke="#e4002b" stroke-width="0.25"/>${G.relief.length ? `<path d="${segs(G.relief)}" fill="none" stroke="#e4002b" stroke-width="0.25"/>` : ''}</g>`);
+  out.push(`<g id="VINCO"><path d="${segs(G.crease)}" fill="none" stroke="#0057b8" stroke-width="0.25" stroke-dasharray="2 1.2"/></g>`);
+  out.push(`<g id="TEXTO">${G.labels.map(([x, y, t, sz]) => txt(x + ox, y + oy, t, sz, 'middle', '#9a9a9a')).join('')}</g>`);
+  // cotas: largura e altura total da faca, painéis e altura do corpo
+  if (c.cotas) {
+    const dim = (x1, y1, x2, y2, label, vert = false) => {
+      const tk = 1.4, mid = [(x1 + x2) / 2, (y1 + y2) / 2];
+      const l = `M${f(x1)} ${f(y1)} L${f(x2)} ${f(y2)}` + (vert ? ` M${f(x1 - tk)} ${f(y1)} L${f(x1 + tk)} ${f(y1)} M${f(x2 - tk)} ${f(y2)} L${f(x2 + tk)} ${f(y2)}` : ` M${f(x1)} ${f(y1 - tk)} L${f(x1)} ${f(y1 + tk)} M${f(x2)} ${f(y2 - tk)} L${f(x2)} ${f(y2 + tk)}`);
+      return `<path d="${l}" stroke="#8a8a86" stroke-width="0.18" fill="none"/>` + (vert ? txt(mid[0] - 1.6, mid[1], label, 2.8, 'middle', '#6d6d69', 400, ` transform="rotate(-90 ${f(mid[0] - 1.6)} ${f(mid[1])})"`) : txt(mid[0], mid[1] - 1.2, label, 2.8, 'middle', '#6d6d69'));
+    };
+    const [cx0, cy0, cx1, cy1] = G.cx, by = cy1 + oy + 7, X = G.X, Y = G.Y, ly = Y.yBot + oy;
+    const D = [dim(cx0 + ox, by, cx1 + ox, by, `${r1(cx1 - cx0)} mm`), dim(cx1 + ox + 7, cy0 + oy, cx1 + ox + 7, cy1 + oy, `${r1(cy1 - cy0)} mm`, true)];
+    // painéis do corpo (logo abaixo do corpo, entre as abas de pó de baixo)
+    const pw = [[X.x0, X.xA, 'cola'], [X.xA, X.xB], [X.xB, X.xC], [X.xC, X.xD], [X.xD, X.xE]];
+    const py = Y.yTop + oy + 5;
+    pw.forEach(([a, b]) => D.push(dim(a + ox, py, b + ox, py, `${r1(b - a)}`)));
+    D.push(dim(X.xA + ox + 4, Y.yTop + oy, X.xA + ox + 4, ly, `${r1(Y.yBot - Y.yTop)}`, true));
+    out.push(`<g id="COTAS">${D.join('')}</g>`);
+  }
+  const d = G.d, name = (c.projeto || fileName() || S.name || 'Produto');
+  const resumo = `cartucho tuck reverso · interno ${f(d.L)} × ${f(d.P)} × ${f(d.A)} mm · cartão ${f(d.t)} mm · faca ${r1(G.cx[2] - G.cx[0])} × ${r1(G.cx[3] - G.cx[1])} mm${c.sangria > 0 ? ` · sangria ${f(c.sangria)} mm` : ''}`;
+  if (!prancha) out.push(txt(pad, H - 6, `${name} · ${resumo} · corte (vermelho) · vinco (azul tracejado)${c.sangria > 0 ? ' · sangria (verde)' : ''} · OUTBOX`, 3.2));
+  else {
+    // prancha: moldura, legenda em cima, quadro de dados embaixo à direita, ano e assinatura na lateral
+    const fr = 8, bx2 = W - fr, by2 = H - fr;
+    out.push(`<path d="M${fr} ${fr} H${f(bx2)} V${f(by2)} H${fr} Z" fill="none" stroke="${ink}" stroke-width="0.3"/>`);
+    const lg = (x, color, dash, label) => `<path d="M${f(x)} ${fr + 6} h9" stroke="${color}" stroke-width="0.6"${dash ? ` stroke-dasharray="${dash}"` : ''}/>` + txt(x + 11, fr + 7.1, label, 3, 'start', ink, 700);
+    out.push(lg(fr + 6, '#e4002b', '', 'Cortar') + lg(fr + 34, '#0057b8', '2 1.2', 'Vincar') + (c.sangria > 0 ? lg(fr + 62, '#00a651', '1.6 1', 'Sangrar') : ''));
+    const ano = c.ano || String(new Date().getFullYear());
+    out.push(txt(bx2 + 4.5, fr + 16, ano, 3, 'middle', ink, 700, ` transform="rotate(-90 ${f(bx2 + 4.5)} ${fr + 16})"`));
+    out.push(txt(bx2 + 4.5, by2 - 30, 'Outbox by SWT', 3, 'middle', ink, 700, ` transform="rotate(-90 ${f(bx2 + 4.5)} ${f(by2 - 30)})"`));
+    const sw = Math.min(150, W - 2 * fr - 10), sh = 22, sx = bx2 - sw, sy = by2 - sh, lw = 24, cw = sw * 0.52;
+    out.push(`<g id="QUADRO" fill="none" stroke="${ink}" stroke-width="0.25"><path d="M${f(sx)} ${f(sy)} H${f(bx2)} V${f(by2)} H${f(sx)} Z M${f(sx + lw)} ${f(sy)} V${f(by2)} M${f(sx + lw)} ${f(sy + sh / 3)} H${f(bx2)} M${f(sx + lw)} ${f(sy + sh * 2 / 3)} H${f(bx2)} M${f(sx + lw + cw * 0.42)} ${f(sy + sh * 2 / 3)} V${f(by2)}"/></g>`);
+    if (swtLogoSvg) { const ls = 15; out.push(swtLogoSvg.replace(/<\?xml[^>]*>/, '').replace(/<!--[\s\S]*?-->/g, '').replace(/<svg([^>]*?)width="[^"]*"([^>]*?)height="[^"]*"/, `<svg$1width="${ls}"$2height="${ls}" x="${f(sx + (lw - ls) / 2)}" y="${f(sy + (sh - ls) / 2)}"`).replace(/id="Layer_1"/, 'id="logo"')); }
+    const r1y = sy + sh / 6 + 1.1, r2y = sy + sh / 2 + 1.1, r3y = sy + sh * 5 / 6 + 1.1, lx = sx + lw + 3;
+    out.push(txt(lx, r1y, 'PROJETO', 2.6, 'start', ink, 700) + txt(bx2 - 3, r1y, name, 2.8, 'end', ink, 700));
+    out.push(txt(lx, r2y, 'PRODUTO', 2.6, 'start', ink, 700) + txt(bx2 - 3, r2y, c.produto || `Cartucho ${f(d.L)} × ${f(d.P)} × ${f(d.A)} mm`, 2.8, 'end', ink, 700));
+    out.push(txt(lx, r3y, 'IMPRESSÃO', 2.6, 'start', ink, 700));
+    const cc = (x, hex, nm) => nm ? `<circle cx="${f(x)}" cy="${f(r3y - 1)}" r="1.4" fill="${hex}"/>` + txt(x + 2.6, r3y, nm, 2.4, 'start', ink, 700) : '';
+    out.push(cc(sx + lw + cw * 0.42 + 3, c.cor1h, c.cor1) + cc(sx + lw + cw * 0.42 + 3 + (sw - lw - cw * 0.42) / 2, c.cor2h, c.cor2));
+    out.push(txt(fr + 6, by2 - 4, resumo, 2.6, 'start', '#6d6d69'));
+  }
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${f(W)}mm" height="${f(H)}mm" viewBox="0 0 ${f(W)} ${f(H)}">\n${out.join('\n')}\n</svg>`;
+  return { svg, W, H, d, G, ox, oy };
+}
+// DXF em mm com camadas CUT (corte), CREASE (vinco) e BLEED (sangria); curvas já amostradas
+function dielineDXF() {
+  const G = boxGeom(), H = G.bx[3] - G.bx[1], X = q => (q[0] - G.bx[0]).toFixed(4), Y = q => (H - (q[1] - G.bx[1])).toFixed(4);
+  const L = ['0', 'SECTION', '2', 'HEADER', '9', '$INSUNITS', '70', '4', '0', 'ENDSEC',
+    '0', 'SECTION', '2', 'TABLES', '0', 'TABLE', '2', 'LAYER', '70', '3'];
+  [['CUT', 1], ['CREASE', 5], ['BLEED', 3]].forEach(([n, col]) => L.push('0', 'LAYER', '2', n, '70', '0', '62', String(col), '6', 'CONTINUOUS'));
+  L.push('0', 'ENDTAB', '0', 'ENDSEC', '0', 'SECTION', '2', 'ENTITIES');
+  const pl = (P, layer, closed) => { L.push('0', 'LWPOLYLINE', '8', layer, '90', String(P.length), '70', closed ? '1' : '0'); P.forEach(q => L.push('10', X(q), '20', Y(q))); };
+  pl(G.cut, 'CUT', true); G.relief.forEach(s2 => pl(s2, 'CUT', false));
+  G.crease.forEach(s2 => pl(s2, 'CREASE', false)); if (G.bleed) pl(G.bleed, 'BLEED', true);
+  L.push('0', 'ENDSEC', '0', 'EOF'); return L.join('\n');
 }
 function renderBoxFields() {
   const box = $('#boxFields'); if (!box) return; box.innerHTML = '';
@@ -5741,12 +5851,31 @@ function renderBoxFields() {
   field(box, S.caixa, ['lingua', 'Língua da tampa', 6, 30, 1, 'mm'], ch);
   field(box, S.caixa, ['cola', 'Aba de cola', 8, 25, 1, 'mm'], ch);
   field(box, S.caixa, ['cor', 'Cor do cartão', 'color'], ch);
+  const h = document.createElement('h3'); h.textContent = 'Faca para a gráfica'; h.style.marginTop = '12px'; box.appendChild(h);
+  const rf = () => { renderBoxFields(); saveLocalSoon(); };
+  field(box, S.caixa, ['sangria', 'Sangria em volta da faca (0 = sem)', 0, 6, 0.5, 'mm'], saveLocalSoon);
+  field(box, S.caixa, ['alivio', 'Cortes de alívio nas línguas (travas)', 'check'], saveLocalSoon);
+  field(box, S.caixa, ['cotas', 'Cotas na faca', 'check'], saveLocalSoon);
+  field(box, S.caixa, ['prancha', 'Prancha de apresentação (moldura, legenda e dados)', 'check'], rf);
+  if (S.caixa.prancha) {
+    const txtF = (k, label, ph) => { const el = document.createElement('div'); el.className = 'f'; el.innerHTML = `<div class="top"><label>${label}</label></div><input type="text">`;
+      const i = el.querySelector('input'); i.value = S.caixa[k] || ''; i.placeholder = ph; i.oninput = () => { S.caixa[k] = i.value; saveLocalSoon(); }; box.appendChild(el); return el; };
+    txtF('projeto', 'Projeto', fileName() || 'Nome do projeto');
+    txtF('produto', 'Produto', 'Cartucho');
+    const cor = (kn, kh, label, ph) => { const el = txtF(kn, label, ph); const c2 = document.createElement('input'); c2.type = 'color'; c2.value = S.caixa[kh] || '#174737'; c2.style.marginLeft = '6px';
+      c2.oninput = () => { S.caixa[kh] = c2.value; saveLocalSoon(); }; el.querySelector('.top').appendChild(c2); };
+    cor('cor1', 'cor1h', 'Cor de impressão 1', 'Pantone 3435 C');
+    cor('cor2', 'cor2h', 'Cor de impressão 2', 'Pantone 523 C');
+    txtF('ano', 'Ano', String(new Date().getFullYear()));
+  }
   const info = document.createElement('div'); info.className = 'tip'; info.id = 'boxInfo'; box.appendChild(info); renderBoxInfo();
 }
 function renderBoxInfo() { const el = $('#boxInfo'); if (!el || !S.modules.length) return; const d = boxDims();
   el.innerHTML = `Interno <b>${d.L} × ${d.P} × ${d.A} mm</b> (L × P × A) · externo ${r1(d.Lo)} × ${r1(d.Po)} × ${r1(d.Ao)} mm`; }
 function downloadText(name, text, type) { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([text], { type })); a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000); }
-$('#boxSvg').onclick = () => { if (!S.modules.length) return; const { svg } = dieline(); downloadText(`faca-cartucho-${(fileName() || 'produto').replace(/[^\w-]+/g, '_')}.svg`, svg, 'image/svg+xml'); toast('Faca baixada (SVG em escala 1:1, mm)'); };
+const boxFile = ext => `faca-cartucho-${(fileName() || 'produto').replace(/[^\w-]+/g, '_')}.${ext}`;
+$('#boxSvg').onclick = () => { if (!S.modules.length) return; const { svg } = dieline(); downloadText(boxFile('svg'), svg, 'image/svg+xml'); toast('Faca baixada (SVG em escala 1:1, mm)'); };
+$('#boxDxf') && ($('#boxDxf').onclick = () => { if (!S.modules.length) return; downloadText(boxFile('dxf'), dielineDXF(), 'application/dxf'); toast('Faca baixada (DXF em mm: CUT, CREASE, BLEED)'); });
 $('#boxPdf').onclick = () => {
   if (!S.modules.length) return; const { svg, W, H } = dieline(); const win = window.open('', '_blank'); if (!win) return toast('Permita janelas novas (pop-ups) para abrir a faca');
   win.document.open(); win.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>Faca do cartucho</title><style>@page{size:${W}mm ${H}mm;margin:0}html,body{margin:0}svg{display:block}.bar{position:fixed;top:10px;right:10px}.bar button{font:13px system-ui;padding:7px 12px;border-radius:8px;border:1px solid #1a1a1a;background:#1a1a1a;color:#fff;cursor:pointer}@media print{.bar{display:none}}</style></head><body><div class="bar"><button onclick="print()">Salvar PDF / imprimir (escala 100%)</button></div>${svg}</body></html>`); win.document.close();
