@@ -481,7 +481,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-16.furo-drop';
+const BUILD = '2026-11-16.busca-troca';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -5581,7 +5581,10 @@ function buildInto(product, S, explodeAmt = 0) {
     // Sobretampa (desce vestindo as peças de baixo, como a do stick) é casca fina, não
     // bloco maciço: com a espessura de bloco, o que está dentro aparecia torto, cortado na diagonal.
     const overcap = !m0.vol && (m0.gap || 0) < -0.4 * m0.h;
-    const thick = !isGlass(finM) || overcap ? undefined : r1(!m0.vol ? clamp(Math.min(m.W, m.D) * 0.35, 4, 18) : clamp(Math.min(m.W, m.D) * 0.3, 4, 30));
+    // tampa que veste a válvula tem o oco dela por dentro: lente bem mais fina (com a espessura de
+    // peça maciça a válvula aparecia ampliada, abrindo em sino, como se fosse enorme)
+    const ocaV = !m0.vol && vestsValve(S, idx);
+    const thick = !isGlass(finM) || overcap ? undefined : r1(!m0.vol ? (ocaV ? clamp(Math.min(m.W, m.D) * 0.12, 3, 6) : clamp(Math.min(m.W, m.D) * 0.35, 4, 18)) : clamp(Math.min(m.W, m.D) * 0.3, 4, 30));
     const own = ms.own ? ms : S, cheio = m0.vol && m0.liq && isFrost(finM) ? (m0.liqColor || '#ffffff') : false; // cor do conteúdo: tinge de leve a base jateada
     const look = own.difus != null || own.ior != null || cheio ? { dif: own.difus, ior: own.ior, cheio } : null;
     // Tampa jateada/fosca vestindo a válvula: só a casca de fora. A parede da cavidade
@@ -7292,6 +7295,7 @@ function adaptSwap(old, nw, label) {
 }
 // Posição do scroll da grade de troca (não volta ao topo a cada clique).
 let swapScroll = { key: '', top: 0 };
+let swapQ = ''; // texto da busca na troca (fica entre uma troca e outra)
 const swapMemo = new Map(); // uid|tipo → peça como estava antes de ser trocada
 function renderSwap(ed, m) {
   const [label, keys] = categoryOf(m), cur = typeOf(m);
@@ -7302,13 +7306,18 @@ function renderSwap(ed, m) {
   if (closure && label === 'Válvula') groups.reverse(); // a família da peça clicada vem primeiro
   const box = document.createElement('details'); box.open = store.get('shape.swapOpen2', true) !== false; // aberto: clicou na peça, já pode trocar a forma (fecha se a pessoa fechar)
   box.addEventListener('toggle', () => store.set('shape.swapOpen2', box.open));
-  box.innerHTML = `<summary style="text-transform:none;letter-spacing:0;font-size:12px">${closure ? 'Trocar por outra tampa ou válvula' : `Trocar por outro(a) ${label.toLowerCase()}`}</summary><div class="gallery swap"></div>`;
-  const grid = box.querySelector('.gallery');
+  box.innerHTML = `<summary style="text-transform:none;letter-spacing:0;font-size:12px">${closure ? 'Trocar por outra tampa ou válvula' : `Trocar por outro(a) ${label.toLowerCase()}`}</summary><input type="search" class="swapSearch" placeholder="Buscar peça pelo nome (ex.: válvula, Aramis, pump)…"><div class="gallery swap"></div>`;
+  const grid = box.querySelector('.gallery'), q0 = box.querySelector('.swapSearch');
+  // Busca: filtra os cartões pelo nome (sem acento/maiúscula) e esconde os grupos sem resultado
+  const filt = () => { const q = norm(q0.value.trim()); swapQ = q0.value;
+    grid.querySelectorAll('.card').forEach(c => { c.style.display = !q || norm(c.title + ' ' + (c.dataset.grp || '')).includes(q) ? '' : 'none'; });
+    grid.querySelectorAll('h4').forEach(h => { let n = h.nextElementSibling, any = false; while (n && n.tagName !== 'H4') { if (n.style.display !== 'none') any = true; n = n.nextElementSibling; } h.style.display = any ? '' : 'none'; }); };
+  q0.value = swapQ; q0.oninput = filt;
   for (const [gTitle, gKeys] of groups) {
   if (gTitle) { const h = document.createElement('h4'); h.textContent = gTitle; grid.appendChild(h); }
   for (const k of gKeys) {
     const card = document.createElement('div');
-    card.className = 'card' + (k === cur ? ' on' : ''); card.title = LIB[k].name;
+    card.className = 'card' + (k === cur ? ' on' : ''); card.title = LIB[k].name; card.dataset.grp = gTitle || label;
     // nome curto no cartão ("Corpo Boston (farmacêutico)" → "Boston"): a família já está no título; o nome inteiro fica na dica
     const fam = CATS.find(([, ks]) => ks.includes(k))?.[0] || label;
     const short = LIB[k].name.replace(new RegExp('^' + fam + '\\s+', 'i'), '').replace(/\s*\([^)]*\)\s*$/, '');
@@ -7333,7 +7342,7 @@ function renderSwap(ed, m) {
     queueThumb(card.querySelector('img'), { color: BEIGE, finish: 'fosco', modules: [M(k)] });
   }
   }
-  ed.appendChild(box);
+  ed.appendChild(box); if (swapQ) filt();
   if (swapScroll.key !== skey) swapScroll = { key: skey, top: 0 };
   grid.scrollTop = swapScroll.top;
   grid.addEventListener('scroll', () => { swapScroll.top = grid.scrollTop; });
