@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF } from './incom.js?v=2026-11-16.incom12';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-16.bandejas2';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -560,7 +560,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-16.batom';
+const BUILD = '2026-11-16.bandejas2';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -5581,32 +5581,85 @@ function updateUndoBtns() {
 const godeMat = new THREE.MeshStandardMaterial({ color: '#d2bea6', roughness: 0.96 }), godeRim = new THREE.MeshStandardMaterial({ color: '#bdb0a0', roughness: 0.45 });
 const mirrorMat = new THREE.MeshStandardMaterial({ color: '#ffffff', metalness: 1, roughness: 0.04 });
 function localBox(objs) { const bb = new THREE.Box3(); objs.forEach(o => { o.updateMatrix(); o.geometry.computeBoundingBox(); bb.union(o.geometry.boundingBox.clone().applyMatrix4(o.matrix)); }); return bb; }
+// Tampa de compacto oca por baixo: parede de 1,8 mm e teto de 1,4 mm (era um bloco maciço)
+const OCO = { wall: 1.8, top: 1.4 };
+function ocoGeo(g, m, y0) {
+  g.computeBoundingBox(); const b = g.boundingBox, w = b.max.x - b.min.x - 2 * OCO.wall, d = b.max.z - b.min.z - 2 * OCO.wall, hh = m.h - OCO.top;
+  if (!(w > 2 && d > 2 && hh > 0.5)) return g;
+  const cx = (b.max.x + b.min.x) / 2, cz = (b.max.z + b.min.z) / 2;
+  const cut = m.sides ? new RoundedBoxGeometry(w, hh + 1, d, 3, Math.min(3, Math.min(w, d) * (m.sideR || 0.1) * 0.5 + 0.6)) : new THREE.CylinderGeometry(Math.min(w, d) / 2, Math.min(w, d) / 2, hh + 1, 96);
+  cut.translate(cx, y0 - 1 + (hh + 1) / 2, cz);
+  const ni = x => { const y = x.index ? x.toNonIndexed() : x; for (const k in y.attributes) if (k !== 'position' && k !== 'normal') y.deleteAttribute(k); return y; };
+  let [outer, inner] = cutHole(g, cut); if (outer === g) return g;
+  g = mergeGeometries([ni(outer), ni(inner)]) || g;
+  if (m.visor) { // janela no teto (visor): moldura de ~12% da largura em volta
+    const v = visorBox(m, w + 2 * OCO.wall, d + 2 * OCO.wall), win = m.sides ? new RoundedBoxGeometry(v.w, OCO.top + 3, v.d, 3, Math.min(4, Math.min(v.w, v.d) * 0.12)) : new THREE.CylinderGeometry(v.w / 2, v.w / 2, OCO.top + 3, 96);
+    win.translate(cx, y0 + m.h - OCO.top / 2, cz);
+    [outer, inner] = cutHole(g, win); if (outer !== g) g = mergeGeometries([ni(outer), ni(inner)]) || g;
+  }
+  return g;
+}
+const visorBox = (m, w, d) => { const f = Math.max(4.5, Math.min(w, d) * 0.12); return { w: w - 2 * f, d: m.sides ? d - 2 * f : w - 2 * f }; };
+// Abertura para o dedo: concha oval cortada na borda da frente (em cima da base, embaixo da tampa)
+function dedoGeo(g, o, y0, h) {
+  g.computeBoundingBox(); const b = g.boundingBox, zf = b.max.z, cx = (b.max.x + b.min.x) / 2;
+  const cut = new THREE.SphereGeometry(1, 64, 32); cut.scale(o.w / 2, o.h, o.d * 1.6); cut.translate(cx, y0 + (o.top ? h : 0), zf + o.d * 0.6);
+  const [outer, inner] = cutHole(g, cut); if (outer === g) return g;
+  const ni = x => { const y = x.index ? x.toNonIndexed() : x; for (const k in y.attributes) if (k !== 'position' && k !== 'normal') y.deleteAttribute(k); return y; };
+  return mergeGeometries([ni(outer), ni(inner)]) || g;
+}
 function compactParts(product, L, S0) {
   const mine = idx => product.children.filter(o => o.isMesh && o.userData.idx === idx);
   const add = (geo, mat, idx, name, x, y, z) => { const o = new THREE.Mesh(geo, mat); o.position.set(x, y, z); o.userData.idx = idx; o.name = `${String(idx + 1).padStart(2, '0')}_${name}`; o.castShadow = o.receiveShadow = true; product.add(o); };
   L.forEach(({ m, idx, y0 }) => {
-    if (m.hidden || !(m.godes || m.espelho)) return;
+    if (m.hidden || !(m.godes || m.espelho || m.visor)) return;
     const objs = mine(idx); if (!objs.length) return;
     const bb = localBox(objs), w = bb.max.x - bb.min.x, d = bb.max.z - bb.min.z, cx = (bb.max.x + bb.min.x) / 2, cz = (bb.max.z + bb.min.z) / 2;
     const round = !m.sides, mg = Math.max(3.5, Math.min(w, d) * 0.09);
     if (m.godes) {
-      const { rows, rect } = m.godes, top = y0 + m.h, one = rows.length === 1 && rows[0] === 1;
+      const { rows, rect } = m.godes, top = y0 + m.h, one = rows.length === 1 && rows[0] === 1, wells = [];
       const aw = round && !one ? Math.min(w, d) * 0.68 : w - 2 * mg, ad = round && !one ? Math.min(w, d) * 0.68 : d - 2 * mg, ch = ad / rows.length;
+      if (m.godes.cells) { // contorno de cada godê do desenho da bandeja (Quinteto em cata-vento, 6 + 1…)
+        const ar = m.godes.ar || 1, sc = Math.min((w - 2 * mg) / ar, d - 2 * mg); const TW = sc * ar, TD = sc, WD = 1.8;
+        const shapeOf = (c, inset) => { const P = c.map(([x, y]) => [x * TW, y * TD]), cx0 = P.reduce((t, q) => t + q[0], 0) / P.length, cy0 = P.reduce((t, q) => t + q[1], 0) / P.length;
+          const sh = new THREE.Shape(); P.forEach(([x, y], q) => { const dx = x - cx0, dy = y - cy0, l = Math.hypot(dx, dy) || 1, k = Math.max(0.2, 1 - inset / l); const X = cx0 + dx * k, Y = cy0 + dy * k; q ? sh.lineTo(X, Y) : sh.moveTo(X, Y); }); return sh; };
+        const ext = (c, inset, hh, y) => { const g = new THREE.ExtrudeGeometry(shapeOf(c, inset), { depth: hh, bevelEnabled: false, curveSegments: 4 }); g.deleteAttribute('uv'); g.rotateX(-Math.PI / 2); g.translate(cx, y, cz); return g; };
+        m.godes.cells.forEach(c => {
+          wells.push(ext(c, 0.2, WD + 2, top - WD));
+          add(ext(c, 0.5, WD + 0.1, top - WD), godeRim, idx, 'bandeja', 0, 0, 0);
+          add(ext(c, 1.5, WD - 0.2, top - WD), godeMat, idx, 'gode', 0, 0, 0);
+        });
+      } else
       rows.forEach((cols, i) => { const cw = aw / cols; for (let j = 0; j < cols; j++) {
         const x = cx - aw / 2 + cw * (j + 0.5), z = cz - ad / 2 + ch * (i + 0.5);
+        // o godê assenta num rebaixo de 1,8 mm da base: aro (bandeja) quase rente e o pó um pouco abaixo dele
+        const WD = 1.8;
         if (rect && !one) {
-          add(new RoundedBoxGeometry(cw - 1, 0.36, ch - 1, 2, 0.6), godeRim, idx, 'bandeja', x, top + 0.18, z);
-          add(new RoundedBoxGeometry(cw - 2.4, 0.5, ch - 2.4, 2, 0.8), godeMat, idx, 'gode', x, top + 0.25, z);
+          wells.push(new RoundedBoxGeometry(cw - 0.4, WD + 2, ch - 0.4, 2, 0.8).translate(x, top - WD + (WD + 2) / 2, z));
+          add(new RoundedBoxGeometry(cw - 1, WD + 0.1, ch - 1, 2, 0.6), godeRim, idx, 'bandeja', x, top - WD + (WD + 0.1) / 2, z);
+          add(new RoundedBoxGeometry(cw - 2.4, WD - 0.2, ch - 2.4, 2, 0.8), godeMat, idx, 'gode', x, top - WD + (WD - 0.2) / 2, z);
         } else {
           const r = (one ? Math.min(aw, ad) : Math.min(cw, ch)) / 2 - 0.5;
-          add(new THREE.CylinderGeometry(r, r, 0.36, 56), godeRim, idx, 'bandeja', x, top + 0.18, z);
-          add(new THREE.CylinderGeometry(r - 1.1, r - 1.1, 0.5, 56), godeMat, idx, 'gode', x, top + 0.25, z);
+          wells.push(new THREE.CylinderGeometry(r + 0.3, r + 0.3, WD + 2, 72).translate(x, top - WD + (WD + 2) / 2, z));
+          add(new THREE.CylinderGeometry(r, r, WD + 0.1, 72), godeRim, idx, 'bandeja', x, top - WD + (WD + 0.1) / 2, z);
+          add(new THREE.CylinderGeometry(r - 1.1, r - 1.1, WD - 0.2, 72), godeMat, idx, 'gode', x, top - WD + (WD - 0.2) / 2, z);
         }
       } });
+      // rebaixos cortados na base (só nas malhas da peça, não nos godês recém-postos)
+      objs.forEach(o => { let gg = o.geometry; for (const c of wells) { const [outer, inner] = cutHole(gg, c); if (outer === gg) continue;
+        const ni = x => { const y = x.index ? x.toNonIndexed() : x; for (const k in y.attributes) if (k !== 'position' && k !== 'normal') y.deleteAttribute(k); return y; };
+        gg = mergeGeometries([ni(outer), ni(inner)]) || gg; }
+        if (gg !== o.geometry) { o.geometry.dispose(); o.geometry = gg; } });
     }
-    if (m.espelho) { // na face de baixo da tampa (fechada, fica escondido dentro da base)
-      const g = round ? new THREE.CircleGeometry(Math.min(w, d) / 2 - mg, 64) : new THREE.PlaneGeometry(w - 2 * mg, d - 2 * mg);
-      g.rotateX(Math.PI / 2); add(g, mirrorMat, idx, 'espelho', cx, y0 - 0.04, cz);
+    if (m.visor && m.oco) { // placa transparente da janela, por dentro do teto
+      const v = visorBox(m, w, d), pw = v.w + 3, pd = v.d + 3;
+      const g = m.sides ? new RoundedBoxGeometry(pw, 1, pd, 2, Math.min(4, Math.min(pw, pd) * 0.12)) : new THREE.CylinderGeometry(pw / 2, pw / 2, 1, 96);
+      add(g, clearMat, idx, 'visor', cx, y0 + m.h - OCO.top - 0.5, cz);
+    }
+    if (m.espelho) { // no teto do oco da tampa, virado para baixo (fechada, fica escondido dentro dela)
+      const ins = m.oco ? OCO.wall + 1 : mg, yM = m.oco ? y0 + m.h - OCO.top - 0.04 : y0 - 0.04;
+      const g = round ? new THREE.CircleGeometry(Math.min(w, d) / 2 - ins, 64) : new THREE.PlaneGeometry(w - 2 * ins, d - 2 * ins);
+      g.rotateX(Math.PI / 2); add(g, mirrorMat, idx, 'espelho', cx, yM, cz);
     }
   });
   const aberto = !!S0?.aberto;
@@ -5627,7 +5680,7 @@ function compactParts(product, L, S0) {
     if (m.hidden || !m.capa) return;
     const objs = mine(idx); if (!objs.length) return;
     const rest = localBox(product.children.filter(o => o.isMesh && o.userData.idx !== idx)), bb = localBox(objs), c = bb.getCenter(new THREE.Vector3());
-    const T = new THREE.Matrix4().makeTranslation(c.x, c.y, c.z).multiply(new THREE.Matrix4().makeRotationZ(-Math.PI / 2)).multiply(new THREE.Matrix4().makeTranslation(-c.x, -c.y, -c.z));
+    const T = new THREE.Matrix4().makeTranslation(c.x, c.y, c.z).multiply(new THREE.Matrix4().makeRotationY(-Math.PI / 5)).multiply(new THREE.Matrix4().makeRotationZ(Math.PI / 2)).multiply(new THREE.Matrix4().makeTranslation(-c.x, -c.y, -c.z));
     objs.forEach(o => o.applyMatrix4(T));
     const b2 = localBox(objs), dx = rest.max.x + 6 - b2.min.x, dy = rest.min.y - b2.min.y;
     objs.forEach(o => { o.position.x += dx; o.position.y += dy; o.updateMatrixWorld(true); });
@@ -5682,6 +5735,8 @@ function buildInto(product, S, explodeAmt = 0) {
     // gargalo sobre corpo de vidro de outro tipo (perfil, placa): entra só 1 mm (senão aparecia dentro)
     if (m0.kind === 'gargalo' && !under && L[i - 1]?.m.vol && isGlass(L[i - 1].m.own ? L[i - 1].m.finish : S.finish)) m = { ...m, embed: Math.min(m.embed ?? 8, 1) };
     let g = moduleGeo(m, y0, { logoQuality: hasLogo, body: under }); if (!g) return;
+    if (m0.oco) g = ocoGeo(g, m, y0);
+    if (m0.dedo) g = dedoGeo(g, m0.dedo, y0, m.h);
     if (vestsValve(S, idx) && L[i - 1]?.idx === idx - 1) { // cavidade no tamanho da válvula (folga de 0,5 mm)
       const vg = sprayGeo(L[i - 1].m, L[i - 1].y0, { lo: true }); vg.computeBoundingBox(); const vb = vg.boundingBox;
       const vr = Math.max(Math.abs(vb.min.x), Math.abs(vb.max.x), Math.abs(vb.min.z), Math.abs(vb.max.z)) + 0.5;
@@ -8237,7 +8292,8 @@ function godesOf(r) {
   const n = r.n, rect = /Flat|Big|Retangular/.test(n) && !/Redondo/.test(n);
   const rows = /Dez/.test(n) ? [5, 5] : /6 \+ 1/.test(n) ? [4, 3] : /Sexteto/.test(n) ? [3, 3] : /Quinteto/.test(n) ? [3, 2]
     : /Quarteto|Big 4/.test(n) ? [2, 2] : /Big 9/.test(n) ? [3, 3, 3] : /Trio/.test(n) ? [3] : /Duo/.test(n) ? [2] : [1];
-  return { rows, rect };
+  const tr = INCOM_TRAYS[r.k];
+  return tr ? { rows, rect, cells: tr.c, ar: tr.ar } : { rows, rect };
 }
 // Produtos do catálogo Incom 2026 como modelos prontos (biblioteca Incom): medidas externas totais do
 // fornecedor; base × tampa e detalhes aproximados com as peças do OUTBOX. O que fica dentro (conta-gotas,
@@ -8293,8 +8349,12 @@ function incomProduct(r) {
   const inner = Math.min(W, D) / 2;
   let ms;
   switch (r.t) {
-    case 'cq': case 'cqr': { const s0 = sq(r.t === 'cqr' ? 0.22 : 0.04); ms = [P('Base', W, D, H * 0.55, { ...s0, rTop: 0.6, godes: godesOf(r) }), P('Tampa', W, D, H * 0.45, { ...s0, rBot: 0.6, rTop: 1.2, hinge: true, abre: 0, espelho: !/Visor|Crystal/i.test(r.n + r.mat) })]; break; }
-    case 'cr': ms = [P('Base', W, D, H * 0.55, { rBot: 1.5, rTop: 0.6, godes: godesOf(r) }), P('Tampa', W, D, H * 0.45, { rBot: 0.6, rTop: 2, hinge: true, abre: 0, espelho: !/Visor|Crystal/i.test(r.n + r.mat) })]; break;
+    case 'cq': case 'cqr': case 'cr': {
+      // tampa oca (casca) e base com rebaixo do godê; abertura para o dedo na frente, metade na borda
+      // de cima da base e metade na de baixo da tampa
+      const s0 = r.t === 'cr' ? {} : sq(r.t === 'cqr' ? 0.22 : 0.04), hb = H * 0.55, ht = H * 0.45, nw = r1(Math.min(22, Math.min(W, D) * 0.32));
+      ms = [P('Base', W, D, hb, { ...s0, rBot: r.t === 'cr' ? 1.5 : 1, rTop: 0.6, godes: godesOf(r), dedo: { top: true, w: nw, h: r1(Math.min(3.5, hb * 0.45)), d: 1.6 } }),
+        P('Tampa', W, D, ht, { ...s0, rBot: 0.6, rTop: r.t === 'cr' ? 2 : 1.2, hinge: true, abre: 0, oco: true, visor: /Visor|Quinteto/i.test(r.n + r.mat), espelho: !/Visor|Crystal|Quinteto/i.test(r.n + r.mat), dedo: { top: false, w: nw, h: r1(Math.min(2.6, ht * 0.4)), d: 1.1 } })]; break; }
     case 'cg': case 'cgt': case 'cgr': case 'dsq': case 'bulb': {
       const sh = r.t === 'dsq' ? sq(0.08) : {}, rb = r.t === 'bulb' ? W / 2 * 0.95 : r.t === 'cgr' ? W * 0.3 : 2, twist = /Twist/.test(r.n);
       let [f0, f1] = incomFrac(pr, [0.58, 0.63]); if (f1 < f0 + 0.01) f1 = f0 + 0.05;
@@ -8331,7 +8391,7 @@ function incomProduct(r) {
       ms = [P('Base', W, D, H * f, { ...s0, _t: [0, f] }),
         P('Tubo (mecanismo)', ws, null, hs, { rTop: 0.5, rBot: 0.3, own: true, color: '#d6d8da', finish: 'metal' }),
         P('Bala (batom)', wb, null, lb, { rTop: 0.8, rBot: 0.3, gap: r1(-(lb + 1.2)), tilt: [1, 0.55], sobe: r1(lb * 0.72), own: true, color: '#d7a99a', finish: 'brilho' }),
-        P('Tampa', W, D, hc, { ...s0, rTop: 1.5, gap: r1(-(hs - 1.2)), capa: true, _t: [f, 1] })]; break; }
+        P('Tampa', W, D, hc, { ...s0, rTop: 1.5, gap: r1(-(hs - 1.2)), capa: true, oco: true, _t: [f, 1] })]; break; }
     case 'pote': case 'potesq': { const s0 = r.t === 'potesq' ? sq(0.1) : {}, [f] = incomFrac(pr, [0.62]); ms = [P('Pote', W * 0.98, D * 0.98, H * f, { ...s0, vol: true, rBot: 3, _t: [0, f] }), P('Tampa', W, D, H * (1 - f), { ...s0, rTop: 2, _t: [f, 1] })]; break; }
     case 'stick': { const [f] = incomFrac(pr, [0.5]), bh = H * (1 - f) * 0.84; ms = [P('Base', W, D, H * f, { rBot: 2, _t: [0, f] }), P('Bastão (produto)', W * 0.78, null, bh, { rTop: W * 0.2 }), P('Tampa', W, D, H * (1 - f), { rTop: 3, gap: r1(-bh), _t: [f, 1] })]; break; }
     default: ms = [P('Corpo', W, D, H, { vol: true, _t: [0, 1] })];
