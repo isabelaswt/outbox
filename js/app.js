@@ -390,7 +390,7 @@ const hasStep = () => false; // contorno denso (0,1 mm): sem suavizar, os degrau
 // Forma vista de cima, conferida nas fotos do catálogo (o desenho técnico só mostra a frente):
 // deitada = cilindro deitado (de lado é um círculo); disco = disco em pé (espessura constante).
 const CAP_FIX = { incom_aramis: { quadTop: 0.81, quadN: 5 }, incom_cubic: { quadFrom: 0.19, quadN: 7 }, incom_bamboo: { deitada: true }, incom_golden: { disco: true }, incom_thenue: { disco: true }, incom_wheel: { disco: true },
-  incom_drop: { disco: true, Dk: 0.55, furo: { y0: 0.385, y1: 0.917, w: 0.488 } }, incom_antonov: { D: 34 }, incom_bilbao: { sides: 4, sideR: 0.35 }, incom_rams: { sides: 0 } };
+  incom_drop: { disco: true, Dk: 0.55, furo: { y0: 0.4, y1: 0.915, w: 0.47 } }, incom_antonov: { D: 34 }, incom_bilbao: { sides: 4, sideR: 0.35 }, incom_rams: { sides: 0 } };
 // Contorno do desenho técnico sem "escada": o traço extraído do PDF oscila uns centésimos e,
 // ligado em retas, a luz marcava cada mudança de inclinação como uma faixa. Média ponderada curta
 // (~0,3 mm na altura) e reamostragem fina (0,15 mm): degraus e anéis ficam, com o arredondado de molde.
@@ -441,8 +441,11 @@ function incomShape(r) {
   polyFit(o);
   o.W0 = o.W;
   o.prof = alignSteps(pr.p).map(([t, l, rr]) => { const a = (l + rr) / 2;
-    const b = fx.deitada ? Math.sqrt(Math.max(0.0004, 1 - (2 * t - 1) ** 2)) : fx.disco ? 1 : a;
-    return [t, a, b, fx.deitada ? 8 : fx.disco ? 4 : 2, r1((rr - l) / 2 * o.W / 2), 0]; });
+    // disco em pé: espessura constante, mas perto das pontas (largura menor que a espessura) a seção
+    // vira redonda — sem o degrau de "ombro" em cima e embaixo; a borda fica toda abaulada
+    const bD = fx.disco ? Math.min(1, a * o.W / o.D) : 0, nD = fx.disco ? 2 + 2 * clamp((a * o.W / o.D - 1) / 0.6, 0, 1) : 0;
+    const b = fx.deitada ? Math.sqrt(Math.max(0.0004, 1 - (2 * t - 1) ** 2)) : fx.disco ? bD : a;
+    return [t, a, b, fx.deitada ? 8 : fx.disco ? nD : 2, r1((rr - l) / 2 * o.W / 2), 0]; });
   o.smoothProf = false; if (pr.d) o.topDip = r1(pr.d * r.H); if (pr.tl) o.tilt = pr.tl;
   // Bloco de cima quadrado (de quinas arredondadas) com prato radial: a curva do topo vista de frente
   if (fx.quadTop) { o.prof.forEach(q => { if (q[0] >= fx.quadTop) q[3] = fx.quadN || 5; }); o.quadTop = fx.quadTop; o.quadDish = o.topDip || 1.4; o.topDip = 0.02; }
@@ -481,7 +484,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-16.busca-troca';
+const BUILD = '2026-11-16.furo-drop2';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -1335,10 +1338,12 @@ function quadDish(g, y0, m) {
 // Furo vazado em gota atravessando a peça de frente a trás (Drop): ponta em cima, redondo embaixo.
 // furo = { y0, y1, w } em frações da altura e da largura (medidas no desenho técnico).
 function furoGota(g, y0, m) {
-  const f = m.furo, yb = y0 + m.h * f.y0, yt = y0 + m.h * f.y1, rr = m.W * f.w / 2, yc = yb + rr, d = yt - yc, cx = m.ox || 0;
-  if (!(d > rr * 1.05)) return g;
-  const ac = Math.acos(rr / d), aR = Math.PI / 2 - ac, aL = Math.PI / 2 + ac, sh = new THREE.Shape();
-  sh.moveTo(cx, yt); sh.lineTo(cx + rr * Math.cos(aR), yc + rr * Math.sin(aR)); sh.absarc(cx, yc, rr, aR, aL - 2 * Math.PI, true); sh.lineTo(cx, yt);
+  // lágrima: x = sen t · sen^k(t/2), y = cos t — ponta levemente arredondada (k < 1), base redonda
+  const f = m.furo, yb = y0 + m.h * f.y0, yt = y0 + m.h * f.y1, cx = m.ox || 0, k = 0.62, N = 160, P = [];
+  let mx = 0; for (let i = 0; i <= N; i++) { const t = i / N * 2 * Math.PI; mx = Math.max(mx, Math.abs(Math.sin(t) * Math.pow(Math.abs(Math.sin(t / 2)), k))); }
+  const sx = m.W * f.w / 2 / mx, sy = (yt - yb) / 2, yc = (yt + yb) / 2, sh = new THREE.Shape();
+  for (let i = 0; i < N; i++) { const t = i / N * 2 * Math.PI; P.push(new THREE.Vector2(cx + sx * Math.sin(t) * Math.pow(Math.abs(Math.sin(t / 2)), k), yc + sy * Math.cos(t))); }
+  sh.setFromPoints(P); sh.closePath();
   const dep = Math.max(m.W, m.D) + 10, cut = new THREE.ExtrudeGeometry(sh, { depth: dep, bevelEnabled: false, curveSegments: 48 }); cut.translate(0, 0, -dep / 2); cut.deleteAttribute('uv');
   const ud = g.userData, [o, i] = cutHole(g, cut); if (o === g) return g;
   const out = mergeGeometries([o, i]) || g; out.userData = ud; return out;
