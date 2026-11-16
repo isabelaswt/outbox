@@ -18,8 +18,8 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION } from 'three-bvh-csg';
-import { icon } from './icons.js?v=2026-11-16.incom8';
-import { INCOM_CAPS, INCOM_PRODUCTS } from './incom.js?v=2026-11-16.incom8';
+import { icon } from './icons.js?v=2026-11-16.incom9';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF } from './incom.js?v=2026-11-16.incom9';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -386,7 +386,16 @@ const newUid = () => Math.random().toString(36).slice(2, 10);
 // Converte para a medida externa sair igual à do fornecedor (medido na geometria: c + (1 − c)·arredondamento).
 function polyFit(o) { const n = o.sides || 0; if (n === 4 || n === 8) { const c = Math.cos(Math.PI / n), f = c + (1 - c) * (o.sideR || 0); o.W = r1(o.W / f); o.D = r1(o.D / f); } return o; }
 // Tampas reais da Incom (catálogo 2026): medidas do fornecedor, forma aproximada com as peças do OUTBOX
-function incomShape(r) { return polyFit(incomShape0(r)); }
+function incomShape(r) {
+  const base = polyFit(incomShape0(r)), pr = INCOM_CAP_PROF[r.k]; if (!pr) return base;
+  // Contorno real do desenho técnico, girado no torno (lados retos continuam quando a tampa é
+  // quadrada/sextavada/oitavada). Lado esquerdo e direito diferentes viram deslocamento do centro.
+  const W = pr.W ?? r.W, D = r.D ?? W, o = { W, D, h: r.H, rTop: 0.5, rBot: 0.3, sides: base.sides || 0, sideR: base.sideR ?? 0.1 };
+  polyFit(o);
+  o.W0 = o.W; o.smoothProf = false;
+  o.prof = pr.p.map(([t, l, rr]) => { const a = (l + rr) / 2; return [t, a, a, 2, r1((rr - l) / 2 * o.W / 2), 0]; });
+  return o;
+}
 function incomShape0(r) {
   const W = r.W, D = r.D ?? r.W, h = r.H, base = r.b ? Math.min(100, r.b / W * 100) : null, P = { W, D, h, rTop: 1.2, rBot: 0.8 };
   const quad = { sides: 4, sideR: 0.1 }, oct = { sides: 8, sideR: 0.04 };
@@ -416,7 +425,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-16.incom8';
+const BUILD = '2026-11-16.incom9';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -1979,7 +1988,7 @@ function moduleGeo(m0, y0, opts = {}) {
       const nr = Math.max(0, m.neckR - (inset ? S.wall : 0));
       if (a > nr) a -= (a - nr) * k; if (b > nr) b -= (b - nr) * k; n = n + (2 - n) * k;
     }
-    return { y: y0 + lift + ly, ly, a: Math.max(a - g, 0.05), b: Math.max(b - g, 0.05), n, cx: q.cx * (1 - (sh && ly > sh.y0 ? clamp((ly - sh.y0) / sh.L, 0, 1) : 0)), cz: q.cz * (1 - (sh && ly > sh.y0 ? clamp((ly - sh.y0) / sh.L, 0, 1) : 0)), lobes: m.lobes | 0, lobeK: m.lobes >= 3 ? clamp(m.lobeD / (Math.min(m.W, m.D) / 2), 0, 0.9) : 0 }; // gomos também nas peças de perfil (STL convertido, corpos medidos)
+    return { y: y0 + lift + ly, ly, sides: m.sides | 0, round: m.sideR, a: Math.max(a - g, 0.05), b: Math.max(b - g, 0.05), n, cx: q.cx * (1 - (sh && ly > sh.y0 ? clamp((ly - sh.y0) / sh.L, 0, 1) : 0)), cz: q.cz * (1 - (sh && ly > sh.y0 ? clamp((ly - sh.y0) / sh.L, 0, 1) : 0)), lobes: m.lobes | 0, lobeK: m.lobes >= 3 ? clamp(m.lobeD / (Math.min(m.W, m.D) / 2), 0, 0.9) : 0 }; // gomos também nas peças de perfil (STL convertido, corpos medidos)
   });
   if (!lo && !inset) for (const b of m.ribs || []) kmax = Math.max(kmax, b.k || 0);
   if (rings.length < 2) return null;
@@ -7860,6 +7869,7 @@ INCOM_PRODUCTS.forEach(r => { PRESETS[`Incom ${r.n} (${r.c.toLowerCase()})`] = i
 // não conta: a cavidade abre por baixo, como na tampa de verdade.
 function capHalfAt(c, y) {
   const t = clamp(y / c.h, 0, 1), n = c.sides || 0, face = n ? Math.cos(Math.PI / n) : 1;
+  if (c.prof?.length) { const q = profAt(c, clamp(y, 0, c.h)); return Math.min(q.a, q.b) * face - Math.abs(q.cx); }
   let w = Math.min(c.W, c.D ?? c.W) / 2 * face * ((c.taperB ?? 100) + ((c.taper ?? 100) - (c.taperB ?? 100)) * t) / 100;
   if (c.bulge) w *= 1 + c.bulge / 100 * Math.sin(Math.PI * t);
   const R = Math.min(c.rTop || 0, w), dy = y - (c.h - R); if (R > 0 && dy > 0) w -= R - Math.sqrt(Math.max(0, R * R - dy * dy));
