@@ -18,7 +18,7 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION } from 'three-bvh-csg';
-import { icon } from './icons.js?v=2026-11-16.modo-gizmo';
+import { icon } from './icons.js?v=2026-11-16.cartucho';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -391,7 +391,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-16.modo-gizmo';
+const BUILD = '2026-11-16.cartucho';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -4312,6 +4312,7 @@ function build() {
   buildInto(product, S, explode ? 18 : 0);
   applyLabelsTo(product, S);
   buildLineup();
+  buildBox();
   // líquido transparente e qualquer outra peça que transmite: mesma regra do vidro (sem tracejado)
   [product, sideRoot].forEach(r => r.traverse(o => { const mt = o.material; if (!o.isMesh || Array.isArray(mt) || !(mt?.transmission > 0) || mt.depthWrite) return; halfFront(mt); if (!o.onBeforeRender?.glass) glassAxis(o); }));
   buildStage();
@@ -5537,6 +5538,7 @@ function buildInto(product, S, explodeAmt = 0) {
 function bounds() { return new THREE.Box3().setFromObject(product); }
 function boundsAll() {
   const b = bounds(); sideRoot.children.forEach(g => b.union(new THREE.Box3().setFromObject(g)));
+  if (boxRoot.visible && boxRoot.children.length) b.union(new THREE.Box3().setFromObject(boxRoot)); // cartucho ao lado
   // Pedestal, bloco, degraus e arco entram no enquadramento (o fundo infinito não).
   if (S.scene?.cena && S.scene.cena !== 'infinito') stage.children.forEach(o => b.union(new THREE.Box3().setFromObject(o)));
   return b;
@@ -5561,6 +5563,97 @@ function buildLineup() {
     const p = it.pos; if (Array.isArray(p)) { g.position.x += p[0] || 0; g.position.z += p[1] || 0; g.position.y += Math.max(0, p[2] || 0); } });
   groups.forEach((g, i) => applyLogosTo(g, S.side[i], () => g.parent === sideRoot));
 }
+// ───────────────────────── caixa (cartucho) ─────────────────────────
+// Cartucho tuck reverso sob medida: medidas internas = produto (de pé) + folga. Aparece em
+// 3D ao lado do frasco e gera a faca 1:1 (corte cheio, vinco tracejado) em SVG e PDF.
+const BOX0 = { on: false, folga: 1.5, folgaH: 2, cartao: 0.45, cor: '#f4f1ea', lingua: 15, cola: 15 };
+const boxOf = () => ({ ...BOX0, ...(S.caixa || {}) });
+const boxRoot = new THREE.Group(); boxRoot.name = 'caixa'; scene.add(boxRoot);
+function productSize() {
+  const q = product.quaternion.clone(), p = product.position.clone(); product.quaternion.identity(); product.position.set(0, 0, 0); product.updateMatrixWorld(true);
+  const b = new THREE.Box3(); product.children.forEach(o => { if (o.userData.main || o.userData.liquid === undefined) b.union(new THREE.Box3().setFromObject(o)); });
+  product.quaternion.copy(q); product.position.copy(p); product.updateMatrixWorld(true);
+  const z = b.getSize(new THREE.Vector3()); return { W: z.x, D: z.z, H: z.y };
+}
+function boxDims() { const c = boxOf(), z = productSize(), t = c.cartao;
+  const L = r1(z.W + 2 * c.folga), P = r1(z.D + 2 * c.folga), A = r1(z.H + c.folgaH);
+  return { c, t, L, P, A, Lo: L + 2 * t, Po: P + 2 * t, Ao: A + 2 * t }; }
+function buildBox() {
+  boxRoot.children.slice().forEach(o => { o.geometry?.dispose(); boxRoot.remove(o); });
+  const c = boxOf(); boxRoot.visible = !!c.on; if (!c.on || !S.modules.length) return;
+  const d = boxDims();
+  const mat = new THREE.MeshStandardMaterial({ color: c.cor, roughness: 0.82, metalness: 0 });
+  const g = new RoundedBoxGeometry(d.Lo, d.Ao, d.Po, 2, Math.min(0.8, d.Lo / 20));
+  const m = new THREE.Mesh(g, mat); m.castShadow = true; m.receiveShadow = true; m.name = 'cartucho'; boxRoot.add(m);
+  // vinco da tampa de cima (língua) e da aba de cola: linhas finas para ler como cartucho
+  const lm = new THREE.LineBasicMaterial({ color: new THREE.Color(c.cor).multiplyScalar(0.72) });
+  const e = 0.05, y1 = d.Ao / 2 - 0.02, pts = [new THREE.Vector3(-d.Lo / 2, y1, -d.Po / 2 - e), new THREE.Vector3(d.Lo / 2, y1, -d.Po / 2 - e), new THREE.Vector3(d.Lo / 2, y1, d.Po / 2 + e), new THREE.Vector3(-d.Lo / 2, y1, d.Po / 2 + e)];
+  boxRoot.add(new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(pts), lm));
+  const b = bounds(); sideRoot.children.forEach(o => b.union(new THREE.Box3().setFromObject(o)));
+  const x = (b.isEmpty() ? 0 : b.max.x) + (S.gap || 25) + d.Lo / 2;
+  boxRoot.position.set(x, d.Ao / 2, 0);
+}
+// Faca: tudo em mm. Painéis: cola · verso · lateral · frente · lateral. Em cima: tampa no verso e
+// abas de pó nas laterais; embaixo: tampa na frente e abas de pó.
+function dieline() {
+  const d = boxDims(), c = d.c, t = d.t, Lw = r1(d.L + t), Pw = r1(d.P + t), Ah = r1(d.A + t), T = Math.min(c.lingua, Pw * 0.9), g = c.cola, m = 12;
+  const dh = r1(Math.min(Pw - 1.5, Lw * 0.55)), r = Math.min(T * 0.6, 7);
+  const x0 = m, xA = x0 + g, xB = xA + Lw, xC = xB + Pw, xD = xC + Lw, xE = xD + Pw;
+  const yTop = m + Pw + T + 2, yBot = yTop + Ah, W = xE + m, H = yBot + Pw + T + 2 + m + 14;
+  const f = n => (Math.round(n * 100) / 100).toString();
+  const P = []; const M = (x, y) => P.push(`M${f(x)} ${f(y)}`), Lt = (x, y) => P.push(`L${f(x)} ${f(y)}`), Q = (cx, cy, x, y) => P.push(`Q${f(cx)} ${f(cy)} ${f(x)} ${f(y)}`);
+  // contorno de corte (sentido horário a partir da cola)
+  M(xA, yTop); Lt(xA, yTop - Pw); // tampa de cima (verso)
+  Lt(xA + 1.5, yTop - Pw); Lt(xA + 1.5, yTop - Pw - T + r); Q(xA + 1.5, yTop - Pw - T, xA + 1.5 + r, yTop - Pw - T);
+  Lt(xB - 1.5 - r, yTop - Pw - T); Q(xB - 1.5, yTop - Pw - T, xB - 1.5, yTop - Pw - T + r); Lt(xB - 1.5, yTop - Pw); Lt(xB, yTop - Pw); Lt(xB, yTop);
+  Lt(xB + 1, yTop - dh); Lt(xC - 5, yTop - dh); Lt(xC, yTop - dh * 0.35); Lt(xC, yTop); // aba de pó
+  Lt(xD, yTop); // frente: reta em cima
+  Lt(xD, yTop - dh * 0.35); Lt(xD + 5, yTop - dh); Lt(xE - 1, yTop - dh); Lt(xE, yTop); // aba de pó
+  Lt(xE, yBot); // lateral direita
+  Lt(xE - 1, yBot + dh); Lt(xD + 5, yBot + dh); Lt(xD, yBot + dh * 0.35); Lt(xD, yBot); // aba de pó de baixo
+  Lt(xD, yBot + Pw); Lt(xD - 1.5, yBot + Pw); Lt(xD - 1.5, yBot + Pw + T - r); Q(xD - 1.5, yBot + Pw + T, xD - 1.5 - r, yBot + Pw + T); // tampa de baixo (frente)
+  Lt(xC + 1.5 + r, yBot + Pw + T); Q(xC + 1.5, yBot + Pw + T, xC + 1.5, yBot + Pw + T - r); Lt(xC + 1.5, yBot + Pw); Lt(xC, yBot + Pw); Lt(xC, yBot);
+  Lt(xC, yBot + dh * 0.35); Lt(xC - 5, yBot + dh); Lt(xB + 1, yBot + dh); Lt(xB, yBot); // aba de pó
+  Lt(xA, yBot); // verso: reta embaixo
+  Lt(x0, yBot - 6); Lt(x0, yTop + 6); Lt(xA, yTop); // aba de cola
+  const cut = P.join(' ') + ' Z';
+  const V = []; const seg = (a, b, c2, e2) => V.push(`M${f(a)} ${f(b)} L${f(c2)} ${f(e2)}`);
+  [xA, xB, xC, xD].forEach(x => seg(x, yTop, x, yBot)); // vincos verticais
+  seg(xA, yTop, xB, yTop); seg(xB, yTop, xC, yTop); seg(xD, yTop, xE, yTop); seg(xA, yTop - Pw, xB, yTop - Pw); // em cima
+  seg(xB, yBot, xC, yBot); seg(xC, yBot, xD, yBot); seg(xD, yBot, xE, yBot); seg(xC, yBot + Pw, xD, yBot + Pw); // embaixo
+  const lab = (x, y, txt, s = 4) => `<text x="${f(x)}" y="${f(y)}" font-size="${s}" text-anchor="middle" fill="#9a9a9a" font-family="Helvetica, Arial, sans-serif">${txt}</text>`;
+  const ym = (yTop + yBot) / 2, name = (fileName() || S.name || 'Produto').replace(/[<&>]/g, '');
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${f(W)}mm" height="${f(H)}mm" viewBox="0 0 ${f(W)} ${f(H)}">
+<rect width="100%" height="100%" fill="#fff"/>
+<path d="${cut}" fill="none" stroke="#e4002b" stroke-width="0.25"/>
+<path d="${V.join(' ')}" fill="none" stroke="#0057b8" stroke-width="0.25" stroke-dasharray="2 1.2"/>
+${lab((x0 + xA) / 2, ym, 'COLA', 3)}${lab((xA + xB) / 2, ym, 'VERSO')}${lab((xB + xC) / 2, ym, 'LATERAL', 3.2)}${lab((xC + xD) / 2, ym, 'FRENTE')}${lab((xD + xE) / 2, ym, 'LATERAL', 3.2)}
+${lab((xA + xB) / 2, yTop - Pw / 2, 'tampa', 3.2)}${lab((xC + xD) / 2, yBot + Pw / 2, 'fundo', 3.2)}
+<text x="${m}" y="${f(H - 6)}" font-size="3.4" fill="#555" font-family="Helvetica, Arial, sans-serif">${name} · cartucho tuck reverso · interno ${f(d.L)} × ${f(d.P)} × ${f(d.A)} mm · cartão ${f(t)} mm · faca ${f(W - 2 * m)} × ${f(H - 2 * m - 14)} mm · corte (vermelho) · vinco (azul tracejado) · OUTBOX</text>
+</svg>`;
+  return { svg, W, H, d };
+}
+function renderBoxFields() {
+  const box = $('#boxFields'); if (!box) return; box.innerHTML = '';
+  S.caixa = { ...BOX0, ...(S.caixa || {}) };
+  const ch = () => { renderBoxInfo(); buildBox(); fit(); saveLocalSoon(); req(); };
+  field(box, S.caixa, ['on', 'Mostrar a caixa ao lado do produto', 'check'], ch);
+  field(box, S.caixa, ['folga', 'Folga em volta (largura e profundidade)', 0, 10, 0.5, 'mm'], ch);
+  field(box, S.caixa, ['folgaH', 'Folga na altura', 0, 15, 0.5, 'mm'], ch);
+  field(box, S.caixa, ['cartao', 'Espessura do cartão', 0.2, 1.5, 0.05, 'mm'], ch);
+  field(box, S.caixa, ['lingua', 'Língua da tampa', 6, 30, 1, 'mm'], ch);
+  field(box, S.caixa, ['cola', 'Aba de cola', 8, 25, 1, 'mm'], ch);
+  field(box, S.caixa, ['cor', 'Cor do cartão', 'color'], ch);
+  const info = document.createElement('div'); info.className = 'tip'; info.id = 'boxInfo'; box.appendChild(info); renderBoxInfo();
+}
+function renderBoxInfo() { const el = $('#boxInfo'); if (!el || !S.modules.length) return; const d = boxDims();
+  el.innerHTML = `Interno <b>${d.L} × ${d.P} × ${d.A} mm</b> (L × P × A) · externo ${r1(d.Lo)} × ${r1(d.Po)} × ${r1(d.Ao)} mm`; }
+function downloadText(name, text, type) { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([text], { type })); a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000); }
+$('#boxSvg').onclick = () => { if (!S.modules.length) return; const { svg } = dieline(); downloadText(`faca-cartucho-${(fileName() || 'produto').replace(/[^\w-]+/g, '_')}.svg`, svg, 'image/svg+xml'); toast('Faca baixada (SVG em escala 1:1, mm)'); };
+$('#boxPdf').onclick = () => {
+  if (!S.modules.length) return; const { svg, W, H } = dieline(); const win = window.open('', '_blank'); if (!win) return toast('Permita janelas novas (pop-ups) para abrir a faca');
+  win.document.open(); win.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>Faca do cartucho</title><style>@page{size:${W}mm ${H}mm;margin:0}html,body{margin:0}svg{display:block}.bar{position:fixed;top:10px;right:10px}.bar button{font:13px system-ui;padding:7px 12px;border-radius:8px;border:1px solid #1a1a1a;background:#1a1a1a;color:#fff;cursor:pointer}@media print{.bar{display:none}}</style></head><body><div class="bar"><button onclick="print()">Salvar PDF / imprimir (escala 100%)</button></div>${svg}</body></html>`); win.document.close();
+};
 // Pose de um produto ao lado: gira em volta do centro da base e apoia no chão (como o principal)
 function poseGroup(g, it) {
   if (!(Array.isArray(it.rq) && it.rq.length === 4)) return;
@@ -6992,7 +7085,7 @@ document.querySelectorAll('i[data-i]').forEach(el => { el.outerHTML = icon(el.da
   window.addEventListener('blur', hide);
 }
 document.querySelectorAll('input[type=range]').forEach(fillRange);
-const SIDE_TABS = ['lib', 'build', 'line', 'measure', 'scene'];
+const SIDE_TABS = ['lib', 'build', 'line', 'measure', 'box', 'scene'];
 function setSideTab(t) {
   if (t === 'color') { openInspector(); setInspTab('sup'); return; } // a cor da peça mora no inspetor (Superfície)
   if (!SIDE_TABS.includes(t)) t = 'build';
@@ -7031,7 +7124,7 @@ setInspTab(store.get('shape.inspTab', 'forma'));
 // Busca (Cmd/Ctrl+K): qualquer ajuste, painel, modelo pronto ou ação pelo nome, como nos
 // programas de 3D online. Escolher um ajuste abre o painel/aba/grupo dele e pisca o campo.
 const cmdNorm = t => String(t || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/\s+/g, ' ').trim();
-const TAB_NAME = { lib: 'Modelos', build: 'Peças', line: 'Linha', measure: 'Volume', scene: 'Cena' }; // "Medidas" fica só no inspetor (medidas da peça)
+const TAB_NAME = { lib: 'Modelos', build: 'Peças', line: 'Linha', measure: 'Volume', box: 'Caixa', scene: 'Cena' }; // "Medidas" fica só no inspetor (medidas da peça)
 const TAB_ICON = { lib: 'layout-grid', build: 'stack-2', line: 'columns-3', measure: 'ruler-measure', scene: 'bulb' };
 const ITAB_NAME = { forma: 'Peça › Forma', det: 'Peça › Detalhes', sup: 'Peça › Superfície', arte: 'Peça › Logo' };
 const ITAB_ICON = { forma: 'shape', det: 'wave-sine', sup: 'droplet', arte: 'tag' };
@@ -7122,7 +7215,7 @@ document.addEventListener('keydown', e => { if ((e.metaKey || e.ctrlKey) && !e.s
 function openInspector() { if (appEl.classList.contains('insp-off')) { appEl.classList.remove('insp-off'); store.set('shape.inspOff', false); } }
 $('#inspClose').onclick = () => { appEl.classList.add('insp-off'); store.set('shape.inspOff', true); };
 if (store.get('shape.inspOff', false)) appEl.classList.add('insp-off');
-function renderAll() { renderStack(); renderEditor(); renderGlobal(); renderPresets(); renderLogos(); renderLineup(); renderScene(); applySceneLight(); }
+function renderAll() { renderStack(); renderEditor(); renderGlobal(); renderPresets(); renderLogos(); renderLineup(); renderScene(); renderBoxFields(); applySceneLight(); }
 
 // Biblioteca de módulos
 // Corpo, tampa e peça de encaixe ficam em listas separadas.

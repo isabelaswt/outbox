@@ -6,7 +6,7 @@
 <title>OUTBOX</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap">
-<link rel="stylesheet" href="css/app.css?v=2026-11-16.modo-gizmo">
+<link rel="stylesheet" href="css/app.css?v=2026-11-16.cartucho">
 <script type="importmap">
 {"imports":{
   "three":"https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js",
@@ -55,6 +55,7 @@
   <button data-t="build" title="Peças: a pilha do produto e inserir peças"><i data-i="stack-2"></i><span>Peças</span></button>
   <button data-t="line" title="Linha: outros produtos lado a lado"><i data-i="columns-3"></i><span>Linha</span></button>
   <button data-t="measure" title="Volume: capacidade, parede, ajustar para um volume, imagem de referência"><i data-i="ruler-measure"></i><span>Volume</span></button>
+  <button data-t="box" title="Caixa: cartucho sob medida para o frasco e faca para a gráfica"><i data-i="box"></i><span>Caixa</span></button>
   <button data-t="scene" title="Cena: luz, fundo, chão, cenário e vídeo"><i data-i="bulb"></i><span>Cena</span></button>
   <div class="railEnd">
     <button data-a="trash" title="Lixeira: itens excluídos ficam 30 dias"><i data-i="trash"></i></button>
@@ -155,6 +156,16 @@
   </div>
 
 
+  <div class="tab" data-t="box">
+    <h2 class="tabTitle">Caixa</h2>
+<details open>
+    <summary>Cartucho (caixa dobrável)</summary>
+    <div class="tip">Tuck reverso: tampa com língua em cima e embaixo, abas de pó nas laterais e aba de cola. As medidas internas saem do produto com folga.</div>
+    <div id="boxFields"></div>
+    <div class="row" style="margin-top:8px"><button class="btn pri sm" id="boxPdf">Faca em PDF (1:1)</button><button class="btn sm" id="boxSvg">Baixar faca (SVG)</button></div>
+    <div class="tip">Faca: linha cheia = corte, tracejada = vinco. Confira com a gráfica o cartão e a folga antes de produzir.</div>
+  </details>
+  </div>
   <div class="tab" data-t="scene">
     <h2 class="tabTitle">Cena</h2>
 <details open>
@@ -287,6 +298,6 @@
 </section>
 </div>
 
-<script type="module" src="js/app.js?v=2026-11-16.modo-gizmo"></script>
+<script type="module" src="js/app.js?v=2026-11-16.cartucho"></script>
 </body>
 </html>
