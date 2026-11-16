@@ -18,7 +18,7 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION } from 'three-bvh-csg';
-import { icon } from './icons.js?v=2026-11-16.liquido-topo';
+import { icon } from './icons.js?v=2026-11-16.modo-gizmo';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -391,7 +391,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-16.liquido-topo';
+const BUILD = '2026-11-16.modo-gizmo';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -3803,7 +3803,7 @@ function renderScene() {
   field(f, S.scene, ['deitar', 'Deitar o produto (apoiado no chão, sombra real)', 'check'], k => { ch(k); renderScene(); fit(); });
   if (!S.scene.deitar) field(f, S.scene, ['cenaTilt', 'Inclinar o produto (− esquerda, + direita)', -35, 35, 1, '°'], ch);
   { const b = document.createElement('button'); b.className = 'btn sm'; b.textContent = 'Zerar posição e rotação do produto';
-    b.title = 'Clique no produto no 3D para girar (E) ou mover (W) com o gizmo'; b.onclick = () => resetGizmoPose(); f.appendChild(b); }
+    b.title = 'Para girar ou mover: botões Girar (E) e Mover (W) na barra do 3D'; b.onclick = () => resetGizmoPose(); f.appendChild(b); }
   if (['pedestal', 'bloco', 'degraus'].includes(S.scene.cena)) field(f, S.scene, ['cenaH', 'Altura do pedestal', 5, 150, 1, 'mm'], ch);
   field(f, S.scene, ['luz', 'Luz (vale para tela, imagem e vídeo)', 'select', [['macia', 'Macia — foto de produto limpa (e-commerce, render de marca)'], ['lateral', 'Lateral recortada — luz projetada, sombra de um lado'], ['studio', 'Estúdio claro (padrão)'], ['premium', 'Premium (vidro e perfume, contraste)'], ['produto', 'Produto (e-commerce, faixa macia)'], ['padrao', 'Volume (mais contraste de lado)'],
     ['soft', 'Suave'], ['contrast', 'Contraste'], ['sol', 'Sol (sombra longa)'], ['drama', 'Dramática'], ['faixa', 'Faixas de estúdio (reflexo vertical)'],
@@ -4553,7 +4553,7 @@ async function applyLogosTo(group, st, alive) {
     const M = masks[li]; if (!L.n || !M) return;
     const mains = group.children.filter(o => o.userData.main && o.userData.uid === L.uid);
     const target = mains.find(o => o.userData.rep === (L.rep || 0)) || mains[0]; if (!target) return;
-    if (!target.geometry.boundsTree) target.geometry.computeBoundsTree();
+    target.geometry.disposeBoundsTree?.(); target.geometry.computeBoundsTree(); usedBVH.add(target.geometry); // sempre novo: no vidro/PET a ordem dos triângulos muda a cada quadro
     const F = logoFrame(L, target, M);
     const emboss = L.depth >= 0;
     // Alto-relevo fica levemente embutido na base; baixo-relevo usa uma pele
@@ -4569,8 +4569,10 @@ async function applyLogosTo(group, st, alive) {
     group.add(lm);
   });
   group.position.copy(px); group.quaternion.copy(pq); group.updateMatrixWorld(true);
+  usedBVH.forEach(g => g.disposeBoundsTree?.()); usedBVH.clear(); // índice velho atrapalharia o clique depois (reposicionar)
   req();
 }
+const usedBVH = new Set();
 // ───────────────────────── rótulo ─────────────────────────
 // Película fina assentada na superfície do corpo: envolvendo tudo ou dois adesivos
 // (frente e verso). Cada linha é medida por raios vindos de fora na direção do eixo,
@@ -4651,7 +4653,7 @@ function applyLabelsTo(group, st) {
   for (const o of group.children.filter(o => o.userData.main && !(o.userData.rep > 0))) {
     const m = mods.get(o.userData.uid);
     if (!m || !canLabel(m) || !m.labType || m.labType === 'nenhum') continue;
-    if (!o.geometry.boundsTree) o.geometry.computeBoundsTree();
+    o.geometry.disposeBoundsTree?.(); o.geometry.computeBoundsTree(); usedBVH.add(o.geometry);
     const bb = new THREE.Box3().setFromObject(o), BH = bb.max.y - bb.min.y, LP = labelOnPanel(m); // LP: adesivo no formato da área lisa
     const H = clamp(LP ? LP.H : m.labH, 2, BH - 0.4), yc = clamp(bb.min.y + (LP ? LP.yc : BH * m.labY / 100), bb.min.y + H / 2 + 0.2, bb.max.y - H / 2 - 0.2);
     const cx = o.userData.ox || 0, NR = clamp(Math.round(H / 0.8), 8, 160), NA = 360, off = 0.14;
@@ -4736,6 +4738,7 @@ function applyLabelsTo(group, st) {
     }
   }
   group.position.copy(px); group.quaternion.copy(pq); group.updateMatrixWorld(true);
+  usedBVH.forEach(g => g.disposeBoundsTree?.()); usedBVH.clear();
 }
 let placing = null, placingMask = null, preview = null;
 // Imagem da prévia: área clara com borda e o desenho do logo por cima.
@@ -4776,6 +4779,8 @@ function showPreview(hit) {
   req();
 }
 function startPlacing(L) {
+  setGizmo(false); // o gizmo no meio do frasco roubava o clique
+  product.children.forEach(o => { if (o.userData.main) o.geometry?.disposeBoundsTree?.(); }); // sem índice velho: o mouse acha o frasco
   placing = L; placingMask = null; canvas.style.cursor = 'crosshair';
   logoMask(L.svg).then(M => { if (placing === L) placingMask = M; });
   toast('Passe o mouse sobre o shape e clique para fixar o logo (Esc cancela)');
@@ -4809,7 +4814,7 @@ function renderLogos() {
       <button class="btn sm">Reposicionar</button><button class="btn sm">Remover</button></div>`;
     const [rp, rm] = el.querySelectorAll('button');
     rp.onclick = () => startPlacing(L);
-    rm.onclick = () => { S.logos.splice(i, 1); renderLogos(); build(); };
+    rm.onclick = () => { if (placing === L) stopPlacing(); S.logos.splice(i, 1); clearPreview(); renderLogos(); build(); }; // removido: sai também do modo posicionar (o preview ficava no frasco)
     const ch = (k, structural) => { if (structural) renderLogos(); saveLocalSoon(); scheduleLogosOrBuild(L); };
     field(el, L, ['size', 'Largura do logo', 3, 200, 0.5, 'mm'], ch);
     field(el, L, ['rot', 'Rotação', -180, 180, 1, '°'], ch);
@@ -5770,7 +5775,7 @@ const ray = new THREE.Raycaster(); let downAt = null;
 canvas.addEventListener('pointerdown', e => { downAt = [e.clientX, e.clientY]; });
 canvas.addEventListener('pointerup', e => {
   if (!downAt || Math.hypot(e.clientX - downAt[0], e.clientY - downAt[1]) > 4) return;
-  if (gizmoOn && (gizmo?.axis || gizmo?.dragging)) return; // clique no próprio gizmo
+  if (!placing && gizmoOn && (gizmo?.axis || gizmo?.dragging)) return; // clique no próprio gizmo (posicionando logo, o clique é do logo)
   barOn = false; req(); // a barrinha só aparece com o botão direito numa peça
   const r = canvas.getBoundingClientRect();
   ray.setFromCamera(new THREE.Vector2((e.clientX - r.left) / r.width * 2 - 1, -(e.clientY - r.top) / r.height * 2 + 1), cam);
@@ -5790,8 +5795,8 @@ canvas.addEventListener('pointerup', e => {
     const i = sideRoot.children.indexOf(g); if (i >= 0) editSide(i);
     return;
   }
-  if (hit) { sel = ownerOf(hit.object.userData.idx); openInspector(); renderStack(); renderEditor(); barOn = e.button === 2; if (e.button === 0) setGizmo(true); req(); }
-  else if (e.button === 0) setGizmo(false); // clique no vazio: some o gizmo
+  if (hit) { sel = ownerOf(hit.object.userData.idx); openInspector(); renderStack(); renderEditor(); barOn = e.button === 2; req(); }
+  // gizmo é um modo (Girar/Mover na barra, E/W): clicar no produto não abre nem fecha (o clique fica livre para logo e peças)
 });
 canvas.addEventListener('contextmenu', e => e.preventDefault());
 // Duplo clique aproxima a câmera do ponto clicado.
@@ -8539,7 +8544,7 @@ $('#varBtn').onclick = () => {
 };
 $('#genDice').onclick = () => { $('#genSeed').value = Math.floor(Math.random() * 99999) + 1; runGen(); };
 
-window.OUTBOX = { get ao() { return { aoP, aoO, GTAOPass }; }, CS, COAT_U, relief: { normalMapToDisplacement, classifyReliefImage, imageToDisplacement, cleanDisplacementMap, reliefSizeNote }, get hdr() { return HDR; }, ensureHdr, moduleGeo, exportRoot, get S() { return S; }, get swapScroll() { return swapScroll; }, product, layout, scene, sun, stage, ground, renderer, areaKey, areaFill, hemi, detailShow, applyLogos, build, render: () => renderFrame(), get cam() { return cam; }, PRESETS, LIB, loadState, setSideTab, volumes, get sel() { return sel; }, set sel(v) { sel = v; renderStack(); renderEditor(); } };
+window.OUTBOX = { startPlacing: L => { S.logos.push(L); startPlacing(L); }, get preview() { return preview; }, get gizmoOn() { return gizmoOn; }, get ao() { return { aoP, aoO, GTAOPass }; }, CS, COAT_U, relief: { normalMapToDisplacement, classifyReliefImage, imageToDisplacement, cleanDisplacementMap, reliefSizeNote }, get hdr() { return HDR; }, ensureHdr, moduleGeo, exportRoot, get S() { return S; }, get swapScroll() { return swapScroll; }, product, layout, scene, sun, stage, ground, renderer, areaKey, areaFill, hemi, detailShow, applyLogos, build, render: () => renderFrame(), get cam() { return cam; }, PRESETS, LIB, loadState, setSideTab, volumes, get sel() { return sel; }, set sel(v) { sel = v; renderStack(); renderEditor(); } };
 
 buildDraftPresets();
 resize();
