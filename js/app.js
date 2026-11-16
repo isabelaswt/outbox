@@ -18,8 +18,8 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION } from 'three-bvh-csg';
-import { icon } from './icons.js?v=2026-11-16.incom6';
-import { INCOM_CAPS, INCOM_PRODUCTS } from './incom.js?v=2026-11-16.incom6';
+import { icon } from './icons.js?v=2026-11-16.incom8';
+import { INCOM_CAPS, INCOM_PRODUCTS } from './incom.js?v=2026-11-16.incom8';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -416,7 +416,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-16.incom6';
+const BUILD = '2026-11-16.incom8';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -7855,13 +7855,37 @@ function incomProduct(r) {
 INCOM_PRODUCTS.forEach(r => { PRESETS[`Incom ${r.n} (${r.c.toLowerCase()})`] = incomProduct(r); });
 // Tampas de perfume da Incom montadas: frasco genérico (a Incom não faz o vidro) + válvula spray
 // do acabamento da tampa (15, 18 ou 20 mm) + a tampa, que desce e veste a válvula.
+// Meia-largura útil (raio de dentro, face a face) da tampa na altura y: estreitamento
+// (taper em cima, taperB embaixo), cintura (bulge) e arredondado do topo. O fundo arredondado
+// não conta: a cavidade abre por baixo, como na tampa de verdade.
+function capHalfAt(c, y) {
+  const t = clamp(y / c.h, 0, 1), n = c.sides || 0, face = n ? Math.cos(Math.PI / n) : 1;
+  let w = Math.min(c.W, c.D ?? c.W) / 2 * face * ((c.taperB ?? 100) + ((c.taper ?? 100) - (c.taperB ?? 100)) * t) / 100;
+  if (c.bulge) w *= 1 + c.bulge / 100 * Math.sin(Math.PI * t);
+  const R = Math.min(c.rTop || 0, w), dy = y - (c.h - R); if (R > 0 && dy > 0) w -= R - Math.sqrt(Math.max(0, R * R - dy * dy));
+  return w;
+}
+// Maior válvula spray que cabe dentro da tampa sem furar a parede (1,2 mm): primeiro a
+// virola do acabamento, depois a altura (virola + atuador) até a parede deixar.
+function perfumeValve(cap, mm) {
+  const d = LIB.sprayClassico, wall = 1.2;
+  let wv = Math.max(9, Math.min(mm + 3, 2 * (capHalfAt(cap, 0) - wall - 0.5)));
+  for (let tries = 0; tries < 12; tries++, wv *= 0.92) {
+    const rCol = wv / 2 + 0.5;
+    for (let kv = 1; kv >= 0.45; kv -= 0.05) {
+      const hTot = VALVE_H.sprayClassico * kv; if (hTot > cap.h - 2) continue;
+      let ok = true; for (let y = 0; y <= hTot + 1.5 && ok; y += 0.5) ok = capHalfAt(cap, y) - wall >= rCol; // a cavidade é um cilindro reto na largura da virola
+      if (ok) return fitValve('sprayClassico', r1(wv), hTot);
+    }
+  }
+  return fitValve('sprayClassico', 9, Math.max(6, cap.h * 0.3));
+}
 function incomPerfume(r) {
-  const cap = LIB[r.k], cw = Math.min(cap.W, cap.D ?? cap.W), mm = +((r.term || '').match(/(\d+)\s*mm/) || [])[1] || 15;
-  const wv = r1(Math.max(11, Math.min(mm + 3, (r.b ? r.b : cw * 0.75) - 2.5)));
+  const cap = LIB[r.k], mm = +((r.term || '').match(/(\d+)\s*mm/) || [])[1] || 15;
   const bw = r1(clamp(Math.max(cap.W, cap.D ?? cap.W) * 1.3, 42, 72));
   return { color: BEIGE, finish: 'fosco', forn: 'Incom', fcat: 'Tampas de perfume', fapp: 'Perfume', modules: [
     M('reto', { name: 'Frasco (genérico, não é Incom)', W: bw, D: r1(bw * 0.62), n: 3.4, h: r1(bw * 1.05), rTop: 3, rBot: 3, vol: true, liq: false, pesc: false, bpesc: false }),
-    fitValve('sprayClassico', wv, cap.h - 2), M(r.k)] };
+    perfumeValve(cap, mm), M(r.k)] };
 }
 INCOM_CAPS.forEach(r => { PRESETS[`Incom ${r.n} (tampa de perfume)`] = incomPerfume(r); });
 // abas antigas que viraram outras (escolhas já gravadas continuam valendo)
