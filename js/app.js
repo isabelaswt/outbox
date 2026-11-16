@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-16.disp5';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-16.logo1';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -561,7 +561,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-16.disp5';
+const BUILD = '2026-11-16.logo1';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -4815,7 +4815,11 @@ async function applyLogosTo(group, st, alive) {
   const masks = await Promise.all(st.logos.map(L => logoMask(L.svg)));
   if (!alive()) return;
   const px = group.position.clone(), pq = group.quaternion.clone(); // mede de pé (produto pode estar inclinado no cenário)
-  group.position.set(0, 0, 0); group.quaternion.identity(); group.updateMatrixWorld(true);
+  group.position.set(0, 0, 0); group.quaternion.identity();
+  // tampa aberta (dobradiça): o logo é medido com ela fechada e depois gira junto (ficava parado no ar)
+  const opened = group.children.filter(o => o.userData.hinge && !o.userData.logo).map(o => { const cur = { p: o.position.clone(), q: o.quaternion.clone() };
+    o.position.copy(o.userData.hinge.p); o.quaternion.copy(o.userData.hinge.q); return [o, cur]; }), onHinge = [];
+  group.updateMatrixWorld(true);
   st.logos.forEach((L, li) => {
     const M = masks[li]; if (!L.n || !M) return;
     const mains = group.children.filter(o => o.userData.main && o.userData.uid === L.uid);
@@ -4834,7 +4838,12 @@ async function applyLogosTo(group, st, alive) {
     lm.castShadow = true; lm.receiveShadow = true; lm.frustumCulled = false; // o logo nunca é tido como fora da tela
     lm.userData = { logo: true, idx: target.userData.idx }; lm.name = `logo_${L.name}`;
     group.add(lm);
+    if (target.userData.hinge) { lm.userData.hinge = { y0: target.userData.hinge.y0, z: target.userData.hinge.z, p: lm.position.clone(), q: lm.quaternion.clone() }; onHinge.push([lm, target]); }
   });
+  opened.forEach(([o, cur]) => { o.position.copy(cur.p); o.quaternion.copy(cur.q); o.updateMatrix(); });
+  onHinge.forEach(([lm, t]) => { const h = t.userData.hinge, one = new THREE.Vector3(1, 1, 1);
+    const shut = new THREE.Matrix4().compose(h.p, h.q, one), now = new THREE.Matrix4().compose(t.position, t.quaternion, one);
+    lm.applyMatrix4(now.multiply(shut.invert())); });
   group.position.copy(px); group.quaternion.copy(pq); group.updateMatrixWorld(true);
   usedBVH.forEach(g => g.disposeBoundsTree?.()); usedBVH.clear(); // índice velho atrapalharia o clique depois (reposicionar)
   req();
@@ -6490,6 +6499,9 @@ canvas.addEventListener('pointerup', e => {
     if (!hit) return toast('Clique em cima do shape');
     const { uid, y0, ox } = hit.object.userData;
     const lp = product.worldToLocal(hit.point.clone()); // produto inclinado no cenário: guarda de pé
+    const hg = hit.object.userData.hinge; // tampa aberta: guarda o ponto na posição fechada (o logo gira com ela)
+    if (hg) { const one = new THREE.Vector3(1, 1, 1), now = new THREE.Matrix4().compose(hit.object.position, hit.object.quaternion, one);
+      lp.applyMatrix4(new THREE.Matrix4().compose(hg.p, hg.q, one).multiply(now.invert())); }
     Object.assign(placing, { uid, rep: hit.object.userData.rep || 0, p: [lp.x - ox, lp.y - y0, lp.z], n: hit.face.normal.toArray() });
     stopPlacing();
     renderLogos(); saveLocalSoon(); build();
@@ -8460,9 +8472,18 @@ function incomProduct(r) {
     case 'fr': case 'frr': case 'frsq': case 'frsqr': case 'frt': case 'frsh': case 'frap': case 'frflat': {
       const o = { fr: { rBot: 3, rTop: W * 0.15 }, frr: { rBot: W * 0.3, rTop: W * 0.15 }, frsq: { ...sq(0.06), rTop: 3 }, frsqr: { ...sq(0.2), rTop: 4 },
         frt: { taperB: 82, rBot: W * 0.25, rTop: 4 }, frsh: { rTop: W * 0.35, rBot: 3 }, frap: { taper: 70, rTop: 6, rBot: 6 }, frflat: { ...sq(0.1), rTop: 6 } }[r.t];
-      ms = [P('Frasco', W, D, H - 16.6, { vol: true, ...o, _t: [0, (H - 16.6) / H] }), NECK('18/410', { h: 16.6 })]; break; }
+      // rosca 24-410 do catálogo e o fechamento que aparece na foto de cada um (pode trocar em Peças)
+      const fe = { 'Amsterdam': 'tampa', 'Bulb Blow 250': 'bola', 'Bulb Blow 300': 'pump', 'New York': 'flip', 'Wall': 'disctop' }[r.n] || 'spray', nh = 16.6;
+      const fc = fe === 'tampa' ? M('reto', { name: 'Tampa de rosca', W: r1(W * 0.98), D: r1(W * 0.98), h: 22, rTop: 1.2, rBot: 0.4, gap: r1(-(nh - 0.6)) })
+        : fe === 'bola' ? M('bola', { name: 'Tampa bola', W: r1(Math.min(W * 0.62, 36)), D: r1(Math.min(W * 0.62, 36)), h: r1(Math.min(W * 0.62, 36)) })
+        : fe === 'flip' ? M('flip', { name: 'Tampa flip-top', W: r1(Math.min(W * 0.58, 34)), D: r1(Math.min(W * 0.58, 34)) })
+        : fe === 'disctop' ? M('disctop', { name: 'Tampa disc-top', W: r1(Math.min(D, 38)), D: r1(Math.min(D, 38)) })
+        : M(fe === 'pump' ? 'pump' : 'spray');
+      ms = [P('Frasco', W, D, H - nh, { vol: true, ...o, _t: [0, (H - nh) / H] }), NECK('24/410', { h: nh }), fc]; break; }
     case 'frn': case 'frnt': case 'frnr': case 'frnflat': {
       const o = r.t === 'frnt' ? { taper: 88 } : {}, [f] = incomFrac(pr, [0.66]);
+      // Charlotte (divisão abaixo da metade no desenho): fica em pé sobre a tampa, corpo em cima
+      if (f < 0.5) { ms = [P('Tampa', W, D, H * f, { rBot: 2, rTop: 0.5, _t: [0, f] }), P('Frasco', W, D, H * (1 - f), { vol: true, rBot: 0.5, rTop: r.t === 'frnr' ? W * 0.4 : 2, _t: [f, 1] })]; break; }
       ms = [P('Frasco', W, D, H * f, { vol: true, rBot: 3, rTop: 1, ...o, _t: [0, f] }), P('Tampa', W * (r.t === 'frnt' ? 0.88 : 1), D, H * (1 - f), { rTop: r.t === 'frnr' ? W * 0.4 : 2, _t: [f, 1] })]; break; }
     case 'tube': ms = [P('Frasco', W, D, H - 14, { vol: true, taper: 70, rTop: 3, rBot: 2, _t: [0, (H - 14) / H] }), P('Gargalo', W * 0.45, null, 14, { rTop: 1, _t: [(H - 14) / H, 1] })]; break;
     case 'gloss': case 'glosssq': { // a tampa veste a haste com o aplicador (ou a escova, na máscara), que desce até o fundo
