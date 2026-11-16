@@ -450,3 +450,6 @@ aside{border-right:1px solid var(--rule)}
 .gizmoBar button{font:inherit;font-size:12px;border:0;background:transparent;color:#4a4a4f;padding:6px 11px;border-radius:8px;cursor:pointer}
 .gizmoBar button:hover{background:#f2f2f0}.gizmoBar button.on{background:var(--ink,#18181b);color:#fff}
 .gizmoBar span{width:1px;height:18px;background:#e6e5e2;margin:0 3px}
+/* tela estreita: o header não empurra a página para o lado (a versão some, a página não rola na horizontal) */
+@media (max-width:1100px){.topbar .brand .sub{display:none}.topbar{padding:0 10px 0 12px;gap:8px}}
+html,body{overflow-x:hidden}

@@ -18,7 +18,7 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION } from 'three-bvh-csg';
-import { icon } from './icons.js?v=2026-11-12.ux-linha-unica';
+import { icon } from './icons.js?v=2026-11-16.gizmo-barra2';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -391,7 +391,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-16.fileira-pose';
+const BUILD = '2026-11-16.gizmo-barra2';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -3648,6 +3648,7 @@ function setGizmo(on, mode) {
     else gizmo.detach();
     (gizmo.getHelper ? gizmo.getHelper() : gizmo).visible = gizmoOn;
   }
+  document.getElementById('rotTool')?.classList.toggle('on', gizmoOn && gizmoMode === 'rotate'); document.getElementById('moveTool')?.classList.toggle('on', gizmoOn && gizmoMode === 'move');
   const bar = document.getElementById('gizmoBar'); if (bar) { bar.hidden = !gizmoOn; bar.querySelectorAll('[data-g]').forEach(b => b.classList.toggle('on', b.dataset.g === gizmoMode)); }
   req();
 }
@@ -5678,15 +5679,18 @@ function openKeys() {
 $('#keysBtn').onclick = () => { document.querySelectorAll('.pop.open').forEach(p => p.classList.remove('open')); openKeys(); };
 // Segurar espaço = mão temporária (fora de campos de texto).
 const typing = () => /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement?.tagName);
+// Girar / Mover sempre à mão na barra do 3D (liga e desliga o gizmo em qualquer aba)
+$('#rotTool').onclick = () => setGizmo(!(gizmoOn && gizmoMode === 'rotate'), 'rotate');
+$('#moveTool').onclick = () => setGizmo(!(gizmoOn && gizmoMode === 'move'), 'move');
 // Gizmo: barrinha e atalhos (W mover, E girar, Esc fechar)
 document.querySelectorAll('#gizmoBar [data-g]').forEach(b => b.onclick = () => {
   const g = b.dataset.g; if (g === 'close') setGizmo(false); else if (g === 'reset') resetGizmoPose(); else setGizmo(true, g);
 });
 document.addEventListener('keydown', e => {
-  if (!gizmoOn || typing() || e.metaKey || e.ctrlKey || e.altKey) return;
+  if (typing() || e.metaKey || e.ctrlKey || e.altKey) return;
   if (e.key === 'w' || e.key === 'W') setGizmo(true, 'move');
   else if (e.key === 'e' || e.key === 'E') setGizmo(true, 'rotate');
-  else if (e.key === 'Escape') setGizmo(false);
+  else if (e.key === 'Escape' && gizmoOn) setGizmo(false);
 });
 document.addEventListener('keydown', e => { if (e.code === 'Space' && !typing() && !spaceHeld) { spaceHeld = true; applyHand(); e.preventDefault(); } });
 document.addEventListener('keyup', e => { if (e.code === 'Space' && spaceHeld) { spaceHeld = false; applyHand(); } });
