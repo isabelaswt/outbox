@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-16.pote';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-16.pote3';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -560,7 +560,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-16.pote';
+const BUILD = '2026-11-16.pote3';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -5292,7 +5292,7 @@ function withoutRelief(m) {
 function offsetInner(m, y0, inset, lift) {
   // fundo grosso: o piso da cavidade sobe em curva até a parede (jateado também: com o piso
   // reto o conteúdo terminava num corte reto, diferente do vidro transparente)
-  const R0 = floorR(m, lift);
+  const R0f = floorR(m, lift), R0 = Number.isFinite(R0f) ? R0f : 0;
   // fundo curvo: anéis finos até acima do canto (com poucos anéis a curva saía em degraus)
   // Frisos/canelado são só por fora (como no vidro moldado de verdade): a cavidade e o
   // conteúdo são lisos. Copiando os frisos, o encolhimento da parede dobrava a superfície
@@ -5308,7 +5308,7 @@ function offsetInner(m, y0, inset, lift) {
   // fundos, crista e vale saem em alturas diferentes e os anéis não eram reconhecidos)
   let seg0 = 1; while (seg0 < p.length / 3 && Math.abs(p[seg0 * 3 + 1] - p[1]) < 1e-5) seg0++;
   for (let i = 0; i < p.length; i += 3) {
-    p[i] -= n[i] * inset; p[i + 1] -= n[i + 1] * inset; p[i + 2] -= n[i + 2] * inset;
+    p[i] -= (n[i] || 0) * inset; p[i + 1] -= (n[i + 1] || 0) * inset; p[i + 2] -= (n[i + 2] || 0) * inset; // normal indefinida (ponto sem área): não desloca — virava NaN e derrubava a câmera da linha
   }
   // Fundo grosso (vidro): a cavidade não termina num corte reto — o piso é plano no
   // meio e sobe em curva até a parede, como no vidro soprado/prensado de verdade.
@@ -5319,6 +5319,8 @@ function offsetInner(m, y0, inset, lift) {
   // piso e canto: normais pela própria curva (no centro muitos anéis se juntam em triângulos
   // minúsculos e a normal calculada saía torta — uma estrela clara no meio do líquido)
   if (fn) { const na = g.attributes.normal.array; for (const [k, x, y, z] of fn) { na[k] = x; na[k + 1] = y; na[k + 2] = z; } g.attributes.normal.needsUpdate = true; }
+  // conferência: um ponto inválido (NaN) aqui derrubava o enquadramento da câmera inteira
+  for (let i = 0; i < p.length; i++) if (!Number.isFinite(p[i])) { console.warn('cavidade inválida descartada', m.name); g.dispose(); return null; }
   return g;
 }
 // Leva tudo o que está abaixo de yb+R para um piso com canto arredondado de raio R.
