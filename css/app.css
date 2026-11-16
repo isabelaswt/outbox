@@ -413,3 +413,8 @@ summary,.grp>summary{padding:11px 0}
 .topbar .brand h1 span{color:#8a8a8f;font-weight:500}
 /* Header sem cartão: a marca e os comandos ficam direto no fundo do app (sem base branca, borda, sombra nem canto arredondado) */
 .topbar{background:transparent;border:0;box-shadow:none;border-radius:0;padding:0 8px 0 6px}
+/* respiro no header: logo afastado do canto e barra um pouco mais alta */
+@media (min-width:821px){.app{grid-template-rows:58px minmax(0,1fr)}} /* no celular a grade é outra (linhas automáticas) */
+.topbar{padding:0 14px 0 18px}
+.topbar .brand{gap:11px}
+.topbar .brand .swtLogo{width:28px;height:28px;margin:0}
