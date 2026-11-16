@@ -270,7 +270,7 @@ function importedMeshGeo(m, y0) {
 // ───────────────────────── módulos ─────────────────────────
 const BASE = {
   name: 'Peça', W: 50, D: 50, n: 2, sides: 0, sideR: 0.1, h: 40, taper: 100, taperB: 100, shoulderK: 0, bulge: 0, bulgePos: 50,
-  rBot: 2, rTop: 2, rBotW: 0, rTopW: 0, gap: 0, rep: 1, repGap: 0, veste: true, fundo: 6, apoio: true, mat2: false, mat2Side: 'baixo', mat2Y: 20, mat2Color: '#cfd2d4', mat2Finish: 'metal',
+  rBot: 2, rTop: 2, rBotW: 0, rTopW: 0, gap: 0, rep: 1, repGap: 0, veste: true, fundo: 6, apoio: true, mat2: false, mat2Side: 'baixo', mat2Y: 20, mat2R: 70, mat2Color: '#cfd2d4', mat2Finish: 'metal',
   groove: 0, grooveD: 0.6,
   notch: false, notchLock: true, notchY: 12, notchW: 20, notchH: 8, notchD: 2, notchP: 2,
   ridges: 0, ridgeD: 0.6, lobes: 0, lobeD: 3,
@@ -459,7 +459,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-16.dois-materiais';
+const BUILD = '2026-11-16.disco-topo';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -3476,13 +3476,15 @@ function addGrain(m, amt, cell = 0.13) {
 // faixa sobe na mesma curva do piso (reta, ela cortava o canto do conteúdo num traço reto).
 // Material só de um lado de uma altura (espaço da peça): base para dois materiais na mesma peça.
 const splitCache = new Map();
-function splitMat(base, yCut, above) {
-  const key = base.uuid + '|' + yCut.toFixed(2) + '|' + above; if (splitCache.has(key)) return splitCache.get(key);
+// disc = { r, cx }: em vez de uma faixa, um disco no topo (inserto) — dentro do raio e acima da altura.
+function splitMat(base, yCut, above, disc = null) {
+  const key = base.uuid + '|' + yCut.toFixed(2) + '|' + above + (disc ? `|d${disc.r.toFixed(2)},${disc.cx.toFixed(2)}` : ''); if (splitCache.has(key)) return splitCache.get(key);
   const m = base.clone(), prev = base.onBeforeCompile, pk = base.customProgramCacheKey?.bind(base);
+  const inside = disc ? `(vSplitP.y > ${yCut.toFixed(3)} && length(vSplitP.xz - vec2(${disc.cx.toFixed(3)}, 0.0)) < ${disc.r.toFixed(3)})` : `(vSplitP.y > ${yCut.toFixed(3)})`;
   m.onBeforeCompile = (sh, r) => { prev?.call(m, sh, r);
-    sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying float vSplitY;').replace('#include <begin_vertex>', '#include <begin_vertex>\nvSplitY = position.y;');
-    sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying float vSplitY;').replace('void main() {', `void main() {\n  if (vSplitY ${above ? '<' : '>'} ${yCut.toFixed(3)}) discard;`); };
-  m.customProgramCacheKey = () => 'split' + (above ? 'A' : 'B') + yCut.toFixed(2) + (pk ? pk() : '');
+    sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vSplitP;').replace('#include <begin_vertex>', '#include <begin_vertex>\nvSplitP = position;');
+    sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying vec3 vSplitP;').replace('void main() {', `void main() {\n  if (${above ? '!' : ''}${inside}) discard;`); };
+  m.customProgramCacheKey = () => 'split' + (above ? 'A' : 'B') + yCut.toFixed(2) + (disc ? 'd' + disc.r.toFixed(2) : '') + (pk ? pk() : '');
   splitCache.set(key, m); return m;
 }
 const bandVert = (sh, band) => { const cv = band?.R > 0;
@@ -5593,9 +5595,11 @@ function buildInto(product, S, explodeAmt = 0) {
     // Segundo material na mesma peça (ex.: tampa em ABS preto com aro/inserto metálico embaixo):
     // a mesma forma desenhada duas vezes, cada material só do seu lado da divisa (corte exato).
     if (m0.mat2 && !m0.vol) {
-      const yc = y0 + m.h * clamp(m0.mat2Y ?? 20, 1, 99) / 100, low = m0.mat2Side !== 'cima';
-      const m2 = splitMat(material(m0.mat2Color || '#cfd2d4', m0.mat2Finish || 'metal'), yc, !low);
-      mesh.material = splitMat(mesh.material, yc, low);
+      const side = m0.mat2Side || 'baixo', disc = side === 'topo' ? { r: Math.min(m.W, m.D) / 2 * clamp(m0.mat2R ?? 70, 5, 100) / 100, cx: m.ox || 0 } : null;
+      const yc = y0 + m.h * clamp(m0.mat2Y ?? (disc ? 85 : 20), 1, 99) / 100, low = side === 'baixo';
+      // segundo material: embaixo da divisa, em cima dela, ou no disco do topo
+      const m2 = splitMat(material(m0.mat2Color || '#cfd2d4', m0.mat2Finish || 'metal'), yc, !!disc || !low, disc);
+      mesh.material = splitMat(mesh.material, yc, !disc && low, disc);
       const sm = new THREE.Mesh(g, m2); sm.castShadow = true; sm.receiveShadow = true; sm.userData.idx = idx; sm.name = mesh.name + '_mat2'; product.add(sm);
     }
     // Apoio: peça de fundo redondo (tigela, bola, esfera) sobre outra encostava só num
@@ -7149,8 +7153,9 @@ function renderColorBox(m) {
     const re = () => { renderColorBox(m); queueBuild(); };
     field(box, m, ['mat2', 'Usar dois materiais (ex.: aro metálico embaixo)', 'check'], re);
     if (m.mat2) {
-      field(box, m, ['mat2Side', 'Onde fica o segundo material', 'select', [['baixo', 'Embaixo (aro, inserto, base)'], ['cima', 'Em cima (topo, capa)']]], queueBuild);
-      field(box, m, ['mat2Y', 'Altura da divisa (da base da peça)', 1, 99, 0.5, '%'], queueBuild);
+      field(box, m, ['mat2Side', 'Onde fica o segundo material', 'select', [['baixo', 'Faixa embaixo (aro, inserto, base)'], ['cima', 'Faixa em cima (capa)'], ['topo', 'Disco no topo (inserto no centro)']]], () => { if (m.mat2Side === 'topo' && (m.mat2Y ?? 20) < 70) m.mat2Y = 90; re(); }); // disco: só a parte de cima (não pinta o oco da válvula)
+      field(box, m, ['mat2Y', m.mat2Side === 'topo' ? 'Altura onde o disco começa (da base)' : 'Altura da divisa (da base da peça)', 1, 99, 0.5, '%'], queueBuild);
+      if (m.mat2Side === 'topo') field(box, m, ['mat2R', 'Tamanho do disco (largura do topo)', 5, 100, 1, '%'], queueBuild);
       field(box, m, ['mat2Color', 'Cor do segundo material', 'color'], queueBuild);
       field(box, m, ['mat2Finish', 'Acabamento do segundo material', 'finish'], queueBuild);
     }
