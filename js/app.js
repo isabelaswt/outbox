@@ -429,7 +429,7 @@ function smoothProfile(rows0, H, Wmm = 20, sgMax = 0.9) {
   const rows = rows0.slice().sort((p, q) => p[0] - q[0]); rows.W = Wmm;
   // 1) contorno denso por interpolação linear (0,05 mm) — o extraído tem trechos esparsos
   const at = t => { let i = 0; while (i < rows.length - 2 && rows[i + 1][0] < t) i++; const A = rows[i], B = rows[i + 1] || A, f = B[0] > A[0] ? clamp((t - A[0]) / (B[0] - A[0]), 0, 1) : 0;
-    return [A[1] + (B[1] - A[1]) * f, A[2] + (B[2] - A[2]) * f, A[4] + (B[4] - A[4]) * f, f < 0.5 ? A : B]; };
+    return [A[1] + (B[1] - A[1]) * f, A[2] + (B[2] - A[2]) * f, A[4] + (B[4] - A[4]) * f, f < 0.5 ? A : B, (A[3] ?? 2) + ((B[3] ?? 2) - (A[3] ?? 2)) * f]; };
   const nd = Math.max(16, Math.ceil(H / 0.05)), dense = [];
   for (let i = 0; i <= nd; i++) dense.push(at(i / nd));
   // 2) média gaussiana adaptativa: forte (~0,9 mm) nos trechos de curva longa, onde a oscilação
@@ -443,10 +443,11 @@ function smoothProfile(rows0, H, Wmm = 20, sgMax = 0.9) {
   last = 1e9; for (let j = nd; j >= 0; j--) { if (step[j]) last = j; dist[j] = Math.min(dist[j], (last - j) * dmm); }
   const N = Math.max(8, Math.ceil(H / 0.15)), out = [];
   for (let i = 0; i <= N; i++) {
-    const c = Math.round(i / N * nd), sg = (0.2 + (sgMax - 0.2) * smooth(0, 2, dist[c])) / dmm, R = Math.ceil(3 * sg); let w = 0, a = 0, b = 0, cx = 0;
-    for (let j = Math.max(0, c - R); j <= Math.min(nd, c + R); j++) { const k = Math.exp(-0.5 * ((j - c) / sg) ** 2); w += k; a += k * dense[j][0]; b += k * dense[j][1]; cx += k * dense[j][2]; }
+    const c = Math.round(i / N * nd), sg = (0.2 + (sgMax - 0.2) * smooth(0, 2, dist[c])) / dmm, R = Math.ceil(3 * sg); let w = 0, a = 0, b = 0, cx = 0, nn = 0;
+    for (let j = Math.max(0, c - R); j <= Math.min(nd, c + R); j++) { const k = Math.exp(-0.5 * ((j - c) / sg) ** 2); w += k; a += k * dense[j][0]; b += k * dense[j][1]; cx += k * dense[j][2]; nn += k * dense[j][4]; }
     const q = dense[c][3];
-    out.push([Math.round(i / N * 1e4) / 1e4, Math.round(a / w * 1e4) / 1e4, Math.round(b / w * 1e4) / 1e4, q[3], Math.round(cx / w * 100) / 100, q[5]]);
+    // formato da seção (n) também em média: pegado do ponto mais perto, mudava aos saltos e a luz marcava listras
+    out.push([Math.round(i / N * 1e4) / 1e4, Math.round(a / w * 1e4) / 1e4, Math.round(b / w * 1e4) / 1e4, Math.round(nn / w * 1000) / 1000, Math.round(cx / w * 100) / 100, q[5]]);
   }
   return out;
 }
@@ -495,7 +496,12 @@ function incomShape(r) {
   }
   if (col) {
     const n0 = o.sides | 0, c = n0 ? Math.cos(Math.PI / n0) : 1, fp = n0 === 4 || n0 === 8 ? c + (1 - c) * (o.sideR || 0) : 1;
-    o.prof.forEach(q => { if (q[0] < col) { q[1] = q[1] * fp; q[2] = q[1] * o.W / o.D; q[3] = 2; } });
+    // disco em pé com pé redondo (Drop): a seção passa de redonda a disco aos poucos (~7% da altura
+    // para cada lado); a troca seca marcava uma linha em volta da base
+    const bw = fx.disco ? 0.07 : 0;
+    o.prof.forEach(q => {
+      if (bw) { const u = smooth(col - bw, col + bw, q[0]); if (u < 1) { q[2] = q[1] * o.W / o.D * (1 - u) + q[2] * u; q[3] = 2 * (1 - u) + q[3] * u; } }
+      else if (q[0] < col) { q[1] = q[1] * fp; q[2] = q[1] * o.W / o.D; q[3] = 2; } });
     o.polyFrom = col;
   }
   if (fx.fitFrom) o.fitFrom = r1(fx.fitFrom * r.H);
@@ -554,7 +560,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-16.conferencia-tampas';
+const BUILD = '2026-11-16.drop-base4';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -2390,7 +2396,7 @@ function layout(s, explode = 0) {
     for (let r = 0; r < nRep; r++) {
       y0 = r === 0 && onNeck ? neck.y0 + neck.m.ringH + m.gap : cur + (r === 0 ? m.gap : m.repGap);
       // tampa assentada na virola: acompanha a válvula atual (diminuir o spray desce a tampa junto)
-      if (r === 0 && vestsValve(s, idx)) { const v = out.findLast(o => o.idx === idx - 1); if (v) y0 = v.y0 + (m0.seatV ? v.m.h + (/Cash/.test(v.m.name || '') ? (v.m.guideH || 0) : 0) + (m.gap || 0) : m.gap); }
+      if (r === 0 && vestsValve(s, idx)) { const v = out.findLast(o => o.idx === idx - 1); if (v) y0 = v.y0 + (m0.seatV ? v.m.h + (/Cash/.test(v.m.name || '') && !/anel superior/.test(v.m.name || '') ? (v.m.guideH || 0) : 0) + (m.gap || 0) : m.gap); }
       // Gargalo sobre ombro arredondado: desce com o fechamento até a borda dele
       // assentar no ombro (senão sobra um vão com o gargalo à mostra).
       // Em vidro/PET o gargalo fica no topo (afundado, aparecia dentro do frasco): a saia
@@ -8342,7 +8348,7 @@ function termValve(term) {
   if (/cash/i.test(t)) {
     const sup = /anel superior/i.test(t), W = 17.25, h = 13.3;
     return { type: 'Cash', mm, sup, W, hTot: h + 0.6 + 8.6, o: sup
-      ? { name: `Válvula Cash ${mm} mm · anel superior`, W, D: W, h: h - 2.5, skirtPct: 100, collarR: 0.4, guideW: W, guideH: 2.5, guideLine: 50, stemH: 0.6, stemD: 4.6, actW: 12, actH: 8.6 }
+      ? { name: `Válvula Cash ${mm} mm · anel superior`, W, D: W, h: h - 2.5, skirtPct: 100, collarR: 0.4, guideW: W, guideH: 2.5, guideLine: 100, stemH: 0.6, stemD: 4.6, actW: 12, actH: 8.6 }
       : { name: `Válvula Cash ${mm} mm`, W, D: W, h, skirtPct: 19, bandInset: 0.35, ridges: 0, collarR: 0.6, guideW: 0, guideH: 0, stemH: 0.6, stemD: 4.6, actW: 12, actH: 8.6 } };
   }
   if (/recrave|crimp/i.test(t)) {
@@ -8366,7 +8372,8 @@ function incomValve(cap, term, mm) {
     if (h > hMax) return false;
     for (let y = y0f; y <= h + 1.5; y += 0.5) { const yy = y + base, need = (yy < o0.h * k - 1e-6 ? o0.W : yy < yC - 1e-6 ? Math.max(o0.guideW || 0, o0.stemD) : o0.actW + 0.6) * k / 2 + 0.2; if (capHalfAt(cap, y) - wall < need) return false; }
     return true; };
-  const seat = k => (o0.h + (/Cash/.test(tv.type) ? (o0.guideH || 0) : 0)) * k; // Recrave: a tampa desce até a cápsula, vestindo o pescoço
+  // Cash com anel superior: a tampa encaixa no anel (ele fica dentro dela), não apoia em cima dele
+  const seat = k => (o0.h + (/Cash/.test(tv.type) && !tv.sup ? (o0.guideH || 0) : 0)) * k; // Recrave: a tampa desce até a cápsula, vestindo o pescoço
   let k = 1, gap = 0;
   if (show && fits(1, show)) return { valve: M('sprayClassico', { ...tv.o, fterm: term, own: true, color: '#d6d8da', finish: 'metal' }), gap: 0, show };
   if (!fits(1, 0)) { if (fits(1, seat(1))) gap = seat(1); else { while (k > 0.5 && !fits(k, seat(k))) k -= 0.03; gap = seat(k); } }
