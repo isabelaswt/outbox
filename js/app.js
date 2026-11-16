@@ -574,7 +574,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-16.dosadora-redonda';
+const BUILD = '2026-11-16.dosadora-furo2';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -1783,12 +1783,12 @@ function sprayGeo(m, y0, { lo = false } = {}) {
       const t = i / N, x = x0 + (x1 - x0) * t, out = clamp((x - R * 0.6) / (x1 - R * 0.6), 0, 1);
       // seção arredondada (não quadrada), grossa junto do atuador e afinando de leve; a ponta fecha em arco
       let a = R * (0.78 - 0.18 * out), b = b0 * (1 + 0.9 * Math.pow(1 - out, 2));
-      const e = x1 - x; if (e < rt) { const f = Math.sqrt(Math.max(0.02, 1 - ((rt - e) / rt) ** 2)); a *= f; b *= f; }
-      const cy = yTop(x) - b - 0.05; cyTip = cy; // topo do bico rente à rampa
+      const cy = yTop(x) - b - 0.05; cyTip = cy; // topo do bico rente à rampa; o eixo segue o grau do topo
+      const e = x1 - x; if (e < rt) { const f = Math.sqrt(Math.max(0.3, 1 - ((rt - e) / rt) ** 2)); a *= f; b *= f; } // ponta arredondada em volta do eixo, com a boca aberta pelo furo
       const rg = []; for (let j = 0; j < seg; j++) { const [zz, yy] = sp(a, b, 2.6, j / seg * TAU); rg.push([x, cy + yy, zz]); }
       bill.push(rg);
     }
-    const nose = loftPts(bill), drill = cyl(Math.max(0.3, b0 * 0.28), 0, 4); drill.rotateZ(-Math.PI / 2 + Math.atan(k)); drill.translate(x1 - 2.5, cyTip - 0.2, 0);
+    const nose = loftPts(bill), drill = cyl(Math.max(0.5, b0 * 0.36), 0, 5.5, 0, 0, lo); drill.rotateZ(-Math.PI / 2 + Math.atan(k)); drill.translate(x1 - 4, cyTip - 4 * k, 0); // furo de saída na ponta, no eixo e no grau do bico
     const [noseC, c1] = cutHole(nose, drill); head.push(noseC); holes.push(c1);
   } else if (m.sprayType === 'pato') {
     // Pump bico pato: torre de trava, haste fina, cabeça redonda e bico achatado
