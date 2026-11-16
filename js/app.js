@@ -18,8 +18,8 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION } from 'three-bvh-csg';
-import { icon } from './icons.js?v=2026-11-16.incom3';
-import { INCOM_CAPS, INCOM_PRODUCTS } from './incom.js?v=2026-11-16.incom3';
+import { icon } from './icons.js?v=2026-11-16.incom5';
+import { INCOM_CAPS, INCOM_PRODUCTS } from './incom.js?v=2026-11-16.incom5';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -416,7 +416,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-16.incom3';
+const BUILD = '2026-11-16.incom5';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -5337,6 +5337,47 @@ function updateUndoBtns() {
 }
 
 // Monta as peças de um modelo num grupo (cena principal ou miniatura).
+// Compactos e paletas: godês na base e espelho na tampa; com "Abrir a tampa" ela gira na
+// dobradiça de trás (tudo da tampa junto), para ver o que tem dentro.
+const godeMat = new THREE.MeshStandardMaterial({ color: '#d2bea6', roughness: 0.96 }), godeRim = new THREE.MeshStandardMaterial({ color: '#bdb0a0', roughness: 0.45 });
+const mirrorMat = new THREE.MeshStandardMaterial({ color: '#ffffff', metalness: 1, roughness: 0.04 });
+function localBox(objs) { const bb = new THREE.Box3(); objs.forEach(o => { o.updateMatrix(); o.geometry.computeBoundingBox(); bb.union(o.geometry.boundingBox.clone().applyMatrix4(o.matrix)); }); return bb; }
+function compactParts(product, L) {
+  const mine = idx => product.children.filter(o => o.isMesh && o.userData.idx === idx);
+  const add = (geo, mat, idx, name, x, y, z) => { const o = new THREE.Mesh(geo, mat); o.position.set(x, y, z); o.userData.idx = idx; o.name = `${String(idx + 1).padStart(2, '0')}_${name}`; o.castShadow = o.receiveShadow = true; product.add(o); };
+  L.forEach(({ m, idx, y0 }) => {
+    if (m.hidden || !(m.godes || m.espelho)) return;
+    const objs = mine(idx); if (!objs.length) return;
+    const bb = localBox(objs), w = bb.max.x - bb.min.x, d = bb.max.z - bb.min.z, cx = (bb.max.x + bb.min.x) / 2, cz = (bb.max.z + bb.min.z) / 2;
+    const round = !m.sides, mg = Math.max(3.5, Math.min(w, d) * 0.09);
+    if (m.godes) {
+      const { rows, rect } = m.godes, top = y0 + m.h, one = rows.length === 1 && rows[0] === 1;
+      const aw = round && !one ? Math.min(w, d) * 0.68 : w - 2 * mg, ad = round && !one ? Math.min(w, d) * 0.68 : d - 2 * mg, ch = ad / rows.length;
+      rows.forEach((cols, i) => { const cw = aw / cols; for (let j = 0; j < cols; j++) {
+        const x = cx - aw / 2 + cw * (j + 0.5), z = cz - ad / 2 + ch * (i + 0.5);
+        if (rect && !one) {
+          add(new RoundedBoxGeometry(cw - 1, 0.36, ch - 1, 2, 0.6), godeRim, idx, 'bandeja', x, top + 0.18, z);
+          add(new RoundedBoxGeometry(cw - 2.4, 0.5, ch - 2.4, 2, 0.8), godeMat, idx, 'gode', x, top + 0.25, z);
+        } else {
+          const r = (one ? Math.min(aw, ad) : Math.min(cw, ch)) / 2 - 0.5;
+          add(new THREE.CylinderGeometry(r, r, 0.36, 56), godeRim, idx, 'bandeja', x, top + 0.18, z);
+          add(new THREE.CylinderGeometry(r - 1.1, r - 1.1, 0.5, 56), godeMat, idx, 'gode', x, top + 0.25, z);
+        }
+      } });
+    }
+    if (m.espelho) { // na face de baixo da tampa (fechada, fica escondido dentro da base)
+      const g = round ? new THREE.CircleGeometry(Math.min(w, d) / 2 - mg, 64) : new THREE.PlaneGeometry(w - 2 * mg, d - 2 * mg);
+      g.rotateX(Math.PI / 2); add(g, mirrorMat, idx, 'espelho', cx, y0 - 0.04, cz);
+    }
+  });
+  L.forEach(({ m, idx, y0 }) => {
+    if (m.hidden || !m.hinge || !(m.abre > 0)) return;
+    const objs = mine(idx); if (!objs.length) return;
+    const z = localBox(objs).min.z, T = new THREE.Matrix4().makeTranslation(0, y0, z)
+      .multiply(new THREE.Matrix4().makeRotationX(-clamp(m.abre, 0, 180) * Math.PI / 180)).multiply(new THREE.Matrix4().makeTranslation(0, -y0, -z));
+    objs.forEach(o => { o.applyMatrix4(T); o.updateMatrixWorld(true); });
+  });
+}
 function buildInto(product, S, explodeAmt = 0) {
   product.children.forEach(o => o.traverse(q => { q.geometry?.dispose(); if (q.userData.liquid) q.material?.dispose(); }));
   product.clear();
@@ -5549,6 +5590,7 @@ function buildInto(product, S, explodeAmt = 0) {
       if (pg) addP(pg, innerMat, 'pescante');
     }
   });
+  compactParts(product, L);
   if (semiSee) product.children.forEach(o => {
     if (o.material === semiTube) o.renderOrder = 3;
     else if (o.userData.liquid && o.name === 'liquido') { o.renderOrder = 2; o.material.depthWrite = false; }
@@ -6050,6 +6092,7 @@ const MF = [
     notK(['gargalo', 'spray'], ['W', 'Largura (frente)', 4, 200, 0.5, 'mm']),
     notK(['gargalo', 'spray'], ['D', 'Profundidade (lado)', 4, 200, 0.5, 'mm']),
     GP(['roundLock', 'Esfera: manter redonda', 'check', 0, 0, 0, isSphereCap]),
+    ['abre', 'Abrir a tampa (dobradiça)', 0, 120, 1, '°', m => !!m.hinge],
     ['veste', 'Tampa da válvula (desce e veste o spray de baixo)', 'check', 0, 0, 0, m => vestsValve({ modules: S.modules.map(x => (x === m ? { ...x, veste: true } : x)) }, S.modules.indexOf(m))],
     GP(['sphereR', 'Raio da esfera', 0, 150, 0.5, 'mm', isSphereCap]),
     N(['neckStd', 'Padrão do acabamento (aprox.)', 'select', [...Object.keys(NECKS).map(k => [k, k]), ['livre', 'Livre']]]),
@@ -7726,7 +7769,8 @@ function thumbOf(st) {
 let thumbQueue = [], pumping = false;
 function pumpThumbs() {
   const job = thumbQueue.shift(); if (!job) { pumping = false; return; }
-  if (job.img.isConnected) job.img.src = thumbOf(job.st);
+  // uma miniatura com erro não pode travar a fila (as seguintes ficavam em branco)
+  try { if (job.img.isConnected) job.img.src = thumbOf(job.st); } catch (e) { console.warn('miniatura', e); }
   setTimeout(pumpThumbs, 16);
 }
 // Começa no próximo ciclo: a grade que pediu a miniatura já está na tela.
@@ -7739,49 +7783,92 @@ function queueThumb(img, st) {
 // escolher um modelo apenas move o destaque, sem recarregar miniaturas.
 let galleryKey = '';
 // Abas da galeria: grupo de cada modelo pelo tipo de fechamento (os salvos têm a aba deles).
-const GAL_TABS = ['Todos', 'Frascos', 'Potes', 'Perfumes', 'Pump e gatilho', 'Conta-gotas', 'Bisnagas', 'Beauty', 'Incom', 'Salvos', 'Uploads'];
-// Produtos do catálogo Incom 2026 como modelos prontos (aba Incom): medidas externas totais do
-// fornecedor; base × tampa e detalhes aproximados com as peças do OUTBOX.
+const GAL_TABS = ['Todos', 'Frascos', 'Potes', 'Perfumes', 'Pump e gatilho', 'Conta-gotas', 'Bisnagas', 'Beauty', 'Salvos', 'Uploads'];
+// Biblioteca Incom: separada da sua, com abas por aplicação; dentro de cada aba, as linhas do catálogo
+const INCOM_TABS = ['Todos', 'Beleza', 'Perfume', 'Fármaco'];
+const INCOM_LINES = ['Compactos', 'Paletas', 'Batons', 'Líquidos labiais', 'Máscaras', 'Sticks', 'Conta-gotas', 'Dispensadores', 'Deluxes', 'Potes', 'Tampas de perfume', 'Frascos', 'Frasnagas'];
+// Válvula que cabe vestida pela tampa: virola com largura wv e altura total até hv
+// (alturas no tamanho padrão medidas na geometria de cada válvula).
+const VALVE_H = { contaGotas: 36.5, pump: 37.5, spray: 41, sprayClassico: 25.2 };
+function fitValve(t, wv, hv, o = {}) {
+  const d = LIB[t], kx = wv / d.W, kv = Math.min(1, hv / VALVE_H[t]), v = { W: r1(wv), D: r1(wv) };
+  ['actW', 'stemD', 'guideW', 'houseD', 'armW', 'armT', 'nozzleL'].forEach(k => { if (d[k] != null) v[k] = r1(d[k] * Math.min(1, kx)); });
+  ['h', 'actH', 'stemH', 'headH', 'guideH'].forEach(k => { if (d[k] != null) v[k] = r1(d[k] * kv); });
+  return M(t, { ...v, ...o });
+}
+// Godês dos compactos e paletas: fileiras (quantos em cada) e formato, pelo nome do modelo
+function godesOf(r) {
+  const n = r.n, rect = /Flat|Big|Retangular/.test(n) && !/Redondo/.test(n);
+  const rows = /Dez/.test(n) ? [5, 5] : /6 \+ 1/.test(n) ? [4, 3] : /Sexteto/.test(n) ? [3, 3] : /Quinteto/.test(n) ? [3, 2]
+    : /Quarteto|Big 4/.test(n) ? [2, 2] : /Big 9/.test(n) ? [3, 3, 3] : /Trio/.test(n) ? [3] : /Duo/.test(n) ? [2] : [1];
+  return { rows, rect };
+}
+// Produtos do catálogo Incom 2026 como modelos prontos (biblioteca Incom): medidas externas totais do
+// fornecedor; base × tampa e detalhes aproximados com as peças do OUTBOX. O que fica dentro (conta-gotas,
+// pump, spray, haste, bala, godês) entra montado: aparece pela tampa transparente, ao abrir ou no Explodir.
 function incomProduct(r) {
   const W = r.W, D = r.D ?? r.W, H = r.H, B = { pesc: false, bpesc: false, liq: false, vol: false, rTop: 1, rBot: 1 };
   const P = (name, w, d, h, o = {}) => M('reto', polyFit({ ...B, name, W: r1(w), D: r1(d ?? w), h: r1(h), ...o }));
   const sq = (k = 0.05) => ({ sides: 4, sideR: k }), clear = { own: true, finish: 'pet', color: '#ffffff' };
-  const neck = o => NECK('18/410', { h: 16.6, ...o });
+  const inner = Math.min(W, D) / 2;
   let ms;
   switch (r.t) {
-    case 'cq': case 'cqr': { const s0 = sq(r.t === 'cqr' ? 0.22 : 0.04); ms = [P('Base', W, D, H * 0.55, { ...s0, rTop: 0.6 }), P('Tampa', W, D, H * 0.45, { ...s0, rBot: 0.6, rTop: 1.2 })]; break; }
-    case 'cr': ms = [P('Base', W, D, H * 0.55, { rBot: 1.5, rTop: 0.6 }), P('Tampa', W, D, H * 0.45, { rBot: 0.6, rTop: 2 })]; break;
+    case 'cq': case 'cqr': { const s0 = sq(r.t === 'cqr' ? 0.22 : 0.04); ms = [P('Base', W, D, H * 0.55, { ...s0, rTop: 0.6, godes: godesOf(r) }), P('Tampa', W, D, H * 0.45, { ...s0, rBot: 0.6, rTop: 1.2, hinge: true, abre: 0, espelho: !/Visor|Crystal/i.test(r.n + r.mat) })]; break; }
+    case 'cr': ms = [P('Base', W, D, H * 0.55, { rBot: 1.5, rTop: 0.6, godes: godesOf(r) }), P('Tampa', W, D, H * 0.45, { rBot: 0.6, rTop: 2, hinge: true, abre: 0, espelho: !/Visor|Crystal/i.test(r.n + r.mat) })]; break;
     case 'cg': case 'cgt': case 'cgr': case 'dsq': case 'bulb': {
-      const sh = r.t === 'dsq' ? sq(0.08) : {}, rb = r.t === 'bulb' ? W / 2 * 0.95 : r.t === 'cgr' ? W * 0.3 : 2;
-      ms = [P('Frasco', W, D, H * 0.58, { ...sh, vol: true, rBot: rb, rTop: 1, ...(r.t === 'cgt' ? { taperB: 86 } : {}) }), P('Anel', W, D, H * 0.05, sh),
-        P('Sobretampa', W, D, H * 0.37, { ...sh, ...clear, rBot: 0.5, rTop: r.t === 'bulb' ? W / 2 * 0.95 : r.t === 'cgr' ? W * 0.3 : 2 })]; break; }
-    case 'onoff': ms = [P('Frasco', W, D, H * 0.62, { vol: true, rBot: 2 }), P('Acionador e capa', W, D, H * 0.38, { rTop: 3 })]; break;
-    case 'flacon': case 'flaconb': ms = [P('Frasco', W, D, H * 0.56, { vol: true, rBot: 2, rTop: W * 0.18 }), P('Tampa', W * 0.62, null, H * (r.t === 'flaconb' ? 0.3 : 0.16), {})];
-      ms.push(r.t === 'flaconb' ? P('Botão', W * 0.5, null, H * 0.14, { rTop: 1.5 }) : P('Bulbo', W * 0.42, null, H * 0.28, { rTop: W * 0.2 })); break;
+      const sh = r.t === 'dsq' ? sq(0.08) : {}, rb = r.t === 'bulb' ? W / 2 * 0.95 : r.t === 'cgr' ? W * 0.3 : 2, twist = /Twist/.test(r.n);
+      const capH = H * 0.37, room = capH - 2.5 - (r.t === 'bulb' ? inner * 0.35 : 0), wIn = inner * 2 * (r.t === 'dsq' ? 0.62 : 0.56);
+      let v; // conta-gotas na linha Conta-gotas; spray nos Deluxes; pump dosadora nos Dispensadores
+      if (r.c === 'Conta-gotas') v = fitValve('contaGotas', Math.min(22, wIn), room);
+      else if (r.c === 'Deluxes') v = fitValve('spray', Math.min(26, wIn), room);
+      else { v = fitValve('pump', Math.min(26.3, wIn), room); v.nozzleL = r1(Math.max(2, Math.min(v.nozzleL, inner - 3.5 - v.actW / 2))); }
+      ms = [P('Frasco', W, D, H * 0.58, { ...sh, vol: true, rBot: rb, rTop: 1, ...(r.t === 'cgt' ? { taperB: 86 } : {}) }), P('Anel', W, D, H * 0.05, sh), v,
+        P(twist ? 'Acionador' : 'Sobretampa', W, D, capH, { ...sh, ...(twist ? {} : clear), rBot: 0.5, rTop: r.t === 'bulb' ? W / 2 * 0.95 : r.t === 'cgr' ? W * 0.3 : 2 })]; break; }
+    case 'onoff': ms = [P('Frasco', W, D, H * 0.62, { vol: true, rBot: 2, bpesc: true, bpescMola: true }), P('Acionador e capa', W, D, H * 0.38, { rTop: 3 })]; break;
+    case 'flacon': case 'flaconb': { const b = r.t === 'flaconb';
+      ms = [P('Frasco', W, D, H * 0.56, { vol: true, rBot: 2, rTop: W * 0.18 }),
+        M('contaGotas', { name: b ? 'Conta-gotas de botão' : 'Conta-gotas', W: r1(W * 0.62), D: r1(W * 0.62), h: r1(H * (b ? 0.3 : 0.16)), actW: r1(W * (b ? 0.5 : 0.42)), actH: r1(H * (b ? 0.14 : 0.28) + 0.5) })]; break; }
     case 'fr': case 'frr': case 'frsq': case 'frsqr': case 'frt': case 'frsh': case 'frap': case 'frflat': {
       const o = { fr: { rBot: 3, rTop: W * 0.15 }, frr: { rBot: W * 0.3, rTop: W * 0.15 }, frsq: { ...sq(0.06), rTop: 3 }, frsqr: { ...sq(0.2), rTop: 4 },
         frt: { taperB: 82, rBot: W * 0.25, rTop: 4 }, frsh: { rTop: W * 0.35, rBot: 3 }, frap: { taper: 70, rTop: 6, rBot: 6 }, frflat: { ...sq(0.1), rTop: 6 } }[r.t];
-      ms = [P('Frasco', W, D, H - 16.6, { vol: true, ...o }), neck()]; break; }
+      ms = [P('Frasco', W, D, H - 16.6, { vol: true, ...o }), NECK('18/410', { h: 16.6 })]; break; }
     case 'frn': case 'frnt': case 'frnr': case 'frnflat': {
       const o = r.t === 'frnt' ? { taper: 88 } : {};
       ms = [P('Frasco', W, D, H * 0.66, { vol: true, rBot: 3, rTop: 1, ...o }), P('Tampa', W * (r.t === 'frnt' ? 0.88 : 1), D, H * 0.34, { rTop: r.t === 'frnr' ? W * 0.4 : 2 })]; break; }
     case 'tube': ms = [P('Frasco', W, D, H - 14, { vol: true, taper: 70, rTop: 3, rBot: 2 }), P('Gargalo', W * 0.45, null, 14, { rTop: 1 })]; break;
-    case 'gloss': case 'glosssq': { const s0 = r.t === 'glosssq' ? sq(0.08) : {}; ms = [P('Frasco', W, D, H * 0.52, { ...s0, vol: true, rBot: 1.5 }), P('Tampa', W, D, H * 0.48, { ...s0, rTop: r.t === 'gloss' ? W * 0.2 : 1.2 })]; break; }
-    case 'baton': case 'batonsq': { const s0 = r.t === 'batonsq' ? sq(0.06) : {}; ms = [P('Base', W, D, H * 0.4, s0), P('Tampa', W, D, H * 0.6, { ...s0, rTop: 1.5 })]; break; }
+    case 'gloss': case 'glosssq': { // a tampa veste a haste com o aplicador (ou a escova, na máscara), que desce até o fundo
+      const s0 = r.t === 'glosssq' ? sq(0.08) : {}, capH = H * 0.48, wv = r1(Math.min(W, D) * 0.55), masc = r.c === 'Máscaras';
+      ms = [P('Frasco', W, D, H * 0.52, { ...s0, vol: true, rBot: 1.5 }),
+        M('tampaGloss', { name: masc ? 'Haste com escova' : 'Haste com aplicador', W: wv, D: wv, h: r1(capH - 2.5), pescD: r1(Math.min(3, wv * 0.3)),
+          tipL: masc ? r1(Math.min(24, H * 0.2)) : 13, tipW: r1(Math.min(masc ? 7.5 : 6.5, Math.min(W, D) - 6)), tipColor: masc ? '#2b2b2b' : '#e2cdb8' }),
+        P('Tampa', W, D, capH, { ...s0, rTop: r.t === 'gloss' ? W * 0.2 : 1.2 })]; break; }
+    case 'baton': case 'batonsq': { const s0 = r.t === 'batonsq' ? sq(0.06) : {}; // tampa desce vestindo a bala
+      ms = [P('Base', W, D, H * 0.4, s0), P('Bala (batom)', W * 0.52, null, H * 0.5, { rTop: W * 0.2, rBot: 0.5 }), P('Tampa', W, D, H * 0.6, { ...s0, rTop: 1.5, gap: r1(-H * 0.5) })]; break; }
     case 'pote': case 'potesq': { const s0 = r.t === 'potesq' ? sq(0.1) : {}; ms = [P('Pote', W * 0.98, D * 0.98, H * 0.62, { ...s0, vol: true, rBot: 3 }), P('Tampa', W, D, H * 0.38, { ...s0, rTop: 2 })]; break; }
-    case 'stick': ms = [P('Base', W, D, H * 0.5, { rBot: 2 }), P('Tampa', W, D, H * 0.5, { rTop: 3 })]; break;
+    case 'stick': ms = [P('Base', W, D, H * 0.5, { rBot: 2 }), P('Bastão (produto)', W * 0.78, null, H * 0.42, { rTop: W * 0.2 }), P('Tampa', W, D, H * 0.5, { rTop: 3, gap: r1(-H * 0.42) })]; break;
     default: ms = [P('Corpo', W, D, H, { vol: true })];
   }
   Object.assign(ms[0], { forn: 'Incom', ref: r.n.toUpperCase(), fmat: r.mat, fterm: r.vol, fpg: r.pg, fest: r.est, fW: r.W, fD: r.D ?? r.W, fH: r.H, fcat: r.c });
-  return { color: BEIGE, finish: 'fosco', modules: ms, forn: 'Incom', fcat: r.c };
+  const fapp = ['Frascos', 'Frasnagas'].includes(r.c) || r.t.startsWith('flacon') ? 'Fármaco' : 'Beleza';
+  return { color: BEIGE, finish: 'fosco', modules: ms, forn: 'Incom', fcat: r.c, fapp };
 }
 INCOM_PRODUCTS.forEach(r => { PRESETS[`Incom ${r.n} (${r.c.toLowerCase()})`] = incomProduct(r); });
+// Tampas de perfume da Incom montadas: frasco genérico (a Incom não faz o vidro) + válvula spray
+// do acabamento da tampa (15, 18 ou 20 mm) + a tampa, que desce e veste a válvula.
+function incomPerfume(r) {
+  const cap = LIB[r.k], cw = Math.min(cap.W, cap.D ?? cap.W), mm = +((r.term || '').match(/(\d+)\s*mm/) || [])[1] || 15;
+  const wv = r1(Math.max(11, Math.min(mm + 3, (r.b ? r.b : cw * 0.75) - 2.5)));
+  const bw = r1(clamp(Math.max(cap.W, cap.D ?? cap.W) * 1.3, 42, 72));
+  return { color: BEIGE, finish: 'fosco', forn: 'Incom', fcat: 'Tampas de perfume', fapp: 'Perfume', modules: [
+    M('reto', { name: 'Frasco (genérico, não é Incom)', W: bw, D: r1(bw * 0.62), n: 3.4, h: r1(bw * 1.05), rTop: 3, rBot: 3, vol: true, liq: false, pesc: false, bpesc: false }),
+    fitValve('sprayClassico', wv, cap.h - 2), M(r.k)] };
+}
+INCOM_CAPS.forEach(r => { PRESETS[`Incom ${r.n} (tampa de perfume)`] = incomPerfume(r); });
 // abas antigas que viraram outras (escolhas já gravadas continuam valendo)
 const GAL_OLD = { Sticks: 'Beauty', 'Conta-gotas e gloss': 'Conta-gotas', Tampas: 'Frascos', 'Pump e spray': 'Pump e gatilho' };
 function galGroup(st, name, kind) {
   // aba escolhida arrastando o card: gravada no modelo salvo; nos modelos base, a da
   // equipe (servidor, vale para todos) ou, sem login, a deste navegador
-  if (st.forn) return 'Incom';
   const pick0 = kind === 'b' ? baseAbas()[name] : st.aba, pick = GAL_OLD[pick0] || pick0;
   if (pick && GAL_TABS.includes(pick) && !['Todos', 'Salvos'].includes(pick)) return pick;
   const ms = st.modules || [], sp = ms.filter(m => m.kind === 'spray').map(m => m.sprayType ?? LIB[m.type]?.sprayType);
@@ -7799,6 +7886,9 @@ function galGroup(st, name, kind) {
 let teamAba = null; // abas dos modelos base definidas pela equipe (com login)
 const baseAbas = () => (cloud && teamAba ? teamAba : store.get('shape.galAba', {}));
 let galTab = store.get('shape.galTab', 'Todos'); galTab = GAL_OLD[galTab] || galTab; if (!GAL_TABS.includes(galTab)) galTab = 'Todos'; // aba que deixou de existir
+// Biblioteca aberta: a sua ('minha') ou a do fornecedor ('incom'), cada uma com as abas dela
+let galLib = store.get('shape.galLib', 'minha'), incTab = store.get('shape.incTab', 'Todos'); if (!INCOM_TABS.includes(incTab)) incTab = 'Todos';
+$('#galLib').onclick = e => { const k = e.target.closest('button')?.dataset.lib; if (!k || k === galLib) return; galLib = k; store.set('shape.galLib', k); galleryKey = ''; $('#gallery').scrollTop = 0; renderPresets(); };
 // Busca na biblioteca: filtra os cards pelo nome (sem acento, sem maiúscula); ao buscar,
 // procura em todas as abas.
 const norm = t => String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
@@ -7809,13 +7899,22 @@ function filterGallery() {
   gal.querySelectorAll('h4').forEach(h => { let n = h.nextElementSibling, any = false; while (n && n.tagName !== 'H4') { if (n.classList.contains('card') && n.style.display !== 'none') any = true; n = n.nextElementSibling; } h.style.display = !q || any ? '' : 'none'; });
   let none = gal.querySelector('.noHit'); if (q && !shown) { if (!none) gal.insertAdjacentHTML('beforeend', '<h4 class="noHit">Nada com esse nome</h4>'); } else none?.remove();
 }
-$('#galSearch').oninput = () => { if ($('#galSearch').value.trim() && galTab !== 'Todos') { galTab = 'Todos'; galleryKey = ''; renderPresets(); } else filterGallery(); };
+$('#galSearch').oninput = () => { const q = $('#galSearch').value.trim();
+  if (q && galLib === 'incom' && incTab !== 'Todos') { incTab = 'Todos'; galleryKey = ''; renderPresets(); }
+  else if (q && galLib !== 'incom' && galTab !== 'Todos') { galTab = 'Todos'; galleryKey = ''; renderPresets(); } else filterGallery(); };
 function renderPresets() {
   const sv = saved(), gal = $('#gallery'), keepTop = gal.scrollTop;
   const tabs = $('#galTabs');
-  if (tabs && !tabs.children.length) {
-    tabs.innerHTML = GAL_TABS.map(t => `<span class="chip" data-tab="${t}">${t === 'Salvos' && cloud ? 'Meus modelos' : t}</span>`).join('');
-    tabs.onclick = e => { const t = e.target.closest('.chip')?.dataset.tab; if (!t) return; galTab = t; store.set('shape.galTab', t); galleryKey = ''; gal.scrollTop = 0; renderPresets(); };
+  const inc = galLib === 'incom', curTab = inc ? incTab : galTab;
+  $('#galLib')?.querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.lib === galLib));
+  if (tabs && tabs.dataset.lib !== galLib) { // troca de biblioteca: abas da outra
+    tabs.dataset.lib = galLib;
+    tabs.innerHTML = (inc ? INCOM_TABS : GAL_TABS).map(t => `<span class="chip" data-tab="${t}">${t === 'Salvos' && cloud ? 'Meus modelos' : t}</span>`).join('');
+  }
+  if (tabs && !tabs.onclick) {
+    tabs.onclick = e => { const t = e.target.closest('.chip')?.dataset.tab; if (!t) return;
+      if (galLib === 'incom') { incTab = t; store.set('shape.incTab', t); } else { galTab = t; store.set('shape.galTab', t); }
+      galleryKey = ''; gal.scrollTop = 0; renderPresets(); };
     // arrastar um card para uma aba muda a aba dele ("Todos" ou "Salvos" voltam ao automático)
     tabs.ondragover = e => { const c = e.target.closest('.chip'); if (!c) return; e.preventDefault(); tabs.querySelectorAll('.chip').forEach(x => x.classList.toggle('drop', x === c)); };
     tabs.ondragleave = e => { if (!tabs.contains(e.relatedTarget)) tabs.querySelectorAll('.chip').forEach(x => x.classList.remove('drop')); };
@@ -7823,6 +7922,7 @@ function renderPresets() {
       e.preventDefault(); tabs.querySelectorAll('.chip').forEach(x => x.classList.remove('drop'));
       const t = e.target.closest('.chip')?.dataset.tab; let d; try { d = JSON.parse(e.dataTransfer.getData('text/x-outbox-card')); } catch { return; }
       if (!t || !d?.name) return;
+      if (galLib === 'incom' || PRESETS[d.name]?.forn) return toast('A biblioteca Incom tem abas fixas, por aplicação');
       if (t === 'Uploads') return toast('Uploads mostra os STL enviados; arraste para outra aba');
       const auto = ['Todos', 'Salvos'].includes(t);
       if (d.kind === 'b' && cloud) { // vale para a equipe toda
@@ -7839,8 +7939,8 @@ function renderPresets() {
       toast(auto ? `${d.name}: aba automática` : `${d.name} → ${t}`); galleryKey = ''; renderPresets();
     };
   }
-  tabs?.querySelectorAll('.chip').forEach(c => c.classList.toggle('on', c.dataset.tab === galTab));
-  const key = galTab + '#' + stlUploads.map(f => f.id).join(',') + '#' + Object.keys(PRESETS).join('|') + '#' + savedNames().join('|') + '#' + cloudList.map(x => x.tab || '').join('|') + '#' + JSON.stringify(baseAbas()) + Object.values(sv).map(v => v.aba || '').join('|');
+  tabs?.querySelectorAll('.chip').forEach(c => c.classList.toggle('on', c.dataset.tab === curTab));
+  const key = galLib + '#' + curTab + '#' + stlUploads.map(f => f.id).join(',') + '#' + Object.keys(PRESETS).join('|') + '#' + savedNames().join('|') + '#' + cloudList.map(x => x.tab || '').join('|') + '#' + JSON.stringify(baseAbas()) + Object.values(sv).map(v => v.aba || '').join('|');
   if (key === galleryKey && gal.children.length) {
     gal.querySelectorAll('.card').forEach(c => c.classList.toggle('on', c.title === fileName())); filterGallery();
     return;
@@ -7863,7 +7963,13 @@ function renderPresets() {
       queueThumb(card.querySelector('img'), kind === 'b' ? beigeOf(st) : st);
     }
   };
-  const inTab = kind => ([n, st]) => st.forn ? galTab === 'Incom' : galTab === 'Todos' || galGroup(st, n, kind) === galTab; // catálogo Incom só na aba dele (não lota Todos)
+  if (inc) { // biblioteca Incom: só o catálogo, separado por linha (Compactos, Conta-gotas…)
+    const all = Object.entries(PRESETS).filter(([, st]) => st.forn && (incTab === 'Todos' || st.fapp === incTab));
+    INCOM_LINES.forEach(c => section(c, all.filter(([, st]) => st.fcat === c), 'b'));
+    if (!gal.children.length) gal.innerHTML = '<h4>Nada nesta aba ainda</h4>';
+    gal.scrollTop = keepTop; filterGallery(); return;
+  }
+  const inTab = kind => ([n, st]) => (kind !== 'b' || !st.forn) && (galTab === 'Todos' || galGroup(st, n, kind) === galTab); // catálogo Incom fica na biblioteca dele
   if (galTab === 'Uploads') { // peças STL da equipe: clicar põe a peça no produto aberto
     const h = document.createElement('h4'); h.textContent = cloud ? 'STL enviados (clique para usar no produto)' : 'Entre na conta para ver os uploads'; gal.appendChild(h);
     for (const f of stlUploads) {
