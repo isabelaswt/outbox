@@ -397,6 +397,18 @@ const CAP_FIX = { incom_aramis: { quadTop: 0.81, quadN: 5 }, incom_cubic: { quad
 // O mesmo degrau lido em alturas um pouco diferentes à esquerda e à direita do desenho (chanfro
 // fino de cada lado) virava, na média dos dois lados, uma aba de meia largura. Degraus de mesmo
 // sentido a menos de ~6% da altura um do outro passam a acontecer juntos, na altura média.
+// Tampa que termina em ponta (gota, ovo, cúpula): o traço do desenho acaba num topo achatado de
+// ~1 mm, que virava um "dente" com o arredondado em cima. Fecha numa cúpula contínua: do ponto em
+// que a largura cai abaixo de 1/4, o contorno segue uma elipse até zerar no topo.
+function closeTop(P0) {
+  const P = P0.map(q => q.slice()), n = P.length, last = P[n - 1];
+  if ((last[1] + last[2]) / 2 > 0.16) return P;
+  let i0 = n - 1; while (i0 > 0 && (P[i0][1] + P[i0][2]) / 2 < 0.25) i0--;
+  const t0 = P[i0][0], l0 = P[i0][1], r0 = P[i0][2], span = 1 - t0; if (!(span > 0.005)) return P;
+  const out = P.slice(0, i0 + 1);
+  for (let k = 1; k <= 14; k++) { const u = k / 14, e = Math.sqrt(Math.max(0, 1 - u * u)); out.push([t0 + span * u, Math.max(0.006, l0 * e), Math.max(0.006, r0 * e)]); }
+  return out;
+}
 function alignSteps(P0) {
   const P = P0.map(q => q.slice()), J = (c) => { const out = []; for (let i = 1; i < P.length; i++) { const d = P[i][c] - P[i - 1][c]; if (Math.abs(d) > 0.08) out.push({ i, t: P[i][0], d }); } return out; };
   const jl = J(1), jr = J(2), used = new Set();
@@ -422,10 +434,14 @@ function smoothProfile(rows0, H, Wmm = 20) {
   //    (anel, ressalto, base), que continuam nítidos. 3) reamostra a cada 0,15 mm.
   const Wh = W0 => W0, dmm = H / nd, step = new Uint8Array(nd + 1);
   for (let j = 1; j <= nd; j++) if (Math.abs(dense[j][0] - dense[j - 1][0]) * (rows.W || 20) / 2 / dmm > 1.2) { for (let q = Math.max(0, j - Math.ceil(0.6 / dmm)); q <= Math.min(nd, j + Math.ceil(0.6 / dmm)); q++) step[q] = 1; }
+  // distância (mm) até o degrau mais perto: o alisamento cresce aos poucos com ela (sem dobra na transição)
+  const dist = new Float32Array(nd + 1).fill(1e9); let last = -1e9;
+  for (let j = 0; j <= nd; j++) { if (step[j]) last = j; dist[j] = (j - last) * dmm; }
+  last = 1e9; for (let j = nd; j >= 0; j--) { if (step[j]) last = j; dist[j] = Math.min(dist[j], (last - j) * dmm); }
   const N = Math.max(8, Math.ceil(H / 0.15)), out = [];
   for (let i = 0; i <= N; i++) {
-    const c = Math.round(i / N * nd), sg = (step[c] ? 0.2 : 0.9) / dmm, R = Math.ceil(3 * sg); let w = 0, a = 0, b = 0, cx = 0;
-    for (let j = Math.max(0, c - R); j <= Math.min(nd, c + R); j++) { if (!step[c] && step[j]) continue; const k = Math.exp(-0.5 * ((j - c) / sg) ** 2); w += k; a += k * dense[j][0]; b += k * dense[j][1]; cx += k * dense[j][2]; }
+    const c = Math.round(i / N * nd), sg = (0.2 + 0.7 * smooth(0, 2, dist[c])) / dmm, R = Math.ceil(3 * sg); let w = 0, a = 0, b = 0, cx = 0;
+    for (let j = Math.max(0, c - R); j <= Math.min(nd, c + R); j++) { const k = Math.exp(-0.5 * ((j - c) / sg) ** 2); w += k; a += k * dense[j][0]; b += k * dense[j][1]; cx += k * dense[j][2]; }
     const q = dense[c][3];
     out.push([Math.round(i / N * 1e4) / 1e4, Math.round(a / w * 1e4) / 1e4, Math.round(b / w * 1e4) / 1e4, q[3], Math.round(cx / w * 100) / 100, q[5]]);
   }
@@ -437,13 +453,15 @@ function incomShape(r) {
   // quadrada/sextavada/oitavada). Lado esquerdo e direito diferentes viram deslocamento do centro.
   const fx = CAP_FIX[r.k] || {}, W = pr.W ?? r.W;
   const D = fx.deitada ? r.H : fx.D ?? (fx.Dk ? r1(W * fx.Dk) : r.D ?? W);
-  const o = { W, D, h: r.H, rTop: 0.5, rBot: 0.3, sides: fx.sides ?? (base.sides || 0), sideR: fx.sideR ?? base.sideR ?? 0.1 };
+  const o = { W, D, h: r.H, rTop: 0, rBot: 0.3, sides: fx.sides ?? (base.sides || 0), sideR: fx.sideR ?? base.sideR ?? 0.1 };
   polyFit(o);
   o.W0 = o.W;
-  o.prof = alignSteps(pr.p).map(([t, l, rr]) => { const a = (l + rr) / 2;
+  o.prof = closeTop(alignSteps(pr.p)).map(([t, l, rr]) => { const a = (l + rr) / 2;
     // disco em pé: espessura constante, mas perto das pontas (largura menor que a espessura) a seção
     // vira redonda — sem o degrau de "ombro" em cima e embaixo; a borda fica toda abaulada
-    const bD = fx.disco ? Math.min(1, a * o.W / o.D) : 0, nD = fx.disco ? 2 + 2 * clamp((a * o.W / o.D - 1) / 0.6, 0, 1) : 0;
+    // espessura afina suave (mínimo suave) quando a largura chega perto dela; seção squircle leve
+    // constante: faces levemente abauladas e borda redonda, sem quina nem ombro
+    const sm = (x, y, k) => -k * Math.log(Math.exp(-x / k) + Math.exp(-y / k)), bD = fx.disco ? clamp(sm(1, a * o.W / o.D * 0.92, 0.12), 0.02, 1) : 0, nD = 2.6;
     const b = fx.deitada ? Math.sqrt(Math.max(0.0004, 1 - (2 * t - 1) ** 2)) : fx.disco ? bD : a;
     return [t, a, b, fx.deitada ? 8 : fx.disco ? nD : 2, r1((rr - l) / 2 * o.W / 2), 0]; });
   o.smoothProf = false; if (pr.d) o.topDip = r1(pr.d * r.H); if (pr.tl) o.tilt = pr.tl;
@@ -484,7 +502,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-16.furo-drop2';
+const BUILD = '2026-11-16.topo-sem-dente';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
