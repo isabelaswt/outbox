@@ -391,7 +391,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-16.liquido-inclinado';
+const BUILD = '2026-11-16.sem-veu2';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -3458,7 +3458,7 @@ function material(color, finish, band = null, thick, look = null) {
         // ombro puxava o líquido de baixo (oval claro deformado no topo e anel rosa acima do nível)
         .replace('material.thickness = thickness;', 'material.thickness = thickness * mix(1.0, 0.08, smoothstep(0.12, 0.55, inverseTransformDirection(normal, viewMatrix).y))' + (band ? ' * (1.0 - 0.7 * ' + bandF(band) + ')' : '') + ';') // fundo grosso: lente curta (a grossa entortava até o chão sombreado embaixo e o vidro ficava cinza)
         .replace('totalDiffuse = mix( totalDiffuse, transmitted.rgb, material.transmission );',
-          `float faceV = abs(dot(normalize(vViewPosition), normal)), frE = pow(1.0 - faceV, 2.4); // só a borda de verdade escurece (em ângulo médio, como canelado visto de cima, tirava ~30% da luz)
+          `{ float lT0 = dot(transmitted.rgb, vec3(0.2126, 0.7152, 0.0722)); float chr = max(transmitted.r, max(transmitted.g, transmitted.b)) - min(transmitted.r, min(transmitted.g, transmitted.b)); transmitted.rgb = max(vec3(lT0) + (transmitted.rgb - vec3(lT0)) * 1.4, 0.0) * mix(1.0, 0.9, clamp(chr * 3.0, 0.0, 1.0)); } // o que está atrás do vidro (o líquido colorido) volta saturado antes da cor do vidro: a passagem deixava um véu cremoso; branco e cinza não mudam\n\tfloat faceV = abs(dot(normalize(vViewPosition), normal)), frE = pow(1.0 - faceV, 2.4); // só a borda de verdade escurece (em ângulo médio, como canelado visto de cima, tirava ~30% da luz)
 \ttransmitted.rgb *= pow(max(material.diffuseColor, vec3(1e-4)), vec3(mix(0.5, 1.7, smoothstep(0.3, 0.92, 1.0 - faceV))));
 \ttransmitted.rgb *= 1.0 + 0.3 * faceV * faceV * (1.0 - dot(material.diffuseColor, vec3(0.333))); // o vidro curvo junta a luz de trás no miolo (acende por dentro); no incolor não estoura o fundo
 \tfloat dnS = smoothstep(0.1, 0.75, -inverseTransformDirection(normal, viewMatrix).y); // parte de baixo da curva
@@ -3471,7 +3471,7 @@ function material(color, finish, band = null, thick, look = null) {
 	  transmitted.rgb *= mix(vec3(1.0), ${v3(band.liq)}, 0.55 * bF * smoothstep(0.35, 0.85, 1.0 - faceV)); // laterais do fundo grosso refletem o perfume de dentro (como a base do frasco de verdade)` : ''}
 	}` : ''}
 \ttotalDiffuse = mix( totalDiffuse, transmitted.rgb, material.transmission );`)); };
-    m.customProgramCacheKey = () => 'vidro11' + color + bandKey(band) + wk; }
+    m.customProgramCacheKey = () => 'vidro13' + color + bandKey(band) + wk; }
   // Vidro fosco (jateado): transmite a luz mas embaça o que está dentro e atrás.
   // Contraste: parte da luz é espalhada pelo jateado (o vidro ganha o degradê do
   // estúdio), a cor fica mais densa com a espessura e o contorno pega um brilho
@@ -3493,8 +3493,8 @@ function material(color, finish, band = null, thick, look = null) {
         // ombro com parede fina, como no vidro liso (a lente grossa deformava o topo do líquido num oval claro)
         .replace('material.thickness = thickness;', 'material.thickness = thickness * mix(1.0, 0.08, smoothstep(0.12, 0.55, inverseTransformDirection(normal, viewMatrix).y));')
         .replace('totalDiffuse = mix( totalDiffuse, transmitted.rgb, material.transmission );',
-          `float frE = pow(1.0 - abs(dot(normalize(vViewPosition), normal)), 1.8);\n\ttransmitted.rgb *= mix(vec3(1.0), ${etv}, clamp(frE * (0.45 + uWall * 0.45), 0.0, 1.0));\n\ttotalDiffuse = mix( totalDiffuse, transmitted.rgb, material.transmission );`)); };
-    m.customProgramCacheKey = () => 'pet2' + color + wk; }
+          `{ float lT0 = dot(transmitted.rgb, vec3(0.2126, 0.7152, 0.0722)); float chr = max(transmitted.r, max(transmitted.g, transmitted.b)) - min(transmitted.r, min(transmitted.g, transmitted.b)); transmitted.rgb = max(vec3(lT0) + (transmitted.rgb - vec3(lT0)) * 1.4, 0.0) * mix(1.0, 0.9, clamp(chr * 3.0, 0.0, 1.0)); } // líquido colorido visto pelo PET: sem véu cremoso (como no vidro)\n\tfloat frE = pow(1.0 - abs(dot(normalize(vViewPosition), normal)), 1.8);\n\ttransmitted.rgb *= mix(vec3(1.0), ${etv}, clamp(frE * (0.45 + uWall * 0.45), 0.0, 1.0));\n\ttotalDiffuse = mix( totalDiffuse, transmitted.rgb, material.transmission );`)); };
+    m.customProgramCacheKey = () => 'pet3' + color + wk; }
   // Vidro jateado: a MESMA cor do vidro transparente — só muda o acabamento (o
   // desfoque do que está atrás, o brilho espalhado e o grão). Bordas e fundo ficam
   // mais escuros só em luminosidade, sem desviar o tom (a absorção por potência
