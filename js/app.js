@@ -18,8 +18,8 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION } from 'three-bvh-csg';
-import { icon } from './icons.js?v=2026-11-16.incom';
-import { INCOM_CAPS } from './incom.js?v=2026-11-16.incom';
+import { icon } from './icons.js?v=2026-11-16.incom3';
+import { INCOM_CAPS, INCOM_PRODUCTS } from './incom.js?v=2026-11-16.incom3';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -382,8 +382,12 @@ const LIB = {
   disctop: { name: 'Tampa disc-top', W: 48.3, D: 48.3, h: 32.5, taper: 95, rBot: 1, rTop: 0.8, topType: 'disc', discD: 42.4, discDip: 5 },
 };
 const newUid = () => Math.random().toString(36).slice(2, 10);
+// Peça de lados (4, 8): o parâmetro W é de canto a canto; a medida do catálogo é de face a face.
+// Converte para a medida externa sair igual à do fornecedor (medido na geometria: c + (1 − c)·arredondamento).
+function polyFit(o) { const n = o.sides || 0; if (n === 4 || n === 8) { const c = Math.cos(Math.PI / n), f = c + (1 - c) * (o.sideR || 0); o.W = r1(o.W / f); o.D = r1(o.D / f); } return o; }
 // Tampas reais da Incom (catálogo 2026): medidas do fornecedor, forma aproximada com as peças do OUTBOX
-function incomShape(r) {
+function incomShape(r) { return polyFit(incomShape0(r)); }
+function incomShape0(r) {
   const W = r.W, D = r.D ?? r.W, h = r.H, base = r.b ? Math.min(100, r.b / W * 100) : null, P = { W, D, h, rTop: 1.2, rBot: 0.8 };
   const quad = { sides: 4, sideR: 0.1 }, oct = { sides: 8, sideR: 0.04 };
   switch (r.s) {
@@ -412,7 +416,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-16.incom';
+const BUILD = '2026-11-16.incom3';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -6322,7 +6326,8 @@ function renderEditor() {
   if (m.kind === 'gargalo') neckPrevW.set(m, m.W);
   if (m.forn) { const L = LIB[m.type] || {}, est = { W: 'largura estimada', D: 'profundidade estimada', WD: 'largura e profundidade estimadas' }[m.fest] || '';
     const changed = L.W && (Math.abs(m.W - L.W) > 0.05 || Math.abs(m.h - L.h) > 0.05);
-    ed.insertAdjacentHTML('afterbegin', `<div class="tip" style="border:1px solid var(--rule,#e2e1de);padding:8px 10px;margin:4px 0 10px"><b>${m.forn} · ${m.ref}</b> · ${m.fmat} · ${m.fterm}<br>Medidas do catálogo ${m.forn} 2026 (p. ${m.fpg}): ${L.W} × ${L.h} mm${est ? ' · ' + est : ''}. Forma aproximada.${changed ? '<br><b>Medidas alteradas: não é mais a peça do catálogo.</b>' : ''}</div>`); }
+    const prod = m.fH != null, dims = prod ? `${m.fW}${m.fD !== m.fW ? ' × ' + m.fD : ''} × ${m.fH} mm (produto montado${m.fcat ? ', ' + m.fcat.toLowerCase() : ''})` : `${L.W} × ${L.h} mm`;
+    ed.insertAdjacentHTML('afterbegin', `<div class="tip" style="border:1px solid var(--rule,#e2e1de);padding:8px 10px;margin:4px 0 10px"><b>${m.forn} · ${m.ref}</b>${m.fmat ? ' · ' + m.fmat : ''}${m.fterm ? ' · ' + m.fterm : ''}<br>Medidas do catálogo ${m.forn} 2026 (p. ${m.fpg}): ${dims}${est ? ' · ' + est : ''}. Forma aproximada.${!prod && changed ? '<br><b>Medidas alteradas: não é mais a peça do catálogo.</b>' : ''}</div>`); }
   $('#inspTitle').textContent = m.name || 'Peça selecionada';
   const top = document.createElement('div');
   top.innerHTML = `<div class="row"><input type="text" value="" title="Nome da peça"></div>`;
@@ -7734,12 +7739,49 @@ function queueThumb(img, st) {
 // escolher um modelo apenas move o destaque, sem recarregar miniaturas.
 let galleryKey = '';
 // Abas da galeria: grupo de cada modelo pelo tipo de fechamento (os salvos têm a aba deles).
-const GAL_TABS = ['Todos', 'Frascos', 'Potes', 'Perfumes', 'Pump e gatilho', 'Conta-gotas', 'Bisnagas', 'Beauty', 'Salvos', 'Uploads'];
+const GAL_TABS = ['Todos', 'Frascos', 'Potes', 'Perfumes', 'Pump e gatilho', 'Conta-gotas', 'Bisnagas', 'Beauty', 'Incom', 'Salvos', 'Uploads'];
+// Produtos do catálogo Incom 2026 como modelos prontos (aba Incom): medidas externas totais do
+// fornecedor; base × tampa e detalhes aproximados com as peças do OUTBOX.
+function incomProduct(r) {
+  const W = r.W, D = r.D ?? r.W, H = r.H, B = { pesc: false, bpesc: false, liq: false, vol: false, rTop: 1, rBot: 1 };
+  const P = (name, w, d, h, o = {}) => M('reto', polyFit({ ...B, name, W: r1(w), D: r1(d ?? w), h: r1(h), ...o }));
+  const sq = (k = 0.05) => ({ sides: 4, sideR: k }), clear = { own: true, finish: 'pet', color: '#ffffff' };
+  const neck = o => NECK('18/410', { h: 16.6, ...o });
+  let ms;
+  switch (r.t) {
+    case 'cq': case 'cqr': { const s0 = sq(r.t === 'cqr' ? 0.22 : 0.04); ms = [P('Base', W, D, H * 0.55, { ...s0, rTop: 0.6 }), P('Tampa', W, D, H * 0.45, { ...s0, rBot: 0.6, rTop: 1.2 })]; break; }
+    case 'cr': ms = [P('Base', W, D, H * 0.55, { rBot: 1.5, rTop: 0.6 }), P('Tampa', W, D, H * 0.45, { rBot: 0.6, rTop: 2 })]; break;
+    case 'cg': case 'cgt': case 'cgr': case 'dsq': case 'bulb': {
+      const sh = r.t === 'dsq' ? sq(0.08) : {}, rb = r.t === 'bulb' ? W / 2 * 0.95 : r.t === 'cgr' ? W * 0.3 : 2;
+      ms = [P('Frasco', W, D, H * 0.58, { ...sh, vol: true, rBot: rb, rTop: 1, ...(r.t === 'cgt' ? { taperB: 86 } : {}) }), P('Anel', W, D, H * 0.05, sh),
+        P('Sobretampa', W, D, H * 0.37, { ...sh, ...clear, rBot: 0.5, rTop: r.t === 'bulb' ? W / 2 * 0.95 : r.t === 'cgr' ? W * 0.3 : 2 })]; break; }
+    case 'onoff': ms = [P('Frasco', W, D, H * 0.62, { vol: true, rBot: 2 }), P('Acionador e capa', W, D, H * 0.38, { rTop: 3 })]; break;
+    case 'flacon': case 'flaconb': ms = [P('Frasco', W, D, H * 0.56, { vol: true, rBot: 2, rTop: W * 0.18 }), P('Tampa', W * 0.62, null, H * (r.t === 'flaconb' ? 0.3 : 0.16), {})];
+      ms.push(r.t === 'flaconb' ? P('Botão', W * 0.5, null, H * 0.14, { rTop: 1.5 }) : P('Bulbo', W * 0.42, null, H * 0.28, { rTop: W * 0.2 })); break;
+    case 'fr': case 'frr': case 'frsq': case 'frsqr': case 'frt': case 'frsh': case 'frap': case 'frflat': {
+      const o = { fr: { rBot: 3, rTop: W * 0.15 }, frr: { rBot: W * 0.3, rTop: W * 0.15 }, frsq: { ...sq(0.06), rTop: 3 }, frsqr: { ...sq(0.2), rTop: 4 },
+        frt: { taperB: 82, rBot: W * 0.25, rTop: 4 }, frsh: { rTop: W * 0.35, rBot: 3 }, frap: { taper: 70, rTop: 6, rBot: 6 }, frflat: { ...sq(0.1), rTop: 6 } }[r.t];
+      ms = [P('Frasco', W, D, H - 16.6, { vol: true, ...o }), neck()]; break; }
+    case 'frn': case 'frnt': case 'frnr': case 'frnflat': {
+      const o = r.t === 'frnt' ? { taper: 88 } : {};
+      ms = [P('Frasco', W, D, H * 0.66, { vol: true, rBot: 3, rTop: 1, ...o }), P('Tampa', W * (r.t === 'frnt' ? 0.88 : 1), D, H * 0.34, { rTop: r.t === 'frnr' ? W * 0.4 : 2 })]; break; }
+    case 'tube': ms = [P('Frasco', W, D, H - 14, { vol: true, taper: 70, rTop: 3, rBot: 2 }), P('Gargalo', W * 0.45, null, 14, { rTop: 1 })]; break;
+    case 'gloss': case 'glosssq': { const s0 = r.t === 'glosssq' ? sq(0.08) : {}; ms = [P('Frasco', W, D, H * 0.52, { ...s0, vol: true, rBot: 1.5 }), P('Tampa', W, D, H * 0.48, { ...s0, rTop: r.t === 'gloss' ? W * 0.2 : 1.2 })]; break; }
+    case 'baton': case 'batonsq': { const s0 = r.t === 'batonsq' ? sq(0.06) : {}; ms = [P('Base', W, D, H * 0.4, s0), P('Tampa', W, D, H * 0.6, { ...s0, rTop: 1.5 })]; break; }
+    case 'pote': case 'potesq': { const s0 = r.t === 'potesq' ? sq(0.1) : {}; ms = [P('Pote', W * 0.98, D * 0.98, H * 0.62, { ...s0, vol: true, rBot: 3 }), P('Tampa', W, D, H * 0.38, { ...s0, rTop: 2 })]; break; }
+    case 'stick': ms = [P('Base', W, D, H * 0.5, { rBot: 2 }), P('Tampa', W, D, H * 0.5, { rTop: 3 })]; break;
+    default: ms = [P('Corpo', W, D, H, { vol: true })];
+  }
+  Object.assign(ms[0], { forn: 'Incom', ref: r.n.toUpperCase(), fmat: r.mat, fterm: r.vol, fpg: r.pg, fest: r.est, fW: r.W, fD: r.D ?? r.W, fH: r.H, fcat: r.c });
+  return { color: BEIGE, finish: 'fosco', modules: ms, forn: 'Incom', fcat: r.c };
+}
+INCOM_PRODUCTS.forEach(r => { PRESETS[`Incom ${r.n} (${r.c.toLowerCase()})`] = incomProduct(r); });
 // abas antigas que viraram outras (escolhas já gravadas continuam valendo)
 const GAL_OLD = { Sticks: 'Beauty', 'Conta-gotas e gloss': 'Conta-gotas', Tampas: 'Frascos', 'Pump e spray': 'Pump e gatilho' };
 function galGroup(st, name, kind) {
   // aba escolhida arrastando o card: gravada no modelo salvo; nos modelos base, a da
   // equipe (servidor, vale para todos) ou, sem login, a deste navegador
+  if (st.forn) return 'Incom';
   const pick0 = kind === 'b' ? baseAbas()[name] : st.aba, pick = GAL_OLD[pick0] || pick0;
   if (pick && GAL_TABS.includes(pick) && !['Todos', 'Salvos'].includes(pick)) return pick;
   const ms = st.modules || [], sp = ms.filter(m => m.kind === 'spray').map(m => m.sprayType ?? LIB[m.type]?.sprayType);
@@ -7821,7 +7863,7 @@ function renderPresets() {
       queueThumb(card.querySelector('img'), kind === 'b' ? beigeOf(st) : st);
     }
   };
-  const inTab = kind => ([n, st]) => galTab === 'Todos' || galGroup(st, n, kind) === galTab;
+  const inTab = kind => ([n, st]) => st.forn ? galTab === 'Incom' : galTab === 'Todos' || galGroup(st, n, kind) === galTab; // catálogo Incom só na aba dele (não lota Todos)
   if (galTab === 'Uploads') { // peças STL da equipe: clicar põe a peça no produto aberto
     const h = document.createElement('h4'); h.textContent = cloud ? 'STL enviados (clique para usar no produto)' : 'Entre na conta para ver os uploads'; gal.appendChild(h);
     for (const f of stlUploads) {
