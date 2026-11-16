@@ -391,7 +391,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-16.sem-veu2';
+const BUILD = '2026-11-16.fileira-pose';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -5474,13 +5474,18 @@ function boundsAll() {
 // ordem de "slot", com S.gap mm entre as caixas.
 function buildLineup() {
   sideRoot.children.slice().forEach(g => { g.traverse(o => o.geometry?.dispose()); sideRoot.remove(g); });
-  const groups = S.side.map(it => { const g = new THREE.Group(); buildInto(g, it, 0); applyLabelsTo(g, it); sideRoot.add(g); poseGroup(g, it); return g; });
+  const groups = S.side.map(it => { const g = new THREE.Group(); buildInto(g, it, 0); applyLabelsTo(g, it); sideRoot.add(g); return g; });
+  // a fileira é montada com todos de pé (o principal também, sem a pose dele): trocar qual
+  // produto está em edição não muda o lugar de ninguém; a pose de cada um vem depois
+  const pq = product.quaternion.clone(), pp = product.position.clone(); product.quaternion.identity(); product.position.set(0, 0, 0); product.updateMatrixWorld(true);
   const all = [{ slot: S.slot, g: product }, ...S.side.map((it, i) => ({ slot: it.slot, g: groups[i] }))].sort((a, b) => a.slot - b.slot);
   let x = 0; const pos = new Map();
   for (const e of all) { const b = new THREE.Box3().setFromObject(e.g); if (b.isEmpty()) continue; pos.set(e.g, x - b.min.x); x += b.max.x - b.min.x + S.gap; }
   const shift = pos.get(product) || 0;
-  groups.forEach((g, i) => { g.position.x += (pos.get(g) ?? 0) - shift; const p = S.side[i].pos; // cada um com a própria pose
-    if (Array.isArray(p)) { g.position.x += p[0] || 0; g.position.z += p[1] || 0; g.position.y += Math.max(0, p[2] || 0); } });
+  product.quaternion.copy(pq); product.position.copy(pp); product.updateMatrixWorld(true);
+  groups.forEach((g, i) => { const it = S.side[i], slotX = (pos.get(g) ?? 0) - shift;
+    poseGroup(g, it); g.position.x += slotX; g.userData.slotX = slotX; // lugar na fileira (sem a pose), usado ao trocar o produto em edição
+    const p = it.pos; if (Array.isArray(p)) { g.position.x += p[0] || 0; g.position.z += p[1] || 0; g.position.y += Math.max(0, p[2] || 0); } });
   groups.forEach((g, i) => applyLogosTo(g, S.side[i], () => g.parent === sideRoot));
 }
 // Pose de um produto ao lado: gira em volta do centro da base e apoia no chão (como o principal)
@@ -5502,7 +5507,7 @@ function editSide(i) {
   LINE_KEYS.forEach(k => { cur[k] = S[k]; S[k] = it[k]; });
   // O produto escolhido passa a ficar na origem e a fileira inteira anda junto: a câmera
   // anda o mesmo tanto, então na tela nada sai do lugar (antes tudo pulava para o lado).
-  const dx = sideRoot.children[i]?.position.x || 0;
+  const dx = sideRoot.children[i]?.userData.slotX ?? sideRoot.children[i]?.position.x ?? 0; // lugar na fileira, sem o giro/posição do gizmo
   cur.wall = S.wall; S.side[i] = cur; sel = 0; renderAll(); build();
   if (dx) { cam.position.x -= dx; controls.target.x -= dx; controls.update(); req(); }
 }
