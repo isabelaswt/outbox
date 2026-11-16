@@ -18,7 +18,7 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION } from 'three-bvh-csg';
-import { icon } from './icons.js?v=2026-11-16.aba-volume';
+import { icon } from './icons.js?v=2026-11-16.parede-material2';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -391,7 +391,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-16.aba-volume';
+const BUILD = '2026-11-16.parede-material2';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -924,6 +924,7 @@ function normalize(s) {
   // Rosa saiu da plataforma: trabalhos antigos em rosa passam para o bege.
   const OLD_PINKS = ['#e0306e', '#c42b52', '#f28bb5', '#d8246a'], unpink = c => (OLD_PINKS.includes((c || '').toLowerCase()) ? BEIGE : c);
   s.color = unpink(s.color);
+  if (s.wallAuto === undefined) s.wallAuto = s.wall == null || s.wall === 1.2; // parede no padrão antigo vira automática; número escolhido continua
   s.wall ??= 1.2; s.bg ??= '#f1f0ed'; s.color ??= BEIGE; s.finish ??= 'fosco'; s.name ??= 'Sem nome';
   // pose (rotação/posição do gizmo) é de cada produto, não da cena: projetos antigos guardavam na cena
   if (s.scene && (s.scene.rq || s.scene.pos)) { if (!s.rq && s.scene.rq) s.rq = s.scene.rq; if (!s.pos && s.scene.pos) s.pos = s.scene.pos; delete s.scene.rq; delete s.scene.pos; }
@@ -4296,7 +4297,12 @@ function holeFor(color) {
   return holeMats.get(color);
 }
 let buildPending = false;
+// Parede pelo material do corpo: vidro é grosso, PET (soprado) é fino, plástico opaco no meio
+const WALL_AUTO = { vidro: 2, pet: 0.5, plast: 1, metal: 0.5 };
+function autoWallFor(f) { return isGlass(f) && !/^pet/.test(f) ? WALL_AUTO.vidro : /^pet/.test(f) ? WALL_AUTO.pet : f === 'metal' ? WALL_AUTO.metal : WALL_AUTO.plast; }
+function applyAutoWall() { if (S.wallAuto === false) return; const b = S.modules.find(v => v.vol); if (b) S.wall = autoWallFor(b.own ? b.finish : S.finish); }
 function build() {
+  applyAutoWall();
   // Durante a gravação a cena não é remontada (apagaria o roteiro); fica para o fim.
   if (spinning) { buildPending = true; return; }
   holeMat.color.set(S.color).multiplyScalar(0.55);
@@ -6904,7 +6910,8 @@ function renderEditorKeepScroll() {
 // massa de vidro embaixo, no plástico o fundo tem a espessura da parede.
 function renderWallFields() {
   const vf = $('#volFields'); if (!vf) return; vf.innerHTML = '';
-  field(vf, S, ['wall', 'Espessura da parede', 0.3, 4, 0.1, 'mm'], queueBuild);
+  field(vf, S, ['wallAuto', `Parede automática pelo material (vidro ${WALL_AUTO.vidro} · PET ${WALL_AUTO.pet} · plástico ${WALL_AUTO.plast} mm)`, 'check'], () => { applyAutoWall(); renderEditorKeepScroll?.(); renderAll(); queueBuild(); });
+  field(vf, S, ['wall', 'Espessura da parede', 0.3, 4, 0.1, 'mm'], () => { S.wallAuto = false; queueBuild(); }); // mexeu no número: vale o seu
   const b = S.modules.find(v => v.vol); if (!b) return;
   const glass = thickBase(b.own ? b.finish : S.finish);
   const el = field(vf, b, ['fundo', 'Espessura do fundo (vidro: massa embaixo)', 1, 25, 0.5, 'mm', null, 6], queueBuild);
@@ -7730,7 +7737,7 @@ const fileName = () => S.file ?? S.name ?? '';
 function loadState(s, name) {
   // Abre exatamente como foi salvo: com o lado a lado dele, ou sem nenhum (antes o
   // lado a lado da tela ficava grudado em todo modelo aberto).
-  S = normalize(structuredClone({ wall: S.wall, bg: S.bg, side: [], ...s }));
+  S = normalize(structuredClone({ wall: S.wall, bg: S.bg, side: [], ...s, wallAuto: s.wallAuto ?? (s.wall == null || s.wall === 1.2) })); // modelo sem parede própria: automática pelo material
   if (name) { S.file = name; if (!S.side.length) S.name = name; } // arquivo = tudo o que está nele (todos os produtos)
   store.set('shape.openGroups', {}); // produto aberto: grupos de controles começam fechados
   sel = 0; renderAll(); build(); openFrontOrtho();
