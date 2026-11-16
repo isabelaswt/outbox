@@ -390,7 +390,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-15.linhas2';
+const BUILD = '2026-11-15.deitar2';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -3544,11 +3544,33 @@ const conKey = sc => 1 + 1.1 * (clamp((sc.luzCon ?? 50) / 100, 0, 1) - 0.5);
 const conAmb = sc => 1 - 1.25 * (clamp((sc.luzCon ?? 50) / 100, 0, 1) - 0.5);
 const sceneOf = () => { const sc = { ...SCENE0, ...(S.scene || {}) }; if (sc.cena === 'pedra') sc.cena = 'nenhum'; return sc; }; // pedra saiu
 // Produto inclinado no cenário: gira em volta do centro da base.
+// Deitado: 90° com o topo para a direita. Inclinado ou deitado, o produto desce/sobe até o
+// ponto mais baixo encostar no chão (antes girava em volta da base e um lado afundava no
+// chão, cortando o fundo). A sombra do sol e a de contato são calculadas com ele já deitado.
 function applyStageTilt(sc, cx, cz) {
-  product.quaternion.identity(); product.position.set(0, 0, 0);
-  const t = THREE.MathUtils.degToRad(sc.cenaTilt || 0);
-  if (t) { const q = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), -t), P = new THREE.Vector3(cx, 0, cz);
-    product.quaternion.copy(q); product.position.copy(P).sub(P.clone().applyQuaternion(q)); }
+  const P = new THREE.Vector3(cx, 0, cz);
+  // ponto mais baixo de verdade (vértices), de tudo e só do corpo (frasco)
+  const lows = () => { let all = Infinity, body = Infinity; const v = new THREE.Vector3();
+    product.traverse(o => { if (!o.isMesh || !o.visible || !o.geometry?.attributes.position) return;
+      const isBody = o.userData.main && S.modules[o.userData.idx]?.vol, pa = o.geometry.attributes.position, st = Math.max(1, Math.floor(pa.count / 4000));
+      for (let i = 0; i < pa.count; i += st) { v.fromBufferAttribute(pa, i).applyMatrix4(o.matrixWorld); if (v.y < all) all = v.y; if (isBody && v.y < body) body = v.y; } });
+    return { all, body }; };
+  const place = deg => {
+    product.quaternion.identity(); product.position.set(0, 0, 0);
+    if (deg) { const q = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), -THREE.MathUtils.degToRad(deg));
+      product.quaternion.copy(q); product.position.copy(P).sub(P.clone().applyQuaternion(q)); }
+    product.updateMatrixWorld(true);
+    if (!deg) return 0;
+    const L = lows(); if (isFinite(L.all)) { product.position.y -= L.all; product.updateMatrixWorld(true); } // apoiado no chão
+    return isFinite(L.body) ? L.body - L.all : 0; // quanto o corpo fica no ar (apoiado no bico, na tampa…)
+  };
+  if (sc.deitar) {
+    // deita para o lado em que o corpo encosta no chão (pump com bico: o bico fica para cima)
+    const gR = place(90), gL = place(-90);
+    if (gR <= gL + 0.5) place(90);
+    const bb = new THREE.Box3().setFromObject(product);
+    if (!bb.isEmpty()) { product.position.x -= (bb.min.x + bb.max.x) / 2 - cx; product.updateMatrixWorld(true); } // continua centrado onde estava
+  } else place(sc.cenaTilt || 0);
   product.updateMatrixWorld(true);
 }
 function buildStage() {
@@ -3636,7 +3658,8 @@ function renderScene() {
   field(f, S.scene, ['cena', 'Cenário', 'select', [['nenhum', 'Nenhum (só a sombra)'], ['pedestal', 'Pedestal redondo'], ['bloco', 'Bloco'],
     ['degraus', 'Degraus (vitrine)'], ['arco', 'Arco ao fundo'], ['infinito', 'Fundo infinito (estúdio)']]], ch);
   if (S.scene.cena !== 'nenhum') field(f, S.scene, ['cenaCor', 'Cor do cenário', 'color'], ch);
-  field(f, S.scene, ['cenaTilt', 'Inclinar o produto (− esquerda, + direita)', -35, 35, 1, '°'], ch);
+  field(f, S.scene, ['deitar', 'Deitar o produto (apoiado no chão, sombra real)', 'check'], k => { ch(k); renderScene(); fit(); });
+  if (!S.scene.deitar) field(f, S.scene, ['cenaTilt', 'Inclinar o produto (− esquerda, + direita)', -35, 35, 1, '°'], ch);
   if (['pedestal', 'bloco', 'degraus'].includes(S.scene.cena)) field(f, S.scene, ['cenaH', 'Altura do pedestal', 5, 150, 1, 'mm'], ch);
   field(f, S.scene, ['luz', 'Luz (vale para tela, imagem e vídeo)', 'select', [['macia', 'Macia — foto de produto limpa (e-commerce, render de marca)'], ['lateral', 'Lateral recortada — luz projetada, sombra de um lado'], ['studio', 'Estúdio claro (padrão)'], ['premium', 'Premium (vidro e perfume, contraste)'], ['produto', 'Produto (e-commerce, faixa macia)'], ['padrao', 'Volume (mais contraste de lado)'],
     ['soft', 'Suave'], ['contrast', 'Contraste'], ['sol', 'Sol (sombra longa)'], ['drama', 'Dramática'], ['faixa', 'Faixas de estúdio (reflexo vertical)'],
