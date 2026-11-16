@@ -560,7 +560,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-16.drop-base4';
+const BUILD = '2026-11-16.batom';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -4573,6 +4573,7 @@ function build() {
   if (spinning) { buildPending = true; return; }
   holeMat.color.set(S.color).multiplyScalar(0.55);
   buildInto(product, S, explode ? 18 : 0);
+  syncOpenBtn();
   applyLabelsTo(product, S);
   buildLineup();
   buildBox();
@@ -5580,7 +5581,7 @@ function updateUndoBtns() {
 const godeMat = new THREE.MeshStandardMaterial({ color: '#d2bea6', roughness: 0.96 }), godeRim = new THREE.MeshStandardMaterial({ color: '#bdb0a0', roughness: 0.45 });
 const mirrorMat = new THREE.MeshStandardMaterial({ color: '#ffffff', metalness: 1, roughness: 0.04 });
 function localBox(objs) { const bb = new THREE.Box3(); objs.forEach(o => { o.updateMatrix(); o.geometry.computeBoundingBox(); bb.union(o.geometry.boundingBox.clone().applyMatrix4(o.matrix)); }); return bb; }
-function compactParts(product, L) {
+function compactParts(product, L, S0) {
   const mine = idx => product.children.filter(o => o.isMesh && o.userData.idx === idx);
   const add = (geo, mat, idx, name, x, y, z) => { const o = new THREE.Mesh(geo, mat); o.position.set(x, y, z); o.userData.idx = idx; o.name = `${String(idx + 1).padStart(2, '0')}_${name}`; o.castShadow = o.receiveShadow = true; product.add(o); };
   L.forEach(({ m, idx, y0 }) => {
@@ -5608,12 +5609,28 @@ function compactParts(product, L) {
       g.rotateX(Math.PI / 2); add(g, mirrorMat, idx, 'espelho', cx, y0 - 0.04, cz);
     }
   });
+  const aberto = !!S0?.aberto;
   L.forEach(({ m, idx, y0 }) => {
-    if (m.hidden || !m.hinge || !(m.abre > 0)) return;
+    const ang = m.abre > 0 ? m.abre : aberto ? 105 : 0;
+    if (m.hidden || !m.hinge || !(ang > 0)) return;
     const objs = mine(idx); if (!objs.length) return;
     const z = localBox(objs).min.z, T = new THREE.Matrix4().makeTranslation(0, y0, z)
-      .multiply(new THREE.Matrix4().makeRotationX(-clamp(m.abre, 0, 180) * Math.PI / 180)).multiply(new THREE.Matrix4().makeTranslation(0, -y0, -z));
+      .multiply(new THREE.Matrix4().makeRotationX(-clamp(ang, 0, 180) * Math.PI / 180)).multiply(new THREE.Matrix4().makeTranslation(0, -y0, -z));
     objs.forEach(o => { o.applyMatrix4(T); o.updateMatrixWorld(true); });
+  });
+  if (!aberto) return;
+  L.forEach(({ m, idx }) => { // bala do batom sobe
+    if (m.hidden || !(m.sobe > 0)) return;
+    mine(idx).forEach(o => { o.position.y += m.sobe; o.updateMatrixWorld(true); });
+  });
+  L.forEach(({ m, idx }) => { // tampa tirada: deitada no chão, ao lado
+    if (m.hidden || !m.capa) return;
+    const objs = mine(idx); if (!objs.length) return;
+    const rest = localBox(product.children.filter(o => o.isMesh && o.userData.idx !== idx)), bb = localBox(objs), c = bb.getCenter(new THREE.Vector3());
+    const T = new THREE.Matrix4().makeTranslation(c.x, c.y, c.z).multiply(new THREE.Matrix4().makeRotationZ(-Math.PI / 2)).multiply(new THREE.Matrix4().makeTranslation(-c.x, -c.y, -c.z));
+    objs.forEach(o => o.applyMatrix4(T));
+    const b2 = localBox(objs), dx = rest.max.x + 6 - b2.min.x, dy = rest.min.y - b2.min.y;
+    objs.forEach(o => { o.position.x += dx; o.position.y += dy; o.updateMatrixWorld(true); });
   });
 }
 function buildInto(product, S, explodeAmt = 0) {
@@ -5857,7 +5874,7 @@ function buildInto(product, S, explodeAmt = 0) {
       if (pg) addP(pg, innerMat, 'pescante');
     }
   });
-  compactParts(product, L);
+  compactParts(product, L, S);
   if (semiSee) product.children.forEach(o => {
     if (o.material === semiTube) o.renderOrder = 3;
     else if (o.userData.liquid && o.name === 'liquido') { o.renderOrder = 2; o.material.depthWrite = false; }
@@ -6267,6 +6284,10 @@ function setOrtho(on) {
 document.querySelectorAll('[data-view]').forEach(b => b.onclick = () => fit(b.dataset.view));
 $('#orthoBtn').onclick = () => setOrtho(cam !== ortho);
 $('#explodeBtn').onclick = () => { explode = !explode; $('#explodeBtn').classList.toggle('on', explode); build(); fit(); };
+// Abrir / fechar: aparece só em produto que abre (compacto com dobradiça, batom com tampa e bala)
+function syncOpenBtn() { const b = $('#openBtn'); if (!b) return; const ok = S.modules.some(m => m.hinge || m.capa);
+  b.classList.toggle('hidden', !ok); b.classList.toggle('on', ok && !!S.aberto); b.textContent = ok && S.aberto ? 'Fechar' : 'Abrir'; }
+$('#openBtn').onclick = () => { S.aberto = !S.aberto; build(); fit(); saveLocalSoon(); };
 $('#handBtn').onclick = () => { handOn = !handOn; applyHand(); };
 function applyViewQ(rebuild) {
   $('#viewQ').value = VIEWQ; $('#viewQName').textContent = ['Rápida', 'Boa', 'Alta', 'Render'][VIEWQ - 1];
@@ -8301,8 +8322,16 @@ function incomProduct(r) {
       ms = [P('Frasco', W, D, H * f, { ...s0, vol: true, rBot: 1.5, _t: [0, f] }),
         M('tampaGloss', { name: masc ? 'Haste com escova' : 'Haste com aplicador', W: wv, D: wv, h: r1(capH - 2.5), pescD: r1(Math.min(3, wv * 0.3)),
           tipL: masc ? r1(Math.min(24, H * 0.2)) : 13, tipW: r1(Math.min(masc ? 7.5 : 6.5, Math.min(W, D) - 6)), tipColor: masc ? '#2b2b2b' : '#e2cdb8' }), cap]; break; }
-    case 'baton': case 'batonsq': { const s0 = r.t === 'batonsq' ? sq(0.06) : {}, [f] = incomFrac(pr, [0.4]), bh = H * (1 - f) * 0.83; // tampa desce vestindo a bala
-      ms = [P('Base', W, D, H * f, { ...s0, _t: [0, f] }), P('Bala (batom)', W * 0.52, null, bh, { rTop: W * 0.2, rBot: 0.5 }), P('Tampa', W, D, H * (1 - f), { ...s0, rTop: 1.5, gap: r1(-bh), _t: [f, 1] })]; break; }
+    case 'baton': case 'batonsq': {
+      // Batom como no catálogo: base, tubo de metal (mecanismo) saindo dela, bala de 12,1 mm com a ponta
+      // chanfrada, recolhida dentro do tubo, e a tampa que desce até a base vestindo tudo. "Abrir" tira a
+      // tampa e deita ao lado, e a bala sobe.
+      const s0 = r.t === 'batonsq' ? sq(0.06) : {}, [f] = incomFrac(pr, [0.4]), hc = H * (1 - f);
+      const ws = r1(Math.min(W * 0.72, 12.1 + 4.6)), wb = r1(Math.min(12.1, ws - 2.6)), hs = r1(hc - 5), lb = r1(Math.min(22, hs * 0.75));
+      ms = [P('Base', W, D, H * f, { ...s0, _t: [0, f] }),
+        P('Tubo (mecanismo)', ws, null, hs, { rTop: 0.5, rBot: 0.3, own: true, color: '#d6d8da', finish: 'metal' }),
+        P('Bala (batom)', wb, null, lb, { rTop: 0.8, rBot: 0.3, gap: r1(-(lb + 1.2)), tilt: [1, 0.55], sobe: r1(lb * 0.72), own: true, color: '#d7a99a', finish: 'brilho' }),
+        P('Tampa', W, D, hc, { ...s0, rTop: 1.5, gap: r1(-(hs - 1.2)), capa: true, _t: [f, 1] })]; break; }
     case 'pote': case 'potesq': { const s0 = r.t === 'potesq' ? sq(0.1) : {}, [f] = incomFrac(pr, [0.62]); ms = [P('Pote', W * 0.98, D * 0.98, H * f, { ...s0, vol: true, rBot: 3, _t: [0, f] }), P('Tampa', W, D, H * (1 - f), { ...s0, rTop: 2, _t: [f, 1] })]; break; }
     case 'stick': { const [f] = incomFrac(pr, [0.5]), bh = H * (1 - f) * 0.84; ms = [P('Base', W, D, H * f, { rBot: 2, _t: [0, f] }), P('Bastão (produto)', W * 0.78, null, bh, { rTop: W * 0.2 }), P('Tampa', W, D, H * (1 - f), { rTop: 3, gap: r1(-bh), _t: [f, 1] })]; break; }
     default: ms = [P('Corpo', W, D, H, { vol: true, _t: [0, 1] })];
