@@ -439,9 +439,7 @@ aside{border-right:1px solid var(--rule)}
 .mod{border-radius:0}
 .hint{border-radius:0;background:transparent;border:1px solid var(--rule)}
 /* sobreposições e janelas */
-.pop,.openBox,.cmdBox,.cmdItem,.toast,.toast.act button,.qtip,.pieceBar,.pieceBar button,.stats,.bar,.bar .seg,.bar .seg button,.bar .tb,.bar .btn,.tabs,.login-card,.openGrid .del{border-radius:0}
-.pop,.openBox,.cmdBox,.stats,.bar,.pieceBar{box-shadow:0 1px 0 rgba(20,20,25,.04);border:1px solid var(--rule)}
-/* controles */
-.btn,.btn.sm,.ibtn,.ibtn.pri,.cmdBtn,.chip,.rail button,.num input,select,input[type=text],input[type=search],input[type=color],.team-add input,.login-card input,.login-card .btn,.keys kbd,.cmdBtn kbd,.cmdList kbd,.mod .tag,.mod .b,.topbar #projName{border-radius:0}
-input[type=color]::-webkit-color-swatch{border-radius:0}
-.chip{border:1px solid var(--rule)}
+/* janelas e menus retos; botões e barras (barra de vistas, selo de medidas, barra da peça,
+   busca, campos) continuam arredondados como antes */
+.pop,.openBox,.cmdBox,.cmdItem,.qtip,.tabs,.login-card{border-radius:0}
+.pop,.openBox,.cmdBox{box-shadow:0 1px 0 rgba(20,20,25,.04);border:1px solid var(--rule)}
