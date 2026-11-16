@@ -18,7 +18,8 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION } from 'three-bvh-csg';
-import { icon } from './icons.js?v=2026-11-16.cartucho';
+import { icon } from './icons.js?v=2026-11-16.incom';
+import { INCOM_CAPS } from './incom.js?v=2026-11-16.incom';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -381,6 +382,26 @@ const LIB = {
   disctop: { name: 'Tampa disc-top', W: 48.3, D: 48.3, h: 32.5, taper: 95, rBot: 1, rTop: 0.8, topType: 'disc', discD: 42.4, discDip: 5 },
 };
 const newUid = () => Math.random().toString(36).slice(2, 10);
+// Tampas reais da Incom (catálogo 2026): medidas do fornecedor, forma aproximada com as peças do OUTBOX
+function incomShape(r) {
+  const W = r.W, D = r.D ?? r.W, h = r.H, base = r.b ? Math.min(100, r.b / W * 100) : null, P = { W, D, h, rTop: 1.2, rBot: 0.8 };
+  const quad = { sides: 4, sideR: 0.1 }, oct = { sides: 8, sideR: 0.04 };
+  switch (r.s) {
+    case 'quad': return { ...P, ...quad }; case 'quadr': return { ...P, sides: 4, sideR: 0.3 }; case 'quadc': return { ...P, ...quad, taperB: base ?? 75 };
+    case 'hex': return { ...P, sides: 6, sideR: 0.06 }; case 'oct': return { ...P, ...oct }; case 'octc': return { ...P, ...oct, taperB: base ?? 62 };
+    case 'esf': return { ...P, rTop: h / 2 * 0.98, rBot: h / 2 * 0.9 };
+    case 'domo': return { ...P, rTop: Math.min(h, W / 2) * 0.98, rBot: 1 };
+    case 'tigela': return { ...P, rBot: Math.min(h * 0.85, W / 2), rTop: 1 };
+    case 'cone': return { ...P, taperB: base ?? 72, rTop: 1.5 };
+    case 'ovo': return { ...P, rTop: W / 2 * 0.98, rBot: W / 2 * 0.75, taperB: 82 };
+    case 'pedra': return { ...P, rTop: Math.min(h, D) / 2 * 0.9, rBot: Math.min(h, D) / 2 * 0.8 };
+    case 'disco': return { ...P, rTop: Math.min(W, h) / 2 * 0.95, rBot: 1 };
+    case 'cristal': return { ...P, sides: 6, sideR: 0.04, taper: 35 };
+    case 'ampulheta': return { ...P, bulge: -14 };
+    default: return P;
+  }
+}
+INCOM_CAPS.forEach(r => { LIB[r.k] = { name: `Incom ${r.n}`, ...incomShape(r), forn: 'Incom', ref: r.n.toUpperCase(), fmat: r.mat, fterm: r.term, fest: r.est, fpg: r.pg }; });
 const M = (type, o = {}) => ({ ...BASE, ...LIB[type], type, uid: newUid(), ...o });
 
 // Cor única da plataforma: bege. Todo modelo pronto sai em bege (corpo e peças), nunca na cor
@@ -391,7 +412,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-16.cartucho';
+const BUILD = '2026-11-16.incom';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -6299,6 +6320,9 @@ function renderEditor() {
   sel = ownerOf(sel);
   const m = S.modules[sel]; if (!m) { $('#inspTitle').textContent = 'Peça selecionada'; return; }
   if (m.kind === 'gargalo') neckPrevW.set(m, m.W);
+  if (m.forn) { const L = LIB[m.type] || {}, est = { W: 'largura estimada', D: 'profundidade estimada', WD: 'largura e profundidade estimadas' }[m.fest] || '';
+    const changed = L.W && (Math.abs(m.W - L.W) > 0.05 || Math.abs(m.h - L.h) > 0.05);
+    ed.insertAdjacentHTML('afterbegin', `<div class="tip" style="border:1px solid var(--rule,#e2e1de);padding:8px 10px;margin:4px 0 10px"><b>${m.forn} · ${m.ref}</b> · ${m.fmat} · ${m.fterm}<br>Medidas do catálogo ${m.forn} 2026 (p. ${m.fpg}): ${L.W} × ${L.h} mm${est ? ' · ' + est : ''}. Forma aproximada.${changed ? '<br><b>Medidas alteradas: não é mais a peça do catálogo.</b>' : ''}</div>`); }
   $('#inspTitle').textContent = m.name || 'Peça selecionada';
   const top = document.createElement('div');
   top.innerHTML = `<div class="row"><input type="text" value="" title="Nome da peça"></div>`;
@@ -6942,6 +6966,7 @@ function renderSwap(ed, m) {
   // Tampa e válvula ocupam o mesmo lugar: a troca mostra as duas famílias.
   const closure = label === 'Tampa' || label === 'Válvula', skey = sel + ':' + (closure ? 'fecho' : label);
   const groups = closure ? CATS.filter(([l]) => l === 'Tampa' || l === 'Válvula').map(([l, ks]) => [l === 'Tampa' ? 'Tampas' : 'Válvulas', ks]) : [[null, keys]];
+  if (closure) groups.splice(1, 0, ['Incom · tampas de perfume (medidas reais)', INCOM_CAPS.map(r => r.k)]); // fornecedor: tamanho do catálogo, sem reescalar
   if (closure && label === 'Válvula') groups.reverse(); // a família da peça clicada vem primeiro
   const box = document.createElement('details'); box.open = store.get('shape.swapOpen2', true) !== false; // aberto: clicou na peça, já pode trocar a forma (fecha se a pessoa fechar)
   box.addEventListener('toggle', () => store.set('shape.swapOpen2', box.open));
@@ -6965,6 +6990,7 @@ function renderSwap(ed, m) {
       swapMemo.set(m.uid + '|' + cur, structuredClone(m));
       const back = swapMemo.get(m.uid + '|' + k);
       S.modules[sel] = back ? { ...structuredClone(back), own: m.own, color: m.color, finish: m.finish, ox: m.ox, uid: m.uid }
+        : LIB[k].forn ? M(k, { own: m.own, color: m.color, finish: m.finish, gap: m.gap, ox: m.ox, uid: m.uid }) // peça de fornecedor: medida real, não reescala
         : adaptSwap(m, M(k, { own: m.own, color: m.color, finish: m.finish, gap: m.gap, ox: m.ox, uid: m.uid }), label);
       setTimeout(() => toastUndo(`Trocada por ${LIB[k].name}`), 50);
       if (label === 'Corpo') refitAfterBodySwap(sel);
