@@ -418,3 +418,30 @@ summary,.grp>summary{padding:11px 0}
 .topbar{padding:0 14px 0 18px}
 .topbar .brand{gap:11px}
 .topbar .brand .swtLogo{width:28px;height:28px;margin:0}
+
+/* ════════ Visual 3 — linhas em vez de caixas arredondadas (sistema todo) ════════
+   Painéis encostados e separados por linhas finas; cartões, caixas, menus, janelas e
+   controles com canto reto e contorno de 1 px. Círculos de verdade (bolinha de cor, esfera
+   de material, botão do slider) continuam redondos. */
+:root{--rule:#e2e1de}
+.app{gap:0;padding:0;background:#fff}
+.topbar,.rail,aside,#inspector,main{border:0;border-radius:0;box-shadow:none}
+.topbar{border-bottom:1px solid var(--rule)}
+.rail{border-right:1px solid var(--rule)}
+aside{border-right:1px solid var(--rule)}
+#inspector{border-left:1px solid var(--rule)}
+/* cartões e caixas: sem preenchimento cinza, só contorno */
+.card,.matCard,.hdriCard,.startBtn,.mod,.edit,.hint,.line-row,.tip.box,.team-link{border-radius:0}
+.card,.matCard,.hdriCard,.startBtn,.line-row{background:transparent;border:1px solid var(--rule);box-shadow:none}
+.card:hover,.matCard:hover,.hdriCard:hover,.startBtn:hover,.line-row:hover{background:#fafaf9;border-color:#cfcecb}
+.card.on,.matCard.on,.hdriCard.on{background:#fff;border-color:var(--ink);box-shadow:0 0 0 1px var(--ink) inset}
+.card .ph,.hdriCard img{border-radius:0}
+.mod{border-radius:0}
+.hint{border-radius:0;background:transparent;border:1px solid var(--rule)}
+/* sobreposições e janelas */
+.pop,.openBox,.cmdBox,.cmdItem,.toast,.toast.act button,.qtip,.pieceBar,.pieceBar button,.stats,.bar,.bar .seg,.bar .seg button,.bar .tb,.bar .btn,.tabs,.login-card,.openGrid .del{border-radius:0}
+.pop,.openBox,.cmdBox,.stats,.bar,.pieceBar{box-shadow:0 1px 0 rgba(20,20,25,.04);border:1px solid var(--rule)}
+/* controles */
+.btn,.btn.sm,.ibtn,.ibtn.pri,.cmdBtn,.chip,.rail button,.num input,select,input[type=text],input[type=search],input[type=color],.team-add input,.login-card input,.login-card .btn,.keys kbd,.cmdBtn kbd,.cmdList kbd,.mod .tag,.mod .b,.topbar #projName{border-radius:0}
+input[type=color]::-webkit-color-swatch{border-radius:0}
+.chip{border:1px solid var(--rule)}
