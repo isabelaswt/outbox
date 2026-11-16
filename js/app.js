@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-16.bandejas2';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-16.pote';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -560,7 +560,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-16.bandejas2';
+const BUILD = '2026-11-16.pote';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -1541,11 +1541,12 @@ function neckGeo(m, y0, { lo = false, body = null } = {}) {
   for (let y = rh + 0.2; y < h - 0.8; y += step) prof.push([y, E]);
   // Boca aberta: borda com a espessura da parede e o furo descendo (o fundo escuro
   // é uma peça à parte, abaixo) — o gargalo não é mais um cilindro fechado.
-  const rIn = Math.min(neckBore(m), E - 1.2), mouth = !lo && !glassB;
+  const openT = glassB || m.tuboAberto; // pote: a boca é o pote aberto, sem fundo escuro
+  const rIn = Math.min(neckBore(m), E - 1.2), mouth = !lo && !openT;
   prof.push([h - 0.8, E], [h - 0.3, E - 0.25], [h, E - 0.8]);
   if (mouth) prof.push([h + 0.001, rIn + 0.35], [h + 0.002, rIn + 0.35]);
   const rings = prof.filter((q, i, a) => i === 0 || q[0] > a[i - 1][0]).map(([ly, a, b]) => ({ y: y0 + ly, ly, a, b: b ?? a, n: 2 }));
-  if (!lo && glassB) { // vidro/PET: a boca é um tubo aberto até dentro do frasco (sem fundo falso)
+  if (!lo && openT) { // vidro/PET (e pote): a boca é um tubo aberto até dentro do frasco (sem fundo falso)
     rings.push({ y: y0 + h + 0.001, ly: h + 0.001, a: rIn + 0.35, b: rIn + 0.35, n: 2 });
     [[h - 0.25, rIn], [-deep + 0.2, rIn]].forEach(([ly, r]) => rings.push({ y: y0 + ly, ly, a: r, b: r, n: 2, noDisp: true }));
   }
@@ -5599,6 +5600,17 @@ function ocoGeo(g, m, y0) {
   }
   return g;
 }
+// Pote oco: tira de dentro o mesmo volume que o conteúdo ocupa (parede do produto) e abre a boca até ele
+function ocoTopoGeo(g, m, y0, neck, lift) {
+  const ni = x => { const y = x.index ? x.toNonIndexed() : x; for (const k in y.attributes) if (k !== 'position' && k !== 'normal') y.deleteAttribute(k); return y; };
+  const inner = moduleGeo(m, y0, { inset: S.wall, lift, lo: false }); if (!inner) return g;
+  let [outer, inn] = cutHole(g, inner); if (outer === g) return g;
+  g = mergeGeometries([ni(outer), ni(inn)]) || g;
+  const E = Math.max(neck.W / 2 - neck.threadD, 1), rIn = Math.min(neckBore(neck), E - 1.2);
+  const hole = new THREE.CylinderGeometry(rIn, rIn, S.wall + 4, 96); hole.translate(m.ox || 0, y0 + m.h - S.wall / 2, 0);
+  [outer, inn] = cutHole(g, hole); if (outer !== g) g = mergeGeometries([ni(outer), ni(inn)]) || g;
+  return g;
+}
 const visorBox = (m, w, d) => { const f = Math.max(4.5, Math.min(w, d) * 0.12); return { w: w - 2 * f, d: m.sides ? d - 2 * f : w - 2 * f }; };
 // Abertura para o dedo: concha oval cortada na borda da frente (em cima da base, embaixo da tampa)
 function dedoGeo(g, o, y0, h) {
@@ -5680,7 +5692,8 @@ function compactParts(product, L, S0) {
     if (m.hidden || !m.capa) return;
     const objs = mine(idx); if (!objs.length) return;
     const rest = localBox(product.children.filter(o => o.isMesh && o.userData.idx !== idx)), bb = localBox(objs), c = bb.getCenter(new THREE.Vector3());
-    const T = new THREE.Matrix4().makeTranslation(c.x, c.y, c.z).multiply(new THREE.Matrix4().makeRotationY(-Math.PI / 5)).multiply(new THREE.Matrix4().makeRotationZ(Math.PI / 2)).multiply(new THREE.Matrix4().makeTranslation(-c.x, -c.y, -c.z));
+    const rot = m.capa === 'vira' ? new THREE.Matrix4().makeRotationX(Math.PI) : new THREE.Matrix4().makeRotationY(-Math.PI / 5).multiply(new THREE.Matrix4().makeRotationZ(Math.PI / 2));
+    const T = new THREE.Matrix4().makeTranslation(c.x, c.y, c.z).multiply(rot).multiply(new THREE.Matrix4().makeTranslation(-c.x, -c.y, -c.z));
     objs.forEach(o => o.applyMatrix4(T));
     const b2 = localBox(objs), dx = rest.max.x + 6 - b2.min.x, dy = rest.min.y - b2.min.y;
     objs.forEach(o => { o.position.x += dx; o.position.y += dy; o.updateMatrixWorld(true); });
@@ -5736,6 +5749,7 @@ function buildInto(product, S, explodeAmt = 0) {
     if (m0.kind === 'gargalo' && !under && L[i - 1]?.m.vol && isGlass(L[i - 1].m.own ? L[i - 1].m.finish : S.finish)) m = { ...m, embed: Math.min(m.embed ?? 8, 1) };
     let g = moduleGeo(m, y0, { logoQuality: hasLogo, body: under }); if (!g) return;
     if (m0.oco) g = ocoGeo(g, m, y0);
+    if (m0.ocoTopo && L[i + 1]?.m.kind === 'gargalo') g = ocoTopoGeo(g, m, y0, L[i + 1].m, thickBase(m.own ? m.finish : S.finish) ? Math.max(S.wall, m0.fundo ?? 6) : S.wall);
     if (m0.dedo) g = dedoGeo(g, m0.dedo, y0, m.h);
     if (vestsValve(S, idx) && L[i - 1]?.idx === idx - 1) { // cavidade no tamanho da válvula (folga de 0,5 mm)
       const vg = sprayGeo(L[i - 1].m, L[i - 1].y0, { lo: true }); vg.computeBoundingBox(); const vb = vg.boundingBox;
@@ -8354,7 +8368,7 @@ function incomProduct(r) {
       // de cima da base e metade na de baixo da tampa
       const s0 = r.t === 'cr' ? {} : sq(r.t === 'cqr' ? 0.22 : 0.04), hb = H * 0.55, ht = H * 0.45, nw = r1(Math.min(22, Math.min(W, D) * 0.32));
       ms = [P('Base', W, D, hb, { ...s0, rBot: r.t === 'cr' ? 1.5 : 1, rTop: 0.6, godes: godesOf(r), dedo: { top: true, w: nw, h: r1(Math.min(3.5, hb * 0.45)), d: 1.6 } }),
-        P('Tampa', W, D, ht, { ...s0, rBot: 0.6, rTop: r.t === 'cr' ? 2 : 1.2, hinge: true, abre: 0, oco: true, visor: /Visor|Quinteto/i.test(r.n + r.mat), espelho: !/Visor|Crystal|Quinteto/i.test(r.n + r.mat), dedo: { top: false, w: nw, h: r1(Math.min(2.6, ht * 0.4)), d: 1.1 } })]; break; }
+        P('Tampa', W, D, ht, { ...s0, rBot: 0.6, rTop: r.t === 'cr' ? 2 : 1.2, hinge: true, abre: 0, oco: true, visor: /com Visor|Quinteto/i.test(r.n), espelho: !/com Visor|Crystal|Quinteto/i.test(r.n), dedo: { top: false, w: nw, h: r1(Math.min(2.6, ht * 0.4)), d: 1.1 } })]; break; }
     case 'cg': case 'cgt': case 'cgr': case 'dsq': case 'bulb': {
       const sh = r.t === 'dsq' ? sq(0.08) : {}, rb = r.t === 'bulb' ? W / 2 * 0.95 : r.t === 'cgr' ? W * 0.3 : 2, twist = /Twist/.test(r.n);
       let [f0, f1] = incomFrac(pr, [0.58, 0.63]); if (f1 < f0 + 0.01) f1 = f0 + 0.05;
@@ -8392,13 +8406,23 @@ function incomProduct(r) {
         P('Tubo (mecanismo)', ws, null, hs, { rTop: 0.5, rBot: 0.3, own: true, color: '#d6d8da', finish: 'metal' }),
         P('Bala (batom)', wb, null, lb, { rTop: 0.8, rBot: 0.3, gap: r1(-(lb + 1.2)), tilt: [1, 0.55], sobe: r1(lb * 0.72), own: true, color: '#d7a99a', finish: 'brilho' }),
         P('Tampa', W, D, hc, { ...s0, rTop: 1.5, gap: r1(-(hs - 1.2)), capa: true, oco: true, _t: [f, 1] })]; break; }
-    case 'pote': case 'potesq': { const s0 = r.t === 'potesq' ? sq(0.1) : {}, [f] = incomFrac(pr, [0.62]); ms = [P('Pote', W * 0.98, D * 0.98, H * f, { ...s0, vol: true, rBot: 3, _t: [0, f] }), P('Tampa', W, D, H * (1 - f), { ...s0, rTop: 2, _t: [f, 1] })]; break; }
+    case 'pote': case 'potesq': {
+      // Pote como o de verdade: corpo oco com creme dentro (conteúdo editável), boca com rosca em hélice e
+      // tampa de rosca oca assentada no ombro. "Abrir" tira a tampa e deixa virada ao lado.
+      const s0 = r.t === 'potesq' ? sq(0.1) : {}, [f] = incomFrac(pr, [0.62]), hp = H * f, hc = H * (1 - f);
+      const cap = P('Tampa', W, D, hc, { ...s0, rTop: 2, oco: true, capa: 'vira', _t: [f, 1] });
+      const cs = Math.cos(Math.PI / 4), face = cap.sides === 4 ? Math.min(cap.W, cap.D) * (cs + (1 - cs) * (cap.sideR || 0)) : Math.min(cap.W, cap.D);
+      const nw = r1(face - 2 * OCO.wall - 0.8), nh = r1(Math.max(4, hc - OCO.top - 0.8));
+      const neck = M('gargalo', { name: 'Boca com rosca', neckStd: 'livre', W: nw, D: nw, h: nh, pitch: 3.2, turns: 1.25, threadD: 0.9, ringH: 0, ringW: 0, embed: 4, neckFillet: 0, tuboAberto: true });
+      ms = [P('Pote', W, D, hp, { ...s0, vol: true, rBot: 3, ocoTopo: true, liq: true, liqType: 'cremoso', liqLevel: 80, liqColor: '#f2ebe0', _t: [0, f] }), neck, cap]; break; }
     case 'stick': { const [f] = incomFrac(pr, [0.5]), bh = H * (1 - f) * 0.84; ms = [P('Base', W, D, H * f, { rBot: 2, _t: [0, f] }), P('Bastão (produto)', W * 0.78, null, bh, { rTop: W * 0.2 }), P('Tampa', W, D, H * (1 - f), { rTop: 3, gap: r1(-bh), _t: [f, 1] })]; break; }
     default: ms = [P('Corpo', W, D, H, { vol: true, _t: [0, 1] })];
   }
   Object.assign(ms[0], { forn: 'Incom', ref: r.n.toUpperCase(), fmat: r.mat, fterm: r.vol, fpg: r.pg, fest: r.est, fW: r.W, fD: r.D ?? r.W, fH: r.H, fcat: r.c });
   const fapp = ['Frascos', 'Frasnagas'].includes(r.c) || r.t.startsWith('flacon') ? 'Fármaco' : 'Beleza';
-  return { color: BEIGE, finish: 'fosco', modules: ms, forn: 'Incom', fcat: r.c, fapp };
+  // pote de acrílico (SAN/PMMA/PCTG) tem parede grossa; o de PP/PE, fina
+  const wall = r.t.startsWith('pote') ? (/SAN|PMMA|PCTG/.test(r.mat) ? 3.2 : 1.6) : undefined;
+  return { color: BEIGE, finish: 'fosco', modules: ms, forn: 'Incom', fcat: r.c, fapp, ...(wall ? { wall, wallAuto: false } : {}) };
 }
 INCOM_PRODUCTS.forEach(r => { PRESETS[`Incom ${r.n} (${r.c.toLowerCase()})`] = incomProduct(r); });
 // Tampas de perfume da Incom montadas: frasco genérico (a Incom não faz o vidro) + válvula spray
