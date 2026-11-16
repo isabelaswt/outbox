@@ -390,7 +390,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-15.miniatura-cor';
+const BUILD = '2026-11-15.ficha-2d2';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -7957,14 +7957,43 @@ async function fichaTecnica() {
   { const d = renderer.domElement, k = Math.min(1, 900 / Math.max(d.width, d.height)); persp34.width = d.width * k; persp34.height = d.height * k; persp34.getContext('2d').drawImage(d, 0, 0, persp34.width, persp34.height); }
   grid.visible = refMesh.visible = ground.visible = sideRoot.visible = stage.visible = false; scene.background = new THREE.Color('#ffffff');
   const K = Math.min(6, 340 / (sz.y + 32), 300 / (sz.x + 70), 300 / (sz.z + 64)); // px por mm, a mesma nas três vistas (cotas legíveis)
+  // Desenho técnico 2D: em vez do render colorido, linhas pretas no branco — contorno,
+  // divisas entre peças e arestas (frisos, gomos, vincos). Sai de duas passadas (normais e
+  // profundidade): onde a direção da superfície vira de repente ou a profundidade salta, é linha.
+  const lineArt = (cm, W2, H2) => {
+    const R = Math.max(sz.x, sz.y, sz.z), near0 = cm.near, far0 = cm.far, bg0 = scene.background;
+    cm.near = Math.max(0.1, 3000 - R - 20); cm.far = 3000 + R + 60; cm.updateProjectionMatrix();
+    scene.background = new THREE.Color(0, 0, 0);
+    const grab = mt => { mt.toneMapped = false; scene.overrideMaterial = mt; renderer.render(scene, cm);
+      const t = document.createElement('canvas'); t.width = W2; t.height = H2; const g = t.getContext('2d'); g.drawImage(renderer.domElement, 0, 0, W2, H2); return g.getImageData(0, 0, W2, H2).data; };
+    const hid = []; scene.children.forEach(o => { if (o !== product && !o.isLight && o.visible) { o.visible = false; hid.push(o); } }); // só o produto (sombra de contato, grade, chão: fora)
+    scene.traverse(o => { if (o.isMesh && o.visible && (o.userData.liquid || o.name === 'cavidade' || /pescante|_bomba|carcaca|haste|aplicador/.test(o.name))) { o.visible = false; hid.push(o); } }); // só a peça por fora
+    const N = grab(new THREE.MeshNormalMaterial()), D = grab(new THREE.MeshDepthMaterial());
+    scene.overrideMaterial = null; scene.background = bg0; hid.forEach(o => { o.visible = true; }); cm.near = near0; cm.far = far0; cm.updateProjectionMatrix();
+    const n = W2 * H2, E = new Uint8Array(n), m = i => D[i * 4] > 1;
+    const edge = (i, j) => {
+      const a = m(i), b2 = m(j); if (a !== b2) return true; if (!a) return false;
+      if (Math.abs(D[i * 4] - D[j * 4]) > 3) return true; // salto de profundidade (uma peça na frente da outra)
+      let dot = 0, la = 0, lb = 0; for (let k = 0; k < 3; k++) { const u = N[i * 4 + k] / 127.5 - 1, v = N[j * 4 + k] / 127.5 - 1; dot += u * v; la += u * u; lb += v * v; }
+      return dot / Math.sqrt(la * lb || 1) < 0.9; // vinco: a superfície muda de direção (> ~25°)
+    };
+    for (let y = 0; y < H2; y++) for (let xx = 0; xx < W2; xx++) { const i = y * W2 + xx;
+      if (xx + 1 < W2 && edge(i, i + 1)) E[i] = 1; if (y + 1 < H2 && edge(i, i + W2)) E[i] = 1; }
+    const out = document.createElement('canvas'); out.width = W2; out.height = H2;
+    const g = out.getContext('2d'), img = g.createImageData(W2, H2), px = img.data;
+    for (let i = 0; i < n; i++) { const y = (i / W2) | 0, xx = i - y * W2;
+      const on = E[i] || (xx > 0 && E[i - 1]) || (y > 0 && E[i - W2]); // engrossa 1 px (linha legível)
+      const v = on ? 26 : 255; px[i * 4] = px[i * 4 + 1] = px[i * 4 + 2] = v; px[i * 4 + 3] = 255; }
+    g.putImageData(img, 0, 0); return out;
+  };
   const views = [];
   const shot = (dir, up, ex, ey, cotas) => {
     const w = Math.round(2 * ex * K), h = Math.round(2 * ey * K);
     const cm = new THREE.OrthographicCamera(-ex, ex, ey, -ey, 0.1, 20000);
     cm.position.copy(c).addScaledVector(dir, 3000); cm.up.copy(up); cm.lookAt(c); cm.updateMatrixWorld(); cm.updateProjectionMatrix();
-    renderer.setPixelRatio(2); renderer.setSize(w, h, false); renderer.render(scene, cm);
-    const cv = document.createElement('canvas'); cv.width = w * 2; cv.height = h * 2;
-    const x = cv.getContext('2d'); x.drawImage(renderer.domElement, 0, 0, cv.width, cv.height); x.scale(2, 2);
+    renderer.setPixelRatio(2); renderer.setSize(w, h, false);
+    const cv = lineArt(cm, w * 2, h * 2);
+    const x = cv.getContext('2d'); x.scale(2, 2);
     const P = (X, Y, Z) => { const p = new THREE.Vector3(X, Y, Z).project(cm); return [(p.x + 1) / 2 * w, (1 - p.y) / 2 * h]; };
     x.strokeStyle = '#b06a2c'; x.fillStyle = '#b06a2c'; x.lineWidth = 1; x.font = '600 11px system-ui, sans-serif';
     const dim = (a, b2, o, label) => { // cota entre dois pontos, deslocada pelo vetor o = [px, py] (para fora do produto)
