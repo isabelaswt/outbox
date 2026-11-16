@@ -389,8 +389,8 @@ function polyFit(o) { const n = o.sides || 0; if (n === 4 || n === 8) { const c 
 const hasStep = () => false; // contorno denso (0,1 mm): sem suavizar, os degraus ficam com quina
 // Forma vista de cima, conferida nas fotos do catálogo (o desenho técnico só mostra a frente):
 // deitada = cilindro deitado (de lado é um círculo); disco = disco em pé (espessura constante).
-const CAP_FIX = { incom_aramis: { quadTop: 0.81, quadN: 5 }, incom_cubic: { quadFrom: 0.19, quadN: 7 }, incom_bamboo: { deitada: true }, incom_golden: { disco: true }, incom_thenue: { disco: true }, incom_wheel: { disco: true },
-  incom_drop: { disco: true, Dk: 0.55, furo: { y0: 0.4, y1: 0.915, w: 0.47 } }, incom_antonov: { D: 34 }, incom_bilbao: { sides: 4, sideR: 0.35 }, incom_rams: { sides: 0 } };
+const CAP_FIX = { incom_flora: { lobes: 8, lobeD: 1.7, lobeTwist: 6, lobeFrom: 0.16, smooth: 2.2 }, incom_aramis: { quadTop: 0.81, quadN: 5 }, incom_cubic: { quadFrom: 0.19, quadN: 7 }, incom_bamboo: { deitada: true, fitFrom: 0.25 }, incom_golden: { disco: true, D: 22, col: 0.2, furo: { forma: 'circ', yc: 0.6, w: 0.6 } }, incom_wheel: { disco: true, D: 20, furo: { forma: 'circ', yc: 0.47, w: 0.62 } }, incom_thenue: { disco: true, D: 20, col: 0.1, furo: { forma: 'elip', yc: 0.55, w: 0.72, hh: 0.78 } }, incom_rock: { furo: { forma: 'elip', yc: 0.55, w: 0.6, hh: 0.52 } }, incom_chelsea: { cutBelow: 0.17 }, incom_soho: { cutBelow: 0.165 }, incom_hexa: { noCol: true }, incom_crown: { col: 0.58 }, incom_brilhante: { col: 0.257 }, incom_indico: { calha: 0.09 }, incom_matrix: { dobra: 0.085 }, incom_twist: { polyTwist: 1.25 }, incom_prisma: { chanfro: 0.46 }, incom_navette: { sides: 0, lobes: 4, lobeD: 2.6, lobeFrom: 0.33 }, incom_manhattan: { cutBelow: 0.1 }, incom_laura: { fill: [0.1, 0.39, 0.96], D: 26 }, incom_joya: { sides: 12, sideR: 0, col: 0.65 }, incom_joya_mini: { sides: 12, sideR: 0, col: 0.6 }, incom_domini: { abaLat: { t0: 0.598, t1: 0.742, w: 7 } }, incom_royal: { noCol: true },
+  incom_drop: { disco: true, Dk: 0.6, col: 0.14, furo: { y0: 0.4, y1: 0.915, w: 0.47 } }, incom_antonov: { D: 34 }, incom_bilbao: { sides: 4, sideR: 0.35 }, incom_rams: { sides: 0 } };
 // Contorno do desenho técnico sem "escada": o traço extraído do PDF oscila uns centésimos e,
 // ligado em retas, a luz marcava cada mudança de inclinação como uma faixa. Média ponderada curta
 // (~0,3 mm na altura) e reamostragem fina (0,15 mm): degraus e anéis ficam, com o arredondado de molde.
@@ -424,7 +424,7 @@ function alignSteps(P0) {
   }
   return P;
 }
-function smoothProfile(rows0, H, Wmm = 20) {
+function smoothProfile(rows0, H, Wmm = 20, sgMax = 0.9) {
   if (!rows0 || rows0.length < 4 || !(H > 0)) return rows0;
   const rows = rows0.slice().sort((p, q) => p[0] - q[0]); rows.W = Wmm;
   // 1) contorno denso por interpolação linear (0,05 mm) — o extraído tem trechos esparsos
@@ -443,7 +443,7 @@ function smoothProfile(rows0, H, Wmm = 20) {
   last = 1e9; for (let j = nd; j >= 0; j--) { if (step[j]) last = j; dist[j] = Math.min(dist[j], (last - j) * dmm); }
   const N = Math.max(8, Math.ceil(H / 0.15)), out = [];
   for (let i = 0; i <= N; i++) {
-    const c = Math.round(i / N * nd), sg = (0.2 + 0.7 * smooth(0, 2, dist[c])) / dmm, R = Math.ceil(3 * sg); let w = 0, a = 0, b = 0, cx = 0;
+    const c = Math.round(i / N * nd), sg = (0.2 + (sgMax - 0.2) * smooth(0, 2, dist[c])) / dmm, R = Math.ceil(3 * sg); let w = 0, a = 0, b = 0, cx = 0;
     for (let j = Math.max(0, c - R); j <= Math.min(nd, c + R); j++) { const k = Math.exp(-0.5 * ((j - c) / sg) ** 2); w += k; a += k * dense[j][0]; b += k * dense[j][1]; cx += k * dense[j][2]; }
     const q = dense[c][3];
     out.push([Math.round(i / N * 1e4) / 1e4, Math.round(a / w * 1e4) / 1e4, Math.round(b / w * 1e4) / 1e4, q[3], Math.round(cx / w * 100) / 100, q[5]]);
@@ -459,21 +459,57 @@ function incomShape(r) {
   const o = { W, D, h: r.H, rTop: 0, rBot: 0.3, sides: fx.sides ?? (base.sides || 0), sideR: fx.sideR ?? base.sideR ?? 0.1 };
   polyFit(o);
   o.W0 = o.W;
-  o.prof = closeTop(alignSteps(pr.p)).map(([t, l, rr]) => { const a = (l + rr) / 2;
+  let p0 = pr.p;
+  // Chelsea/Soho: o "pescoço" estreito do desenho é a válvula de metal aparecendo (foto), não a tampa
+  if (fx.cutBelow) { const cb = fx.cutBelow; p0 = p0.filter(q => q[0] >= cb).map(q => [Math.round((q[0] - cb) / (1 - cb) * 1e4) / 1e4, q[1], q[2]]); p0[0][0] = 0; o.h = r1(r.H * (1 - cb)); o.valveShow = r1(r.H * cb); }
+  // Aba de um lado só (Domini): no torno ela virava um anel em volta; sai do perfil e entra como bloco
+  if (fx.abaLat) { const A = fx.abaLat, lo = p0.filter(q => q[0] < A.t0).at(-1), hi = p0.find(q => q[0] > A.t1);
+    const out = Math.max(...p0.filter(q => q[0] >= A.t0 && q[0] <= A.t1).map(q => q[2]));
+    p0 = p0.map(q => q[0] >= A.t0 && q[0] <= A.t1 ? [q[0], q[1], lo[2] + (hi[2] - lo[2]) * (q[0] - lo[0]) / (hi[0] - lo[0])] : q);
+    o.abaLat = { x0: r1(((lo[2] + hi[2]) / 2) * W / 2 - 1.2), x1: r1(out * W / 2), y0: r1(A.t0 * r.H), y1: r1(A.t1 * r.H), w: A.w }; o.h0 = r.H; }
+  // Laura: as asas do leque descem até o gargalo nas pontas; o traço extraído só pegou o miolo (virava cogumelo)
+  if (fx.fill) { const [f0, f1, v] = fx.fill, a0 = (p0.filter(q => q[0] <= f0).at(-1) || p0[0])[1];
+    p0 = p0.map(q => q[0] > f0 && q[0] < f1 ? (w => [q[0], Math.max(q[1], w), Math.max(q[2], w)])(a0 + (v - a0) * smooth(f0, f0 + 0.05, q[0])) : q); }
+  o.prof = closeTop(alignSteps(p0)).map(([t, l, rr]) => { const a = (l + rr) / 2;
     // disco em pé: espessura constante, mas perto das pontas (largura menor que a espessura) a seção
     // vira redonda — sem o degrau de "ombro" em cima e embaixo; a borda fica toda abaulada
     // espessura afina suave (mínimo suave) quando a largura chega perto dela; seção squircle leve
     // constante: faces levemente abauladas e borda redonda, sem quina nem ombro
     const sm = (x, y, k) => -k * Math.log(Math.exp(-x / k) + Math.exp(-y / k)), bD = fx.disco ? clamp(sm(1, a * o.W / o.D * 0.92, 0.12), 0.02, 1) : 0, nD = 2.6;
-    const b = fx.deitada ? Math.sqrt(Math.max(0.0004, 1 - (2 * t - 1) ** 2)) : fx.disco ? bD : a;
+    // pedra mais funda que larga no pé: a seção fica redonda onde a largura é menor que a profundidade
+    const b = fx.deitada ? Math.sqrt(Math.max(0.0004, 1 - (2 * t - 1) ** 2)) : fx.disco ? bD : r.s === 'pedra' ? Math.max(a, Math.min(a * o.W / o.D, 1)) : a;
     return [t, a, b, fx.deitada ? 8 : fx.disco ? nD : 2, r1((rr - l) / 2 * o.W / 2), 0]; });
   o.smoothProf = false; if (pr.d) o.topDip = r1(pr.d * r.H); if (pr.tl) o.tilt = pr.tl;
+  // A válvula fica no eixo do pé da tampa: silhueta assimétrica (Antonov, Domini) centrava a caixa do desenho
+  // e o oco da válvula saía torto em relação ao pé
+  { const q0 = o.prof.find(q => q[0] >= 0.03) || o.prof[0], c0 = q0[4] || 0;
+    if (Math.abs(c0) > 0.05) { o.prof.forEach(q => { q[4] = r1(q[4] - c0); }); if (o.abaLat) { o.abaLat.x0 = r1(o.abaLat.x0 - c0); o.abaLat.x1 = r1(o.abaLat.x1 - c0); } } }
+  // Gargalo redondo embaixo do bloco (Crown, Safira, Próton, Navette, Tutti, Chess Deluxe, Golden…): a válvula
+  // entra num cilindro, não num prisma achatado. Acha o trecho reto de baixo e o deixa redondo, na largura do desenho.
+  let col = fx.col;
+  if (col == null && !fx.noCol && !fx.disco && !fx.deitada && o.prof.length > 4) {
+    const aAt = t => (o.prof.find(q => q[0] >= t) || o.prof[o.prof.length - 1])[1], aC = aAt(0.04);
+    const t1 = (o.prof.find(q => q[0] > 0.04 && q[1] > aC + 0.1) || [1])[0];
+    const reto = o.prof.filter(q => q[0] >= 0.04 && q[0] < t1 * 0.85).every(q => Math.abs(q[1] - aC) < 0.06);
+    if (t1 >= 0.1 && t1 < 0.8 && reto && aC < 0.8 && (o.sides >= 3 || o.D < o.W * 0.95)) col = t1 - 0.0005;
+  }
+  if (col) {
+    const n0 = o.sides | 0, c = n0 ? Math.cos(Math.PI / n0) : 1, fp = n0 === 4 || n0 === 8 ? c + (1 - c) * (o.sideR || 0) : 1;
+    o.prof.forEach(q => { if (q[0] < col) { q[1] = q[1] * fp; q[2] = q[1] * o.W / o.D; q[3] = 2; } });
+    o.polyFrom = col;
+  }
+  if (fx.fitFrom) o.fitFrom = r1(fx.fitFrom * r.H);
   // Bloco de cima quadrado (de quinas arredondadas) com prato radial: a curva do topo vista de frente
   if (fx.quadTop) { o.prof.forEach(q => { if (q[0] >= fx.quadTop) q[3] = fx.quadN || 5; }); o.quadTop = fx.quadTop; o.quadDish = o.topDip || 1.4; o.topDip = 0.02; }
   // Bloco quadrado de quinas arredondadas sobre base redonda (Cubic): superelipse só no trecho do bloco
   if (fx.furo) o.furo = fx.furo;
+  if (fx.calha) o.calha = fx.calha;
+  if (fx.polyTwist) o.polyTwist = fx.polyTwist;
+  if (fx.chanfro) o.chanfro = r1(W * (1 - fx.chanfro)); // x+z do plano do corte (mm, medida do catálogo) // uma quina cortada a 45° (Prisma, vista de cima)
+  if (fx.dobra) { o.dobra = fx.dobra; o.topDip = 0; } // topo dobrado (Matrix): duas metades inclinadas ao contrário, com o degrau no meio
+  if (fx.lobes) Object.assign(o, { lobes: fx.lobes, lobeD: fx.lobeD, lobeTwist: fx.lobeTwist || 0, lobeFrom: fx.lobeFrom || 0 });
   if (fx.quadFrom != null) { o.sides = 0; o.prof.forEach(q => { q[3] = q[0] >= fx.quadFrom ? (fx.quadN || 7) : 2; }); }
-  o.prof = smoothProfile(o.prof, r.H, o.W);
+  o.prof = smoothProfile(o.prof, o.h, o.W, fx.smooth);
   return o;
 }
 function incomShape0(r) {
@@ -494,6 +530,19 @@ function incomShape0(r) {
     default: return P;
   }
 }
+// Flint com o colar "Abaulado" (opção do catálogo, pág. 158): anel, barriga e anel no lugar do colar aberto.
+// Medidas tiradas do desenho das opções de colar na mesma escala do Flint (aberto = 29 mm em cima, 21 mm embaixo).
+{ const f = INCOM_CAPS.find(r => r.k === 'incom_flint'), pf = INCOM_CAP_PROF.incom_flint;
+  if (f && pf && !INCOM_CAP_PROF.incom_flint_ab) {
+    const W = f.W, cut = 0.325, yCut = cut * f.H, hc = 12.8, H = r1(hc + f.H - yCut), rows = [], add = (y, d) => rows.push([y, d / W]);
+    const ring = (y0, d) => { for (let i = 0; i <= 8; i++) { const u = i / 8, y = y0 + 2.6 * u, e = 1.3 - Math.sqrt(Math.max(0, 1.3 ** 2 - (y - y0 - 1.3) ** 2)); add(y, d - 2 * e); } };
+    ring(0, 22.7);
+    for (let i = 1; i < 12; i++) { const u = i / 12; add(2.6 + 7.6 * u, 22.2 + (23.8 - 22.2) * Math.sin(Math.PI * u)); }
+    ring(10.2, 22.7);
+    pf.p.filter(q => q[0] >= cut).forEach(q => rows.push([q[0] * f.H - yCut + hc + 0.05, (q[1] + q[2]) / 2]));
+    INCOM_CAP_PROF.incom_flint_ab = { p: rows.map(([y, a]) => [Math.round(y / H * 1e4) / 1e4, Math.round(a * 1e3) / 1e3, Math.round(a * 1e3) / 1e3]) };
+    INCOM_CAPS.splice(INCOM_CAPS.indexOf(f) + 1, 0, { ...f, k: 'incom_flint_ab', n: 'Flint (colar abaulado)', H, b: 23.8 });
+  } }
 INCOM_CAPS.forEach(r => { LIB[r.k] = { name: `Incom ${r.n}`, ...incomShape(r), forn: 'Incom', ref: r.n.toUpperCase(), fmat: r.mat, fterm: r.term, fest: r.est, fpg: r.pg }; });
 const M = (type, o = {}) => ({ ...BASE, ...LIB[type], type, uid: newUid(), ...o });
 
@@ -505,7 +554,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-16.tampa-acompanha';
+const BUILD = '2026-11-16.conferencia-tampas';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -1360,14 +1409,39 @@ function quadDish(g, y0, m) {
 // furo = { y0, y1, w } em frações da altura e da largura (medidas no desenho técnico).
 function furoGota(g, y0, m) {
   // lágrima: x = sen t · sen^k(t/2), y = cos t — ponta levemente arredondada (k < 1), base redonda
-  const f = m.furo, yb = y0 + m.h * f.y0, yt = y0 + m.h * f.y1, cx = m.ox || 0, k = 0.62, N = 160, P = [];
+  const f = m.furo, cx = m.ox || 0, N = 160, P = [];
+  if (f.forma === 'circ' || f.forma === 'elip') { // furo redondo/oval passante (Golden, Wheel, Thenue, Rock), em mm, centrado em yc
+    const rx = m.W * f.w / 2, ry = f.forma === 'circ' ? rx : m.h * f.hh / 2, yc = y0 + m.h * f.yc;
+    for (let i = 0; i < N; i++) { const t = i / N * 2 * Math.PI; P.push(new THREE.Vector2(cx + rx * Math.sin(t), yc + ry * Math.cos(t))); }
+  }
+  const yb = y0 + m.h * (f.y0 || 0), yt = y0 + m.h * (f.y1 || 1), k = 0.62;
+  if (!P.length) {
   let mx = 0; for (let i = 0; i <= N; i++) { const t = i / N * 2 * Math.PI; mx = Math.max(mx, Math.abs(Math.sin(t) * Math.pow(Math.abs(Math.sin(t / 2)), k))); }
-  const sx = m.W * f.w / 2 / mx, sy = (yt - yb) / 2, yc = (yt + yb) / 2, sh = new THREE.Shape();
+  const sx = m.W * f.w / 2 / mx, sy = (yt - yb) / 2, yc = (yt + yb) / 2;
   for (let i = 0; i < N; i++) { const t = i / N * 2 * Math.PI; P.push(new THREE.Vector2(cx + sx * Math.sin(t) * Math.pow(Math.abs(Math.sin(t / 2)), k), yc + sy * Math.cos(t))); }
-  sh.setFromPoints(P); sh.closePath();
+  }
+  const sh = new THREE.Shape(); sh.setFromPoints(P); sh.closePath();
   const dep = Math.max(m.W, m.D) + 10, cut = new THREE.ExtrudeGeometry(sh, { depth: dep, bevelEnabled: false, curveSegments: 48 }); cut.translate(0, 0, -dep / 2); cut.deleteAttribute('uv');
   const ud = g.userData, [o, i] = cutHole(g, cut); if (o === g) return g;
   const out = mergeGeometries([o, i]) || g; out.userData = ud; return out;
+}
+function calhaTop(g, y0, m) {
+  const p = g.attributes.position, R = m.W / 2, d = m.calha * m.h, cx = m.ox || 0;
+  for (let i = 0; i < p.count; i++) { const ly = (p.getY(i) - y0) / m.h; if (ly <= 0.45) continue;
+    const w = smooth(0.45, 1, ly), u = Math.min(1, ((p.getX(i) - cx) / R) ** 2); p.setY(i, p.getY(i) - d * (1 - u) * w); }
+  p.needsUpdate = true; g.computeVertexNormals(); g.computeBoundingBox();
+}
+function dobraTop(g, y0, m) {
+  const p = g.attributes.position, R = m.W / 2, d = m.dobra * m.h, cx = m.ox || 0;
+  for (let i = 0; i < p.count; i++) { const ly = (p.getY(i) - y0) / m.h; if (ly <= 0.5) continue;
+    const w = smooth(0.5, 1, ly), sx = clamp((p.getX(i) - cx) / R, -1, 1), sz = Math.tanh(p.getZ(i) / 0.35);
+    p.setY(i, p.getY(i) - d * w * (1 + sz * sx) / 2); }
+  p.needsUpdate = true; g.computeVertexNormals(); g.computeBoundingBox();
+}
+function chanfroGeo(g, m) {
+  const p = g.attributes.position, cx = m.ox || 0, c = m.chanfro * m.W / (m.W0 || m.W);
+  for (let i = 0; i < p.count; i++) { const x = p.getX(i) - cx, z = p.getZ(i), e = x + z - c; if (e > 0) { p.setX(i, p.getX(i) - e / 2); p.setZ(i, z - e / 2); } }
+  p.needsUpdate = true; g.computeVertexNormals(); g.computeBoundingBox();
 }
 function tiltTop(g, y0, t) {
   const p = g.attributes.position; g.computeBoundingBox(); const x0 = g.boundingBox.min.x, w = (g.boundingBox.max.x - x0) || 1;
@@ -1386,8 +1460,9 @@ function loft(rings, seg, disp, uniform = false) {
     for (let j = 0; j < seg; j++) {
       const th = uniform ? invArc(r, j / seg * TAU) : j / seg * TAU + off;
       let [x, z] = r.sides >= 3 ? polyPt(r.a, r.b, r.sides, r.round, th) : sp(r.a, r.b, r.n, th);
+      if (r.sides >= 3 && r.ptw) { const f = r.ptw * r.ly * Math.PI / 180, [px, pz] = polyPt(r.a, r.b, r.sides, r.round, th - f), c = Math.cos(f), s = Math.sin(f); x = px * c - pz * s; z = px * s + pz * c; } // prisma torcido (Twist)
       const pm = r.pan ? panelMask(r.pan, r.ly, th, r.b) : 0;
-      if (r.lobes >= 3 && r.lobeK > 0) { const f = lobeF(r.lobes, r.lobeK)(th) * (1 - pm) + pm; x *= f; z *= f; } // área lisa: na crista dos gomos
+      if (r.lobes >= 3 && r.lobeK > 0) { const f = lobeF(r.lobes, r.lobeK)(th - (r.twist || 0) * r.ly * Math.PI / 180) * (1 - pm) + pm; x *= f; z *= f; } // gomos torcidos: giram com a altura // área lisa: na crista dos gomos
       let dy = 0;
       if (disp && !r.noDisp) [x, z, dy = 0] = disp(x, r.ly, z, th, r, pm);
       const pD = pm ? r.pan.D + (r.pan.rib ? r.pan.rib(r.ly) : 0) : 0;
@@ -2091,7 +2166,7 @@ function moduleGeo(m0, y0, opts = {}) {
   let kmax = 0;
   const rings = (isProf ? profSamples(m, lo) : ySamples(m, rB, rT, lo)).map(ly => {
     if (!isProf) { const [a, b] = sectionAt(ms, ly, rB, rT); return { y: y0 + lift + ly, ly, a, b, n: m.n, sides: m.sides | 0, round: m.sideR,
-      lobes: m.lobes | 0, lobeK: m.lobes >= 3 ? clamp(m.lobeD / (Math.min(m.W, m.D) / 2), 0, 0.9) : 0 }; }
+      ptw: m.polyTwist || 0, lobes: m.lobeFrom > 0 && ly < m.lobeFrom * m.h ? 0 : m.lobes | 0, lobeK: m.lobes >= 3 ? clamp(m.lobeD / (Math.min(m.W, m.D) / 2), 0, 0.9) : 0, twist: m.lobeTwist || 0 }; }
     const q = profAt(m, ly), g = ms.groove > 0 ? ms.grooveD * Math.max(0, 1 - Math.abs(ly - (m.h - ms.groove)) / 0.5) : 0;
     // Raios de baixo/de cima aplicados por cima do perfil medido.
     let r = 0, f = 0;
@@ -2105,7 +2180,7 @@ function moduleGeo(m0, y0, opts = {}) {
       const nr = Math.max(0, m.neckR - (inset ? S.wall : 0));
       if (a > nr) a -= (a - nr) * k; if (b > nr) b -= (b - nr) * k; n = n + (2 - n) * k;
     }
-    return { y: y0 + lift + ly, ly, sides: m.sides | 0, round: m.sideR, a: Math.max(a - g, 0.05), b: Math.max(b - g, 0.05), n, cx: q.cx * (1 - (sh && ly > sh.y0 ? clamp((ly - sh.y0) / sh.L, 0, 1) : 0)), cz: q.cz * (1 - (sh && ly > sh.y0 ? clamp((ly - sh.y0) / sh.L, 0, 1) : 0)), lobes: m.lobes | 0, lobeK: m.lobes >= 3 ? clamp(m.lobeD / (Math.min(m.W, m.D) / 2), 0, 0.9) : 0 }; // gomos também nas peças de perfil (STL convertido, corpos medidos)
+    return { y: y0 + lift + ly, ly, sides: m.polyFrom > 0 && ly < m.polyFrom * m.h ? 0 : m.sides | 0, round: m.sideR, a: Math.max(a - g, 0.05), b: Math.max(b - g, 0.05), n, cx: q.cx * (1 - (sh && ly > sh.y0 ? clamp((ly - sh.y0) / sh.L, 0, 1) : 0)), cz: q.cz * (1 - (sh && ly > sh.y0 ? clamp((ly - sh.y0) / sh.L, 0, 1) : 0)), ptw: m.polyTwist || 0, lobes: m.lobeFrom > 0 && ly < m.lobeFrom * m.h ? 0 : m.lobes | 0, lobeK: m.lobes >= 3 ? clamp(m.lobeD / (Math.min(m.W, m.D) / 2), 0, 0.9) : 0, twist: m.lobeTwist || 0 }; // gomos também nas peças de perfil (STL convertido, corpos medidos)
   });
   if (!lo && !inset) for (const b of m.ribs || []) kmax = Math.max(kmax, b.k || 0);
   if (rings.length < 2) return null;
@@ -2148,7 +2223,17 @@ function moduleGeo(m0, y0, opts = {}) {
   else g = loft(rings, seg, disp, !!(disp && (kmax || m.ridges > 0)));
   if (m.tilt && g) tiltTop(g, y0, m.tilt);
   if (m.quadDish && g && !inset) quadDish(g, y0, m);
+  if (m.calha && g) calhaTop(g, y0, m);
+  if (m.dobra && g) dobraTop(g, y0, m);
+  if (m.chanfro && g) chanfroGeo(g, m);
   if (m.furo && g && !inset && !lo) g = furoGota(g, y0, m);
+  if (m.abaLat && g && !inset) { // aba lateral (Domini): bloco de cantos arredondados saindo de um lado
+    const A = m.abaLat, sk = m.W / (m.W0 || m.W), hy = (A.y1 - A.y0) * m.h / (m.h0 || m.h), L = (A.x1 - A.x0) * sk, r = Math.min(1, hy / 2.2, A.w / 4), sh = new THREE.Shape();
+    sh.moveTo(0, -A.w / 2 + r); sh.lineTo(0, A.w / 2 - r); sh.quadraticCurveTo(0, A.w / 2, r, A.w / 2); sh.lineTo(L - r, A.w / 2); sh.quadraticCurveTo(L, A.w / 2, L, A.w / 2 - r);
+    sh.lineTo(L, -A.w / 2 + r); sh.quadraticCurveTo(L, -A.w / 2, L - r, -A.w / 2); sh.lineTo(r, -A.w / 2); sh.quadraticCurveTo(0, -A.w / 2, 0, -A.w / 2 + r);
+    const bx = new THREE.ExtrudeGeometry(sh, { depth: hy, bevelEnabled: false, curveSegments: 6 }); bx.rotateX(-Math.PI / 2); bx.translate(A.x0 * sk + (m.ox || 0), y0 + A.y0 * m.h / (m.h0 || m.h), 0);
+    const ni = x => { const y = x.index ? x.toNonIndexed() : x; for (const k in y.attributes) if (k !== 'position' && k !== 'normal') y.deleteAttribute(k); return y; };
+    const ud = g.userData; g = mergeGeometries([ni(g), ni(bx)]) || g; g.userData = ud; }
   // Puxador na frente da tampinha, logo acima da linha (onde o dedo abre).
   if (!inset && !flipOpen && m.aba && m.topType === 'flip' && m.groove > 0 && !isProf) {
     const up = m.lidSide !== 'baixo', yg = m.h - m.groove, yl = yg + (up ? 0.9 : -0.9);
@@ -5579,13 +5664,15 @@ function buildInto(product, S, explodeAmt = 0) {
       const vr = Math.max(Math.abs(vb.min.x), Math.abs(vb.max.x), Math.abs(vb.min.z), Math.abs(vb.max.z)) + 0.5;
       // altura da válvula (vale também explodido), mas a tampa mantém um topo fechado de 2 mm:
       // válvula mais alta que a tampa virava um furo atravessando e a tampa parecia cortada
-      const hc = Math.max(1, Math.min(vb.max.y - L[i - 1].y0 + 1.5, m.h * Math.max(1, m.rep || 1) - 1)), vm = L[i - 1].m;
+      const hc = Math.max(1, Math.min(vb.max.y - y0 + 1.5, m.h * Math.max(1, m.rep || 1) - 1)), vm = L[i - 1].m; // do pé da tampa (assentada na virola, ela começa mais alto) até o topo da válvula
       // Spray de virola larga e atuador estreito: cavidade em degrau, como na tampa de verdade
       // (um cilindro reto na largura da virola até o topo furava tampas que afinam em cima).
       let cut;
       if (vm.sprayType === 'mist' && vm.actW < vm.W - 1.5) {
-        const yv = L[i - 1].y0, rc = vm.W / 2 + 0.5, rg = Math.max(vm.guideW || 0, vm.stemD || 0) / 2 + 0.5, ra = Math.max(vm.actW / 2 + 0.8, rg);
+        const yv = L[i - 1].y0, rc = vm.W / 2 + 0.5, rg = Math.max(vm.guideW || 0, vm.stemD || 0) / 2 + 0.5;
         const y1 = yv + vm.h, y2 = y1 + (vm.guideH || 0), yt = y0 - 1 + hc;
+        // assentada em cima do anel-guia: o oco é só o do atuador (com o anel, rasgava o pé das tampas estreitas)
+        const ra = y2 > y0 + 0.2 ? Math.max(vm.actW / 2 + 0.8, rg) : vm.actW / 2 + 0.8;
         const pr = [[0, y0 - 1]];
         if (y1 > y0 + 0.2) pr.push([rc, y0 - 1], [rc, Math.min(y1 + 0.3, yt)]); // tampa assentada na virola: sem o degrau largo
         if (vm.guideH > 0 && y2 > y0 + 0.2 && y2 < yt) pr.push([rg, Math.max(y1 + 0.3, y0 - 1)], [rg, y2]);
@@ -8140,7 +8227,9 @@ function incomFrac(pr, def) {
 // perfil em fração da largura mais larga da fatia, deslocamento do centro em mm.
 function profSlice(pr, t0, t1, Wfull) {
   const P = pr.p, at = t => { let i = 0; while (i < P.length - 2 && P[i + 1][0] < t) i++; const A = P[i], B = P[i + 1] || A, f = B[0] > A[0] ? clamp((t - A[0]) / (B[0] - A[0]), 0, 1) : 0; return [t, A[1] + (B[1] - A[1]) * f, A[2] + (B[2] - A[2]) * f]; };
-  const rows = [at(t0), ...P.filter(q => q[0] > t0 + 1e-4 && q[0] < t1 - 1e-4), at(t1)];
+  // frasco é simétrico: lado esquerdo muito diferente do direito é traço interno lido junto (Dispensing Cube
+  // ficava com um "pé" mais estreito); vale o contorno de fora
+  const rows = [at(t0), ...P.filter(q => q[0] > t0 + 1e-4 && q[0] < t1 - 1e-4), at(t1)].map(q => Math.abs(q[1] - q[2]) > 0.08 ? [q[0], Math.max(q[1], q[2]), Math.max(q[1], q[2])] : q);
   const amax = Math.max(...rows.map(q => (q[1] + q[2]) / 2));
   return { amax, prof: rows.map(([t, l, rr]) => [Math.round((t - t0) / (t1 - t0) * 1e4) / 1e4, (l + rr) / 2 / amax, (l + rr) / 2 / amax, 2, r1((rr - l) / 2 * Wfull / 2), 0]) };
 }
@@ -8223,7 +8312,7 @@ INCOM_PRODUCTS.forEach(r => { PRESETS[`Incom ${r.n} (${r.c.toLowerCase()})`] = i
 // (taper em cima, taperB embaixo), cintura (bulge) e arredondado do topo. O fundo arredondado
 // não conta: a cavidade abre por baixo, como na tampa de verdade.
 function capHalfAt(c, y) {
-  const t = clamp(y / c.h, 0, 1), n = c.sides || 0, face = n ? Math.cos(Math.PI / n) : 1;
+  const t = clamp(y / c.h, 0, 1), n = c.polyFrom > 0 && y < c.polyFrom * c.h ? 0 : c.sides || 0, cs = Math.cos(Math.PI / (n || 1)), face = n ? cs + (1 - cs) * clamp(c.sideR || 0, 0, 0.95) : 1;
   if (c.prof?.length) { const q = profAt(c, clamp(y, 0, c.h)); return Math.min(q.a, q.b) * face - Math.abs(q.cx); }
   let w = Math.min(c.W, c.D ?? c.W) / 2 * face * ((c.taperB ?? 100) + ((c.taper ?? 100) - (c.taperB ?? 100)) * t) / 100;
   if (c.bulge) w *= 1 + c.bulge / 100 * Math.sin(Math.PI * t);
@@ -8269,13 +8358,17 @@ function incomValve(cap, term, mm) {
   const tv = termValve(term); if (!tv) return { valve: perfumeValve(cap, mm), gap: 0 };
   // conferência em degrau: virola (e anel-guia) embaixo, atuador estreito em cima
   // base = 0: a tampa veste a válvula inteira; base = virola: a tampa assenta na virola e veste só o atuador
-  const o0 = tv.o, wall = 1.2, hMax = cap.h * (cap.tilt ? Math.min(...cap.tilt) : 1) - 2;
+  // tampa vazada (Golden, Wheel, Drop…): a válvula fica à mostra no vão, como no catálogo — tamanho real, sem conferência
+  if (cap.furo) return { valve: M('sprayClassico', { ...tv.o, fterm: term, own: true, color: '#d6d8da', finish: 'metal' }), gap: 0 };
+  // tampa inclinada: vale a altura no centro, onde fica a válvula
+  const o0 = tv.o, wall = 0.7, hMax = cap.h * (cap.tilt ? (cap.tilt[0] + cap.tilt[1]) / 2 : 1) - 1.5, y0f = cap.fitFrom || 0, show = cap.valveShow || 0;
   const fits = (k, base) => { const yC = (o0.h + (o0.guideH || 0)) * k, h = tv.hTot * k - base;
     if (h > hMax) return false;
-    for (let y = 0; y <= h + 1.5; y += 0.5) { const yy = y + base, need = (yy <= o0.h * k ? o0.W : yy <= yC ? Math.max(o0.guideW || 0, o0.stemD) : o0.actW + 0.6) * k / 2 + 0.5; if (capHalfAt(cap, y) - wall < need) return false; }
+    for (let y = y0f; y <= h + 1.5; y += 0.5) { const yy = y + base, need = (yy < o0.h * k - 1e-6 ? o0.W : yy < yC - 1e-6 ? Math.max(o0.guideW || 0, o0.stemD) : o0.actW + 0.6) * k / 2 + 0.2; if (capHalfAt(cap, y) - wall < need) return false; }
     return true; };
   const seat = k => (o0.h + (/Cash/.test(tv.type) ? (o0.guideH || 0) : 0)) * k; // Recrave: a tampa desce até a cápsula, vestindo o pescoço
   let k = 1, gap = 0;
+  if (show && fits(1, show)) return { valve: M('sprayClassico', { ...tv.o, fterm: term, own: true, color: '#d6d8da', finish: 'metal' }), gap: 0, show };
   if (!fits(1, 0)) { if (fits(1, seat(1))) gap = seat(1); else { while (k > 0.5 && !fits(k, seat(k))) k -= 0.03; gap = seat(k); } }
   const o = { ...tv.o };
   if (k < 0.999) { ['W', 'D', 'h', 'guideW', 'guideH', 'stemH', 'stemD', 'actW', 'actH'].forEach(q => { if (o[q]) o[q] = r1(o[q] * k); }); o.name += ` · reduzida ${Math.round(k * 100)}% p/ caber na tampa aproximada`; }
@@ -8286,7 +8379,7 @@ function incomPerfume(r) {
   const bw = r1(clamp(Math.max(cap.W, cap.D ?? cap.W) * 1.3, 42, 72));
   return { color: BEIGE, finish: 'fosco', forn: 'Incom', fcat: 'Tampas de perfume', fapp: 'Perfume', modules: [
     M('reto', { name: 'Frasco (genérico, não é Incom)', W: bw, D: r1(bw * 0.62), n: 3.4, h: r1(bw * 1.05), rTop: 3, rBot: 3, vol: true, liq: false, pesc: false, bpesc: false }),
-    ...(v => [v.valve, M(r.k, v.gap > 0 ? { seatV: true, gap: 0 } : { gap: 0 })])(incomValve(cap, r.term, mm))] };
+    ...(v => [v.valve, M(r.k, v.gap > 0 ? { seatV: true, gap: 0 } : { gap: v.show || 0 })])(incomValve(cap, r.term, mm))] };
 }
 INCOM_CAPS.forEach(r => { PRESETS[`Incom ${r.n} (tampa de perfume)`] = incomPerfume(r); });
 // abas antigas que viraram outras (escolhas já gravadas continuam valendo)
@@ -9236,7 +9329,7 @@ $('#varBtn').onclick = () => {
 };
 $('#genDice').onclick = () => { $('#genSeed').value = Math.floor(Math.random() * 99999) + 1; runGen(); };
 
-window.OUTBOX = { startPlacing: L => { S.logos.push(L); startPlacing(L); }, get preview() { return preview; }, get gizmoOn() { return gizmoOn; }, get ao() { return { aoP, aoO, GTAOPass }; }, CS, COAT_U, relief: { normalMapToDisplacement, classifyReliefImage, imageToDisplacement, cleanDisplacementMap, reliefSizeNote }, get hdr() { return HDR; }, ensureHdr, moduleGeo, exportRoot, get S() { return S; }, get swapScroll() { return swapScroll; }, product, layout, scene, sun, stage, ground, renderer, areaKey, areaFill, hemi, detailShow, applyLogos, build, render: () => renderFrame(), get cam() { return cam; }, PRESETS, LIB, loadState, setSideTab, volumes, get sel() { return sel; }, set sel(v) { sel = v; renderStack(); renderEditor(); } };
+window.OUTBOX = { capHalfAt, incomValve, termValve, INCOM_CAPS, startPlacing: L => { S.logos.push(L); startPlacing(L); }, get preview() { return preview; }, get gizmoOn() { return gizmoOn; }, get ao() { return { aoP, aoO, GTAOPass }; }, CS, COAT_U, relief: { normalMapToDisplacement, classifyReliefImage, imageToDisplacement, cleanDisplacementMap, reliefSizeNote }, get hdr() { return HDR; }, ensureHdr, moduleGeo, exportRoot, get S() { return S; }, get swapScroll() { return swapScroll; }, product, layout, scene, sun, stage, ground, renderer, areaKey, areaFill, hemi, detailShow, applyLogos, build, render: () => renderFrame(), get cam() { return cam; }, PRESETS, LIB, loadState, setSideTab, volumes, get sel() { return sel; }, set sel(v) { sel = v; renderStack(); renderEditor(); } };
 
 buildDraftPresets();
 resize();
