@@ -270,7 +270,7 @@ function importedMeshGeo(m, y0) {
 // ───────────────────────── módulos ─────────────────────────
 const BASE = {
   name: 'Peça', W: 50, D: 50, n: 2, sides: 0, sideR: 0.1, h: 40, taper: 100, taperB: 100, shoulderK: 0, bulge: 0, bulgePos: 50,
-  rBot: 2, rTop: 2, rBotW: 0, rTopW: 0, gap: 0, rep: 1, repGap: 0, veste: true, fundo: 6, apoio: true,
+  rBot: 2, rTop: 2, rBotW: 0, rTopW: 0, gap: 0, rep: 1, repGap: 0, veste: true, fundo: 6, apoio: true, mat2: false, mat2Side: 'baixo', mat2Y: 20, mat2Color: '#cfd2d4', mat2Finish: 'metal',
   groove: 0, grooveD: 0.6,
   notch: false, notchLock: true, notchY: 12, notchW: 20, notchH: 8, notchD: 2, notchP: 2,
   ridges: 0, ridgeD: 0.6, lobes: 0, lobeD: 3,
@@ -389,8 +389,29 @@ function polyFit(o) { const n = o.sides || 0; if (n === 4 || n === 8) { const c 
 const hasStep = () => false; // contorno denso (0,1 mm): sem suavizar, os degraus ficam com quina
 // Forma vista de cima, conferida nas fotos do catálogo (o desenho técnico só mostra a frente):
 // deitada = cilindro deitado (de lado é um círculo); disco = disco em pé (espessura constante).
-const CAP_FIX = { incom_bamboo: { deitada: true }, incom_golden: { disco: true }, incom_thenue: { disco: true }, incom_wheel: { disco: true },
+const CAP_FIX = { incom_aramis: { quadTop: 0.81, quadN: 5 }, incom_bamboo: { deitada: true }, incom_golden: { disco: true }, incom_thenue: { disco: true }, incom_wheel: { disco: true },
   incom_drop: { disco: true, Dk: 0.55 }, incom_antonov: { D: 34 }, incom_bilbao: { sides: 4, sideR: 0.35 }, incom_rams: { sides: 0 } };
+// Contorno do desenho técnico sem "escada": o traço extraído do PDF oscila uns centésimos e,
+// ligado em retas, a luz marcava cada mudança de inclinação como uma faixa. Média ponderada curta
+// (~0,3 mm na altura) e reamostragem fina (0,15 mm): degraus e anéis ficam, com o arredondado de molde.
+function smoothProfile(rows0, H) {
+  if (!rows0 || rows0.length < 4 || !(H > 0)) return rows0;
+  const rows = rows0.slice().sort((p, q) => p[0] - q[0]);
+  // 1) contorno denso por interpolação linear (0,05 mm) — o extraído tem trechos esparsos
+  const at = t => { let i = 0; while (i < rows.length - 2 && rows[i + 1][0] < t) i++; const A = rows[i], B = rows[i + 1] || A, f = B[0] > A[0] ? clamp((t - A[0]) / (B[0] - A[0]), 0, 1) : 0;
+    return [A[1] + (B[1] - A[1]) * f, A[2] + (B[2] - A[2]) * f, A[4] + (B[4] - A[4]) * f, f < 0.5 ? A : B]; };
+  const nd = Math.max(16, Math.ceil(H / 0.05)), dense = [];
+  for (let i = 0; i <= nd; i++) dense.push(at(i / nd));
+  // 2) média gaussiana (~0,3 mm) e 3) reamostra a cada 0,15 mm
+  const sg = 0.3 / H * nd, R = Math.ceil(3 * sg), N = Math.max(8, Math.ceil(H / 0.15)), out = [];
+  for (let i = 0; i <= N; i++) {
+    const c = Math.round(i / N * nd); let w = 0, a = 0, b = 0, cx = 0;
+    for (let j = Math.max(0, c - R); j <= Math.min(nd, c + R); j++) { const k = Math.exp(-0.5 * ((j - c) / sg) ** 2); w += k; a += k * dense[j][0]; b += k * dense[j][1]; cx += k * dense[j][2]; }
+    const q = dense[c][3];
+    out.push([Math.round(i / N * 1e4) / 1e4, Math.round(a / w * 1e4) / 1e4, Math.round(b / w * 1e4) / 1e4, q[3], Math.round(cx / w * 100) / 100, q[5]]);
+  }
+  return out;
+}
 function incomShape(r) {
   const base = polyFit(incomShape0(r)), pr = INCOM_CAP_PROF[r.k]; if (!pr) return base;
   // Contorno real do desenho técnico, girado no torno (lados retos continuam quando a tampa é
@@ -404,6 +425,9 @@ function incomShape(r) {
     const b = fx.deitada ? Math.sqrt(Math.max(0.0004, 1 - (2 * t - 1) ** 2)) : fx.disco ? 1 : a;
     return [t, a, b, fx.deitada ? 8 : fx.disco ? 4 : 2, r1((rr - l) / 2 * o.W / 2), 0]; });
   o.smoothProf = false; if (pr.d) o.topDip = r1(pr.d * r.H); if (pr.tl) o.tilt = pr.tl;
+  // Bloco de cima quadrado (de quinas arredondadas) com prato radial: a curva do topo vista de frente
+  if (fx.quadTop) { o.prof.forEach(q => { if (q[0] >= fx.quadTop) q[3] = fx.quadN || 5; }); o.quadTop = fx.quadTop; o.quadDish = o.topDip || 1.4; o.topDip = 0.02; }
+  o.prof = smoothProfile(o.prof, r.H);
   return o;
 }
 function incomShape0(r) {
@@ -435,7 +459,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-16.faca-grafica';
+const BUILD = '2026-11-16.dois-materiais';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -1269,6 +1293,23 @@ function panelMask(P, ly, th, R) {
 }
 // Topo inclinado em reta: a peça é feita com o topo reto e a altura de cada ponto encolhe da
 // esquerda (t[0]) para a direita (t[1]), como no desenho técnico (Bilbao, Dora).
+// Topo quadrado com prato radial (Aramis): a altura do topo cai com a distância ao centro, então
+// as quinas ficam altas e o meio de cada lado mais baixo — de frente a borda de cima sai curva,
+// como no desenho técnico. O bloco de cima acompanha aos poucos (sem dobra na lateral).
+function quadDish(g, y0, m) {
+  const p = g.attributes.position, yT = y0 + m.h, yB = y0 + m.h * m.quadTop;
+  let Rc = 0, a = Infinity;
+  for (let i = 0; i < p.count; i++) if (p.getY(i) > yT - 0.05) Rc = Math.max(Rc, Math.hypot(p.getX(i), p.getZ(i)));
+  for (let i = 0; i < p.count; i++) if (p.getY(i) > yT - 0.05) { const x = Math.abs(p.getX(i)), z = Math.abs(p.getZ(i)); if (z < 0.05 * Rc) a = Math.min(a, x); }
+  if (!(Rc > 0) || !isFinite(a)) return;
+  const k = 1 - (a / Rc) ** 2, Dc = Math.min(m.h * 0.18, m.quadDish / Math.max(k, 0.12)); // fundo do prato para o meio do lado cair quadDish
+  for (let i = 0; i < p.count; i++) {
+    const y = p.getY(i); if (y <= yB) continue;
+    const r = Math.hypot(p.getX(i), p.getZ(i)), drop = Dc * Math.max(0, 1 - (r / Rc) ** 2), w = clamp((y - yB) / (yT - yB), 0, 1);
+    p.setY(i, y - drop * w * w * (3 - 2 * w));
+  }
+  p.needsUpdate = true; g.computeVertexNormals(); g.computeBoundingBox();
+}
 function tiltTop(g, y0, t) {
   const p = g.attributes.position; g.computeBoundingBox(); const x0 = g.boundingBox.min.x, w = (g.boundingBox.max.x - x0) || 1;
   for (let i = 0; i < p.count; i++) { const f = t[0] + (t[1] - t[0]) * (p.getX(i) - x0) / w; p.setY(i, y0 + (p.getY(i) - y0) * f); }
@@ -2047,6 +2088,7 @@ function moduleGeo(m0, y0, opts = {}) {
   if (flipOpen) [g, extras] = flipOpenGeo(m, y0, rings, seg, disp, ang);
   else g = loft(rings, seg, disp, !!(disp && (kmax || m.ridges > 0)));
   if (m.tilt && g) tiltTop(g, y0, m.tilt);
+  if (m.quadDish && g && !inset) quadDish(g, y0, m);
   // Puxador na frente da tampinha, logo acima da linha (onde o dedo abre).
   if (!inset && !flipOpen && m.aba && m.topType === 'flip' && m.groove > 0 && !isProf) {
     const up = m.lidSide !== 'baixo', yg = m.h - m.groove, yl = yg + (up ? 0.9 : -0.9);
@@ -3432,6 +3474,17 @@ function addGrain(m, amt, cell = 0.13) {
 // O piso da cavidade sobe em curva até a parede (raio R): a faixa acompanha esse canto.
 // vBandU = distância, na tela, do ponto ao eixo do frasco; perto das laterais o limite da
 // faixa sobe na mesma curva do piso (reta, ela cortava o canto do conteúdo num traço reto).
+// Material só de um lado de uma altura (espaço da peça): base para dois materiais na mesma peça.
+const splitCache = new Map();
+function splitMat(base, yCut, above) {
+  const key = base.uuid + '|' + yCut.toFixed(2) + '|' + above; if (splitCache.has(key)) return splitCache.get(key);
+  const m = base.clone(), prev = base.onBeforeCompile, pk = base.customProgramCacheKey?.bind(base);
+  m.onBeforeCompile = (sh, r) => { prev?.call(m, sh, r);
+    sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying float vSplitY;').replace('#include <begin_vertex>', '#include <begin_vertex>\nvSplitY = position.y;');
+    sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying float vSplitY;').replace('void main() {', `void main() {\n  if (vSplitY ${above ? '<' : '>'} ${yCut.toFixed(3)}) discard;`); };
+  m.customProgramCacheKey = () => 'split' + (above ? 'A' : 'B') + yCut.toFixed(2) + (pk ? pk() : '');
+  splitCache.set(key, m); return m;
+}
 const bandVert = (sh, band) => { const cv = band?.R > 0;
   sh.vertexShader = sh.vertexShader.replace('#include <common>', `#include <common>\nvarying float vObjY;${cv ? '\nvarying float vBandU;' : ''}`).replace('#include <begin_vertex>', '#include <begin_vertex>\nvObjY = position.y;');
   // vBandR: meia largura da cavidade vista deste ângulo (frasco oval/achatado é mais largo de
@@ -5462,7 +5515,20 @@ function buildInto(product, S, explodeAmt = 0) {
       const vr = Math.max(Math.abs(vb.min.x), Math.abs(vb.max.x), Math.abs(vb.min.z), Math.abs(vb.max.z)) + 0.5;
       // altura da válvula (vale também explodido), mas a tampa mantém um topo fechado de 2 mm:
       // válvula mais alta que a tampa virava um furo atravessando e a tampa parecia cortada
-      const cut = cyl(vr, y0 - 1, Math.max(1, Math.min(vb.max.y - L[i - 1].y0 + 1.5, m.h * Math.max(1, m.rep || 1) - 1))); if (m.ox) cut.translate(m.ox, 0, 0);
+      const hc = Math.max(1, Math.min(vb.max.y - L[i - 1].y0 + 1.5, m.h * Math.max(1, m.rep || 1) - 1)), vm = L[i - 1].m;
+      // Spray de virola larga e atuador estreito: cavidade em degrau, como na tampa de verdade
+      // (um cilindro reto na largura da virola até o topo furava tampas que afinam em cima).
+      let cut;
+      if (vm.sprayType === 'mist' && vm.actW < vm.W - 1.5) {
+        const yv = L[i - 1].y0, rc = vm.W / 2 + 0.5, rg = Math.max(vm.guideW || 0, vm.stemD || 0) / 2 + 0.5, ra = Math.max(vm.actW / 2 + 0.8, rg);
+        const y1 = yv + vm.h, y2 = y1 + (vm.guideH || 0), yt = y0 - 1 + hc;
+        const pr = [[0, y0 - 1]];
+        if (y1 > y0 + 0.2) pr.push([rc, y0 - 1], [rc, Math.min(y1 + 0.3, yt)]); // tampa assentada na virola: sem o degrau largo
+        if (vm.guideH > 0 && y2 > y0 + 0.2 && y2 < yt) pr.push([rg, Math.max(y1 + 0.3, y0 - 1)], [rg, y2]);
+        pr.push([ra, Math.min(Math.max(y1, y2) + 0.3, yt)], [ra, yt], [0, yt]);
+        cut = new THREE.LatheGeometry(pr.map(([x, y]) => new THREE.Vector2(x, y)), 48); cut.deleteAttribute('uv');
+      } else cut = cyl(vr, y0 - 1, hc);
+      if (m.ox) cut.translate(m.ox, 0, 0);
       const [outer, inner] = cutHole(g, cut); vg.dispose();
       const ni = x => { const y = x.index ? x.toNonIndexed() : x; for (const k in y.attributes) if (k !== 'position' && k !== 'normal') y.deleteAttribute(k); return y; };
       if (outer !== g) { const ig = ni(inner), og = ni(outer); g = mergeGeometries([og, ig]) || g; g.userData.capCavity = ig; g.userData.capOuter = og; }
@@ -5524,6 +5590,14 @@ function buildInto(product, S, explodeAmt = 0) {
     Object.assign(mesh.userData, { main: true, uid: m.uid, y0, ox: m.ox || 0, rep });
     mesh.name = `${String(idx + 1).padStart(2, '0')}_${m.name}`;
     product.add(mesh);
+    // Segundo material na mesma peça (ex.: tampa em ABS preto com aro/inserto metálico embaixo):
+    // a mesma forma desenhada duas vezes, cada material só do seu lado da divisa (corte exato).
+    if (m0.mat2 && !m0.vol) {
+      const yc = y0 + m.h * clamp(m0.mat2Y ?? 20, 1, 99) / 100, low = m0.mat2Side !== 'cima';
+      const m2 = splitMat(material(m0.mat2Color || '#cfd2d4', m0.mat2Finish || 'metal'), yc, !low);
+      mesh.material = splitMat(mesh.material, yc, low);
+      const sm = new THREE.Mesh(g, m2); sm.castShadow = true; sm.receiveShadow = true; sm.userData.idx = idx; sm.name = mesh.name + '_mat2'; product.add(sm);
+    }
     // Apoio: peça de fundo redondo (tigela, bola, esfera) sobre outra encostava só num
     // ponto e parecia solta no ar; um pé cilíndrico na mesma cor assenta no topo plano de baixo.
     { const below = L[i - 1];
@@ -7069,6 +7143,18 @@ function renderColorBox(m) {
   field(box, o, ['finish', 'Acabamento', 'finish'], () => { delete o.difus; delete o.ior; renderColorBox(m); renderStack(); renderWallFields(); queueBuild(); });
   field(box, o, ['difus', 'Difusão (0 = liso/polido, 100 = bem difuso)', 0, 100, 1, '%', null, x => presetDif(x.finish)], queueBuild);
   if (isGlass(o.finish)) field(box, o, ['ior', 'IOR do vidro (1,0 ar · 1,33 água · 1,5 vidro · 2,4 diamante)', 1, 2.4, 0.01, '', null, x => presetIor(x.finish)], queueBuild);
+  // Segundo material na peça (tampa, colar…): uma faixa com outra cor/acabamento, embaixo ou em cima
+  if (!m.vol && m.kind !== 'gargalo') {
+    const h3 = document.createElement('h3'); h3.textContent = 'Segundo material na peça'; h3.style.marginTop = '12px'; box.appendChild(h3);
+    const re = () => { renderColorBox(m); queueBuild(); };
+    field(box, m, ['mat2', 'Usar dois materiais (ex.: aro metálico embaixo)', 'check'], re);
+    if (m.mat2) {
+      field(box, m, ['mat2Side', 'Onde fica o segundo material', 'select', [['baixo', 'Embaixo (aro, inserto, base)'], ['cima', 'Em cima (topo, capa)']]], queueBuild);
+      field(box, m, ['mat2Y', 'Altura da divisa (da base da peça)', 1, 99, 0.5, '%'], queueBuild);
+      field(box, m, ['mat2Color', 'Cor do segundo material', 'color'], queueBuild);
+      field(box, m, ['mat2Finish', 'Acabamento do segundo material', 'finish'], queueBuild);
+    }
+  }
   if (!own && S.modules.some(q => q.own)) {
     const r = document.createElement('div'); r.className = 'row';
     const b = document.createElement('button'); b.className = 'btn sm'; b.textContent = 'Todas as peças com a cor do produto';
@@ -8082,12 +8168,48 @@ function perfumeValve(cap, mm) {
   }
   return fitValve('sprayClassico', 9, Math.max(6, cap.h * 0.3));
 }
+// Válvula do acabamento indicado na tampa (desenho técnico do catálogo Incom):
+//  Cash 15: virola Ø17,25 com anel de 2,5 mm embaixo (ou em cima, "Anel Superior") e atuador;
+//  Recrave 15: cápsula recravada Ø16,3 baixa, pescoço estreito e atuador; 18/20 mm proporcionais.
+function termValve(term) {
+  const t = (term || '').split(/·|ou/)[0].trim(), mm = +((t.match(/(\d+)\s*mm/) || [])[1]) || 15;
+  if (/cash/i.test(t)) {
+    const sup = /anel superior/i.test(t), W = 17.25, h = 13.3;
+    return { type: 'Cash', mm, sup, W, hTot: h + 0.6 + 8.6, o: sup
+      ? { name: `Válvula Cash ${mm} mm · anel superior`, W, D: W, h: h - 2.5, skirtPct: 100, collarR: 0.4, guideW: W, guideH: 2.5, guideLine: 50, stemH: 0.6, stemD: 4.6, actW: 12, actH: 8.6 }
+      : { name: `Válvula Cash ${mm} mm`, W, D: W, h, skirtPct: 19, bandInset: 0.35, ridges: 0, collarR: 0.6, guideW: 0, guideH: 0, stemH: 0.6, stemD: 4.6, actW: 12, actH: 8.6 } };
+  }
+  if (/recrave|crimp/i.test(t)) {
+    const k = mm === 20 ? 21.3 / 16.3 : mm === 18 ? 19.3 / 16.3 : 1, W = r1(16.3 * k);
+    return { type: 'Recrave', mm, W, hTot: 5.7 + 5.9 + 7.3, o: { name: `Válvula Recrave ${mm} mm (recravada)`, W, D: W, h: 5.7, skirtPct: 100, collarR: 1.2,
+      guideW: r1(9.8 * k), guideH: 5.9, guideLine: 85, stemH: 0, stemD: 4.6, actW: r1(13 * Math.min(k, 1.15)), actH: 7.3 } };
+  }
+  return null;
+}
+// A válvula do catálogo, se couber na tampa (contorno aproximado) sem furar a parede; se não
+// couber, a mesma válvula reduzida por igual até caber (e a peça diz isso no nome).
+function incomValve(cap, term, mm) {
+  const tv = termValve(term); if (!tv) return { valve: perfumeValve(cap, mm), gap: 0 };
+  // conferência em degrau: virola (e anel-guia) embaixo, atuador estreito em cima
+  // base = 0: a tampa veste a válvula inteira; base = virola: a tampa assenta na virola e veste só o atuador
+  const o0 = tv.o, wall = 1.2, hMax = cap.h * (cap.tilt ? Math.min(...cap.tilt) : 1) - 2;
+  const fits = (k, base) => { const yC = (o0.h + (o0.guideH || 0)) * k, h = tv.hTot * k - base;
+    if (h > hMax) return false;
+    for (let y = 0; y <= h + 1.5; y += 0.5) { const yy = y + base, need = (yy <= o0.h * k ? o0.W : yy <= yC ? Math.max(o0.guideW || 0, o0.stemD) : o0.actW + 0.6) * k / 2 + 0.5; if (capHalfAt(cap, y) - wall < need) return false; }
+    return true; };
+  const seat = k => (o0.h + (/Cash/.test(tv.type) ? (o0.guideH || 0) : 0)) * k; // Recrave: a tampa desce até a cápsula, vestindo o pescoço
+  let k = 1, gap = 0;
+  if (!fits(1, 0)) { if (fits(1, seat(1))) gap = seat(1); else { while (k > 0.5 && !fits(k, seat(k))) k -= 0.03; gap = seat(k); } }
+  const o = { ...tv.o };
+  if (k < 0.999) { ['W', 'D', 'h', 'guideW', 'guideH', 'stemH', 'stemD', 'actW', 'actH'].forEach(q => { if (o[q]) o[q] = r1(o[q] * k); }); o.name += ` · reduzida ${Math.round(k * 100)}% p/ caber na tampa aproximada`; }
+  return { valve: M('sprayClassico', { ...o, fterm: term, own: true, color: '#d6d8da', finish: 'metal' }), gap: r1(gap) }; // virola de alumínio, como no catálogo
+}
 function incomPerfume(r) {
   const cap = LIB[r.k], mm = +((r.term || '').match(/(\d+)\s*mm/) || [])[1] || 15;
   const bw = r1(clamp(Math.max(cap.W, cap.D ?? cap.W) * 1.3, 42, 72));
   return { color: BEIGE, finish: 'fosco', forn: 'Incom', fcat: 'Tampas de perfume', fapp: 'Perfume', modules: [
     M('reto', { name: 'Frasco (genérico, não é Incom)', W: bw, D: r1(bw * 0.62), n: 3.4, h: r1(bw * 1.05), rTop: 3, rBot: 3, vol: true, liq: false, pesc: false, bpesc: false }),
-    perfumeValve(cap, mm), M(r.k)] };
+    ...(v => [v.valve, M(r.k, { gap: v.gap })])(incomValve(cap, r.term, mm))] };
 }
 INCOM_CAPS.forEach(r => { PRESETS[`Incom ${r.n} (tampa de perfume)`] = incomPerfume(r); });
 // abas antigas que viraram outras (escolhas já gravadas continuam valendo)
