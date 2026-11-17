@@ -402,7 +402,7 @@ function polyFit(o) { const n = o.sides || 0; if (n === 4 || n === 8 || n === 12
 const hasStep = () => false; // contorno denso (0,1 mm): sem suavizar, os degraus ficam com quina
 // Forma vista de cima, conferida nas fotos do catálogo (o desenho técnico só mostra a frente):
 // deitada = cilindro deitado (de lado é um círculo); disco = disco em pé (espessura constante).
-const CAP_FIX = { incom_flora: { lobes: 8, lobeD: 1.7, lobeTwist: 6, lobeFrom: 0.16, smooth: 2.2 }, incom_aramis: { quadTop: 0.81, quadN: 5 }, incom_cubic: { quadFrom: 0.19, quadN: 7 }, incom_bamboo: { deitada: true, fitFrom: 0.25 }, incom_golden: { disco: true, D: 22, col: 0.2, furo: { forma: 'circ', yc: 0.6, w: 0.6 } }, incom_wheel: { disco: true, D: 20, furo: { forma: 'circ', yc: 0.47, w: 0.62 } }, incom_thenue: { disco: true, D: 20, col: 0.1, furo: { forma: 'elip', yc: 0.55, w: 0.72, hh: 0.78 } }, incom_rock: { furo: { forma: 'elip', yc: 0.55, w: 0.6, hh: 0.52 } }, incom_chelsea: { cutBelow: 0.17 }, incom_soho: { cutBelow: 0.165 }, incom_hexa: { noCol: true }, incom_crown: { col: 0.58 }, incom_brilhante: { col: 0.257 }, incom_indico: { calha: 0.09 }, incom_matrix: { dobra: 0.085 }, incom_twist: { polyTwist: 1.25 }, incom_prisma: { chanfro: 0.46 }, incom_navette: { sides: 0, lobes: 4, lobeD: 2.6, lobeFrom: 0.33 }, incom_manhattan: { cutBelow: 0.1 }, incom_laura: { fill: [0.1, 0.39, 0.96], D: 26 }, incom_joya: { sides: 12, sideR: 0, col: 0.65 }, incom_joya_mini: { sides: 12, sideR: 0, col: 0.6 }, incom_domini: { abaLat: { t0: 0.598, t1: 0.742, w: 7 } }, incom_royal: { noCol: true },
+const CAP_FIX = { incom_flora: { lobes: 8, lobeD: 1.7, lobeTwist: 6, lobeFrom: 0.16, smooth: 2.2 }, incom_aramis: { quadTop: 0.81, quadN: 5 }, incom_cubic: { quadFrom: 0.19, quadN: 7 }, incom_bamboo: { deitada: true, fitFrom: 0.25 }, incom_golden: { disco: true, D: 22, col: 0.2, furo: { forma: 'circ', yc: 0.6, w: 0.6 } }, incom_wheel: { disco: true, D: 20, furo: { forma: 'circ', yc: 0.47, w: 0.62 } }, incom_thenue: { disco: true, D: 20, col: 0.1, furo: { forma: 'elip', yc: 0.55, w: 0.72, hh: 0.78 } }, incom_rock: { furo: { forma: 'elip', yc: 0.55, w: 0.6, hh: 0.52 } }, incom_chelsea: { cutBelow: 0.17 }, incom_soho: { cutBelow: 0.165 }, incom_hexa: { noCol: true }, incom_crown: { col: 0.58 }, incom_brilhante: { col: 0.257 }, incom_indico: { calha: 0.09 }, incom_matrix: { dobra: 0.085 }, incom_twist: { polyTwist: 1.25 }, incom_prisma: { chanfro: 0.46 }, incom_navette: { sides: 0, lobes: 4, lobeD: 2.6, lobeFrom: 0.33 }, incom_manhattan: { cutBelow: 0.1 }, incom_laura: { fill: [0.1, 0.39, 0.96], D: 26 }, incom_joya: { sides: 12, sideR: 0, col: 0.65, noFit: true, facetBlend: 2.5 }, incom_joya_mini: { sides: 12, sideR: 0, col: 0.6, noFit: true, facetBlend: 2.5 }, incom_domini: { abaLat: { t0: 0.598, t1: 0.742, w: 7 } }, incom_royal: { noCol: true },
   incom_drop: { disco: true, Dk: 0.6, col: 0.14, furo: { y0: 0.4, y1: 0.915, w: 0.47 } }, incom_antonov: { D: 34 }, incom_bilbao: { sides: 4, sideR: 0.35 }, incom_rams: { sides: 0 } };
 // Contorno do desenho técnico sem "escada": o traço extraído do PDF oscila uns centésimos e,
 // ligado em retas, a luz marcava cada mudança de inclinação como uma faixa. Média ponderada curta
@@ -472,7 +472,7 @@ function incomShape(r) {
   const fx = CAP_FIX[r.k] || {}, W = pr.W ?? r.W;
   const D = fx.deitada ? r.H : fx.D ?? (fx.Dk ? r1(W * fx.Dk) : r.D ?? W);
   const o = { W, D, h: r.H, rTop: 0, rBot: 0.3, sides: fx.sides ?? (base.sides || 0), sideR: fx.sideR ?? base.sideR ?? 0.1 };
-  polyFit(o);
+  if (!fx.noFit) polyFit(o);
   o.W0 = o.W;
   let p0 = pr.p;
   // Chelsea/Soho: o "pescoço" estreito do desenho é a válvula de metal aparecendo (foto), não a tampa
@@ -509,7 +509,7 @@ function incomShape(r) {
     if (t1 >= 0.1 && t1 < 0.8 && reto && aC < 0.8 && (o.sides >= 3 || o.D < o.W * 0.95)) col = t1 - 0.0005;
   }
   if (col) {
-    const n0 = o.sides | 0, c = n0 ? Math.cos(Math.PI / n0) : 1, fp = n0 === 4 || n0 === 8 || n0 === 12 ? c + (1 - c) * (o.sideR || 0) : 1;
+    const n0 = o.sides | 0, c = n0 ? Math.cos(Math.PI / n0) : 1, fp = !fx.noFit && (n0 === 4 || n0 === 8 || n0 === 12) ? c + (1 - c) * (o.sideR || 0) : 1; // joia: as facetas nascem na cinta redonda, sem degrau
     // disco em pé com pé redondo (Drop): a seção passa de redonda a disco aos poucos (~7% da altura
     // para cada lado); a troca seca marcava uma linha em volta da base
     const bw = fx.disco ? 0.07 : 0;
@@ -519,6 +519,7 @@ function incomShape(r) {
     o.polyFrom = col;
   }
   if (fx.fitFrom) o.fitFrom = r1(fx.fitFrom * r.H);
+  if (fx.facetBlend) o.facetBlend = fx.facetBlend;
   // Bloco de cima quadrado (de quinas arredondadas) com prato radial: a curva do topo vista de frente
   if (fx.quadTop) { o.prof.forEach(q => { if (q[0] >= fx.quadTop) q[3] = fx.quadN || 5; }); o.quadTop = fx.quadTop; o.quadDish = o.topDip || 1.4; o.topDip = 0.02; }
   // Bloco quadrado de quinas arredondadas sobre base redonda (Cubic): superelipse só no trecho do bloco
@@ -576,7 +577,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-16.pente-medidas2';
+const BUILD = '2026-11-16.catalogo-atualizar';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -2228,7 +2229,7 @@ function moduleGeo(m0, y0, opts = {}) {
       const nr = Math.max(0, m.neckR - (inset ? S.wall : 0));
       if (a > nr) a -= (a - nr) * k; if (b > nr) b -= (b - nr) * k; n = n + (2 - n) * k;
     }
-    return { y: y0 + lift + ly, ly, sides: m.polyFrom > 0 && ly < m.polyFrom * m.h - 0.35 ? 0 : m.sides | 0, /* o anel do degrau já é do bloco: redondo ele saía como uma aba */ round: m.sideR, a: Math.max(a - g, 0.05), b: Math.max(b - g, 0.05), n, cx: q.cx * (1 - (sh && ly > sh.y0 ? clamp((ly - sh.y0) / sh.L, 0, 1) : 0)), cz: q.cz * (1 - (sh && ly > sh.y0 ? clamp((ly - sh.y0) / sh.L, 0, 1) : 0)), ptw: m.polyTwist || 0, lobes: m.lobeFrom > 0 && ly < m.lobeFrom * m.h ? 0 : m.lobes | 0, lobeK: m.lobes >= 3 ? clamp(m.lobeD / (Math.min(m.W, m.D) / 2), 0, 0.9) : 0, twist: m.lobeTwist || 0 }; // gomos também nas peças de perfil (STL convertido, corpos medidos)
+    return { y: y0 + lift + ly, ly, sides: m.polyFrom > 0 && ly < m.polyFrom * m.h - 0.35 ? 0 : m.sides | 0, /* o anel do degrau já é do bloco: redondo ele saía como uma aba */ round: m.facetBlend > 0 && m.polyFrom > 0 ? Math.max(m.sideR || 0, 0.95 * (1 - smooth(m.polyFrom * m.h, m.polyFrom * m.h + m.facetBlend, ly))) : m.sideR, /* joia: facetas nascem da cinta redonda aos poucos, sem anel */ a: Math.max(a - g, 0.05), b: Math.max(b - g, 0.05), n, cx: q.cx * (1 - (sh && ly > sh.y0 ? clamp((ly - sh.y0) / sh.L, 0, 1) : 0)), cz: q.cz * (1 - (sh && ly > sh.y0 ? clamp((ly - sh.y0) / sh.L, 0, 1) : 0)), ptw: m.polyTwist || 0, lobes: m.lobeFrom > 0 && ly < m.lobeFrom * m.h ? 0 : m.lobes | 0, lobeK: m.lobes >= 3 ? clamp(m.lobeD / (Math.min(m.W, m.D) / 2), 0, 0.9) : 0, twist: m.lobeTwist || 0 }; // gomos também nas peças de perfil (STL convertido, corpos medidos)
   });
   if (!lo && !inset) for (const b of m.ribs || []) kmax = Math.max(kmax, b.k || 0);
   if (rings.length < 2) return null;
@@ -8700,6 +8701,16 @@ function incomPerfume(r) {
     ...(v => [v.valve, M(r.k, v.gap > 0 ? { seatV: true, gap: 0 } : { gap: v.show || 0 })])(incomValve(cap, r.term, mm))] };
 }
 INCOM_CAPS.forEach(r => { PRESETS[`Incom ${r.n} (tampa de perfume)`] = incomPerfume(r); });
+// Modelo do catálogo aberto (ou restaurado do autosave) de uma versão anterior guarda as peças antigas:
+// carimba os modelos Incom e, ao abrir um antigo, oferece trocar pelo atual
+Object.values(PRESETS).forEach(p => { if (p.forn === 'Incom') p.catVer = BUILD; });
+function offerCatalogUpdate() {
+  const nm = S.file || S.name, p = PRESETS[nm];
+  if (!p || p.forn !== 'Incom' || S.catVer === BUILD) return;
+  const t = $('#toast'); t.textContent = 'Este modelo do catálogo foi aberto numa versão anterior. '; t.classList.add('on', 'act');
+  const b = document.createElement('button'); b.textContent = 'Atualizar'; b.onclick = () => { t.classList.remove('on', 'act'); busy(() => loadState(p, nm)); }; t.appendChild(b);
+  clearTimeout(toast.t); toast.t = setTimeout(() => t.classList.remove('on', 'act'), 12000);
+}
 // abas antigas que viraram outras (escolhas já gravadas continuam valendo)
 const GAL_OLD = { Sticks: 'Beauty', 'Conta-gotas e gloss': 'Conta-gotas', Tampas: 'Frascos', 'Pump e spray': 'Pump e gatilho' };
 function galGroup(st, name, kind) {
@@ -8851,7 +8862,7 @@ function loadState(s, name) {
   S = normalize(structuredClone({ wall: S.wall, bg: S.bg, side: [], ...s, wallAuto: s.wallAuto ?? (s.wall == null || s.wall === 1.2) })); // modelo sem parede própria: automática pelo material
   if (name) { S.file = name; if (!S.side.length) S.name = name; } // arquivo = tudo o que está nele (todos os produtos)
   store.set('shape.openGroups', {}); // produto aberto: grupos de controles começam fechados
-  sel = 0; renderAll(); build(); openFrontOrtho();
+  sel = 0; renderAll(); build(); openFrontOrtho(); setTimeout(offerCatalogUpdate, 300);
 }
 // Projeto aberto ou novo: sempre de frente e ortográfica
 function openFrontOrtho() { cam = ortho; $('#orthoBtn')?.classList.add('on'); fit('front'); }
@@ -9651,7 +9662,7 @@ window.OUTBOX = { capHalfAt, incomValve, termValve, INCOM_CAPS, startPlacing: L 
 
 buildDraftPresets();
 resize();
-try { renderAll(); build(); } catch (e) { // último produto do navegador quebrou a montagem: abre o padrão
+try { renderAll(); build(); setTimeout(offerCatalogUpdate, 1500); } catch (e) { // último produto do navegador quebrou a montagem: abre o padrão
   console.warn('produto salvo não abriu; voltando ao padrão', e);
   try { localStorage.removeItem('shape.autosave'); } catch {}
   S = normalize(defaultState()); try { renderAll(); build(); } catch (e2) { console.error(e2); }
