@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-17.cmp4';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-17.cmp5';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -580,7 +580,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-17.cmp4';
+const BUILD = '2026-11-17.cmp5';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -5849,9 +5849,10 @@ function compactParts(product, L, S0) {
         const cells = seN && m.godes.cells.length === 1 ? [Array.from({ length: 96 }, (_, i) => sp(0.5, 0.5, seN, -i / 96 * Math.PI * 2))] : m.godes.cells.map(fit);
         const rimTop = top - WD + GH - 0.35, rimBot = m.godes.lata ? Math.max(y0 + 1, rimTop - LATA_H) : top - WD; // cristal: latinha inteira
         cells.forEach((c, j) => {
-          wells.push(ext(c, 0.2, top + 2 - rimBot, rimBot));
-          add(ext(c, 0.5, rimTop - rimBot, rimBot), m.godes.lata ? godeLata : godeRim, idx, 'bandeja', 0, 0, 0);
-          add(ext(c, 1.5, GH - 0.1, top - WD), godeCor(j, m.godes.cells.length), idx, 'gode', 0, 0, 0);
+          wells.push(ext(c, 0.05, top + 2 - rimBot, rimBot));
+          // foto (Flat Dez): o pó enche a bandeja quase até a borda; aro de metal fino em volta
+          add(ext(c, 0.12, rimTop - rimBot, rimBot), m.godes.lata ? godeLata : godeRim, idx, 'bandeja', 0, 0, 0);
+          add(ext(c, 0.7, GH - 0.1, top - WD), godeCor(j, m.godes.cells.length), idx, 'gode', 0, 0, 0);
         });
         if (m.godes.slot) { const SD = r1(Math.min(m.h - 1.6, 5)); wells.push(ext(m.godes.slot, 0.2, SD + 2, top - SD)); } // espaço do aplicador: só a cavidade
       } else {
@@ -5863,8 +5864,8 @@ function compactParts(product, L, S0) {
         const WD = godeFundo(m), GH = 1.8, rimTop = top - WD + GH - 0.35, rimBot = m.godes.lata ? Math.max(y0 + 1, rimTop - LATA_H) : top - WD, rimM = m.godes.lata ? godeLata : godeRim;
         if (rect) { // Classic Uno: o godê único também é quadrado (bandeja Jorba 110F)
           wells.push(new RoundedBoxGeometry(cw - 0.4, top + 2 - rimBot, ch - 0.4, 4, 2).translate(x, (top + 2 + rimBot) / 2, z));
-          add(new RoundedBoxGeometry(cw - 1, rimTop - rimBot, ch - 1, 4, Math.min(1.7, (rimTop - rimBot) / 2)), rimM, idx, 'bandeja', x, (rimTop + rimBot) / 2, z);
-          add(new RoundedBoxGeometry(cw - 2.4, GH - 0.1, ch - 2.4, 4, 0.7), godeCor(k0 + j, nG), idx, 'gode', x, top - WD + (GH - 0.1) / 2, z);
+          add(new RoundedBoxGeometry(cw - 0.6, rimTop - rimBot, ch - 0.6, 4, Math.min(1.7, (rimTop - rimBot) / 2)), rimM, idx, 'bandeja', x, (rimTop + rimBot) / 2, z);
+          add(new RoundedBoxGeometry(cw - 1.6, GH - 0.1, ch - 1.6, 4, 0.7), godeCor(k0 + j, nG), idx, 'gode', x, top - WD + (GH - 0.1) / 2, z);
         } else {
           const r = one && m.godes.mm ? m.godes.mm / 2 : (one ? Math.min(aw, ad) : Math.min(cw, ch)) / 2 - 0.5;
           wells.push(new THREE.CylinderGeometry(r + 0.3, r + 0.3, top + 2 - rimBot, 72).translate(x, (top + 2 + rimBot) / 2, z));
@@ -5906,8 +5907,11 @@ function compactParts(product, L, S0) {
     }
     if (m.espelho) { // no teto do oco da tampa, virado para baixo (fechada, fica escondido dentro dela)
       const ins = m.oco ? OCO.wall + 1 : mg, yM = m.oco ? y0 + m.h - OCO.top - 0.04 : y0 - 0.04;
-      const g = se ? new THREE.ShapeGeometry(seShape(w / 2 - ins, d / 2 - ins, m.n), 24) : round ? new THREE.CircleGeometry(Math.min(w, d) / 2 - ins, 64) : new THREE.PlaneGeometry(w - 2 * ins, d - 2 * ins);
-      g.rotateX(Math.PI / 2); add(g, mirrorMat, idx, 'espelho', cx, yM, cz);
+      // Flat (fotos): perto da dobradiça a tampa tem uma faixa sem espelho com dois encaixes de fechamento
+      const db = m.espBand && !se && !round ? (d - 2 * ins) * m.espBand : 0;
+      const g = se ? new THREE.ShapeGeometry(seShape(w / 2 - ins, d / 2 - ins, m.n), 24) : round ? new THREE.CircleGeometry(Math.min(w, d) / 2 - ins, 64) : new THREE.PlaneGeometry(w - 2 * ins, d - 2 * ins - db);
+      g.rotateX(Math.PI / 2); add(g, mirrorMat, idx, 'espelho', cx, yM, cz + db / 2);
+      if (db) { const zb = bb.min.z + ins + db / 2; [-1, 1].forEach(k => add(new RoundedBoxGeometry(Math.min(8, w * 0.07), 1.6, Math.min(db * 0.7, 6), 2, 0.4), objs[0].material, idx, 'encaixe', cx + k * w * 0.3, yM - 0.8, zb)); }
     }
   });
   const aberto = !!S0?.aberto;
@@ -8592,9 +8596,11 @@ function godesOf(r) {
   if (/^Case|^Moon M All Crystal/.test(n)) return { rows: [1], rect: false, mm: mm ?? 56, relevo: /^Case G/.test(n) ? 4.5 : 4.8 };
   let tr = /Quinteto/.test(n) ? { c: QUINTETO, ar: 1 } : INCOM_TRAYS[r.k] ?? (/^Frame G/.test(n) ? INCOM_TRAYS.incomp_compactos_frame_g_tampa_fechada : undefined); // com Visor: mesma bandeja do Tampa Fechada
   // Classic Quarteto: entre as duas colunas de godês, o espaço do aplicador (cavidade funda, desenho da bandeja)
+  // Flat Duo (foto, medida no catálogo): bandeja 1 de 60,4 × 44,4 à esquerda e bandeja 2 menor (~38 × 42) à direita
+  if (/^Flat Duo/.test(n)) tr = { ar: 104 / 44.4, mmTw: 104, c: [[[-0.5, 0.5], [-0.5, -0.5], [0.0808, -0.5], [0.0808, 0.5]], [[0.1317, 0.473], [0.1317, -0.473], [0.5, -0.473], [0.5, 0.473]]] };
   if (tr && /Classic Quarteto/.test(n)) tr = { ...tr, slot: [[-0.1, 0.5], [-0.1, -0.5], [0.1, -0.5], [0.1, 0.5]] };
   if (tr && /6 \+ 1/.test(n)) tr = { ...tr, c: tr.c.map(c => c.map(([x, y]) => [-x, y])) }; // foto: o godê grande fica à direita
-  return tr ? { rows, rect, cells: tr.c, ar: tr.ar, slot: tr.slot, mm, n: frameN(n) || undefined } : { rows, rect, mm };
+  return tr ? { rows, rect, cells: tr.c, ar: tr.ar, slot: tr.slot, mm: tr.mmTw ? tr.mmTw - 1 : mm, n: frameN(n) || undefined } : { rows, rect, mm };
 }
 // Tamanho da bandeja (godê) informado no catálogo, em mm, quando não há desenho dela
 const TRAY_MM = { incomp_compactos_case_g: 58.3, incomp_compactos_case_m: 41.1, incomp_compactos_case_m_all_crystal: 41.1, incomp_compactos_classic_uno: 52.8,
@@ -8833,7 +8839,7 @@ function incomProduct(r) {
   }
   // fotos: Case G/M com tampa toda transparente (sem espelho); "All Crystal" com base e tampa de cristal;
   // Macaroon com a tampa em cúpula (a bola preta da foto)
-  if (r.c === 'Compactos') { const clear = { own: true, finish: 'cristal', color: '#ffffff' };
+  if (r.c === 'Compactos' || r.c === 'Paletas') { const clear = { own: true, finish: 'cristal', color: '#ffffff' }; // (paletas: só o degrau abaixo vale para elas)
     ms.forEach(m => { if ((/Crystal/i.test(r.n) && /Base|Tampa/.test(m.name)) || (/^Case/.test(r.n) && m.name === 'Tampa')) Object.assign(m, clear, m.name === 'Tampa' ? { espelho: false } : {}); });
     // cristal (foto): a latinha de alumínio do godê aparece inteira pela base transparente
     ms.forEach(m => { if (/Crystal/i.test(r.n) && m.godes) m.godes = { ...m.godes, lata: true }; });
@@ -8842,9 +8848,10 @@ function incomProduct(r) {
     if (/^Moon/.test(r.n) && !/Deck/.test(r.n)) { const t = ms.find(m => m.name === 'Tampa'), b = ms.find(m => m.name === 'Base');
       const mm = /^Moon P/.test(r.n) ? 26.4 : /^Moon (Eco|G)/.test(r.n) && !/Quarteto/.test(r.n) ? 58.3 : undefined; // bandejas Jorba 09F / Moon P; Moon M (Claris) sem medida
       if (b?.godes && !b.godes.relevo) b.godes = { ...b.godes, ...(mm ? { mm } : {}), fundo: /^Moon P/.test(r.n) ? 2.8 : 3.6 }; if (t) t.visorFino = true; /* foto fechada: janela quase do tamanho da tampa */ if (t && b?.dedo) t.aba = { w: r1(b.dedo.w - 0.8), d: b.dedo.d, down: r1(b.dedo.h - 0.3) }; }
-    // Big 4 / Big 9 (foto): degrau — patamar dos godês mais alto que a borda; a tampa cresce o degrau e desce até a borda
-    if (/^Big/.test(r.n)) { const t = ms.find(m => m.name === 'Tampa'), b = ms.find(m => m.name === 'Base');
-      if (t && b) { const st = 1.2; b.degrau = { inset: 3.2, h: st }; Object.assign(t, { h: r2(t.h + st), gap: -st }); } }
+    // paletas (fotos, Big e Flat): degrau — patamar dos godês mais alto que a borda; a tampa cresce o degrau e desce até a
+    // borda (altura total igual). Flat: faixa sem espelho com dois encaixes na tampa, junto da dobradiça
+    if (r.c === 'Paletas') { const t = ms.find(m => m.name === 'Tampa'), b = ms.find(m => m.name === 'Base');
+      if (t && b) { const st = 1.2; b.degrau = { inset: /^Flat/.test(r.n) ? 4 : 3.2, h: st }; Object.assign(t, { h: r2(t.h + st), gap: -st }); if (/^Flat/.test(r.n)) t.espBand = 0.2; } }
     // todos os compactos redondos (fotos): fechamento por clique com a aba para fora na tampa, descendo no rebaixo
     // da peça de baixo (Moon Deck: o andar do meio)
     if (r.t === 'cr') ms.forEach((t, i) => { const u = ms[i - 1]; // cada peça que abre (tampa, andar do meio do Moon Deck)
