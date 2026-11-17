@@ -577,7 +577,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-16.all-crystal2';
+const BUILD = '2026-11-16.gloss-fundo';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -1078,7 +1078,7 @@ const FINISHES = [['fosco', 'Fosco'], ['acetinado', 'Acetinado'], ['brilho', 'Br
 const isFrost = f => f === 'vidroFosco' || f === 'vidroSemi' || f === 'petFosco' || f === 'petSemi';
 const isGlass = f => f === 'vidro' || isFrost(f) || f === 'pet';
 // Espessura do fundo por dentro: no vidro, a massa de vidro embaixo (o pescante para em cima dela).
-const floorThick = () => { const b = S.modules.find(v => v.vol); return b && thickBase(b.own ? b.finish : S.finish) ? Math.max(S.wall, b.fundo ?? 6) : S.wall; };
+const floorThick = () => { const b = S.modules.find(v => v.vol); return b && thickBase(b.own ? b.finish : S.finish, b) ? Math.max(S.wall, b.fundo ?? 6) : S.wall; };
 // Raio do canto do piso da cavidade (fundo grosso). Frasco de base reta: canto curto (até 9 mm).
 // Frasco de fundo arredondado (bola, cápsula): o piso acompanha a curva de fora, menos a
 // parede — antes ficava um piso reto e largo dentro da bola.
@@ -1086,7 +1086,7 @@ const floorR = (m, lift) => { if (!(lift > S.wall + 0.5)) return 0;
   const half = Math.min(m.W, m.D) / 2, base = clamp(half * 0.32, 2, 9);
   const rb = Math.min(m.rBot || 0, m.rBotW > 0 ? m.rBotW : m.rBot || 0) - S.wall;
   return Math.max(base, Math.min(rb, half - S.wall - 0.5, Math.max(2, (m.h - lift) * 0.85))); };
-const thickBase = f => f === 'vidro' || f === 'vidroFosco' || f === 'vidroSemi'; // fundo grosso: só vidro (PET é fino)
+const thickBase = (f, m) => f === 'vidro' || f === 'vidroFosco' || f === 'vidroSemi' || !!m?.fundoGrosso; // fundo grosso: vidro (PET é fino), ou frasco de cristal grosso (gloss)
 
 const typeKey = m => m?.type || Object.keys(LIB).find(k => LIB[k].name === m?.name);
 const isSphereCap = m => ['esfera', 'esferaBisnaga'].includes(typeKey(m));
@@ -2476,7 +2476,7 @@ function volumes(s) {
   for (const { m, y0 } of layout(s)) {
     if (!m.vol) continue;
     const ge = moduleGeo(m, y0, { lo: true }); if (ge) { ext += signedVolume(ge); ge.dispose(); }
-    const glassF = thickBase(m.own ? m.finish : s.finish), lift = first ? (glassF ? Math.max(s.wall, m.fundo ?? 6) : s.wall) : 0; // vidro: fundo grosso
+    const glassF = thickBase(m.own ? m.finish : s.finish, m), lift = first ? (glassF ? Math.max(s.wall, m.fundo ?? 6) : s.wall) : 0; // vidro: fundo grosso
     const gi = moduleGeo(m, y0, { inset: s.wall, lift, lo: true }); if (gi) { cap += signedVolume(gi); gi.dispose(); }
     first = false;
   }
@@ -5869,7 +5869,7 @@ function buildInto(product, S, explodeAmt = 0) {
     if (m0.kind === 'gargalo' && !under && L[i - 1]?.m.vol && isGlass(L[i - 1].m.own ? L[i - 1].m.finish : S.finish)) m = { ...m, embed: Math.min(m.embed ?? 8, 1) };
     let g = moduleGeo(m, y0, { logoQuality: hasLogo, body: under, ...(THUMB_LITE ? { lo: true } : {}) }); if (!g) return; // miniatura: malha leve
     if (m0.oco && !THUMB_LITE) g = ocoGeo(g, m, y0);
-    if (m0.ocoTopo && !THUMB_LITE && L[i + 1]?.m.kind === 'gargalo') g = ocoTopoGeo(g, m, y0, L[i + 1].m, thickBase(m.own ? m.finish : S.finish) ? Math.max(S.wall, m0.fundo ?? 6) : S.wall);
+    if (m0.ocoTopo && !THUMB_LITE && L[i + 1]?.m.kind === 'gargalo') g = ocoTopoGeo(g, m, y0, L[i + 1].m, thickBase(m.own ? m.finish : S.finish, m0) ? Math.max(S.wall, m0.fundo ?? 6) : S.wall);
     if (m0.dedo && !THUMB_LITE) g = dedoGeo(g, m0.dedo, y0, m.h);
     if (!THUMB_LITE && !m0.oco && !m0.casca && vestsValve(S, idx) && L[i - 1]?.idx === idx - 1) { // cavidade no tamanho da válvula (folga de 0,5 mm); casca oca (oco) já tem o vão
       const vg = sprayGeo(L[i - 1].m, L[i - 1].y0, { lo: true }); vg.computeBoundingBox(); const vb = vg.boundingBox;
@@ -5924,7 +5924,7 @@ function buildInto(product, S, explodeAmt = 0) {
     applyReliefGeometry(g, reliefSource);
     // canto do piso da cavidade (mesma conta de offsetInner) para a faixa do fundo acompanhar
     let band = null;
-    if (firstBody && thickBase(finM)) { if (!g.boundingBox) g.computeBoundingBox(); const gb = g.boundingBox;
+    if (firstBody && thickBase(finM, m0)) { if (!g.boundingBox) g.computeBoundingBox(); const gb = g.boundingBox;
       band = { y: y0 + fundo, R: floorR(m, fundo), r: Math.min(m.W, m.D) / 2 - Math.max(0.35, S.wall - 0.9), rx: m.W / 2 - Math.max(0.35, S.wall - 0.9), rz: m.D / 2 - Math.max(0.35, S.wall - 0.9),
         liq: m0.liq && ['perfume', 'transparente'].includes(m0.liqType) ? m0.liqColor : '', bg: S.bg || '#eeeeee',
         cx: (gb.min.x + gb.max.x) / 2, cz: (gb.min.z + gb.max.z) / 2 }; }
@@ -5947,7 +5947,7 @@ function buildInto(product, S, explodeAmt = 0) {
     // Vidro transparente: a cavidade (parede de dentro) aparece nas bordas, como a
     // espessura do vidro vista de lado, e o fundo grosso ganha a sua linha.
     if (m0.vol && ['vidro', 'pet', 'vidroSemi'].includes(finM) && !m0.hidden && !m0.liq) { // com líquido, é ele quem desenha o interior
-      const ig = offsetInner(m, y0, S.wall, firstBody && thickBase(finM) ? fundo : S.wall);
+      const ig = offsetInner(m, y0, S.wall, firstBody && thickBase(finM, m0) ? fundo : S.wall);
       if (ig) { const cm = new THREE.Mesh(ig, cavityMat(colM)); cm.name = 'cavidade'; cm.userData.idx = idx; cm.renderOrder = 4; product.add(cm); }
     }
     mesh.castShadow = true; mesh.receiveShadow = true;
@@ -6013,7 +6013,8 @@ function buildInto(product, S, explodeAmt = 0) {
       if (pg && m.sprayType === 'gloss') {
         // Gloss: haste de plástico branco e ponta de feltro na cor do produto (opacas:
         // aparecem pelo vidro; em frasco opaco só no Explodir).
-        const rod = new THREE.Mesh(pg, new THREE.MeshPhysicalMaterial({ color: '#f3f1ec', roughness: 0.3, clearcoat: 0.4 }));
+        const rod = new THREE.Mesh(pg, m.rodClear ? new THREE.MeshPhysicalMaterial({ color: '#ffffff', roughness: 0.04, transmission: 1, thickness: 1.2, ior: 1.5, transparent: true, opacity: 0.55 }) // haste de cristal (All Crystal)
+          : new THREE.MeshPhysicalMaterial({ color: '#f3f1ec', roughness: 0.3, clearcoat: 0.4 }));
         const tipC = m.tipColor || (base.find(e => e.m.vol && e.m.liq)?.m.liqColor) || '#e8a3ac';
         const tp = new THREE.Mesh(pg.userData.tip, new THREE.MeshPhysicalMaterial({ color: tipC, roughness: 0.75, sheen: 0.6, sheenRoughness: 0.5, sheenColor: new THREE.Color(tipC).lerp(new THREE.Color('#ffffff'), 0.4) }));
         [[rod, 'haste'], [tp, 'aplicador']].forEach(([o, n]) => { o.userData.idx = idx; o.userData.liquid = true; o.name = `${String(idx + 1).padStart(2, '0')}_${n}`; product.add(o); });
@@ -6039,7 +6040,7 @@ function buildInto(product, S, explodeAmt = 0) {
     }
     // Líquido dentro do corpo, até o nível escolhido.
     if (m0.vol && m0.liq) {
-      const cps = L.filter(e => e.idx === idx), gl = thickBase(m0.own ? m0.finish : S.finish) && Math.abs(cps[0].y0 - floor) < 0.01;
+      const cps = L.filter(e => e.idx === idx), gl = thickBase(m0.own ? m0.finish : S.finish, m0) && Math.abs(cps[0].y0 - floor) < 0.01;
       const f0 = gl ? Math.max(S.wall, m0.fundo ?? 6) : S.wall, lo = cps[0].y0 + f0, top = cps[cps.length - 1].y0 + m0.h;
       const level = lo + (top - lo) * clamp(m0.liqLevel, 0, 100) / 100;
       liquidMeshes(m0, y0, level, Math.abs(y0 - cps[0].y0) < 0.01 ? f0 : S.wall).forEach(o => { o.userData.idx = idx; product.add(o); });
@@ -7727,7 +7728,7 @@ function renderWallFields() {
   field(vf, S, ['wallAuto', `Parede automática pelo material (vidro ${WALL_AUTO.vidro} · PET ${WALL_AUTO.pet} · plástico ${WALL_AUTO.plast} mm)`, 'check'], () => { applyAutoWall(); renderEditorKeepScroll?.(); renderAll(); queueBuild(); });
   field(vf, S, ['wall', 'Espessura da parede', 0.3, 4, 0.1, 'mm'], () => { S.wallAuto = false; queueBuild(); }); // mexeu no número: vale o seu
   const b = S.modules.find(v => v.vol); if (!b) return;
-  const glass = thickBase(b.own ? b.finish : S.finish);
+  const glass = thickBase(b.own ? b.finish : S.finish, b);
   const el = field(vf, b, ['fundo', 'Espessura do fundo (vidro: massa embaixo)', 1, 25, 0.5, 'mm', null, 6], queueBuild);
   if (!glass) { el.classList.add('off'); el.title = 'Só no vidro: no plástico o fundo tem a espessura da parede'; }
 }
@@ -8585,17 +8586,17 @@ function incomProduct(r) {
       if (/^Petit/.test(r.n)) { const fp = 0.36; ms = [P('Tampa', W, D, H * fp, { ...sq(0.14), rBot: 1, rTop: 0.4, _t: [0, fp] }), P('Frasco', W, D, H * (1 - fp), { vol: true, rBot: 0.4, rTop: W * 0.3, _t: [fp, 1] })]; break; }
       const s0 = r.t === 'glosssq' ? sq(0.08) : {}, [f] = SPLIT_FIX[r.pg] ? [SPLIT_FIX[r.pg]] : incomFrac(pr, [0.52]), capH = H * (1 - f), masc = r.c === 'Máscaras';
       // gloss: frasco transparente (PET G/SAN, como no catálogo) com o gloss colorido dentro; máscara: frasco opaco
-      const gl = masc ? {} : { own: true, finish: 'pet', color: '#ffffff', liq: true, liqType: 'cremoso', liqLevel: 100, liqColor: corDe(GLOSS_CORES, r.n) };
+      const gl = masc ? {} : { own: true, finish: 'pet', color: '#ffffff', fundoGrosso: true, fundo: r1(Math.max(3, H * 0.05)), liq: true, liqType: 'cremoso', liqLevel: 100, liqColor: corDe(GLOSS_CORES, r.n) };
       // Charm: a argola do topo não é parte do giro (virava um botão torneado); a tampa termina reta onde ela começa.
       // Oscar sem Charm: o desenho do catálogo traz a argola, mas a foto é a tampa abaulada lisa — corta ali e arredonda
       const tl = pr ? (pr.p.find(q => q[0] > f + 0.1 && (q[1] + q[2]) / 2 < 0.6 * Math.max(...pr.p.map(z => (z[1] + z[2]) / 2))) || [1])[0] : 1;
       const charm = /Charm/.test(r.n), arg = tl < 1 && charm ? (() => { const hl = H * (1 - tl), rr = 1.0; return { R: Math.round(Math.max(1.6, (hl + 0.6 - 2 * rr) / 2) * 1000) / 1000, r: rr }; })() : null;
-      const cap = P('Tampa', W, D, H * (tl - f), { ...s0, ...(/All Crystal/.test(r.n) ? { own: true, finish: 'pet', color: '#ffffff' } : {}), rTop: arg ? 1.2 : r.t === 'gloss' ? W * 0.2 : 1.2, ...(tl < 1 && !arg ? { domeTop: r1(W * 0.42) } : {}), ...(arg ? { argola: arg } : {}), _t: [f, tl] });
+      const cap = P('Tampa', W, D, H * (tl - f), { ...s0, ...(/All Crystal/.test(r.n) ? { own: true, finish: 'pet', color: '#ffffff', topDip: 0.5 } : {}), rTop: arg ? 1.2 : r.t === 'gloss' ? W * 0.2 : 1.2, ...(tl < 1 && !arg ? { domeTop: r1(W * 0.42) } : {}), ...(arg ? { argola: arg } : {}), _t: [f, tl] });
       const wv = r1(Math.max(5, Math.min(Math.min(W, D) * 0.55, 2 * (capHalfAt(cap, 0) - 1.6))));
       ms = [P('Frasco', W, D, H * f, { ...s0, vol: true, rBot: 1.5, ...gl, _t: [0, f] }),
         M('tampaGloss', { name: masc ? 'Haste com escova' : 'Haste com aplicador', W: wv, D: wv, h: r1(cap.h - 2.5), pescD: r1(Math.min(3, wv * 0.3)),
           tipL: masc ? r1(Math.min(24, H * 0.2)) : 13, tipW: r1(Math.min(masc ? 7.5 : 6.5, Math.min(W, D) - 6)), tipColor: masc ? '#2b2b2b' : '#e2cdb8',
-          ...(/All Crystal/.test(r.n) ? { own: true, finish: 'brilho', color: gl.liqColor, neckH: r1(cap.h * 0.33), W: r1(Math.min(W, D) - 3), D: r1(Math.min(W, D) - 3) } : {}) }), cap]; break; } // All Crystal: gargalo com rosca e gloss aparecendo pela tampa de cristal
+          ...(/All Crystal/.test(r.n) ? { own: true, finish: 'brilho', color: gl.liqColor, rodClear: true, neckH: r1(cap.h * 0.33), W: r1(Math.min(W, D) - 3), D: r1(Math.min(W, D) - 3) } : {}) }), cap]; break; } // All Crystal: gargalo com rosca e gloss aparecendo pela tampa de cristal
     case 'baton': case 'batonsq': {
       // Batom como no catálogo: base, tubo de metal (mecanismo) saindo dela, bala de 12,1 mm com a ponta
       // chanfrada, recolhida dentro do tubo, e a tampa que desce até a base vestindo tudo. "Abrir" tira a
