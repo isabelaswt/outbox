@@ -243,3 +243,4 @@ Pendências conhecidas (precisam de dado ou de decisão; não invente):
 
 - 2026-11-17, Claude: compactos, paletas, cristal, fechamentos dos frascos e Tampa Sens revisados pelas fotos (commits `8dfabe3` a `86ce7ad`); PDF de conferência refeito.
 - 2026-11-17 cl3 (Claude): bala do batom com face oblíqua de borda arredondada (lipstickBulletGeo) e largura cheia no tubo — sem anel escuro (foto). Ella/Squared seguem lipPoint.
+- 2026-11-17 cl4 (Claude): Flacon 15/30 Botão com proporções frasco/tampa/botão medidas nas fotos do site (15: tampa na largura do frasco; frasco ~55% da altura); botão liso de topo arredondado.
