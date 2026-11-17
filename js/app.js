@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-17.sens2';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-17.cap1';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -403,7 +403,7 @@ function polyFit(o) { const n = o.sides || 0; if (n === 4 || n === 8 || n === 12
 const hasStep = () => false; // contorno denso (0,1 mm): sem suavizar, os degraus ficam com quina
 // Forma vista de cima, conferida nas fotos do catálogo (o desenho técnico só mostra a frente):
 // deitada = cilindro deitado (de lado é um círculo); disco = disco em pé (espessura constante).
-const CAP_FIX = { incom_flora: { lobes: 8, lobeD: 1.7, lobeTwist: 6, lobeFrom: 0.16, smooth: 2.2 }, incom_aramis: { quadTop: 0.81, quadN: 5 }, incom_cubic: { quadFrom: 0.19, quadN: 7 }, incom_bamboo: { deitada: true, fitFrom: 0.25 }, incom_golden: { disco: true, D: 22, col: 0.2, furo: { forma: 'circ', yc: 0.6, w: 0.6 } }, incom_wheel: { disco: true, D: 20, furo: { forma: 'circ', yc: 0.47, w: 0.62 } }, incom_thenue: { disco: true, D: 20, col: 0.1, furo: { forma: 'elip', yc: 0.55, w: 0.72, hh: 0.78 } }, incom_rock: { furo: { forma: 'elip', yc: 0.55, w: 0.6, hh: 0.52 } }, incom_chelsea: { cutBelow: 0.17 }, incom_soho: { cutBelow: 0.165 }, incom_hexa: { noCol: true }, incom_crown: { col: 0.58 }, incom_brilhante: { col: 0.257 }, incom_indico: { calha: 0.09 }, incom_matrix: { dobra: 0.085 }, incom_twist: { polyTwist: 1.25 }, incom_prisma: { chanfro: 0.46 }, incom_navette: { sides: 0, lobes: 4, lobeD: 2.6, lobeFrom: 0.33 }, incom_manhattan: { cutBelow: 0.1 }, incom_laura: { fill: [0.1, 0.39, 0.96], D: 26 }, incom_joya: { sides: 12, sideR: 0, col: 0.65, noFit: true, facetBlend: 2.5 }, incom_joya_mini: { sides: 12, sideR: 0, col: 0.6, noFit: true, facetBlend: 2.5 }, incom_domini: { abaLat: { t0: 0.598, t1: 0.742, w: 7 } }, incom_royal: { noCol: true },
+const CAP_FIX = { incom_slim_quadric: { sideR: 0.55 } /* foto de cima: quadrado de cantos bem arredondados, "sem ser totalmente cilíndrico" */, incom_flora: { lobes: 8, lobeD: 1.7, lobeTwist: 6, lobeFrom: 0.16, smooth: 2.2 }, incom_aramis: { quadTop: 0.81, quadN: 5 }, incom_cubic: { quadFrom: 0.19, quadN: 7 }, incom_bamboo: { deitada: true, fitFrom: 0.25 }, incom_golden: { disco: true, D: 22, col: 0.2, furo: { forma: 'circ', yc: 0.6, w: 0.6 } }, incom_wheel: { disco: true, D: 20, furo: { forma: 'circ', yc: 0.47, w: 0.62 } }, incom_thenue: { disco: true, D: 20, col: 0.1, furo: { forma: 'elip', yc: 0.55, w: 0.72, hh: 0.78 } }, incom_rock: { furo: { forma: 'elip', yc: 0.55, w: 0.6, hh: 0.52 } }, incom_chelsea: { cutBelow: 0.17 }, incom_soho: { cutBelow: 0.165 }, incom_hexa: { noCol: true }, incom_crown: { col: 0.58 }, incom_brilhante: { col: 0.257 }, incom_indico: { calha: 0.09 }, incom_matrix: { dobra: 0.085 }, incom_twist: { polyTwist: 1.25 }, incom_prisma: { chanfro: 0.46 }, incom_navette: { sides: 0, lobes: 4, lobeD: 2.6, lobeFrom: 0.33 }, incom_manhattan: { cutBelow: 0.1 }, incom_laura: { fill: [0.1, 0.39, 0.96], D: 26 }, incom_joya: { sides: 12, sideR: 0, col: 0.65, noFit: true, facetBlend: 2.5 }, incom_joya_mini: { sides: 12, sideR: 0, col: 0.6, noFit: true, facetBlend: 2.5 }, incom_domini: { abaLat: { t0: 0.598, t1: 0.742, w: 7 } }, incom_royal: { noCol: true },
   incom_drop: { disco: true, Dk: 0.6, col: 0.14, furo: { y0: 0.4, y1: 0.915, w: 0.47 } }, incom_antonov: { D: 34 }, incom_bilbao: { sides: 4, sideR: 0.35 }, incom_rams: { sides: 0 } };
 // Contorno do desenho técnico sem "escada": o traço extraído do PDF oscila uns centésimos e,
 // ligado em retas, a luz marcava cada mudança de inclinação como uma faixa. Média ponderada curta
@@ -578,7 +578,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-17.sens2';
+const BUILD = '2026-11-17.cap1';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
