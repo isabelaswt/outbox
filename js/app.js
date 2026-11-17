@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-17.cl17';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-17.cl18';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -677,7 +677,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-17.cl17';
+const BUILD = '2026-11-17.cl18';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -9741,6 +9741,9 @@ function incomProduct(r) {
       // Págs.94/95/97/99/101: reservatório com piso plano e cantos arredondados,
       // não a concha genérica. Raio ~8% da largura estimado pela foto, sem cota de parede.
       if (!masc && /^(Berlim|Berlim Plus|Guggen Plus|Moma|Moma 2\.0)$/.test(r.n)) gl.fundoR = r1(Math.min(W, D) * 0.08);
+      // Timeless (fotos do site): seção quadrada, fundo de cristal grosso e reto; o líquido termina em piso plano de
+      // cantos curtos — a concha redonda num frasco quadrado deixava o fundo do líquido recortado
+      if (!masc && r.t === 'glosssq') gl.fundoR = r1(Math.min(W, D) * 0.08);
       if (!masc && /^(Guggen|Guggen Roll On)$/.test(r.n)) gl.incomSmileFloor = true;
       // Charm: a argola do topo não é parte do giro (virava um botão torneado); a tampa termina reta onde ela começa.
       // Oscar sem Charm: o desenho do catálogo traz a argola, mas a foto é a tampa abaulada lisa — corta ali e arredonda
