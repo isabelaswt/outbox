@@ -3,3 +3,6 @@ _ref/
 .DS_Store
 api/config.php
 node_modules/
+
+# PDF de conferência (gerado, 21 MB)
+OUTBOX x Catalogo Incom 2026.pdf
