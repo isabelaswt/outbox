@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-17.cdx21';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-17.cdx22';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -677,7 +677,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-17.cdx21';
+const BUILD = '2026-11-17.cdx22';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -9314,7 +9314,7 @@ function fitValveIn(t, cap, wv0) {
 // godês) entra montado: aparece pela tampa transparente, ao abrir ou no Explodir. Compactos e
 // paletas têm o desenho em perspectiva no catálogo: ficam com a forma básica.
 // Divisão tampa × frasco lida a olho no desenho técnico (a extração automática não achou a linha)
-const SPLIT_FIX = { 99: 0.62, 101: 0.55, 102: 0.54, 96: 0.58, 98: 0.58, 100: 0.6, 103: 0.63, 104: 0.5, 107: 0.57, 108: 0.65, 123: 0.58, 124: 0.65, 125: 0.56, 126: 0.66, 130: 0.66, 131: 0.5 };
+const SPLIT_FIX = { 99: 48.3 / 74, 101: 0.55, 102: 0.54, 96: 0.58, 98: 0.58, 100: 0.6, 103: 0.63, 104: 0.5, 107: 0.57, 108: 0.65, 123: 0.58, 124: 0.65, 125: 0.56, 126: 0.66, 130: 0.66, 131: 0.5 };
 // Cor de exemplo do conteúdo (maquiagem): sempre a mesma para o mesmo modelo
 const BATOM_CORES = ['#9b1b30', '#e0604e', '#c43a3a', '#d9667f', '#7a2846', '#b5525a'];
 const GLOSS_CORES = ['#b8323f', '#d77a7a', '#a3473a', '#c9707e', '#8c2f45', '#e09a8a', '#b85c4f', '#d45f74'];
@@ -9490,6 +9490,7 @@ function incomProduct(r) {
       const cap = P('Tampa', W, D, H * (tl - f), { ...s0, ...(/All Crystal/.test(r.n) ? { own: true, finish: 'pet', color: '#ffffff', topDip: 0.5, roscaInt: { r: r1((Math.min(W, D) - 3) / 2 + 0.35), y0: r1(H * (tl - f) * 0.12), y1: r1(H * (tl - f) * 0.5), n: 5 } } : {}), rTop: arg ? 1.2 : r.t === 'gloss' ? W * 0.2 : 1.2, ...(tl < 1 && !arg ? { domeTop: r1(W * 0.42) } : {}), ...(arg ? { argola: arg } : {}), _t: [f, tl] });
       // Fotos p.94-108 e 122-126: tampa, haste e aplicador saem juntos para conferência aberta.
       Object.assign(cap, { capa: true, capaCarry: true, oco: true });
+      if (r.n === 'Moma') cap.name = 'Tampa baixa'; // P99: 74 mm; corpo ~48,3 mm medido no desenho pela cota total.
       if (arg) cap.h = r2(H * (1 - f) - (2 * (arg.R + arg.r) - 0.6));
       // Oscar/Tate: o corte usado para arredondar o ápice não deve retirar altura do conjunto.
       if (!charm && /^(Oscar|Tate)$/.test(r.n) && tl < 1) cap.h = r2(cap.h + H * (1 - tl));
@@ -9718,6 +9719,14 @@ function incomProduct(r) {
   return { color: BEIGE, finish: 'fosco', modules: ms, forn: 'Incom', fcat: r.c, fapp, ...(wall ? { wall, wallAuto: false } : {}) };
 }
 INCOM_PRODUCTS.forEach(r => { PRESETS[`Incom ${r.n} (${r.c.toLowerCase()})`] = incomProduct(r); });
+// P99: duas alturas cotadas do Moma. Mesmo frasco; muda só o comprimento da tampa externa.
+const MOMA_HIGH = 'Incom Moma Tampa Alta (líquidos labiais)';
+{
+  const p = structuredClone(PRESETS['Incom Moma (líquidos labiais)']), cap = p.modules.at(-1), body = p.modules.find(m => m.vol);
+  p.modules.forEach(m => { m.uid = newUid(); }); cap.name = 'Tampa alta'; cap.h = Math.round((cap.h + 11) * 100) / 100;
+  body.fH = 85; p.fsourceKey = 'incomp_liquidos_labiais_moma'; p.fvariant = 'Tampa alta · 85 mm';
+  PRESETS[MOMA_HIGH] = p;
+}
 // Long e Long Lipview: o catálogo tem tampa reta (a da foto, modelo principal) ou abaulada (o desenho da direita)
 INCOM_PRODUCTS.filter(r => r.c === 'Batons' && /^Long/.test(r.n)).forEach(r => { PRESETS[`Incom ${r.n} Abaulada (batons)`] = incomProduct({ ...r, n: `${r.n} Abaulada`, abaulada: true }); });
 // Tampas de perfume da Incom montadas: frasco genérico (a Incom não faz o vidro) + válvula spray
@@ -9831,6 +9840,12 @@ INCOM_PRODUCTS.forEach(r => {
     CATS.find(([l]) => l === label)[1].push(k);
   });
 });
+// Tampa alta documentada também disponível separada na aba de peças Incom.
+{
+  const cap = structuredClone(PRESETS[MOMA_HIGH].modules.at(-1)), k = 'incomp_liquidos_labiais_moma_tampa_alta';
+  delete cap.uid; LIB[k] = { ...cap, partKey: k, forn: 'Incom', ref: 'MOMA · TAMPA ALTA', fpg: 99, name: 'Incom Moma · Tampa alta' };
+  CATS.find(([l]) => l === 'Tampa')[1].push(k);
+}
 CATS.find(([l]) => l === 'Tampa')[1].push(...INCOM_CAPS.map(r => r.k));
 renderAddParts();
 // Modelo do catálogo aberto (ou restaurado do autosave) de uma versão anterior guarda as peças antigas:

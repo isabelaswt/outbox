@@ -166,11 +166,13 @@ Pendências conhecidas (precisam de dado ou de decisão; não invente):
 
 **Em andamento** (quem está mexendo em quê agora; apague quando terminar):
 
-- Codex: demais roscas de potes/fechamentos, variantes documentadas (Moma 74/85 mm encontrados na p99), PDF por último.
+- Codex: cdx23 roscas dos potes: restaurar gargalo documentado e criar cavidade helicoidal correspondente na tampa, sem inventar norma para passos não cotados. Depois demais fechamentos/variantes e PDF.
 
 - Codex: PDF suspenso por novos achados da dona. Corrigir fecho frontal/espelho das paletas em `compactParts`; roscas externas e internas em todos os fechamentos documentados; variantes de tampas; conferir fundo externo plano/cavidade U do Guggen. Inventários extraídos do catálogo em andamento. Não alterar largura estimada nem mecanismos ocultos como se fossem cotados.
 
 **Registro** (o mais novo em cima):
+
+- 2026-11-17, Codex, `2026-11-17.cdx22`: Moma p99 com tampa baixa (74 mm, principal) e variante Tampa Alta (85 mm), ambas as alturas cotadas no desenho. Corpo comum de ~48,3 mm proporcional à cota do desenho; só a tampa externa aumenta 11 mm na alta, mantendo gargalo/inserto/haste. Tampa alta também na biblioteca de peças Incom. Quatro Moma/controles abertos/fechados, alturas 74/85 dentro de 0,1 mm, corpo+gargalo iguais entre variantes, insertos fechados e solidários às tampas abertas, sem posições/normais inválidas. `tools/conferencia/validacao-cdx22.json`, evidências `_ref/incom/validacao-cdx22/`. Outros tamanhos internos seguem estimados; demais variantes e roscas ainda pendentes.
 
 - 2026-11-17, Codex, `2026-11-17.cdx21`: aba das paletas prolonga a face externa da tampa, sem apoio/saliência ou recuo de 1 mm; dente interno elevado atrás da lâmina para não criar degrau no contorno. Vista frontal a 60 graus e oito paletas sem amostras do dente ocupadas em 0/15/45/90. Guggen/Guggen Roll On com cavidade visual em U por arco contínuo em torno do eixo, substituindo remapeamento angular ondulado; transição acompanha o raio real da parede e teto interno fica abaixo do teto externo, sem sobreposição. Piso exterior e materiais preservados. Raio/parede internos estimados; export leve do corpo mantém a limitação de espessura como aparência, sem reintroduzir casca pesada. Quatorze montagens/controles sem posições/normais inválidas, espelhos contidos e alturas preservadas. `tools/conferencia/validacao-cdx21.json`, evidências `_ref/incom/validacao-cdx21/`. Demais roscas, variantes e PDF pendentes.
 
