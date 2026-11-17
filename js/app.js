@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-17.cdx20';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-17.cdx21';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -677,7 +677,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-17.cdx20';
+const BUILD = '2026-11-17.cdx21';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -5858,7 +5858,29 @@ function solidFill(m, y0, levelAbs, lift) {
 function withoutRelief(m) {
   return { ...m, reliefImg: '', reliefName: '', reliefDepth: 0 };
 }
+// Guggen p96/98 e foto da dona: fundo externo plano; cavidade interna em U, sem ondulação angular.
+function incomSmileFloorGeo(m, y0, inset, lift) {
+  const { rB, rT } = radii(m), at = y => m.prof?.length ? Math.min(profAt(m, y).a, profAt(m, y).b) : Math.min(...sectionAt(m, y, rB, rT)),
+    top = m.h - inset, yb = y0 + lift, points = [new THREE.Vector2(0, yb)];
+  if (top <= lift + 0.5) return null;
+  let rr = Math.min(Math.max(0.3, Math.min(m.W, m.D) / 2 - inset), Math.max(0.3, top - lift - 1));
+  for (let j = 0; j < 4; j++) rr = Math.min(rr, Math.max(0.3, at(lift + rr) - inset));
+  // Concha circular contínua. Curvatura/espessura da parede estimadas na foto, sem corte cotado.
+  for (let i = 1; i <= 64; i++) { const a = i / 64 * Math.PI / 2;
+    points.push(new THREE.Vector2(rr * Math.sin(a), yb + rr * (1 - Math.cos(a))));
+  }
+  const start = lift + rr;
+  for (let y = start + 0.25; y < top; y += 0.4) {
+    const r = m.prof?.length ? Math.min(profAt(m, y).a, profAt(m, y).b) : Math.min(...sectionAt(m, y, rB, rT));
+    points.push(new THREE.Vector2(Math.max(0.15, r - inset), y0 + y));
+  }
+  const end = at(top);
+  points.push(new THREE.Vector2(Math.max(0.15, end - inset), y0 + top), new THREE.Vector2(0, y0 + top));
+  const g = new THREE.LatheGeometry(points, 192); g.deleteAttribute('uv');
+  if (m.ox) g.translate(m.ox, 0, 0); g.computeBoundingBox(); return g;
+}
 function offsetInner(m, y0, inset, lift) {
+  if (m.incomSmileFloor) return incomSmileFloorGeo(m, y0, inset, lift);
   // fundo grosso: o piso da cavidade sobe em curva até a parede (jateado também: com o piso
   // reto o conteúdo terminava num corte reto, diferente do vidro transparente)
   const R0f = floorR(m, lift), R0 = Number.isFinite(R0f) ? R0f : 0;
@@ -6374,7 +6396,7 @@ function compactParts(product, L, S0) {
         // Recorte complementar real na base; largura e folgas estimadas nas fotos, sem simular flexão.
         const a = base.m.dedo, R = bb.max.z - cz, curve = !!m.aba,
           yB = curve ? y0 - m.aba.down : base.y0 + base.m.h - a.h + 0.3,
-          tw = curve ? m.aba.w * 0.7 : (m.snapWidth ?? Math.min(a.w * 0.7, w * 0.18)), inner = curve ? R - m.aba.d + 0.2 : R - a.d - 0.7;
+          tw = curve ? m.aba.w * 0.7 : (m.snapWidth ?? Math.min(a.w * 0.7, w * 0.18)), inner = curve ? R - m.aba.d + 0.2 : m.snapFlat ? R - 0.66 : R - a.d - 0.7;
         let tooth, socket, channel;
         if (curve) {
           tooth = arcSlab(inner - 0.45, inner + 0.08, tw / R, 0.35); tooth.translate(cx, yB + 0.2, cz);
@@ -6390,8 +6412,8 @@ function compactParts(product, L, S0) {
             sh.quadraticCurveTo(-half, yB, -half, yB + rc); sh.closePath();
             const stem = new THREE.ExtrudeGeometry(sh, { depth: 0.65, bevelEnabled: false, curveSegments: 16 }); stem.deleteAttribute('uv');
             add(stem, objs[0].material, idx, 'lingua_fecho', cx, 0, cz + inner);
-            const reach = R - 0.25 - inner;
-            add(new THREE.BoxGeometry(tw, 0.65, reach), objs[0].material, idx, 'raiz_fecho', cx, top - 0.325, cz + inner + reach / 2);
+            // Face externa 0,01 mm atrás da parede para unir visualmente sem sobreposição coplanar.
+            // Sem ponte/apoio: a aba prolonga a face da tampa, como na foto da dona.
           } else {
             const sh = new THREE.Shape(), points = [[R - 0.25, top], [R - OCO.wall - 0.7, top], [inner, yB], [inner + 0.65, yB], [R - 0.25, y0 + 0.15]];
             points.forEach(([z, y], j) => j ? sh.lineTo(-z, y) : sh.moveTo(-z, y)); sh.closePath();
@@ -6399,7 +6421,8 @@ function compactParts(product, L, S0) {
             stem.translate(0, 0, -tw / 2); stem.rotateY(Math.PI / 2);
             add(stem, objs[0].material, idx, 'lingua_fecho', cx, 0, cz);
           }
-          tooth = new THREE.BoxGeometry(m.snapFlat ? tw * 0.65 : tw, 0.35, 0.53).translate(cx, yB + 0.375, cz + inner - 0.185);
+          const hookY = base.m.fechoRebaixo ? base.y0 + base.m.h - 1.1 : yB + 0.375;
+          tooth = new THREE.BoxGeometry(m.snapFlat ? tw * 0.65 : tw, 0.35, 0.53).translate(cx, hookY, cz + inner - 0.185);
           socket = new THREE.BoxGeometry(tw + 0.3, 0.65, 0.83).translate(cx, yB + 0.375, cz + inner - 0.185);
           const pal = !!base.m.fechoRebaixo, rear = inner - (pal ? 0.6 : 0.15), depth = R + 1 - rear,
             bottom = pal ? base.y0 + base.m.h - a.h : yB - 0.05,
@@ -9457,6 +9480,7 @@ function incomProduct(r) {
       // Págs.94/95/97/99/101: reservatório com piso plano e cantos arredondados,
       // não a concha genérica. Raio ~8% da largura estimado pela foto, sem cota de parede.
       if (!masc && /^(Berlim|Berlim Plus|Guggen Plus|Moma|Moma 2\.0)$/.test(r.n)) gl.fundoR = r1(Math.min(W, D) * 0.08);
+      if (!masc && /^(Guggen|Guggen Roll On)$/.test(r.n)) gl.incomSmileFloor = true;
       // Charm: a argola do topo não é parte do giro (virava um botão torneado); a tampa termina reta onde ela começa.
       // Oscar sem Charm: o desenho do catálogo traz a argola, mas a foto é a tampa abaulada lisa — corta ali e arredonda
       const tl = pr ? (pr.p.find(q => q[0] > f + 0.1 && (q[1] + q[2]) / 2 < 0.6 * Math.max(...pr.p.map(z => (z[1] + z[2]) / 2))) || [1])[0] : 1;

@@ -166,11 +166,13 @@ Pendências conhecidas (precisam de dado ou de decisão; não invente):
 
 **Em andamento** (quem está mexendo em quê agora; apague quando terminar):
 
-- Codex: continuar inserto roscado independente da tampa externa/haste em líquidos labiais e máscaras; depois demais fechamentos roscados, variantes, Guggen e PDF.
+- Codex: demais roscas de potes/fechamentos, variantes documentadas (Moma 74/85 mm encontrados na p99), PDF por último.
 
 - Codex: PDF suspenso por novos achados da dona. Corrigir fecho frontal/espelho das paletas em `compactParts`; roscas externas e internas em todos os fechamentos documentados; variantes de tampas; conferir fundo externo plano/cavidade U do Guggen. Inventários extraídos do catálogo em andamento. Não alterar largura estimada nem mecanismos ocultos como se fossem cotados.
 
 **Registro** (o mais novo em cima):
+
+- 2026-11-17, Codex, `2026-11-17.cdx21`: aba das paletas prolonga a face externa da tampa, sem apoio/saliência ou recuo de 1 mm; dente interno elevado atrás da lâmina para não criar degrau no contorno. Vista frontal a 60 graus e oito paletas sem amostras do dente ocupadas em 0/15/45/90. Guggen/Guggen Roll On com cavidade visual em U por arco contínuo em torno do eixo, substituindo remapeamento angular ondulado; transição acompanha o raio real da parede e teto interno fica abaixo do teto externo, sem sobreposição. Piso exterior e materiais preservados. Raio/parede internos estimados; export leve do corpo mantém a limitação de espessura como aparência, sem reintroduzir casca pesada. Quatorze montagens/controles sem posições/normais inválidas, espelhos contidos e alturas preservadas. `tools/conferencia/validacao-cdx21.json`, evidências `_ref/incom/validacao-cdx21/`. Demais roscas, variantes e PDF pendentes.
 
 - 2026-11-17, Codex, `2026-11-17.cdx20`: líquidos labiais/máscaras com gargalo roscado independente no frasco e copo/inserto roscado que porta a haste dentro da tampa externa. Mesmo campo helicoidal nos dois lados; folga radial representativa de 0,16 mm, passo/diâmetros não cotados estimados. Inserto, haste e ponteira acompanham a tampa ao abrir; Roll On preservado nesta etapa. Rosca fictícia da casca All Crystal retirada. Export corrigido: haste/ponteira deixam de ser descartadas como líquido e entram com o inserto nos três formatos. Abertura local do corpo preserva construção leve anterior, sem criar casca nova. Vinte e duas montagens/controles renderizados abertos/fechados; 19 insertos sem bordas abertas, transformações iguais às tampas abertas, sem posições/normais inválidas e alturas cotadas dentro de 0,1 mm. Dois controles de export com gargalo/inserto/haste/aplicador/tampa presentes. Campo das roscas anteriores comparado em 288.000 amostras, diferença máxima ~1,8e-15. `tools/conferencia/validacao-cdx20.json`, evidências `_ref/incom/validacao-cdx20/`. Potes/demais fechamentos roscados, variantes, fundo Guggen e PDF ainda pendentes.
 
