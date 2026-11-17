@@ -166,11 +166,13 @@ Pendências conhecidas (precisam de dado ou de decisão; não invente):
 
 **Em andamento** (quem está mexendo em quê agora; apague quando terminar):
 
-- Codex: cdx26 Case G/M fechados com espelho e tampa cristal separada, por pedido da dona. Depois pares 20-410/24-410 restantes, variantes e PDF.
+- Codex: cdx27 roscas 20-410/24-410 de dispensadores/Deluxes em `buildInto`, por fonte do catálogo; depois frasnagas/variantes e PDF.
 
 - Codex: PDF suspenso por novos achados da dona. Corrigir fecho frontal/espelho das paletas em `compactParts`; roscas externas e internas em todos os fechamentos documentados; variantes de tampas; conferir fundo externo plano/cavidade U do Guggen. Inventários extraídos do catálogo em andamento. Não alterar largura estimada nem mecanismos ocultos como se fossem cotados.
 
 **Registro** (o mais novo em cima):
+
+- 2026-11-17, Codex, `2026-11-17.cdx27`: sete dispensadores p46–51/54 e seis Deluxes p57–62 com gargalos 20-410 ou 24-410 conforme texto. Passagem fêmea contínua pelo anel e saia da válvula, sem mudar o envelope externo ou o refil; largura interna mínima da saia ajustada para caber a rosca (parede estimada). On-Off/Twist preservados sem pressupor rosca. Dezesseis controles e três regressões finais sem posições/normais inválidas, dimensões fechadas iguais à base dentro de 0,1 mm; amostras das cristas encontram folga radial ~0,156–0,160 mm. Saídas das válvulas preservam geometrias auxiliares. `tools/conferencia/validacao-cdx27.json`, evidências `_ref/incom/validacao-cdx27/`. Restam frasnagas e variantes; PDF ao fim.
 
 - 2026-11-17, Codex, `2026-11-17.cdx26`: Case M/G padrão com tampa bege fechada e espelho, por pedido da dona; p3/4 oferecem tampa fechada/cristal e espelho opcional. Versões Tampa Cristal separadas, preservando também M All Crystal. Cinco conjuntos abertos/fechados com alturas dentro de 0,1 mm, fechos livres em quatro ângulos e dois espelhos contidos (1.024 pontos), sem posições/normais inválidas. Relatório `tools/conferencia/validacao-cdx26.json`, evidências `_ref/incom/validacao-cdx26/`. Demais roscas, variantes e PDF continuam em andamento.
 

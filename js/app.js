@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-17.cdx26';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-17.cdx27';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -677,7 +677,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-17.cdx26';
+const BUILD = '2026-11-17.cdx27';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -6641,16 +6641,21 @@ function buildInto(product, S, explodeAmt = 0) {
     // gargalo sobre corpo de vidro de outro tipo (perfil, placa): entra só 1 mm (senão aparecia dentro)
     if (m0.kind === 'gargalo' && !under && L[i - 1]?.m.vol && isGlass(L[i - 1].m.own ? L[i - 1].m.finish : S.finish)) m = { ...m, embed: Math.min(m.embed ?? 8, 1) };
     // Rosca do fechamento na fase axial real: a saia pode descer sobre o ombro.
-    if (m0.threadReceiver && dn?.kind === 'gargalo') m = { ...m, threadPhase: y0 - L[i - 1].y0 };
+    if (m0.threadReceiver) {
+      const neckSeat = m0.threadNeckUid ? L.find(e => e.m.uid === m0.threadNeckUid) : dn?.kind === 'gargalo' ? L[i - 1] : null;
+      if (neckSeat) m = { ...m, threadPhase: y0 - neckSeat.y0 };
+    }
     let g = moduleGeo(m, y0, { logoQuality: hasLogo, body: under, ...(THUMB_LITE ? { lo: true } : {}) }); if (!g) return; // miniatura: malha leve
     if (!THUMB_LITE && (m0.incomRefillCavity || m0.incomTwistOutlet)) g = cutCached('incomDispensing', [m, y0], g, () => incomDispensingGeo(g, m, y0));
     if (!THUMB_LITE && m0.incomPoteCavity) g = cutCached('incomPote', [m, y0], g, () => incomPoteGeo(g, m, y0));
     if (m0.oco && !m0.threadReceiver && !THUMB_LITE) g = cutCached('oco', [m, y0, hasLogo], g, () => ocoGeo(g, m, y0));
     if (m0.threadReceiver && !THUMB_LITE) g = cutCached('threadReceiver', [m, y0], g, () => {
-      const height = Math.min(m.h - 0.8, m.threadReceiver.h - m.threadPhase + 0.3);
-      const cut = femaleThreadCutter({ ...m, femaleThread: m.threadReceiver }, y0, height);
+      const height = m.threadThrough ? m.h + 0.6 : Math.min(m.h - 0.8, m.threadReceiver.h - m.threadPhase + 0.3);
+      const cut = femaleThreadCutter({ ...m, femaleThread: m.threadReceiver }, y0, height), extras = g.userData.extras;
       const [outer, inner] = cutHole(g, cut); cut.dispose();
-      return outer !== g ? mergeLoose([outer, inner]) : g;
+      const result = outer !== g ? mergeLoose([outer, inner]) : g;
+      if (extras) result.userData.extras = extras; // preserva paredes escuras das saídas da válvula.
+      return result;
     });
     if (m0.ocoTopo && !THUMB_LITE && L[i + 1]?.m.kind === 'gargalo') g = ocoTopoGeo(g, m, y0, L[i + 1].m, thickBase(m.own ? m.finish : S.finish, m0) ? Math.max(S.wall, m0.fundo ?? 6) : S.wall);
     if (m0.wandMouth && !THUMB_LITE) g = cutCached('wandMouth', [m, y0, S.wall], g, () => {
@@ -9429,7 +9434,18 @@ function incomProduct(r) {
       // conta-gotas na linha Conta-gotas; spray nos Deluxes; pump dosadora nos Dispensadores
       // dispensador: válvula pump dosadora (a do catálogo e das fotos), não spray nem pump de bico pato
       const v = r.c === 'Conta-gotas' ? fitValveIn('contaGotas', cap, Math.min(22, wIn)) : r.c === 'Deluxes' ? fitValveIn('spray', cap, Math.min(26, wIn)) : fitValveIn('pumpDosadora', cap, Math.min(26.3, wIn));
-      ms = [P('Frasco', W, D, H * f0, { ...sh, vol: true, rBot: rb, rTop: 1, ...(r.t === 'cgt' ? { taperB: 86 } : {}), _t: [0, f0] }), P('Anel', W, D, H * (f1 - f0), { ...sh, _t: [f0, f1] }), v, cap]; break; }
+      ms = [P('Frasco', W, D, H * f0, { ...sh, vol: true, rBot: rb, rTop: 1, ...(r.t === 'cgt' ? { taperB: 86 } : {}), _t: [0, f0] }), P('Anel', W, D, H * (f1 - f0), { ...sh, _t: [f0, f1] }), v, cap];
+      if (r.c === 'Dispensadores' || r.c === 'Deluxes') {
+        // P46–54: 20-410; Deluxes 100: 20-410, 200: 24-410. Não inclui On-Off/Twist.
+        const standard = r.c === 'Deluxes' && /200$/.test(r.n) ? '24/410' : '20/410';
+        const neck = NECK(standard, { exposedNeck: true, embed: 0, neckFillet: 0 });
+        const descriptor = { W: neck.W, h: neck.h, pitch: neck.pitch, turns: neck.turns, threadD: neck.threadD, ringH: neck.ringH };
+        // Anel e saia da válvula cobrem juntos a boca; passagem contínua sem mudar a altura externa.
+        Object.assign(ms[1], { gap: -neck.ringH, threadReceiver: descriptor, threadNeckUid: neck.uid, threadThrough: true });
+        Object.assign(v, { threadReceiver: descriptor, threadNeckUid: neck.uid, W: Math.max(v.W, neck.W + 2.6), D: Math.max(v.D, neck.W + 2.6) });
+        ms.splice(1, 0, neck);
+      }
+      break; }
     case 'onoff': { const [f] = incomFrac(pr, [0.62]), hc = H * (1 - f), dn = 4.4;
       // bico do acionador (lotion) saindo de lado no alto da capa, como na foto do catálogo
       ms = [P('Frasco', W, D, H * f, { vol: true, rBot: 2, bpesc: true, bpescMola: true, _t: [0, f] }),
