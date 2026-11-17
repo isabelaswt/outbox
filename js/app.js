@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-17.cmp1';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-17.cmp2';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -580,7 +580,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-17.cmp1';
+const BUILD = '2026-11-17.cmp2';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -1075,11 +1075,11 @@ function buildDraftPresets() {
   }
 }
 
-const FINISHES = [['fosco', 'Fosco'], ['acetinado', 'Acetinado'], ['brilho', 'Brilho'], ['perolado', 'Perolado'], ['vidro', 'Transparente / vidro'], ['pet', 'Plástico transparente (PET)'], ['vidroSemi', 'Vidro semi-jateado (acetinado)'], ['vidroFosco', 'Vidro fosco (jateado)'], ['petSemi', 'PET semi-fosco (translúcido)'], ['petFosco', 'PET fosco (jateado)'], ['metal', 'Metalizado']];
+const FINISHES = [['fosco', 'Fosco'], ['acetinado', 'Acetinado'], ['brilho', 'Brilho'], ['perolado', 'Perolado'], ['vidro', 'Transparente / vidro'], ['pet', 'Plástico transparente (PET)'], ['cristal', 'Acrílico cristal (SAN/PET G)'], ['vidroSemi', 'Vidro semi-jateado (acetinado)'], ['vidroFosco', 'Vidro fosco (jateado)'], ['petSemi', 'PET semi-fosco (translúcido)'], ['petFosco', 'PET fosco (jateado)'], ['metal', 'Metalizado']];
 // Semi-jateado: meio do caminho entre o vidro transparente e o jateado (mesmo
 // tratamento do jateado, com o embaçado e o véu mais leves).
 const isFrost = f => f === 'vidroFosco' || f === 'vidroSemi' || f === 'petFosco' || f === 'petSemi';
-const isGlass = f => f === 'vidro' || isFrost(f) || f === 'pet';
+const isGlass = f => f === 'vidro' || isFrost(f) || f === 'pet' || f === 'cristal';
 // Espessura do fundo por dentro: no vidro, a massa de vidro embaixo (o pescante para em cima dela).
 const floorThick = () => { const b = S.modules.find(v => v.vol); return b && thickBase(b.own ? b.finish : S.finish, b) ? Math.max(S.wall, b.fundo ?? 6) : S.wall; };
 // Raio do canto do piso da cavidade (fundo grosso). Frasco de base reta: canto curto (até 9 mm).
@@ -3772,7 +3772,7 @@ const WALL_U = { value: 1.2 };
 const COAT_U = { value: 1 }; // reforço do reflexo do estúdio no verniz do plástico (por luz)
 const wallUniform = sh => { sh.uniforms.uWall = WALL_U; sh.fragmentShader = 'uniform float uWall;\n' + sh.fragmentShader; };
 // Difusão e IOR escolhidos à mão (sem escolha: o do acabamento). Difusão 0–100% = aspereza 0–0,8.
-const FIN_ROUGH = { fosco: 0.55, acetinado: 0.3, brilho: 0.14, perolado: 0.3, vidro: 0.05, pet: 0.08, vidroSemi: 0.27, vidroFosco: 0.42, petFosco: 0.5, petSemi: 0.24, metal: 0.3 };
+const FIN_ROUGH = { fosco: 0.55, acetinado: 0.3, brilho: 0.14, perolado: 0.3, vidro: 0.05, pet: 0.08, cristal: 0.04, vidroSemi: 0.27, vidroFosco: 0.42, petFosco: 0.5, petSemi: 0.24, metal: 0.3 };
 const presetDif = f => Math.round((FIN_ROUGH[f] ?? 0.5) / 0.8 * 100), presetIor = f => (String(f).startsWith('pet') ? 1.45 : 1.5);
 // Profundidade (na câmera) do eixo da peça de vidro que está sendo desenhada; a malha
 // atualiza antes de desenhar (ver glassAxis).
@@ -3900,6 +3900,17 @@ function material(color, finish, band = null, thick, look = null) {
   // de fora em pedaços (escadinha/tracejado nos vales dos gomos). No jateado o que
   // está dentro já quase não aparece, então não se perde nada.
   // PET transparente: parede fina, borda bem mais sutil que a do vidro, sem fundo grosso.
+  // Acrílico cristal dos compactos (foto do Case M All Crystal): parede grossa que reflete o estúdio, quinas e
+  // bordas acendendo em azul-lilás e cada camada sobreposta somando (tampa sobre base, base sobre godê) — transparência
+  // por camadas, não transmissão (na transmissão uma peça transparente atrás da outra some)
+  if (finish === 'cristal') { m.color = new THREE.Color(color).lerp(new THREE.Color('#eef0ff'), 0.6); m.roughness = 0.04; m.clearcoat = 1; m.clearcoatRoughness = 0.03;
+    m.ior = 1.49; m.specularIntensity = 1; m.envMapIntensity = 1.15; m.transparent = true; m.opacity = 0.07; m.depthWrite = false; m.side = THREE.DoubleSide;
+    m.onBeforeCompile = sh => { sh.fragmentShader = sh.fragmentShader.replace('#include <dithering_fragment>',
+      `{ float frC = pow(1.0 - abs(dot(normalize(vViewPosition), normalize(normal))), 2.0);
+        gl_FragColor.rgb = mix(gl_FragColor.rgb, gl_FragColor.rgb * vec3(0.78, 0.80, 1.0), frC);
+        gl_FragColor.a = clamp(gl_FragColor.a + frC * 0.6, 0.0, 0.85); }
+      #include <dithering_fragment>`); };
+    m.customProgramCacheKey = () => 'cristal1'; }
   if (finish === 'pet') { m.roughness = 0.08; m.transmission = 1; m.thickness = thick ?? 1.2; m.ior = 1.45; m.depthWrite = false;
     const et = new THREE.Color(color).multiply(new THREE.Color(0.72, 0.76, 0.74)), etv = `vec3(${et.r.toFixed(3)}, ${et.g.toFixed(3)}, ${et.b.toFixed(3)})`;
     m.onBeforeCompile = sh => { wallUniform(sh);
@@ -5770,11 +5781,17 @@ function seSlab(a, b, n, h) { const g = new THREE.ExtrudeGeometry(seShape(a, b, 
 // Frame (foto da tampa aberta): a janela vai quase de parede a parede, moldura fina (~3 mm); o preto largo visto
 // de fora é a base por baixo do visor
 const visorBox = (m, w, d) => { const f = m.visorFino || (!m.sides && m.n > 2) ? OCO.wall + 1.2 : Math.max(4.5, Math.min(w, d) * 0.12); return { w: w - 2 * f, d: m.sides ? d - 2 * f : w - 2 * f }; };
+// Faixa curva da parede redonda (setor de anel) na frente (+z): rebaixo e aba de fechamento acompanham o ângulo
+function arcSlab(R0, R1, span, h) { const a0 = -Math.PI / 2 - span / 2, a1 = -Math.PI / 2 + span / 2, sh = new THREE.Shape();
+  sh.absarc(0, 0, R1, a0, a1, false); sh.lineTo(R0 * Math.cos(a1), R0 * Math.sin(a1)); sh.absarc(0, 0, R0, a1, a0, true); sh.closePath();
+  const g = new THREE.ExtrudeGeometry(sh, { depth: h, bevelEnabled: false, curveSegments: 48 }); g.deleteAttribute('uv'); g.rotateX(-Math.PI / 2); return g; }
 // Abertura para o dedo: concha oval cortada na borda da frente (em cima da base, embaixo da tampa)
 function dedoGeo(g, o, y0, h) {
   g.computeBoundingBox(); const b = g.boundingBox, zf = b.max.z, cx = (b.max.x + b.min.x) / 2;
   let cut;
-  if (o.rect) { // paleta: rebaixo retangular largo na borda de cima da base, cantos arredondados (desenho do catálogo)
+  if (o.rect && o.arc) { // compacto redondo: rebaixo de profundidade igual seguindo a curva da parede
+    const cz = (b.max.z + b.min.z) / 2, R = b.max.z - cz; cut = arcSlab(R - o.d, R + 1, o.w / R, o.h * 2 + 2); cut.translate(cx, o.bottom ? y0 - o.h - 2 : y0 + h - o.h, cz);
+  } else if (o.rect) { // paleta: rebaixo retangular largo na borda de cima da base, cantos arredondados (desenho do catálogo)
     cut = new RoundedBoxGeometry(o.w, o.h * 2 + 2, o.d * 2, 4, Math.min(1.2, o.d * 0.45)); cut.translate(cx, o.bottom ? y0 - 1 : y0 + h + 1, zf); // bottom: na borda de baixo (tampa do Case)
   } else { cut = new THREE.SphereGeometry(1, 64, 32); cut.scale(o.w / 2, o.h, o.d * 1.6); cut.translate(cx, y0 + (o.top ? h : 0), zf + o.d * 0.6); }
   const [outer, inner] = cutHole(g, cut); if (outer === g) return g;
@@ -5787,6 +5804,8 @@ function setHinge(objs, ang) {
     o.applyMatrix4(T); o.updateMatrixWorld(true); });
 }
 // Profundidade do rebaixo do godê: godê de 1,8 mm sempre afundado na base (fotos: a parede da base aparece em volta)
+// Latinha do godê (bandeja de alumínio, Jorba ~4,5 mm de altura): nos de cristal ela aparece inteira pela base
+const godeLata = new THREE.MeshStandardMaterial({ color: '#cfd0d2', metalness: 0.85, roughness: 0.32 }), LATA_H = 4.5;
 const godeFundo = m => m.godes.fundo ?? r1(clamp(m.h - 2.5, 1.8, 3));
 function compactParts(product, L, S0) {
   const mine = idx => product.children.filter(o => o.isMesh && o.userData.idx === idx);
@@ -5804,7 +5823,10 @@ function compactParts(product, L, S0) {
         const sh = new THREE.Shape(); sh.absarc(0, 0, R + 1.4, 0, Math.PI * 2, false); const ho = new THREE.Path(); ho.absarc(0, 0, R + 0.25, 0, Math.PI * 2, true); sh.holes.push(ho);
         const col = new THREE.ExtrudeGeometry(sh, { depth: hc, bevelEnabled: false, curveSegments: 72 }); col.deleteAttribute('uv'); col.rotateX(-Math.PI / 2);
         add(col, mat, idx, 'colar', cx, top - 0.01, cz);
-        add(new THREE.CylinderGeometry(R, R, hg - 0.3, 96), godeRim, idx, 'bandeja', cx, top + (hg - 0.3) / 2, cz);
+        // latinha aberta em cima (parede fina + fundo): o pó aparece dentro dela, não coberto por um disco
+        const lm = m.godes.lata ? godeLata : godeRim, rs = new THREE.Shape(); rs.absarc(0, 0, R, 0, Math.PI * 2, false); const rh = new THREE.Path(); rh.absarc(0, 0, R - 0.35, 0, Math.PI * 2, true); rs.holes.push(rh);
+        const wall = new THREE.ExtrudeGeometry(rs, { depth: hg - 0.3, bevelEnabled: false, curveSegments: 96 }); wall.deleteAttribute('uv'); wall.rotateX(-Math.PI / 2);
+        add(wall, lm, idx, 'bandeja', cx, top, cz); add(new THREE.CylinderGeometry(R - 0.3, R - 0.3, 1, 96), lm, idx, 'bandeja', cx, top + 0.5, cz);
         add(new THREE.CylinderGeometry(R - 1.1, R - 1.1, hg - 1.6, 96), godeCor(0, 1), idx, 'gode', cx, top + 1 + (hg - 1.6) / 2, cz);
       } else if (m.godes.cells) { // contorno de cada godê do desenho da bandeja (Quinteto em cata-vento, 6 + 1…)
         // fundo: rebaixo mais fundo que o godê (Moon Eco: o pó fica afundado, com a parede da base aparecendo em volta)
@@ -5824,9 +5846,10 @@ function compactParts(product, L, S0) {
         const ext = (c, inset, hh, y) => { const g = new THREE.ExtrudeGeometry(shapeOf(c, inset), { depth: hh, bevelEnabled: false, curveSegments: 6 }); g.deleteAttribute('uv'); g.rotateX(-Math.PI / 2); g.translate(cx, y, cz); return g; };
         // godê único do Frame: superelipse limpa (o contorno lido do desenho vinha ondulado)
         const cells = seN && m.godes.cells.length === 1 ? [Array.from({ length: 96 }, (_, i) => sp(0.5, 0.5, seN, -i / 96 * Math.PI * 2))] : m.godes.cells.map(fit);
+        const rimTop = top - WD + GH - 0.35, rimBot = m.godes.lata ? Math.max(y0 + 1, rimTop - LATA_H) : top - WD; // cristal: latinha inteira
         cells.forEach((c, j) => {
-          wells.push(ext(c, 0.2, WD + 2, top - WD));
-          add(ext(c, 0.5, GH - 0.35, top - WD), godeRim, idx, 'bandeja', 0, 0, 0);
+          wells.push(ext(c, 0.2, top + 2 - rimBot, rimBot));
+          add(ext(c, 0.5, rimTop - rimBot, rimBot), m.godes.lata ? godeLata : godeRim, idx, 'bandeja', 0, 0, 0);
           add(ext(c, 1.5, GH - 0.1, top - WD), godeCor(j, m.godes.cells.length), idx, 'gode', 0, 0, 0);
         });
         if (m.godes.slot) { const SD = r1(Math.min(m.h - 1.6, 5)); wells.push(ext(m.godes.slot, 0.2, SD + 2, top - SD)); } // espaço do aplicador: só a cavidade
@@ -5836,15 +5859,15 @@ function compactParts(product, L, S0) {
       rows.forEach((cols, i) => { const cw = aw / cols, nG = rows.reduce((t, c) => t + c, 0), k0 = rows.slice(0, i).reduce((t, c) => t + c, 0); for (let j = 0; j < cols; j++) {
         const x = cx - aw / 2 + cw * (j + 0.5), z = cz - ad / 2 + ch * (i + 0.5);
         // o godê (1,8 mm) assenta no fundo de um rebaixo mais fundo da base: fica sempre afundado, nunca rente
-        const WD = godeFundo(m), GH = 1.8;
+        const WD = godeFundo(m), GH = 1.8, rimTop = top - WD + GH - 0.35, rimBot = m.godes.lata ? Math.max(y0 + 1, rimTop - LATA_H) : top - WD, rimM = m.godes.lata ? godeLata : godeRim;
         if (rect) { // Classic Uno: o godê único também é quadrado (bandeja Jorba 110F)
-          wells.push(new RoundedBoxGeometry(cw - 0.4, WD + 2, ch - 0.4, 4, 2).translate(x, top - WD + (WD + 2) / 2, z));
-          add(new RoundedBoxGeometry(cw - 1, GH - 0.35, ch - 1, 4, Math.min(1.7, (GH - 0.35) / 2)), godeRim, idx, 'bandeja', x, top - WD + (GH - 0.35) / 2, z);
+          wells.push(new RoundedBoxGeometry(cw - 0.4, top + 2 - rimBot, ch - 0.4, 4, 2).translate(x, (top + 2 + rimBot) / 2, z));
+          add(new RoundedBoxGeometry(cw - 1, rimTop - rimBot, ch - 1, 4, Math.min(1.7, (rimTop - rimBot) / 2)), rimM, idx, 'bandeja', x, (rimTop + rimBot) / 2, z);
           add(new RoundedBoxGeometry(cw - 2.4, GH - 0.1, ch - 2.4, 4, 0.7), godeCor(k0 + j, nG), idx, 'gode', x, top - WD + (GH - 0.1) / 2, z);
         } else {
           const r = one && m.godes.mm ? m.godes.mm / 2 : (one ? Math.min(aw, ad) : Math.min(cw, ch)) / 2 - 0.5;
-          wells.push(new THREE.CylinderGeometry(r + 0.3, r + 0.3, WD + 2, 72).translate(x, top - WD + (WD + 2) / 2, z));
-          add(new THREE.CylinderGeometry(r, r, GH - 0.35, 72), godeRim, idx, 'bandeja', x, top - WD + (GH - 0.35) / 2, z);
+          wells.push(new THREE.CylinderGeometry(r + 0.3, r + 0.3, top + 2 - rimBot, 72).translate(x, (top + 2 + rimBot) / 2, z));
+          add(new THREE.CylinderGeometry(r, r, rimTop - rimBot, 72), rimM, idx, 'bandeja', x, (rimTop + rimBot) / 2, z);
           add(new THREE.CylinderGeometry(r - 1.1, r - 1.1, GH - 0.1, 72), godeCor(k0 + j, nG), idx, 'gode', x, top - WD + (GH - 0.1) / 2, z);
         }
       } }); }
@@ -5853,6 +5876,12 @@ function compactParts(product, L, S0) {
       // cada godê aceita logo (relevo no pó): mesma referência de posição da peça
       { const ud = objs[0].userData; let g = 0; product.children.forEach(o => { if (o.userData.idx === idx && /_gode$/.test(o.name)) Object.assign(o.userData, { uid: ud.uid, y0: ud.y0, ox: ud.ox || 0, rep: 0, part: `gode${g++}` }); }); }
       const ni = x => { const y = x.index ? x.toNonIndexed() : x; for (const k in y.attributes) if (k !== 'position' && k !== 'normal') y.deleteAttribute(k); return y; };
+      if (m.degrau) { // paleta Big (foto): patamar interno com os godês; a borda em volta fica mais baixa e a tampa desce até ela
+        const st = m.degrau, iw = w - 2 * st.inset, id = d - 2 * st.inset, rr = Math.min(6, Math.min(iw, id) * (m.sideR ?? 0.1) * 0.5 + 1), sh = new THREE.Shape();
+        sh.moveTo(-w, -d); sh.lineTo(w, -d); sh.lineTo(w, d); sh.lineTo(-w, d); sh.closePath();
+        const hp = new THREE.Path(), x0 = -iw / 2, x1 = iw / 2, z0 = -id / 2, z1 = id / 2;
+        hp.moveTo(x0 + rr, z0); hp.lineTo(x1 - rr, z0); hp.quadraticCurveTo(x1, z0, x1, z0 + rr); hp.lineTo(x1, z1 - rr); hp.quadraticCurveTo(x1, z1, x1 - rr, z1); hp.lineTo(x0 + rr, z1); hp.quadraticCurveTo(x0, z1, x0, z1 - rr); hp.lineTo(x0, z0 + rr); hp.quadraticCurveTo(x0, z0, x0 + rr, z0); sh.holes.push(hp);
+        const ring = new THREE.ExtrudeGeometry(sh, { depth: st.h + 2, bevelEnabled: false, curveSegments: 8 }); ring.deleteAttribute('uv'); ring.rotateX(-Math.PI / 2); ring.translate(cx, top - st.h, cz); wells.push(ring); }
       const allWells = wells.length > 1 ? mergeGeometries(wells.map(ni)) : wells[0];
       if (!THUMB_LITE && allWells) objs.forEach(o => { const [outer, inner] = cutHole(o.geometry, allWells); if (outer === o.geometry) return;
         const gg = mergeGeometries([ni(outer), ni(inner)]); if (gg) { o.geometry.dispose(); o.geometry = gg; } });
@@ -5862,9 +5891,10 @@ function compactParts(product, L, S0) {
       const g = se ? seSlab(pw / 2, pd / 2, m.n, 1) : m.sides ? new RoundedBoxGeometry(pw, 1, pd, 2, Math.min(4, Math.min(pw, pd) * 0.12)) : new THREE.CylinderGeometry(pw / 2, pw / 2, 1, 96);
       add(g, clearMat, idx, 'visor', cx, y0 + m.h - OCO.top - 0.5, cz);
     }
-    if (m.aba) { // aba de fechamento (clique) para fora na frente da tampa, descendo no rebaixo da base
-      const a = m.aba, hA = r1(Math.min(m.h * 0.45, 4) + a.down), g = new RoundedBoxGeometry(a.w, hA, a.out + 0.6, 3, 0.5);
-      add(g, objs[0].material, idx, 'aba', cx, y0 - a.down + hA / 2, bb.max.z + a.out / 2 - 0.3);
+    if (m.aba && m.aba.down > 0) { // aba de fechamento (clique): a parede da tampa desce em língua no rebaixo da peça de baixo,
+      // rente à superfície e na mesma curva (desenho do Moon Deck/Moon Eco), não um bloco saltado
+      const a = m.aba, R = bb.max.z - cz, g = arcSlab(R - a.d + 0.2, R - 0.02, a.w / R, a.down + 0.05);
+      add(g, objs[0].material, idx, 'aba', cx, y0 - a.down, cz);
     }
     if (m.espelho) { // no teto do oco da tampa, virado para baixo (fechada, fica escondido dentro dela)
       const ins = m.oco ? OCO.wall + 1 : mg, yM = m.oco ? y0 + m.h - OCO.top - 0.04 : y0 - 0.04;
@@ -8657,7 +8687,7 @@ function incomProduct(r) {
       const s0 = r.t === 'cr' ? {} : frameN(r.n) ? { n: frameN(r.n) } : sq(r.t === 'cqr' ? 0.22 : 0.04), hb = H * 0.55, ht = H * 0.45, nw = r1(Math.min(22, Math.min(W, D) * 0.32));
       // paleta: abertura retangular larga (~42% da frente) só na base, logo abaixo da tampa, como no desenho
       // a dobradiça sai 0,3 do raio para trás: a caixa perde isso na profundidade e o total bate com o catálogo
-      const Dc = r2(D - 0.3 * clamp(Math.min(hb, ht) * 0.22, 1.1, 2.2)), pal = r.c === 'Paletas' && r.t !== 'cr', dB = pal ? { rect: true, top: true, w: r1(W * 0.42), h: r1(Math.min(4.5, hb * 0.58)), d: 2.4 } : { rect: true, top: true, w: nw, h: r1(Math.min(3.2, hb * 0.42)), d: 1.6 }; // desenho: entalhe retangular só na base
+      const Dc = r2(D - 0.3 * clamp(Math.min(hb, ht) * 0.22, 1.1, 2.2)), pal = r.c === 'Paletas' && r.t !== 'cr', dB = pal ? { rect: true, top: true, w: r1(W * 0.42), h: r1(Math.min(4.5, hb * 0.58)), d: 2.4 } : { rect: true, top: true, arc: r.t === 'cr', w: nw, h: r1(Math.min(3.2, hb * 0.42)), d: 1.6 }; // desenho: entalhe retangular só na base (redondo: acompanha a curva)
       // Moon Deck (foto): dois andares — base com godê, um andar do meio articulado com outro godê e a tampa com espelho
       if (/Moon Deck/.test(r.n)) { const h1 = r1(H * 0.38), h2 = r1(H * 0.3), h3 = r1(H - h1 - h2), Dc = r2(D - 0.3 * clamp(Math.min(h1, h2, h3) * 0.22, 1.1, 2.2)); // dobradiças pelo andar mais baixo
         ms = [P('Base', W, Dc, h1, { ...s0, rBot: 1.5, rTop: 0.6, godes: godesOf(r), dedo: { ...dB, h: r1(Math.min(3, h1 * 0.4)) } }),
@@ -8666,8 +8696,8 @@ function incomProduct(r) {
       // Case G/M (desenho): base é uma placa fina (~24% da altura) e a tampa funda cobre o godê saltado; o rebaixo
       // do dedo fica na borda de baixo da tampa
       if (/^Case|^Moon M All Crystal/.test(r.n)) { const hb = r1(H * 0.24), ht = r2(H - hb), Dc = r2(D - 0.3 * 1.1), moon = /^Moon/.test(r.n);
-        ms = [P('Base', W, Dc, hb, { ...s0, rBot: 0.8, rTop: 0.5, godes: godesOf(r) }),
-          P('Tampa', W, Dc, ht, { ...s0, rBot: 0.5, rTop: moon ? 2 : 1.2, hinge: true, abre: 0, oco: true, espelho: false, ...(moon ? { aba: { w: r1(nw - 1), out: 1.2, down: 0 } } : { dedo: { rect: true, bottom: true, w: nw, h: r1(ht * 0.7), d: 1 } }) })]; break; }
+        ms = [P('Base', W, Dc, hb, { ...s0, rBot: 0.8, rTop: 0.5, godes: godesOf(r), ...(moon ? { dedo: { rect: true, top: true, arc: true, w: nw, h: r1(hb * 0.6), d: 1.4 } } : {}) }),
+          P('Tampa', W, Dc, ht, { ...s0, rBot: 0.5, rTop: moon ? 2 : 1.2, hinge: true, abre: 0, oco: true, espelho: false, ...(moon ? { aba: { w: r1(nw - 0.8), d: 1.4, down: r1(hb * 0.6 - 0.3) } } : { dedo: { rect: true, bottom: true, w: nw, h: r1(ht * 0.7), d: 1 } }) })]; break; }
       ms = [P('Base', W, Dc, hb, { ...s0, rBot: r.t === 'cr' ? 1.5 : 1, rTop: 0.6, godes: godesOf(r), dedo: dB }),
         P('Tampa', W, Dc, ht, { ...s0, rBot: 0.6, rTop: r.t === 'cr' ? 2 : 1.2, hinge: true, abre: 0, oco: true, visor: VISOR_RE.test(r.n), espelho: !VISOR_RE.test(r.n) && !/Crystal|^Case/i.test(r.n), })]; break; }
     case 'dsq': if (/Twist/.test(r.n)) {
@@ -8795,17 +8825,22 @@ function incomProduct(r) {
   }
   // fotos: Case G/M com tampa toda transparente (sem espelho); "All Crystal" com base e tampa de cristal;
   // Macaroon com a tampa em cúpula (a bola preta da foto)
-  if (r.c === 'Compactos') { const clear = { own: true, finish: 'pet', color: '#ffffff' };
+  if (r.c === 'Compactos') { const clear = { own: true, finish: 'cristal', color: '#ffffff' };
     ms.forEach(m => { if ((/Crystal/i.test(r.n) && /Base|Tampa/.test(m.name)) || (/^Case/.test(r.n) && m.name === 'Tampa')) Object.assign(m, clear, m.name === 'Tampa' ? { espelho: false } : {}); });
+    // cristal (foto): a latinha de alumínio do godê aparece inteira pela base transparente
+    ms.forEach(m => { if (/Crystal/i.test(r.n) && m.godes) m.godes = { ...m.godes, lata: true }; });
     // Moon (fotos e desenho): godê afundado na base, visor de borda fina e aba de fechamento para fora na tampa,
     // encaixando no rebaixo da base
     if (/^Moon/.test(r.n) && !/Deck/.test(r.n)) { const t = ms.find(m => m.name === 'Tampa'), b = ms.find(m => m.name === 'Base');
       const mm = /^Moon P/.test(r.n) ? 26.4 : /^Moon (Eco|G)/.test(r.n) && !/Quarteto/.test(r.n) ? 58.3 : undefined; // bandejas Jorba 09F / Moon P; Moon M (Claris) sem medida
-      if (b?.godes && !b.godes.relevo) b.godes = { ...b.godes, ...(mm ? { mm } : {}), fundo: /^Moon P/.test(r.n) ? 2.8 : 3.6 }; if (t) t.visorFino = true; /* foto fechada: janela quase do tamanho da tampa */ if (t && b?.dedo) t.aba = { w: r1(b.dedo.w - 1), out: 1.2, down: r1(b.dedo.h - 0.4) }; }
+      if (b?.godes && !b.godes.relevo) b.godes = { ...b.godes, ...(mm ? { mm } : {}), fundo: /^Moon P/.test(r.n) ? 2.8 : 3.6 }; if (t) t.visorFino = true; /* foto fechada: janela quase do tamanho da tampa */ if (t && b?.dedo) t.aba = { w: r1(b.dedo.w - 0.8), d: b.dedo.d, down: r1(b.dedo.h - 0.3) }; }
+    // Big 4 / Big 9 (foto): degrau — patamar dos godês mais alto que a borda; a tampa cresce o degrau e desce até a borda
+    if (/^Big/.test(r.n)) { const t = ms.find(m => m.name === 'Tampa'), b = ms.find(m => m.name === 'Base');
+      if (t && b) { const st = 1.2; b.degrau = { inset: 3.2, h: st }; Object.assign(t, { h: r2(t.h + st), gap: -st }); } }
     // todos os compactos redondos (fotos): fechamento por clique com a aba para fora na tampa, descendo no rebaixo
     // da peça de baixo (Moon Deck: o andar do meio)
-    if (r.t === 'cr') { const t = ms.find(m => m.name === 'Tampa'), u = t && ms[ms.indexOf(t) - 1];
-      if (t && !t.aba) t.aba = { w: r1(Math.min(22, Math.min(W, D) * 0.32) - 1), out: 1.2, down: u?.dedo ? r1(u.dedo.h - 0.4) : 0 }; }
+    if (r.t === 'cr') ms.forEach((t, i) => { const u = ms[i - 1]; // cada peça que abre (tampa, andar do meio do Moon Deck)
+      if (t.hinge && !t.aba && u?.dedo) t.aba = { w: r1(u.dedo.w - 0.8), d: u.dedo.d, down: r1(u.dedo.h - 0.3) }; });
     if (/Macaroon/.test(r.n)) { const t = ms.find(m => m.name === 'Tampa'), b = ms.find(m => m.name === 'Base'); if (t) Object.assign(t, { rTop: r1(t.h * 0.95) });
       if (b) Object.assign(b, { rBot: r1(b.h * 0.6) }); } } // foto: fundo da base arredondado também (o "macaron" fechado)
   // fotos: conta-gotas, dispensadores e deluxes em frasco transparente com o conteúdo aparecendo (pipeta/pescante
