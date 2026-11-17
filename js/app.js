@@ -577,7 +577,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-16.ella-curva';
+const BUILD = '2026-11-16.abaulada-lisa';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -8635,12 +8635,24 @@ function incomProduct(r) {
       // proporções da foto do Squared aberto: colar ~13% e tubo ~58% da altura da tampa; a bala sobe ~85% do comprimento
       const cor = corDe(BATOM_CORES, r.n), hcol = r1(clamp(hc * 0.13, 4, 8)), wcol = r1(Math.min(W, D) - 2 * OCO.wall - 0.8);
       const ws = r1(Math.min(wcol - 1.6, 12.1 + 4.6)), wb = r1(Math.min(12.1, ws - 2.6)), hs = r1(hc * 0.58), lb = r1(Math.min(24, hc * 0.42, hs - 2)), visor = /Lipview|Spy/.test(r.n);
+      // Long Lipview (foto): embaixo um copinho transparente com a cor do batom dentro, uma aba preta mais larga e,
+      // acima dela, a base mais estreita (que a tampa veste até a aba)
+      if (/Lipview/.test(r.n)) { const hv = r1(H * 0.075), hf = r1(H * 0.035), hb = r1(H * 0.13), hd = r1(hv * 0.55), wb2 = r1(W * 0.84), hcL = r1(H - hv - hf);
+        const wcolL = r1(wb2 - 2 * 0.9), wsL = r1(Math.min(wcolL - 1.4, 12.1 + 4.6)), wbL = r1(Math.min(12.1, wsL - 2.6)), hsL = r1(hcL * 0.55), lbL = r1(Math.min(24, hcL * 0.4, hsL - 2));
+        ms = [P('Visor de cor (fundo)', r1(W * 0.97), null, hv, { rTop: 0.4, rBot: 0.8, own: true, color: '#ffffff', finish: 'pet' }),
+          P('Cor no visor', r1(W * 0.8), null, hd, { rTop: 0.6, rBot: 0.6, gap: r1(0.9 - hv), own: true, color: cor, finish: 'fosco' }),
+          P('Aba da base', W, D, hf, { rTop: 0.5, rBot: 0.3, gap: r1(hv - 0.9 - hd) }),
+          P('Base', wb2, null, hb, { rTop: 0.6, rBot: 0.2 }),
+          P('Tubo (mecanismo)', wsL, null, hsL, { rTop: 0.5, rBot: 0.3, own: true, color: '#d6d8da', finish: 'metal' }),
+          P('Bala (batom)', wbL, null, lbL, { rTop: 0.8, rBot: 0.3, gap: r1(-(lbL + 1.2)), tilt: [1, 0.55], sobe: r1(lbL * 0.85), own: true, color: cor, finish: 'brilho' }),
+          P('Tampa', W, D, hcL, { ...s0, rTop: 1.5, gap: r1(-(hsL + hb)), capa: true, oco: true, _t: [f, 0.895], ...(r.abaulada ? { domeTop: r1(W * 0.45) } : {}) })]; break; }
       ms = [...(visor ? [P('Visor de cor (fundo)', r1(Math.min(W, D) * 0.55), null, 1.2, { rTop: 0.2, rBot: 0.4, own: true, color: cor, finish: 'brilho' })] : []),
         P('Base', W, D, H * f, { ...s0, ...(visor ? { gap: -1 } : {}), _t: [0, f] }),
         P('Colar interno', wcol, r.t === 'batonsq' ? wcol : null, hcol, { ...s0, rTop: 0.6, rBot: 0.2 }),
         P('Tubo (mecanismo)', ws, null, hs, { rTop: 0.5, rBot: 0.3, own: true, color: '#d6d8da', finish: 'metal' }),
         P('Bala (batom)', wb, null, lb, { rTop: 0.8, rBot: 0.3, gap: r1(-(lb + 1.2)), tilt: [1, 0.55], sobe: r1(lb * 0.85), own: true, color: cor, finish: 'brilho' }),
-        P('Tampa', W, D, hc, { ...s0, rTop: 1.5, gap: r1(-(hs + hcol - 1.2)), capa: true, oco: true, _t: [f, r.n === 'Ella' ? 0.975 : 1], ...(r.n === 'Ella' ? { curvaTopo: 2.4 } : {}) })]; break; } // Ella: "detalhe curvilíneo no topo" — o topo desce em curva de um lado (o desenho virava uma aba)
+        P('Tampa', W, D, hc, { ...s0, rTop: 1.5, gap: r1(-(hs + hcol - 1.2)), capa: true, oco: true, _t: [f, r.n === 'Ella' ? 0.975 : /^Long/.test(r.n) ? 0.895 : 1], ...(r.abaulada ? { domeTop: r1(W * 0.45) } : {}), // abaulada: cúpula lisa (o topo do desenho tinha quina)
+          ...(r.n === 'Ella' ? { curvaTopo: 2.4 } : {}) })]; break; } // Ella: "detalhe curvilíneo no topo" — o topo desce em curva de um lado (o desenho virava uma aba)
     case 'pote': case 'potesq': {
       // Pote como o de verdade: corpo oco com creme dentro (conteúdo editável), boca com rosca em hélice e
       // tampa de rosca oca assentada no ombro. "Abrir" tira a tampa e deixa virada ao lado.
@@ -8660,6 +8672,8 @@ function incomProduct(r) {
   return { color: BEIGE, finish: 'fosco', modules: ms, forn: 'Incom', fcat: r.c, fapp, ...(wall ? { wall, wallAuto: false } : {}) };
 }
 INCOM_PRODUCTS.forEach(r => { PRESETS[`Incom ${r.n} (${r.c.toLowerCase()})`] = incomProduct(r); });
+// Long e Long Lipview: o catálogo tem tampa reta (a da foto, modelo principal) ou abaulada (o desenho da direita)
+INCOM_PRODUCTS.filter(r => r.c === 'Batons' && /^Long/.test(r.n)).forEach(r => { PRESETS[`Incom ${r.n} Abaulada (batons)`] = incomProduct({ ...r, n: `${r.n} Abaulada`, abaulada: true }); });
 // Tampas de perfume da Incom montadas: frasco genérico (a Incom não faz o vidro) + válvula spray
 // do acabamento da tampa (15, 18 ou 20 mm) + a tampa, que desce e veste a válvula.
 // Meia-largura útil (raio de dentro, face a face) da tampa na altura y: estreitamento
