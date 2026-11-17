@@ -577,7 +577,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-16.gloss-fundo';
+const BUILD = '2026-11-16.all-crystal-rosca2';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -1750,9 +1750,7 @@ function sprayGeo(m, y0, { lo = false } = {}) {
   } else if (m.sprayType === 'gloss' && m.neckH > 0) {
     // tampa de cristal (Oscar All Crystal): por dentro aparece o gargalo do frasco com a rosca, cheio de gloss,
     // e não uma luva até o topo
-    const hn = Math.min(m.neckH, m.h), cr = [ring(m.W - 0.8, hn, y0, { rBot: 0, rTop: 0.4 })];
-    for (let k = 1; k <= 3; k++) cr.push(ring(m.W, 0.7, y0 + hn * k / 4 - 0.35, { rBot: 0.3, rTop: 0.3 }));
-    collar = mergeGeometries(cr) || cr[0];
+    collar = ring(m.W - 0.8, Math.min(m.neckH, m.h), y0, { rBot: 0, rTop: 0.4 }); // a rosca (incolor) fica na tampa
   } else collar = ring(m.W, m.h, y0, { rBot: 0.6, rTop: m.collarR, ridges: m.ridges, ridgeD: m.ridgeD, ...(m.collarTaper ? { taper: m.collarTaper } : {}) }); // colar cônico (dosadora)
   const top = y0 + m.h, head = [], holes = [];
   // A haste nasce dentro da virola: em virola de domo, a borda dela não fica solta acima da curva.
@@ -2282,6 +2280,11 @@ function moduleGeo(m0, y0, opts = {}) {
   if (m.dobra && g) dobraTop(g, y0, m);
   if (m.chanfro && g) chanfroGeo(g, m);
   if (m.furo && g && !inset && !lo) g = furoGota(g, y0, m);
+  if (m.roscaInt && g && !inset) { // rosca interna da tampa de cristal: espiras finas e incolores na parte oca de baixo
+    const R = m.roscaInt.r, tor = [], n = m.roscaInt.n || 4;
+    for (let k = 0; k < n; k++) { const t = new THREE.TorusGeometry(R, 0.32, 8, lo ? 32 : 72); t.rotateX(Math.PI / 2); t.translate(m.ox || 0, y0 + m.roscaInt.y0 + (m.roscaInt.y1 - m.roscaInt.y0) * (k + 0.5) / n, 0); tor.push(t); }
+    const ni = x => { const y = x.index ? x.toNonIndexed() : x; for (const k in y.attributes) if (k !== 'position' && k !== 'normal') y.deleteAttribute(k); return y; };
+    const ud = g.userData; g = mergeGeometries([ni(g), ...tor.map(ni)]) || g; g.userData = ud; }
   if (m.abaLat && g && !inset) { // aba lateral (Domini): bloco de cantos arredondados saindo de um lado
     const A = m.abaLat, sk = m.W / (m.W0 || m.W), hy = (A.y1 - A.y0) * m.h / (m.h0 || m.h), L = (A.x1 - A.x0) * sk, r = Math.min(1, hy / 2.2, A.w / 4), sh = new THREE.Shape();
     sh.moveTo(0, -A.w / 2 + r); sh.lineTo(0, A.w / 2 - r); sh.quadraticCurveTo(0, A.w / 2, r, A.w / 2); sh.lineTo(L - r, A.w / 2); sh.quadraticCurveTo(L, A.w / 2, L, A.w / 2 - r);
@@ -6013,7 +6016,7 @@ function buildInto(product, S, explodeAmt = 0) {
       if (pg && m.sprayType === 'gloss') {
         // Gloss: haste de plástico branco e ponta de feltro na cor do produto (opacas:
         // aparecem pelo vidro; em frasco opaco só no Explodir).
-        const rod = new THREE.Mesh(pg, m.rodClear ? new THREE.MeshPhysicalMaterial({ color: '#ffffff', roughness: 0.04, transmission: 1, thickness: 1.2, ior: 1.5, transparent: true, opacity: 0.55 }) // haste de cristal (All Crystal)
+        const rod = new THREE.Mesh(pg, m.rodClear ? new THREE.MeshPhysicalMaterial({ color: '#f6eeee', roughness: 0.06, clearcoat: 1, transparent: true, opacity: 0.45, depthWrite: false }) // haste de cristal (All Crystal): incolor, mas aparece
           : new THREE.MeshPhysicalMaterial({ color: '#f3f1ec', roughness: 0.3, clearcoat: 0.4 }));
         const tipC = m.tipColor || (base.find(e => e.m.vol && e.m.liq)?.m.liqColor) || '#e8a3ac';
         const tp = new THREE.Mesh(pg.userData.tip, new THREE.MeshPhysicalMaterial({ color: tipC, roughness: 0.75, sheen: 0.6, sheenRoughness: 0.5, sheenColor: new THREE.Color(tipC).lerp(new THREE.Color('#ffffff'), 0.4) }));
@@ -8591,12 +8594,12 @@ function incomProduct(r) {
       // Oscar sem Charm: o desenho do catálogo traz a argola, mas a foto é a tampa abaulada lisa — corta ali e arredonda
       const tl = pr ? (pr.p.find(q => q[0] > f + 0.1 && (q[1] + q[2]) / 2 < 0.6 * Math.max(...pr.p.map(z => (z[1] + z[2]) / 2))) || [1])[0] : 1;
       const charm = /Charm/.test(r.n), arg = tl < 1 && charm ? (() => { const hl = H * (1 - tl), rr = 1.0; return { R: Math.round(Math.max(1.6, (hl + 0.6 - 2 * rr) / 2) * 1000) / 1000, r: rr }; })() : null;
-      const cap = P('Tampa', W, D, H * (tl - f), { ...s0, ...(/All Crystal/.test(r.n) ? { own: true, finish: 'pet', color: '#ffffff', topDip: 0.5 } : {}), rTop: arg ? 1.2 : r.t === 'gloss' ? W * 0.2 : 1.2, ...(tl < 1 && !arg ? { domeTop: r1(W * 0.42) } : {}), ...(arg ? { argola: arg } : {}), _t: [f, tl] });
+      const cap = P('Tampa', W, D, H * (tl - f), { ...s0, ...(/All Crystal/.test(r.n) ? { own: true, finish: 'pet', color: '#ffffff', topDip: 0.5, roscaInt: { r: r1((Math.min(W, D) - 3) / 2 + 0.35), y0: r1(H * (tl - f) * 0.12), y1: r1(H * (tl - f) * 0.5), n: 5 } } : {}), rTop: arg ? 1.2 : r.t === 'gloss' ? W * 0.2 : 1.2, ...(tl < 1 && !arg ? { domeTop: r1(W * 0.42) } : {}), ...(arg ? { argola: arg } : {}), _t: [f, tl] });
       const wv = r1(Math.max(5, Math.min(Math.min(W, D) * 0.55, 2 * (capHalfAt(cap, 0) - 1.6))));
       ms = [P('Frasco', W, D, H * f, { ...s0, vol: true, rBot: 1.5, ...gl, _t: [0, f] }),
         M('tampaGloss', { name: masc ? 'Haste com escova' : 'Haste com aplicador', W: wv, D: wv, h: r1(cap.h - 2.5), pescD: r1(Math.min(3, wv * 0.3)),
           tipL: masc ? r1(Math.min(24, H * 0.2)) : 13, tipW: r1(Math.min(masc ? 7.5 : 6.5, Math.min(W, D) - 6)), tipColor: masc ? '#2b2b2b' : '#e2cdb8',
-          ...(/All Crystal/.test(r.n) ? { own: true, finish: 'brilho', color: gl.liqColor, rodClear: true, neckH: r1(cap.h * 0.33), W: r1(Math.min(W, D) - 3), D: r1(Math.min(W, D) - 3) } : {}) }), cap]; break; } // All Crystal: gargalo com rosca e gloss aparecendo pela tampa de cristal
+          ...(/All Crystal/.test(r.n) ? { own: true, finish: 'brilho', color: gl.liqColor, rodClear: true, neckH: r1(cap.h * 0.55), W: r1(Math.min(W, D) - 3), D: r1(Math.min(W, D) - 3) } : {}) }), cap]; break; } // All Crystal: gargalo com rosca e gloss aparecendo pela tampa de cristal
     case 'baton': case 'batonsq': {
       // Batom como no catálogo: base, tubo de metal (mecanismo) saindo dela, bala de 12,1 mm com a ponta
       // chanfrada, recolhida dentro do tubo, e a tampa que desce até a base vestindo tudo. "Abrir" tira a
