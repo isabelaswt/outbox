@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-17.cl9';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-17.cl10';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -677,7 +677,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-17.cl9';
+const BUILD = '2026-11-17.cl10';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -2544,9 +2544,6 @@ function lipstickBulletGeo(m, y0, { lo = false } = {}) {
 // Petit Aplicador (foto do catálogo/site): 8 aplicadores intercambiáveis sobre o mesmo inserto preto.
 // Cada um é uma sequência de anéis [altura 0–1, raio x, raio z, desvio x, inclinação°] em raios da peça;
 // s = anel onde começa o 2º material (flocado/cerdas brancas). Formas e proporções estimadas pelas fotos.
-const BRISTLE = (() => { const r = [[0, 0.85], [0.1, 0.85], [0.18, 0.6], [0.4, 0.55], [0.44, 0.72, 0.3]];
-  for (let i = 0; i < 9; i++) { const u = i / 8; r.push([0.48 + u * 0.44, (i % 2 ? 0.58 : 0.74) * (1 - 0.45 * u), 0.3 - 0.08 * u, 0.25 * u, 0]); }
-  r.push([0.96, 0.32, 0.2, 0.3, 30], [1, 0.12, 0.1, 0.32, 38]); return r; })();
 const APLIC = {
   cerdas: { nome: 'Cerdas', color: '#eef2f3', finish: 'pet', c2: '#f6f4f0', f2: 'fosco', s: 5, base: [[0, 1.25], [0.05, 1.25], [0.055, 1.05], [0.1, 1.05]],
     r: [[0, 1], [0.12, 1], [0.2, 0.85], [0.5, 0.6], [0.72, 0.38], [0.76, 0.34], [0.86, 0.27], [0.94, 0.17], [1, 0.04]] },
@@ -2564,7 +2561,12 @@ const APLIC = {
   metal: { nome: 'Metal Effect', color: '#dfe2e5', finish: 'metal', c3: '#f4f1ec', f3: 'fosco', base: [[0, 1.22], [0.05, 1.22], [0.055, 0.85]],
     r: [[0, 0.85], [0.1, 0.85], [0.18, 0.62], [0.5, 0.55, 0.55, 0.05], [0.68, 0.62, 0.6, 0.18, -12], [0.82, 0.74, 0.62, 0.38, -28],
       [0.92, 0.72, 0.56, 0.54, -38], [0.97, 0.52, 0.42, 0.62, -42], [1, 0.16, 0.14, 0.66, -44]] },
-  bristles: { nome: 'Bristles', color: '#1a1a1a', finish: 'fosco', sharp: true, c3: '#f4f1ec', f3: 'fosco', base: [[0, 1.22], [0.05, 1.22], [0.055, 0.85]], r: BRISTLE }, // dentes: interpolação reta
+  // Bristles (foto de uso): colar preto brilhante, corpo fosco que afina e achata numa folha de ponta fina,
+  // com fileiras de pinos curtos numa face (pins). Medidas estimadas pela foto.
+  bristles: { nome: 'Bristles', color: '#1a1a1a', finish: 'brilho', c2: '#1c1c1c', f2: 'fosco', s: 2, pins: { from: 0.5, to: 0.96, L: 1.4 },
+    c3: '#f4f1ec', f3: 'fosco', base: [[0, 1.22], [0.05, 1.22], [0.055, 1]],
+    r: [[0, 1], [0.2, 1], [0.24, 0.9], [0.3, 0.7], [0.42, 0.6, 0.56], [0.55, 0.72, 0.4, 0.04], [0.68, 0.86, 0.32, 0.1], [0.8, 0.82, 0.28, 0.18],
+      [0.89, 0.6, 0.22, 0.27], [0.95, 0.34, 0.15, 0.34], [1, 0.05, 0.05, 0.4]] },
 };
 function aplicRings(m, y0, lo) {
   const t = APLIC[m.aplic] || APLIC.chanfrada, N = lo ? 32 : 128, R = m.W / 2, ox = m.ox || 0, sub = lo ? 2 : t.sharp ? 3 : 8;
@@ -2590,7 +2592,21 @@ function aplicRings(m, y0, lo) {
 const aplicGeo = (m, y0, { lo = false } = {}) => loftPts(aplicRings(m, y0, lo)[0]);
 function aplicSplit(m, y0) { // [corpo, ponta (2º material), base (3º material)]
   const t = APLIC[m.aplic] || APLIC.chanfrada, [r, s, nb] = aplicRings(m, y0, false), a = t.c3 ? nb - 1 : 0, e = t.s ? s + 1 : r.length;
-  return [loftPts(r.slice(a, e)), t.s ? loftPts(r.slice(s)) : null, t.c3 ? loftPts(r.slice(0, nb)) : null]; }
+  let tip = t.s ? loftPts(r.slice(s)) : null;
+  if (tip && t.pins) { // pinos: cones finos saindo da face da frente (+z) da folha, em fileiras desencontradas
+    const y0r = r[0][0][1], hR = r.at(-1)[0][1] - y0r || 1, N = r[0].length, pins = [], P = t.pins;
+    r.forEach((ring, i) => { if (i % 3) return; const c = ring.reduce((o, q) => o.map((v, k) => v + q[k] / N), [0, 0, 0]), u = (c[1] - y0r) / hR;
+      if (u < P.from || u > P.to) return;
+      const rx = Math.max(...ring.map(q => Math.abs(q[0] - c[0]))) || 1, rz = Math.max(...ring.map(q => Math.abs(q[2]))) || 1;
+      for (let j = (i / 3) % 2 ? 2 : 0; j < N; j += 4) { const q = ring[j]; if ((q[2] - c[2]) / rz < 0.35) continue;
+        let nx = (q[0] - c[0]) / (rx * rx), nz = (q[2] - c[2]) / (rz * rz); const l = Math.hypot(nx, nz); nx /= l; nz /= l;
+        const L = P.L * (0.75 + 0.25 * Math.sin(j * 1.7 + i)), rb = 0.15, cone = [];
+        for (const [f, rr] of [[-0.1, rb], [1, 0.03]]) cone.push(Array.from({ length: 6 }, (_, k) => { const a = TAU * k / 6, ox = -nz * Math.cos(a) * rr, oz = nx * Math.cos(a) * rr;
+          return [q[0] + nx * L * f + ox, q[1] + Math.sin(a) * rr, q[2] + nz * L * f + oz]; }));
+        pins.push(flatPN(loftPts(cone))); } });
+    if (pins.length) tip = mergeGeometries([flatPN(tip), ...pins]) || tip;
+  }
+  return [loftPts(r.slice(a, e)), tip, t.c3 ? loftPts(r.slice(0, nb)) : null]; }
 function lipstickPointGeo(m, y0, { lo = false } = {}) {
   // Ella/Squared p88/92: corpo cilíndrico e ponta afilada convexa, sem plano oblíquo.
   // Início/curvatura do afilamento por proporção fotográfica; porção enterrada não é cotada.
@@ -9604,7 +9620,10 @@ function incomProduct(r) {
         M('contaGotas', { ...(b ? { botao: true, ridges: 0 } : {}), name: b ? 'Conta-gotas de botão' : 'Conta-gotas', W: r1(W * cw), D: r1(W * cw), h: r2(H * (tb - f)), actW: r1(W * bw), actH: r2(H * (1 - tb) + 0.5) })]; break; } // +0,5: o conta-gotas encaixa 0,5 mm no gargalo
     case 'fr': case 'frr': case 'frsq': case 'frsqr': case 'frt': case 'frsh': case 'frap': case 'frflat': {
       const o = { fr: { rBot: 3, rTop: W * 0.15 }, frr: { rBot: W * 0.3, rTop: W * 0.15 }, frsq: { ...sq(0.06), rTop: 3 }, frsqr: { ...sq(0.2), rTop: 4 },
-        frt: { taperB: 82, rBot: W * 0.25, rTop: 4 }, frsh: { rTop: W * 0.35, rBot: 3 }, frap: { taper: 70, rTop: 6, rBot: 6 }, frflat: { ...sq(0.1), rTop: 6 } }[r.t];
+        frt: { taperB: 82, rBot: W * 0.25, rTop: 4 }, frsh: { rTop: W * 0.35, rBot: 3 }, frap: { taper: 70, rTop: 6, rBot: 6 }, frflat: { ...sq(0.1), rTop: 6 },
+        // Miami (fotos do site e volume): cilindro Ø50,5, não quadrado — 220 ml (+10%) em ~120 mm de corpo dão Ø50,8; o
+        // quadrado de 50,5 daria ~306 ml. Ombro e fundo de raio pequeno (~3,5 e 3 mm), pela foto de frente.
+        miami: { rBot: 3, rTop: 3.5 } }[r.n === 'Miami' ? 'miami' : r.t];
       // rosca 24-410 do catálogo e o fechamento que aparece na foto de cada um (pode trocar em Peças)
       // fotos: Amsterdam com a tampa tambor preta, New York com a Tampa Sens, Wall com o flip-top transparente
       const fe = { 'Amsterdam': 'tampa', 'Bulb Blow 250': 'bola', 'Bulb Blow 300': 'patoIncom', 'New York': 'sens', 'Wall': 'flip' }[r.n] || 'spray', nh = 16.6;
