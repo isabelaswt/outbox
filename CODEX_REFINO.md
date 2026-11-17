@@ -165,9 +165,11 @@ Pendências conhecidas (precisam de dado ou de decisão; não invente):
 
 **Em andamento** (quem está mexendo em quê agora; apague quando terminar):
 
-- Nenhuma edição ativa. Pendências de fidelidade continuam discriminadas em `INCOM_AUDITORIA.md`; os lotes abaixo não representam aprovação industrial de toda a biblioteca.
+- Codex: continuação das pendências dos líquidos labiais, suporte roscado do Guggen Roll On e apoios dos olhais Charm. Não editar esses construtores em paralelo.
 
 **Registro** (o mais novo em cima):
+
+- 2026-11-17, Codex, `2026-11-17.cdx6`: Malika com gota fosca bege e faixa inferior lisa/transparente, conforme confirmação da dona. Tampa preservada em 30 × 38 mm. Frasco de demonstração passa de 42 × 44,1 mm (L/A) para ~73 × 83 mm, por proporção da foto enviada; profundidade anterior de 26 mm preservada por falta de vista lateral. Corpo continua genérico, sem cota comercial/capacidade certificada. Bordas redondas, sem chanfro. Dois materiais recortados na superfície (`mat2Mesh`) preservam o acabamento no export, sem duplicar a tampa inteira. Conferidos frente/lado, envelope da tampa e faixas do export (fosco acima de 18%, PET abaixo); teste geométrico de cinco planos preserva volume/atributos. Malika/Drop/Tahaa sem vértices inválidos. Evidência local em `_ref/incom/validacao-cdx6/`. PDF completo adiado por pedido da dona até concluir as correções.
 
 - 2026-11-17, Codex, `2026-11-17.cdx5`: sprays dos frascos p65/66/69/70/72/73 com saia lisa e proteção transparente independente; Bulb Blow 300 com volumes externos próprios do bico pato. Avante/Jubilee15/40/60/85/Oval/Squared com cavidade vazia e refil separado quando documentado; Gaia PP opaco fosco. Verificadas 22 montagens abertas/fechadas, sem vértices inválidos; cotas comparáveis dentro de 0,1 mm em `tools/conferencia/validacao-cdx5.json` (frascos: corpo+gargalo separados do fechamento). Renders locais em `_ref/incom/validacao-cdx5/`. Paredes/refis e fechamento sem cota continuam estimados; roscas genéricas dos sete potes ocultas, não substituídas por roscas industriais aprovadas. Persistem lapidações, mecanismos/vedações sem cortes, aplicadores específicos, apoios Charm, visores/afilamento de batons, conta-gotas e detalhes de fechos; consultar auditoria antes de chamar a biblioteca de cópia exata.
 

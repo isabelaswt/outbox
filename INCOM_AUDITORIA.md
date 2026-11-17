@@ -36,6 +36,10 @@ Os achados abaixo descrevem os renders antigos. Esta atualização registra o qu
 - Gaia (p.113): corpo em bege fosco opaco, representando o PP mate; removida a leitura de vidro jateado transparente.
 - As roscas genéricas dos sete potes com nova cavidade ficam ocultas, conservando o assentamento da tampa; isso **não** significa que a rosca correta foi modelada/aprovada. A geometria da boca, filetes, vedação, inserto SAN, Polexan/cascaseal e interfaces dos refis seguem pendentes de fonte suficiente.
 
+### Malika, `2026-11-17.cdx6`
+
+Referências adicionais enviadas pela dona: frasco largo achatado sob a gota e tampa com parte principal fosca/faixa inferior lisa transparente (acabamento confirmado por ela). Frasco de demonstração ajustado por proporção da foto para ~73 × 83 mm (L/A); D=26 mm anterior preservado, sem nova evidência lateral. Essas medidas são de apoio genérico, não cotas de frasco Incom. Tampa isolada permanece 30 × 38 mm; base transparente ocupa ~18% da altura por leitura da referência. Curva interpolada suavemente e acabamento dividido na própria malha, inclusive no export. Renders de frente/lado e controles Drop/Tahaa em `_ref/incom/validacao-cdx6/`. O novo PDF foi expressamente adiado até concluir as correções restantes.
+
 As duas etapas passaram por renderização atualizada aberta/fechada e checagem de vértices. `tools/conferencia/validacao-cdx4.json` registra 58 montagens e cotas comparáveis dentro de 0,1 mm (inclui controles). A segunda etapa tem relatório próprio em `tools/conferencia/validacao-cdx5.json`. Os JPGs locais ficam em `_ref/incom/validacao-cdx4/` e `_ref/incom/validacao-cdx5/`, ignorados pelo git. Os relatórios não convertem medidas estimadas em cotas oficiais.
 
 Os parâmetros derivados das fotos estão comentados como estimados no código. A revisão não resolve as tampas escultóricas com lapidação faltante (Bouquet, Laura, Joya/Joya Mini, Quartz, Brilhante, Victoria), nem as interpretações ambíguas de Wheel/Rock/Thenue. Estas continuam no backlog, exigindo vistas adicionais para as partes não determinadas pelo catálogo.

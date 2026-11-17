@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-17.cdx5';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-17.cdx6';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -603,6 +603,10 @@ function incomShape(r) {
   // o alisamento corta o ponto mais largo (0,1–1,3 mm a menos que o catálogo): a parte mais larga volta à largura cheia
   { const mx = Math.max(...o.prof.map(q => q[1])); if (mx > 0.85 && mx < 0.9995) o.prof.forEach(q => { q[1] /= mx; q[2] /= mx; }); }
   if (typeof capTip === 'string') o.prof = capTipProfile(measuredProfile, o.prof, o.h, fx.smooth, capTip, o.W);
+  // Malika: referência e confirmação da dona, gota fosca e faixa inferior lisa/transparente.
+  // A faixa ocupa ~18% da altura na foto; acabamento local, sem mudar os demais Surlyn.
+  if (r.k === 'incom_malika') Object.assign(o, { own: true, color: '#e8dcc6', finish: 'fosco', smoothProf: true,
+    mat2: true, mat2Mesh: true, mat2Side: 'baixo', mat2Y: 18, mat2Color: '#ffffff', mat2Finish: 'pet' });
   return o;
 }
 function incomShape0(r) {
@@ -647,7 +651,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-17.cdx5';
+const BUILD = '2026-11-17.cdx6';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -3839,6 +3843,32 @@ function addGrain(m, amt, cell = 0.13) {
 // vBandU = distância, na tela, do ponto ao eixo do frasco; perto das laterais o limite da
 // faixa sobe na mesma curva do piso (reta, ela cortava o canto do conteúdo num traço reto).
 // Material só de um lado de uma altura (espaço da peça): base para dois materiais na mesma peça.
+// Divisa material na malha: conserva o acabamento também no arquivo 3D.
+// Recorta só a superfície existente, sem adicionar discos ou cascas sobrepostas.
+function splitGeoY(g, y) {
+  const src = g.index ? g.toNonIndexed() : g, attrs = Object.entries(src.attributes);
+  const sets = [Object.fromEntries(attrs.map(([k]) => [k, []])), Object.fromEntries(attrs.map(([k]) => [k, []]))];
+  const vertex = i => Object.fromEntries(attrs.map(([k, a]) => [k, Array.from({ length: a.itemSize }, (_, j) => a.array[i * a.itemSize + j])]));
+  const mix = (a, b) => { const t = (y - a.position[1]) / (b.position[1] - a.position[1]);
+    return Object.fromEntries(attrs.map(([k]) => [k, a[k].map((v, j) => v + (b[k][j] - v) * t)])); };
+  for (let i = 0; i < src.attributes.position.count; i += 3) {
+    const tri = [vertex(i), vertex(i + 1), vertex(i + 2)];
+    for (let side = 0; side < 2; side++) {
+      const inside = v => side ? v.position[1] >= y : v.position[1] <= y, poly = [];
+      for (let j = 0; j < 3; j++) {
+        const a = tri[j], b = tri[(j + 1) % 3], ia = inside(a), ib = inside(b);
+        if (ia) poly.push(a); if (ia !== ib) poly.push(mix(a, b));
+      }
+      for (let j = 1; j < poly.length - 1; j++) for (const v of [poly[0], poly[j], poly[j + 1]])
+        for (const [k] of attrs) sets[side][k].push(...v[k]);
+    }
+  }
+  if (src !== g) src.dispose();
+  return sets.map(data => { const out = new THREE.BufferGeometry();
+    for (const [k, a] of attrs) out.setAttribute(k, new THREE.Float32BufferAttribute(data[k], a.itemSize));
+    return out;
+  });
+}
 const splitCache = new Map();
 // disc = { r, cx }: em vez de uma faixa, um disco no topo (inserto) — dentro do raio e acima da altura.
 function splitMat(base, yCut, above, disc = null) {
@@ -6243,9 +6273,15 @@ function buildInto(product, S, explodeAmt = 0) {
       const side = m0.mat2Side || 'baixo', disc = side === 'topo' ? { r: Math.min(m.W, m.D) / 2 * clamp(m0.mat2R ?? 70, 5, 100) / 100, cx: m.ox || 0 } : null;
       const yc = y0 + m.h * clamp(m0.mat2Y ?? (disc ? 85 : 20), 1, 99) / 100, low = side === 'baixo';
       // segundo material: embaixo da divisa, em cima dela, ou no disco do topo
-      const m2 = splitMat(material(m0.mat2Color || '#cfd2d4', m0.mat2Finish || 'metal'), yc, !!disc || !low, disc);
-      mesh.material = splitMat(mesh.material, yc, !disc && low, disc);
-      const sm = new THREE.Mesh(g, m2); sm.castShadow = true; sm.receiveShadow = true; sm.userData.idx = idx; sm.name = mesh.name + '_mat2'; product.add(sm);
+      let secondGeo = g, m2 = material(m0.mat2Color || '#cfd2d4', m0.mat2Finish || 'metal');
+      if (m0.mat2Mesh && !disc) {
+        const [lower, upper] = splitGeoY(g, yc);
+        mesh.geometry = low ? upper : lower; secondGeo = low ? lower : upper; g.dispose();
+      } else {
+        m2 = splitMat(m2, yc, !!disc || !low, disc);
+        mesh.material = splitMat(mesh.material, yc, !disc && low, disc);
+      }
+      const sm = new THREE.Mesh(secondGeo, m2); sm.castShadow = true; sm.receiveShadow = true; sm.userData.idx = idx; sm.name = mesh.name + '_mat2'; product.add(sm);
     }
     // Apoio: peça de fundo redondo (tigela, bola, esfera) sobre outra encostava só num
     // ponto e parecia solta no ar; um pé cilíndrico na mesma cor assenta no topo plano de baixo.
@@ -9267,8 +9303,15 @@ function incomValve(cap, term, mm) {
 function incomPerfume(r) {
   const cap = LIB[r.k], mm = +((r.term || '').match(/(\d+)\s*mm/) || [])[1] || 15;
   const bw = r1(clamp(Math.max(cap.W, cap.D ?? cap.W) * 1.3, 42, 72));
+  // Malika: foto da dona, frasco ~461 px de largura/544 px de altura, tampa ~190/250.
+  // Escala pelas cotas da tampa (30 × 38): corpo de demonstração ~73 × 83 mm.
+  // Profundidade sem vista lateral: conserva os 26 mm anteriores; frasco não é produto Incom.
+  const body = r.k === 'incom_malika'
+    ? M('placa', { name: 'Frasco (genérico, não é Incom)', W: 73, D: 26, h: 83,
+      rTL: 18, rTR: 18, rBL: 8, rBR: 8, rEdge: 4, chamfer: false, vol: true, liq: false, pesc: false, bpesc: false })
+    : M('reto', { name: 'Frasco (genérico, não é Incom)', W: bw, D: r1(bw * 0.62), n: 3.4, h: r1(bw * 1.05), rTop: 3, rBot: 3, vol: true, liq: false, pesc: false, bpesc: false });
   return { color: BEIGE, finish: 'fosco', forn: 'Incom', fcat: 'Tampas de perfume', fapp: 'Perfume', modules: [
-    M('reto', { name: 'Frasco (genérico, não é Incom)', W: bw, D: r1(bw * 0.62), n: 3.4, h: r1(bw * 1.05), rTop: 3, rBot: 3, vol: true, liq: false, pesc: false, bpesc: false }),
+    body,
     ...(v => [v.valve, M(r.k, v.gap > 0 ? { seatV: true, gap: 0 } : { gap: v.show || 0 })])(incomValve(cap, r.term, mm))] };
 }
 // Medida final: a tampa pronta é medida e ajustada para a largura (e profundidade, quando o catálogo dá) exatas do
