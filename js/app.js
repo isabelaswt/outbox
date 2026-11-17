@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-17.cmp10';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-17.cmp11';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -590,7 +590,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-17.cmp10';
+const BUILD = '2026-11-17.cmp11';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -2237,8 +2237,9 @@ function sensCapGeo(m0, y0, opts) {
   if (!opts.lo && cap) {
     // foto: topo reto — o disco ocupa quase todo o topo, rente à borda fina, só a linha de folga em volta (sem copo rebaixado)
     const wall = Math.max(0.9, W * 0.03), hd = Math.min(3, H * 0.13), dep = hd, yT = y0 + H;
-    const pocket = new THREE.CylinderGeometry(R - wall, R - wall, dep + 2, 96); pocket.translate(0, yT - dep + (dep + 2) / 2, 0); // encaixe do disco
-    const uw = W * 0.58, ud = dep - 0.05, sh = new THREE.Shape(); // U largo e raso na frente da borda: só até o pé do disco (mais fundo, aparecia o oco de dentro)
+    // por baixo do disco a tampa é oca (não há apoio onde ele bateria): o U da borda desce além do disco e mostra o vão
+    const cav = Math.min(H * 0.32, 7), pocket = new THREE.CylinderGeometry(R - wall, R - wall, dep + cav + 2, 96); pocket.translate(0, yT - dep - cav + (dep + cav + 2) / 2, 0);
+    const uw = W * 0.58, ud = dep + Math.min(2.2, cav * 0.5), sh = new THREE.Shape(); // U largo na frente da borda
     sh.moveTo(-uw / 2, yT + 2); sh.lineTo(-uw / 2, yT); sh.absellipse(0, yT, uw / 2, ud, Math.PI, 2 * Math.PI, false); sh.lineTo(uw / 2, yT + 2); sh.closePath();
     const u = new THREE.ExtrudeGeometry(sh, { depth: R + 2, bevelEnabled: false, curveSegments: 32 });
     for (const c of [pocket, u]) { const [o, inn] = cutHole(cap, c); if (o !== cap) cap = mergeLoose([o, inn]); } // um corte por vez (cortadores sobrepostos numa peça só deixavam uma aleta solta)
@@ -2248,8 +2249,8 @@ function sensCapGeo(m0, y0, opts) {
     const aberto = !!(S?.aberto);
     let disc = moduleGeo({ ...BASE, kind: 'giro', W: 2 * (R - wall - 0.25), D: 2 * (R - wall - 0.25), h: hd, rBot: 0.2, rTop: 0.5 }, yT - dep, opts);
     if (aberto && disc) {
-      // o disco é liso (sem furo em cima): a saída é um furinho no fundo do encaixe, embaixo do lado que levanta
-      const hole = new THREE.CylinderGeometry(Math.max(1.1, W * 0.045), Math.max(1.1, W * 0.045), 4, 32); hole.translate(0, yT - dep - 2 + 0.05, -R * 0.55);
+      // o disco é liso (sem furo em cima): a saída é um furinho no fundo do vão, embaixo do lado que levanta
+      const hole = new THREE.CylinderGeometry(Math.max(1.1, W * 0.045), Math.max(1.1, W * 0.045), 4, 32); hole.translate(0, yT - dep - cav - 2 + 0.05, -R * 0.55);
       { const [o, inn] = cutHole(cap, hole); if (o !== cap) cap = mergeLoose([o, inn]); }
       const py = yT - dep + hd / 2, pz = R * 0.15; disc.translate(0, -py, -pz); disc.rotateX(0.27); disc.translate(0, py, pz); // ~15°: o dedo aperta no U e o lado oposto levanta
     }
