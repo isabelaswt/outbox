@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-17.cdx8';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-17.cdx9';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -413,7 +413,7 @@ function polyFit(o) { const n = o.sides || 0; if (n === 4 || n === 8 || n === 12
 const hasStep = () => false; // contorno denso (0,1 mm): sem suavizar, os degraus ficam com quina
 // Forma vista de cima, conferida nas fotos do catálogo (o desenho técnico só mostra a frente):
 // deitada = cilindro deitado (de lado é um círculo); disco = disco em pé (espessura constante).
-const CAP_FIX = { incom_slim_quadric: { sideR: 0.55 } /* foto de cima: quadrado de cantos bem arredondados, "sem ser totalmente cilíndrico" */, incom_flora: { lobes: 8, lobeD: 1.7, lobeTwist: 6, lobeFrom: 0.16, smooth: 2.2 }, incom_aramis: { quadTop: 0.81, quadN: 5 }, incom_cubic: { quadFrom: 0.19, quadN: 7 }, incom_bamboo: { deitada: true, fitFrom: 0.25 }, incom_golden: { disco: true, D: 22, col: 0.2, furo: { forma: 'circ', yc: 0.6, w: 0.6 } }, incom_wheel: { disco: true, D: 20, furo: { forma: 'circ', yc: 0.47, w: 0.62 } }, incom_thenue: { disco: true, D: 20, col: 0.1, furo: { forma: 'elip', yc: 0.55, w: 0.72, hh: 0.78 } }, incom_rock: { furo: { forma: 'elip', yc: 0.55, w: 0.6, hh: 0.52 } }, incom_chelsea: { cutBelow: 0.17 }, incom_soho: { cutBelow: 0.165 }, incom_hexa: { noCol: true }, incom_crown: { col: 0.58 }, incom_brilhante: { col: 0.257 }, incom_indico: { calha: 0.09 }, incom_matrix: { dobra: 0.085 }, incom_twist: { polyTwist: 1.25 }, incom_prisma: { chanfro: 0.46 }, incom_navette: { sides: 0, lobes: 4, lobeD: 2.6, lobeFrom: 0.33 }, incom_manhattan: { cutBelow: 0.1 }, incom_laura: { fill: [0.1, 0.39, 0.96], D: 26 }, incom_joya: { sides: 12, sideR: 0, col: 0.65, noFit: true, facetBlend: 2.5 }, incom_joya_mini: { sides: 12, sideR: 0, col: 0.6, noFit: true, facetBlend: 2.5 }, incom_domini: { abaLat: { t0: 0.598, t1: 0.742, w: 7 } }, incom_royal: { noCol: true },
+const CAP_FIX = { incom_slim_quadric: { sideR: 0.55 } /* foto de cima: quadrado de cantos bem arredondados, "sem ser totalmente cilíndrico" */, incom_flora: { lobes: 8, lobeD: 1.7, lobeTwist: 6, lobeFrom: 0.16, smooth: 2.2 }, incom_aramis: { quadTop: 0.81, quadN: 5 }, incom_cubic: { quadFrom: 0.19, quadN: 7 }, incom_bamboo: { deitada: true, fitFrom: 0.25 }, incom_golden: { disco: true, D: 22, col: 0.2, furo: { forma: 'circ', yc: 0.6, w: 0.6 } }, incom_wheel: { disco: true, D: 20, furo: { forma: 'circ', yc: 0.47, w: 0.62 } }, incom_thenue: { disco: true, D: 20, col: 0.1, furo: { forma: 'elip', yc: 0.55, w: 0.72, hh: 0.78 } }, incom_rock: { furo: { forma: 'elip', yc: 0.55, w: 0.6, hh: 0.52 } }, incom_chelsea: { cutBelow: 0.17 }, incom_soho: { cutBelow: 0.165 }, incom_hexa: { noCol: true }, incom_crown: { col: 0.58 }, incom_brilhante: { col: 0.257 }, incom_indico: { calha: 0.09 }, incom_matrix: { dobra: 0.085 }, incom_twist: { polyTwist: 1.25 }, incom_prisma: { chanfro: 0.46 }, incom_navette: { sides: 0, lobes: 4, lobeD: 2.6, lobeFrom: 0.33 }, incom_manhattan: { cutBelow: 0.1 }, incom_laura: { D: 26, fanFold: true, smooth: 1.4 }, incom_joya: { sides: 12, sideR: 0, col: 0.65, noFit: true, facetBlend: 2.5 }, incom_joya_mini: { sides: 12, sideR: 0, col: 0.6, noFit: true, facetBlend: 2.5 }, incom_domini: { abaLat: { t0: 0.598, t1: 0.742, w: 7 } }, incom_royal: { noCol: true },
   incom_drop: { disco: true, Dk: 0.6, col: 0.14, furo: { y0: 0.4, y1: 0.915, w: 0.47 } }, incom_antonov: { D: 34 }, incom_bilbao: { sides: 4, sideR: 0.35 }, incom_rams: { sides: 0 } };
 for (const key of ['incom_drop', 'incom_malika', 'incom_tahaa']) CAP_FIX[key] = { ...CAP_FIX[key], capTip: true };
 CAP_FIX.incom_tahaa.capTip = 'sphere'; // Pág.193: esfera Ø29, colar preservado.
@@ -551,9 +551,6 @@ function incomShape(r) {
     const out = Math.max(...p0.filter(q => q[0] >= A.t0 && q[0] <= A.t1).map(q => q[2]));
     p0 = p0.map(q => q[0] >= A.t0 && q[0] <= A.t1 ? [q[0], q[1], lo[2] + (hi[2] - lo[2]) * (q[0] - lo[0]) / (hi[0] - lo[0])] : q);
     o.abaLat = { x0: r1(((lo[2] + hi[2]) / 2) * W / 2 - 1.2), x1: r1(out * W / 2), y0: r1(A.t0 * r.H), y1: r1(A.t1 * r.H), w: A.w }; o.h0 = r.H; }
-  // Laura: as asas do leque descem até o gargalo nas pontas; o traço extraído só pegou o miolo (virava cogumelo)
-  if (fx.fill) { const [f0, f1, v] = fx.fill, a0 = (p0.filter(q => q[0] <= f0).at(-1) || p0[0])[1];
-    p0 = p0.map(q => q[0] > f0 && q[0] < f1 ? (w => [q[0], Math.max(q[1], w), Math.max(q[2], w)])(a0 + (v - a0) * smooth(f0, f0 + 0.05, q[0])) : q); }
   o.prof = closeTop(alignSteps(p0)).map(([t, l, rr]) => { const a = (l + rr) / 2;
     // disco em pé: espessura constante, mas perto das pontas (largura menor que a espessura) a seção
     // vira redonda — sem o degrau de "ombro" em cima e embaixo; a borda fica toda abaulada
@@ -615,6 +612,14 @@ function incomShape(r) {
     mat2: true, mat2Mesh: true, mat2Side: 'baixo', mat2Y: 18, mat2Color: '#ffffff', mat2Finish: 'pet' });
   if (fx.facetCrown) Object.assign(o, { facetCrown: fx.facetCrown, sides: 0, polyFrom: 0, facetBlend: 0 });
   if (fx.facetGem) Object.assign(o, { facetGem: fx.facetGem, sides: 0, polyFrom: 0 });
+  if (fx.fanFold) {
+    Object.assign(o, { fanFold: true, sides: 0, polyFrom: 0, smoothProf: true });
+    // P169: arco externo contínuo acima da maior largura (~48% da altura).
+    // O raster confundia arestas internas do leque com degraus no contorno superior.
+    o.prof = [...o.prof.filter(q => q[0] < 0.48), ...Array.from({ length: 97 }, (_, i) => {
+      const u = i / 96, w = Math.sqrt(Math.max(0, 1 - u * u)); return [0.48 + 0.52 * u, w, w, 2, 0, 0];
+    })];
+  }
   return o;
 }
 function incomShape0(r) {
@@ -659,7 +664,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-17.cdx8';
+const BUILD = '2026-11-17.cdx9';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -2420,9 +2425,30 @@ function facetGemGeo(m, y0) {
   }
   const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(verts, 3)); g.computeVertexNormals(); return g;
 }
+// Laura p169: silhueta com recortes laterais do desenho e painéis abrindo em leque.
+// Planos reconstruídos pelas fotos frente/verso; D=26 mm anterior permanece estimado.
+function fanCapGeo(m, y0, opts) {
+  const { rB } = radii(m);
+  const rings = profSamples(m, opts.lo).map(y => {
+    const q = profAt(m, y), t = y / m.h, w = Math.max(q.a / (m.W / 2), 0.01);
+    if (rB > 0 && y < rB) { const f = 1 - Math.sqrt(Math.max(0, 1 - (1 - y / rB) ** 2)); q.a -= Math.min(rB, q.a) * f; q.b -= Math.min(rB, q.b) * f; }
+    // Arestas medidas por proporção no desenho: saem juntas do pé e abrem até o arco.
+    const s0 = clamp((0.145 + 0.333 * t) / w, 0.15, 0.94), s1 = clamp((0.3 + 0.6 * t) / w, s0 + 0.02, 0.98);
+    const shape = [[1, 0], [s1, 0.65], [s0, 1], [0, 1], [-s0, 1], [-s1, 0.65], [-1, 0], [-s1, -0.65], [-s0, -1], [0, -1], [s0, -1], [s1, -0.65]];
+    const weight = smooth(0.12, 0.18, t), ring = [], steps = opts.lo ? 3 : 8;
+    for (let j = 0; j < shape.length; j++) for (let k = 0; k <= steps; k++) {
+      const a = shape[j], b = shape[(j + 1) % shape.length], u = k / steps, x = a[0] + (b[0] - a[0]) * u, z = a[1] + (b[1] - a[1]) * u;
+      const round = Math.sign(z) * Math.sqrt(Math.max(0, 1 - x * x));
+      ring.push([(m.ox || 0) + q.cx + q.a * x, y0 + y, q.cz + q.b * (round + (z - round) * weight)]);
+    }
+    return ring;
+  });
+  return loftPts(rings);
+}
 function moduleGeo(m0, y0, opts = {}) {
   if (m0.facetCrown && !opts.inset) return facetCrownGeo(m0, y0, opts);
   if (m0.facetGem && !opts.inset) return facetGemGeo(m0, y0);
+  if (m0.fanFold && !opts.inset) return fanCapGeo(m0, y0, opts);
   if (m0.kind === 'mesh') return opts.inset ? null : importedMeshGeo(m0, y0);
   if (isSphereCap(m0)) {
     m0 = { ...m0 };

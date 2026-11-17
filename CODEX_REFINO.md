@@ -165,9 +165,11 @@ Pendências conhecidas (precisam de dado ou de decisão; não invente):
 
 **Em andamento** (quem está mexendo em quê agora; apague quando terminar):
 
-- Codex: Laura (p169), recortes e planos do leque. Gerador local nessa peça, sem alterar os padrões de `moduleGeo`. Sem desenhos adicionais, detalhes não visíveis continuam estimados ou não verificados. PDF adiado.
+- Nenhuma edição ativa. Continuam as pendências registradas na auditoria; não gerar o PDF final antes de concluir as correções, por pedido da dona.
 
 **Registro** (o mais novo em cima):
+
+- 2026-11-17, Codex, `2026-11-17.cdx9`: Laura p169 com recortes laterais e painéis abrindo em leque, em vez de preenchimento torneado que criava faixas horizontais. Arco superior contínuo pela leitura do desenho; contorno rasterizado confundia linhas internas com degraus externos. Mantidos 33,7 × 35 mm (L/A); D=26 anterior segue estimado, distribuição/profundidade dos planos por foto, sem certificação industrial. Conferida frente/3/4; superfície base sem bordas abertas e vértices finitos. Quatro controles (Joya, Mini, Malika, Quartz) preservados na rodada; relatório `tools/conferencia/validacao-cdx9.json`, renders locais `_ref/incom/validacao-cdx9/`. Restam outros itens da auditoria; PDF não gerado.
 
 - 2026-11-17, Codex, `2026-11-17.cdx8`: Joya/Joya Mini com tigela inferior do perfil e coroa triangular real (p167/168); Quartz com painéis hexagonais e triângulos nas bordas (p181). Distribuição/setores/proporções de facetas estimados nas fotos/desenho frontal, sem planta industrial. Renders 3/4 e superior; cotas isoladas 43 × 17, 33,5 × 16,9 e 42,95 × 18 mm preservadas. Superfícies base sem bordas abertas na checagem de arestas; Quartz também testada em duas profundidades e com deslocamento. Registros em `tools/conferencia/validacao-cdx8.json`, renders locais `_ref/incom/validacao-cdx8/`. Não certifica ângulos exatos, acabamento cristal ou alojamentos ocultos. Dona confirmou que só dispõe do catálogo/fotos; detalhes não revelados não serão apresentados como conhecidos.
 
