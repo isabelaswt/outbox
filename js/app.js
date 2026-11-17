@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-17.cdx14';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-17.cdx15';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -677,7 +677,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-17.cdx14';
+const BUILD = '2026-11-17.cdx15';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -2458,6 +2458,17 @@ function fanCapGeo(m, y0, opts) {
   });
   return loftPts(rings);
 }
+function lipstickPointGeo(m, y0, { lo = false } = {}) {
+  // Ella/Squared p88/92: corpo cilíndrico e ponta afilada convexa, sem plano oblíquo.
+  // Início/curvatura do afilamento por proporção fotográfica; porção enterrada não é cotada.
+  const N = lo ? 32 : 80, K = lo ? 24 : 80, pts = [];
+  for (let j = 0; j <= K; j++) { const t = j / K, u = clamp((t - 0.55) / 0.45, 0, 1), k = 1 - Math.pow(u, 1.4),
+    shift = m.W * 0.06 * u;
+    pts.push(Array.from({ length: N }, (_, i) => { const a = TAU * i / N;
+      return [(m.ox || 0) + shift + m.W / 2 * k * Math.cos(a), y0 + m.h * t, m.D / 2 * k * Math.sin(a)]; }));
+  }
+  return loftPts(pts);
+}
 function budCapGeo(m, y0, { lo = false } = {}) {
   // P144: níveis/larguras proporcionais ao desenho cotado; profundidade sem vista lateral.
   const A = m.W / 2, B = m.D / 2, col = 0.257, mid = 0.476, shoulder = 0.72,
@@ -2540,6 +2551,7 @@ function splitMalikaGeo(g, m, y0) {
   });
 }
 function moduleGeo(m0, y0, opts = {}) {
+  if (m0.lipPoint && !opts.inset) return lipstickPointGeo(m0, y0, opts);
   if (m0.facetBud && !opts.inset) return budCapGeo(m0, y0, opts);
   if (m0.roseTop && !opts.inset) return roseCapGeo(m0, y0, opts);
   if (m0.malikaFace && !opts.inset) return malikaCapGeo(m0, y0, opts);
@@ -9421,7 +9433,9 @@ function incomProduct(r) {
         P('Colar interno', wcol, null, hcol, { rTop: 0.3, rBot: 0.2,
           ...(ella ? { smoothProf: false, prof: [[0, 1, 1, 2, 0, 0], [0.30, 1, 1, 2, 0, 0], [0.34, 0.94, 0.94, 2, 0, 0], [0.56, 0.94, 0.94, 2, 0, 0], [0.60, 1, 1, 2, 0, 0], [0.96, 1, 1, 2, 0, 0], [1, 0.98, 0.98, 2, 0, 0]] } : {}) }),
         P('Tubo (mecanismo)', ws, null, hs, { rTop: 0.5, rBot: 0.3, own: true, color: '#d6d8da', finish: 'metal' }),
-        P('Bala (batom)', wb, null, lb, { rTop: 0.8, rBot: 0.3, gap: r1(-(lb + 1.2)), tilt: [1, 0.55], sobe: long ? r1(hc * 41 / 320 + 1.2) : r1(lb * 0.85), own: true, color: cor, finish: 'brilho' }),
+        P('Bala (batom)', wb, null, lb, { rTop: 0.8, rBot: 0.3, gap: r1(-(lb + 1.2)), tilt: [1, 0.55],
+          ...(ella || r.n === 'Squared' ? { lipPoint: true, tilt: null } : r.n === 'Spy' ? { taper: 75 } : {}),
+          sobe: long ? r1(hc * 41 / 320 + 1.2) : r1(lb * 0.85), own: true, color: cor, finish: 'brilho' }),
         P('Tampa', W, D, hc, { ...s0, rTop: 1.5, gap: r1(-(hs + hcol - 1.2)), capa: true, oco: true, ...(r.n === 'Spy' ? { mat2: true, mat2Side: 'topo', mat2R: 70, mat2Color: cor, mat2Finish: 'brilho' } : {}), /* Spy: janela com a cor do batom no topo da tampa */ _t: [f, r.n === 'Ella' ? 0.975 : /^Long/.test(r.n) ? 0.895 : 1], ...(r.abaulada ? { domeTop: r1(W * 0.45) } : {}), // abaulada: cúpula lisa (o topo do desenho tinha quina)
           ...(r.n === 'Ella' ? { curvaTopo: 2.4 } : {}) })]; break; } // Ella: "detalhe curvilíneo no topo" — o topo desce em curva de um lado (o desenho virava uma aba)
     case 'pote': case 'potesq': {

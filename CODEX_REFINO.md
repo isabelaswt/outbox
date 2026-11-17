@@ -166,9 +166,11 @@ Pendências conhecidas (precisam de dado ou de decisão; não invente):
 
 **Em andamento** (quem está mexendo em quê agora; apague quando terminar):
 
-- Codex: conferência geral após cdx14; registrar desvios atuais antes do PDF. Wheel/Rock sem evidência suficiente de passagem frente-verso: não preencher por suposição.
+- Codex: conferência geral após cdx14; ponta da bala Ella/Squared e afilamento Spy em `moduleGeo`/`incomProduct`. Checar altura Olympea e material PE do Julie conta-gotas após essa rodada. Wheel/Rock sem evidência suficiente de passagem frente-verso: não preencher por suposição. PDF adiado até fechar correções verificáveis.
 
 **Registro** (o mais novo em cima):
+
+- 2026-11-17, Codex, `2026-11-17.cdx15`: pontas das balas Ella/Squared afiladas e convexas, conforme fotos p88/92, em lugar do chanfro plano; Spy p91 com afilamento moderado preservando o corte inclinado. Curvaturas estimadas pela foto, sem cota da bala/parte enterrada. Sete batons e variantes renderizados abertos/fechados, cotas dentro de 0,1 mm dos alvos existentes, sem posições/normais inválidas; superfícies novas sem bordas abertas. `tools/conferencia/validacao-cdx15.json`, evidências locais `_ref/incom/validacao-cdx15/`. Conferência geral anterior cdx14 cobre 186 modelos; identificados também material do Julie conta-gotas e altura da Olympea para corrigir antes do PDF.
 
 - 2026-11-17, Codex, `2026-11-17.cdx14`: Bouquet p141 com arcos de pétalas desencontrados em superfície contínua no topo, substituindo anéis torneados; disposição/profundidade estimadas nas duas fotos, sem planta superior cotada. Brilhante p144 com faces laterais em losango e planos convergindo ao ápice, níveis/larguras proporcionais ao desenho; preservado colar aberto oferecido pelo catálogo, profundidade/ângulos estimados. Victoria p197 com região fosca em V e contorno polido, conforme texto do catálogo; não acrescentado sulco sem cota. Três modelos vistos em frente/topo/3/4; W/H preservados, Bouquet/Brilhante sem bordas abertas na superfície base, materiais da Victoria presentes no export. Controles Malika/Thenue preservados. `tools/conferencia/validacao-cdx14.json`, imagens locais `_ref/incom/validacao-cdx14/`. Inicia-se conferência geral; PDF ainda não gerado.
 
