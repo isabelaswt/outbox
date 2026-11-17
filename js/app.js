@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-17.cl14';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-17.cl15';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -677,7 +677,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-17.cl14';
+const BUILD = '2026-11-17.cl15';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -2551,8 +2551,10 @@ const APLIC = {
     r: [[0, 0.95], [0.12, 0.95], [0.2, 0.8], [0.7, 0.76], [0.82, 0.7], [0.9, 0.58], [0.96, 0.38], [1, 0.08]] },
   chanfrada: { nome: 'Flocada Chanfrada', color: '#1a1a1a', finish: 'brilho', c2: '#f4f1ec', f2: 'fosco', s: 4, base: [[0, 1.15], [0.06, 1.15], [0.065, 0.95]],
     r: [[0, 0.95], [0.1, 0.95], [0.16, 0.72], [0.74, 0.72], [0.78, 0.8, 0.8, 0, 12], [0.9, 0.8, 0.8, 0, 28], [0.96, 0.7, 0.72, 0, 28], [1, 0.4, 0.42, 0, 28]] },
-  cushion: { nome: 'Flocada Cushion', color: '#e6edf0', finish: 'pet', c2: '#f4f1ec', f2: 'fosco', s: 3, base: [[0, 1.05], [0.05, 1.05], [0.055, 0.62]],
-    r: [[0, 0.62], [0.3, 0.62], [0.36, 0.62], [0.4, 0.9], [0.52, 1.08], [0.66, 1.12], [0.8, 1.06], [0.9, 0.86], [0.96, 0.55], [1, 0.15]] },
+  // Cushion (foto de uso): disco translúcido fino sobre o gargalo, haste branca flocada larga e bola pouco mais larga
+  // com leve cintura; curto (~12 mm). Proporções pela foto.
+  cushion: { nome: 'Flocada Cushion', color: '#f4f1ec', finish: 'fosco', h: 13, c3: '#eef2f3', f3: 'pet', base: [[0, 1.12], [0.07, 1.12], [0.075, 0.82]],
+    r: [[0, 0.82], [0.38, 0.82], [0.48, 0.79], [0.57, 0.9], [0.68, 1.02], [0.82, 1.03], [0.92, 0.88], [0.97, 0.6], [1, 0.12]] },
   pinpoint: { nome: 'Pin Point', color: '#eef2f3', finish: 'pet', c2: '#f6f4f0', f2: 'fosco', s: 4, base: [[0, 1.3], [0.05, 1.3], [0.055, 1.05], [0.1, 1.05], [0.105, 0.85]],
     r: [[0, 0.85], [0.1, 0.85], [0.18, 0.6], [0.5, 0.5], [0.54, 0.5], [0.74, 0.43], [0.86, 0.32], [0.95, 0.16], [1, 0.03]] },
   flatpad: { nome: 'Flat Pad', color: '#1a1a1a', finish: 'brilho', c2: '#f4f1ec', f2: 'fosco', s: 7, c3: '#f4f1ec', f3: 'fosco', base: [[0, 1.22], [0.05, 1.22], [0.055, 0.85]],
@@ -9523,7 +9525,7 @@ const corDe = (L, n) => L[[...n].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>>
 // a foto é o frasco do Oscar All Crystal/Oscar máscara (Ø18,6) com a tampa abaulada — vale o desenho da máscara
 const PROD_FIX = { incomp_liquidos_labiais_oscar: { W: 18.6, H: 109.9, prof: 'incomp_mascaras_oscar' } };
 // Aplicador do Petit (todas as 8 opções do catálogo): mesmo nome de peça para a troca sugerir as outras.
-const aplicPart = (P, k, W) => { const t = APLIC[k]; return P('Ponteira aplicadora', W, null, 21, { aplic: k, rBot: 0, rTop: 0, gap: -1, own: true, color: t.color, finish: t.finish,
+const aplicPart = (P, k, W) => { const t = APLIC[k]; return P('Ponteira aplicadora', W, null, t.h || 21, { aplic: k, rBot: 0, rTop: 0, gap: -1, own: true, color: t.color, finish: t.finish,
   ...(t.c2 || t.c3 ? { mat2: true, mat2Side: 'cima', mat2Color: t.c2 || t.color, mat2Finish: t.f2 || t.finish } : {}) }); };
 function incomProduct(r) {
   const fx = PROD_FIX[r.k]; if (fx) r = { ...r, ...fx };
@@ -9729,7 +9731,7 @@ function incomProduct(r) {
           : P('Inserto do aplicador', r1(nw * 0.9), null, 4, { rBot: 0, rTop: 0.4, gap: r1(nh - 3), // o gargalo não ocupa altura na pilha: o inserto sobe até ~1 mm acima da boca
             own: true, color: '#f1f2f0', finish: 'pet' }),
           ...(haste ? [] : [aplicPart(P, r.aplic || 'chanfrada', r1(nw * 0.75))]), // foto de uso: ~22 mm para fora do gargalo (1,2× a largura do frasco)
-          haste ? cap : { ...cap, gap: r1(-(22.5 + nh - 1.5)), capa: true }]; break; } // a tampa veste gargalo, inserto e aplicador e assenta no ombro // a tampa veste gargalo e ponteira e assenta no ombro
+          haste ? cap : { ...cap, gap: r1(-((APLIC[r.aplic || 'chanfrada'].h || 21) + nh)), capa: true }]; break; } // a tampa veste gargalo, inserto e aplicador e assenta no ombro // a tampa veste gargalo e ponteira e assenta no ombro
       const s0 = r.t === 'glosssq' ? sq(0.08) : {}, [f] = SPLIT_FIX[r.pg] ? [SPLIT_FIX[r.pg]] : incomFrac(pr, [0.52]), capH = H * (1 - f), masc = r.c === 'Máscaras';
       // gloss: frasco transparente (PET G/SAN, como no catálogo) com o gloss colorido dentro; máscara: frasco opaco
       const gl = masc ? {} : { own: true, finish: 'pet', color: '#ffffff', fundoGrosso: true, fundo: r1(Math.max(3, H * 0.05)), fundoR: r1(Math.min(W, D) / 2), // por dentro o fundo é uma concha (meio redondo)
