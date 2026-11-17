@@ -577,7 +577,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-16.gloss-concha4';
+const BUILD = '2026-11-16.ella-curva';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -1449,6 +1449,12 @@ function furoGota(g, y0, m) {
   const ud = g.userData, [o, i] = cutHole(g, cut); if (o === g) return g;
   const out = mergeGeometries([o, i]) || g; out.userData = ud; return out;
 }
+function curvaTopo(g, y0, m) { // topo em curva: alto de um lado, descendo em arco até o outro (batom Ella)
+  const p = g.attributes.position, R = m.W / 2, d = m.curvaTopo, cx = m.ox || 0, z0 = Math.max(0, m.h - Math.max(6, d * 3));
+  for (let i = 0; i < p.length || i < p.count; i++) { if (i >= p.count) break; const ly = p.getY(i) - y0; if (ly <= z0) continue;
+    const u = clamp((p.getX(i) - cx + R) / (2 * R), 0, 1), w = smooth(z0, m.h, ly); p.setY(i, p.getY(i) - d * (1 - u) ** 2 * w); }
+  p.needsUpdate = true; g.computeVertexNormals(); g.computeBoundingBox();
+}
 function calhaTop(g, y0, m) {
   const p = g.attributes.position, R = m.W / 2, d = m.calha * m.h, cx = m.ox || 0;
   for (let i = 0; i < p.count; i++) { const ly = (p.getY(i) - y0) / m.h; if (ly <= 0.45) continue;
@@ -2278,6 +2284,7 @@ function moduleGeo(m0, y0, opts = {}) {
   if (m.tilt && g) tiltTop(g, y0, m.tilt);
   if (m.quadDish && g && !inset) quadDish(g, y0, m);
   if (m.calha && g) calhaTop(g, y0, m);
+  if (m.curvaTopo > 0 && g) curvaTopo(g, y0, m);
   if (m.dobra && g) dobraTop(g, y0, m);
   if (m.chanfro && g) chanfroGeo(g, m);
   if (m.furo && g && !inset && !lo) g = furoGota(g, y0, m);
@@ -5673,6 +5680,18 @@ const OCO = { wall: 1.8, top: 1.4 };
 // Miniatura da galeria: sem os cortes 3D (oco, rebaixo, abertura do dedo) — fechados eles não
 // aparecem e eram o que pesava ao abrir a biblioteca (180 modelos)
 let THUMB_LITE = false;
+// Cortes 3D (oco, abertura do dedo) guardados pela peça: mexer no logo, na cor ou na câmera remontava
+// tudo e refazia o corte a cada vez; a mesma peça na mesma posição reaproveita o resultado
+const cutCache = new Map();
+function cutCached(kind, keyParts, g0, fn) {
+  let key; try { key = kind + JSON.stringify(keyParts, (k, v) => (k === 'uid' || k === 'name' || k === 'color' || k === 'finish' || k === 'own' ? undefined : v)); } catch { return fn(); }
+  const hit = cutCache.get(key);
+  if (hit) { cutCache.delete(key); cutCache.set(key, hit); g0.dispose?.(); const c = hit.clone(); c.userData = { ...hit.userData }; return c; }
+  const g = fn(); if (!g) return g;
+  const keep = g.clone(); keep.userData = { ...g.userData }; cutCache.set(key, keep);
+  while (cutCache.size > 16) { const k0 = cutCache.keys().next().value; cutCache.get(k0)?.dispose?.(); cutCache.delete(k0); }
+  return g;
+}
 function ocoGeo(g, m, y0) {
   const OW = m.ocoWall ?? OCO.wall, OT = m.ocoTop ?? OCO.top; // sobretampa de PET G: casca bem mais fina que a tampa do compacto
   g.computeBoundingBox(); const b = g.boundingBox, w = b.max.x - b.min.x - 2 * OW, d = b.max.z - b.min.z - 2 * OW, hh = m.h - OT;
@@ -5869,14 +5888,16 @@ function buildInto(product, S, explodeAmt = 0) {
       m = { ...m, bandInset: Math.max(0.15, (m0.W - dn.W - 1.4) / 2 - 0.35) };
     // Oculta (olho fechado): não aparece, mas continua ocupando o lugar na pilha.
     if (m0.hidden || (m0.kind === 'gargalo' && L[i - 1]?.m.hidden && L[i - 1].idx === idx - 1)) return;
-    const hasLogo = S.logos?.some(L => L.uid === m.uid);
+    // malha densa só para logo na lateral (a gravação acompanha a curva); logo no topo/fundo plano não precisa
+    // — com ela a tampa do compacto ficava 5x mais pesada e o corte do oco travava a tela
+    const hasLogo = S.logos?.some(L => L.uid === m.uid && !(Math.abs(L.n?.[1] ?? 0) > 0.9));
     const under = m0.kind === 'gargalo' && L[i - 1]?.m.vol && L[i - 1].m.kind === 'giro' ? { m: L[i - 1].m, y0: L[i - 1].y0 } : null;
     // gargalo sobre corpo de vidro de outro tipo (perfil, placa): entra só 1 mm (senão aparecia dentro)
     if (m0.kind === 'gargalo' && !under && L[i - 1]?.m.vol && isGlass(L[i - 1].m.own ? L[i - 1].m.finish : S.finish)) m = { ...m, embed: Math.min(m.embed ?? 8, 1) };
     let g = moduleGeo(m, y0, { logoQuality: hasLogo, body: under, ...(THUMB_LITE ? { lo: true } : {}) }); if (!g) return; // miniatura: malha leve
-    if (m0.oco && !THUMB_LITE) g = ocoGeo(g, m, y0);
+    if (m0.oco && !THUMB_LITE) g = cutCached('oco', [m, y0, hasLogo], g, () => ocoGeo(g, m, y0));
     if (m0.ocoTopo && !THUMB_LITE && L[i + 1]?.m.kind === 'gargalo') g = ocoTopoGeo(g, m, y0, L[i + 1].m, thickBase(m.own ? m.finish : S.finish, m0) ? Math.max(S.wall, m0.fundo ?? 6) : S.wall);
-    if (m0.dedo && !THUMB_LITE) g = dedoGeo(g, m0.dedo, y0, m.h);
+    if (m0.dedo && !THUMB_LITE) g = cutCached('dedo', [m, m0.dedo, y0, hasLogo, m0.oco], g, () => dedoGeo(g, m0.dedo, y0, m.h));
     if (!THUMB_LITE && !m0.oco && !m0.casca && vestsValve(S, idx) && L[i - 1]?.idx === idx - 1) { // cavidade no tamanho da válvula (folga de 0,5 mm); casca oca (oco) já tem o vão
       const vg = sprayGeo(L[i - 1].m, L[i - 1].y0, { lo: true }); vg.computeBoundingBox(); const vb = vg.boundingBox;
       const vr = Math.max(Math.abs(vb.min.x), Math.abs(vb.max.x), Math.abs(vb.min.z), Math.abs(vb.max.z)) + 0.5;
@@ -8619,7 +8640,7 @@ function incomProduct(r) {
         P('Colar interno', wcol, r.t === 'batonsq' ? wcol : null, hcol, { ...s0, rTop: 0.6, rBot: 0.2 }),
         P('Tubo (mecanismo)', ws, null, hs, { rTop: 0.5, rBot: 0.3, own: true, color: '#d6d8da', finish: 'metal' }),
         P('Bala (batom)', wb, null, lb, { rTop: 0.8, rBot: 0.3, gap: r1(-(lb + 1.2)), tilt: [1, 0.55], sobe: r1(lb * 0.85), own: true, color: cor, finish: 'brilho' }),
-        P('Tampa', W, D, hc, { ...s0, rTop: 1.5, gap: r1(-(hs + hcol - 1.2)), capa: true, oco: true, _t: [f, 1] })]; break; }
+        P('Tampa', W, D, hc, { ...s0, rTop: 1.5, gap: r1(-(hs + hcol - 1.2)), capa: true, oco: true, _t: [f, r.n === 'Ella' ? 0.975 : 1], ...(r.n === 'Ella' ? { curvaTopo: 2.4 } : {}) })]; break; } // Ella: "detalhe curvilíneo no topo" — o topo desce em curva de um lado (o desenho virava uma aba)
     case 'pote': case 'potesq': {
       // Pote como o de verdade: corpo oco com creme dentro (conteúdo editável), boca com rosca em hélice e
       // tampa de rosca oca assentada no ombro. "Abrir" tira a tampa e deixa virada ao lado.
