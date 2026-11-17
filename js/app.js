@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-17.deck-spy-rollon3';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-17.flacon3';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -577,7 +577,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-17.deck-spy-rollon3';
+const BUILD = '2026-11-17.flacon3';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -8497,6 +8497,20 @@ function incomFrac(pr, def) {
   return def.map(d => { let best = -1; pr.s.forEach((v, i) => { if (!used.has(i) && Math.abs(v - d) <= 0.12 && (best < 0 || Math.abs(v - d) < Math.abs(pr.s[best] - d))) best = i; });
     if (best < 0) return d; used.add(best); return pr.s[best]; });
 }
+// Tira a "escadinha" do desenho rasterizado sem apagar curva de verdade: cada patamar de largura igual vira o
+// ponto do meio dele (degraus pequenos, de ~0,005); degrau grande (anel, ombro, colar) mantém as duas pontas.
+// Antes um alisamento forte (3 mm) tirava as listras, mas transformava o fundo arredondado numa rampa reta.
+function destair(rows) {
+  if (!rows || rows.length < 3) return rows;
+  const pl = []; for (const q of rows) { const L = pl[pl.length - 1]; if (L && Math.abs(L.w - q[1]) < 2e-4) L.t1 = q[0]; else pl.push({ t0: q[0], t1: q[0], w: q[1], q }); }
+  const out = [], big = (a, b) => !a || !b || Math.abs(a.w - b.w) > 0.012, push = (t, P) => { if (!out.length || t > out[out.length - 1][0] + 1e-5) out.push([t, P.w, P.w, ...P.q.slice(3)]); };
+  pl.forEach((P, k) => { const bp = big(pl[k - 1], P), bn = big(P, pl[k + 1]);
+    if (bp) push(P.t0, P);
+    if (!bp || !bn) push((P.t0 + P.t1) / 2, P);
+    if (bn) push(P.t1, P); });
+  out[0][0] = rows[0][0]; out[out.length - 1][0] = rows[rows.length - 1][0];
+  return out;
+}
 // Fatia do contorno do produto montado entre t0 e t1 (frações da altura) para uma peça de fora:
 // perfil em fração da largura mais larga da fatia, deslocamento do centro em mm.
 function profSlice(pr, t0, t1, Wfull) {
@@ -8547,8 +8561,8 @@ function incomProduct(r) {
     if (tt && pr) { const sl = profSlice(pr, tt[0], tt[1], W); sl.amax /= gmax;
       // contorno alisado: o desenho vem em degraus de ~0,1 mm (traço inclinado rasterizado) e a luz
       // marcava cada degrau como uma listra em volta do corpo; degraus de verdade (anel, ombro) ficam
-      const sp = smoothProfile(sl.prof, x.h, W * sl.amax, 3.2), mx = Math.max(...sp.map(q => q[1])) || 1; sp.forEach(q => { q[1] /= mx; q[2] /= mx; q[4] = 0; }); // alisar não pode afinar a largura; produto é simétrico (o desenho deslocava o centro em décimos e somava largura)
-      x = { ...x, W: r2(Math.min(W, W * sl.amax)), D: r2(Math.min(D, D * sl.amax)), prof: sp, smoothProf: false, taper: 100, taperB: 100, bulge: 0, rTop: Math.min(x.rTop ?? 1, 0.6), rBot: Math.min(x.rBot ?? 1, 0.5) };
+      const sp = smoothProfile(destair(sl.prof), x.h, W * sl.amax, 0.8), mx = Math.max(...sp.map(q => q[1])) || 1; sp.forEach(q => { q[1] /= mx; q[2] /= mx; q[4] = 0; }); // alisar não pode afinar a largura; produto é simétrico (o desenho deslocava o centro em décimos e somava largura)
+      x = { ...x, W: r2(Math.min(W, W * sl.amax)), D: r2(Math.min(d ?? D, (d ?? D) * sl.amax)), /* profundidade da peça (Charlotte achatada), não a do produto */ prof: sp, smoothProf: false, taper: 100, taperB: 100, bulge: 0, rTop: Math.min(x.rTop ?? 1, 0.6), rBot: Math.min(x.rBot ?? 1, 0.5) };
       if (pr.d && tt[1] >= 1) x.topDip = r1(pr.d * H);
       // tampa abaulada (Oscar): o raio de cima do perfil é limitado a 0,6 mm; a cúpula entra no próprio perfil
       if (o.domeTop > 0) { const d = Math.min(0.9, o.domeTop / x.h), base = x.prof.filter(q => q[0] <= 1 - d), q0 = base.at(-1);
@@ -8594,9 +8608,14 @@ function incomProduct(r) {
       ms = [P('Frasco', W, D, H * f, { vol: true, rBot: 2, bpesc: true, bpescMola: true, _t: [0, f] }),
         P('Acionador e capa', W, D, hc, { rTop: 3, _t: [f, 1], spout: { t: r1(1 - (dn / 2 + 1.6) / hc) , L: 4.2, droop: 0, D: dn, dir: 0 } })];
       { const c = ms[1], sp0 = c.spout; sp0.L = r2(1 + c.W / 2 - capHalfAt(c, sp0.t * c.h) - 0.35); } break; } // ponta do bico rente ao corpo (a medida do catálogo é o diâmetro)
-    case 'flacon': case 'flaconb': { const b = r.t === 'flaconb' || r.n === 'Julie', [f] = incomFrac(pr, [0.56]), rem = 1 - f;
+    case 'flacon': case 'flaconb': { const b = r.t === 'flaconb' || r.n === 'Julie';
+      // frasco, colar e bulbo/botão medidos no desenho: o frasco acaba onde a largura cai abaixo de 90%; o colar
+      // vai até a próxima queda forte; o resto é o bulbo (proporção fixa deixava frasco curto e bulbo enorme)
+      const Pp = (pr?.p || []).map(q => [q[0], (q[1] + q[2]) / 2 / gmax]), wAt = (a, z) => { const v = Pp.filter(q => q[0] >= a && q[0] <= z).map(q => q[1]).sort((x, y) => x - y); return v.length ? v[v.length >> 1] : 0; };
+      const f = (Pp.find(q => q[0] > 0.3 && q[1] < 0.9) || [0.56])[0], cw = wAt(f + 0.03, f + 0.12) || 0.62;
+      const tb = (Pp.find(q => q[0] > f + 0.05 && q[1] < cw * 0.8) || [f + (1 - f) * 0.45])[0], bw = wAt(tb + 0.02, 0.95) || 0.42;
       ms = [P('Frasco', W, D, H * f, { vol: true, rBot: 2, rTop: W * 0.18, _t: [0, f] }),
-        M('contaGotas', { ...(b ? { botao: true, ridges: 0 } : {}), name: b ? 'Conta-gotas de botão' : 'Conta-gotas', W: r1(W * 0.62), D: r1(W * 0.62), h: r2(H * rem * (b ? 0.68 : 0.36)), actW: r1(W * (b ? 0.5 : 0.42)), actH: r2(H * rem * (b ? 0.32 : 0.64) + 0.5) })]; break; } // +0,5: o conta-gotas encaixa 0,5 mm no gargalo
+        M('contaGotas', { ...(b ? { botao: true, ridges: 0 } : {}), name: b ? 'Conta-gotas de botão' : 'Conta-gotas', W: r1(W * cw), D: r1(W * cw), h: r2(H * (tb - f)), actW: r1(W * bw), actH: r2(H * (1 - tb) + 0.5) })]; break; } // +0,5: o conta-gotas encaixa 0,5 mm no gargalo
     case 'fr': case 'frr': case 'frsq': case 'frsqr': case 'frt': case 'frsh': case 'frap': case 'frflat': {
       const o = { fr: { rBot: 3, rTop: W * 0.15 }, frr: { rBot: W * 0.3, rTop: W * 0.15 }, frsq: { ...sq(0.06), rTop: 3 }, frsqr: { ...sq(0.2), rTop: 4 },
         frt: { taperB: 82, rBot: W * 0.25, rTop: 4 }, frsh: { rTop: W * 0.35, rBot: 3 }, frap: { taper: 70, rTop: 6, rBot: 6 }, frflat: { ...sq(0.1), rTop: 6 } }[r.t];
@@ -8614,7 +8633,7 @@ function incomProduct(r) {
       // bisnaga achatada (frente larga, seção de retângulo arredondado), não um cilindro
       if (r.n === 'Olympea') { const sc = sq(0.4); // foto: em pé sobre a tampa preta, corpo achatado com o topo inclinado
         ms = [P('Tampa', W, D, H * f, { ...sc, rBot: 2, rTop: 0.5 }), P('Frasco', W, D, H * (1 - f), { ...sc, vol: true, rBot: 0.5, rTop: 2.5, taperB: 94, tilt: [1, 0.86] })]; break; }
-      if (f < 0.5) { const sc = { ...sq(0.42) }, Dc = r1(W * 0.58);
+      if (f < 0.5) { const sc = { ...sq(0.12) }, Dc = r1(W * 0.58); // foto: retângulo de arestas vivas (raio pequeno), não oval
         ms = [P('Tampa', W, Dc, H * f, { ...sc, rBot: 2, rTop: 0.5, _t: [0, f] }), P('Frasco', W, Dc, H * (1 - f), { ...sc, vol: true, rBot: 0.5, rTop: r.t === 'frnr' ? W * 0.4 : 2, _t: [f, 1] })]; break; }
       const sb = r.n === 'Beatrice' ? sq(0.2) : {}; // Beatrice: frasco quadrado de cantos arredondados (foto)
       ms = [P('Frasco', W, D, H * f, { ...sb, vol: true, rBot: 3, rTop: 1, ...o, _t: [0, f] }), P('Tampa', W * (r.t === 'frnt' ? 0.88 : 1), D, H * (1 - f), { ...sb, rTop: r.t === 'frnr' ? W * 0.4 : 2, _t: [f, 1] })]; break; }
@@ -8624,7 +8643,7 @@ function incomProduct(r) {
     case 'gloss': case 'glosssq': { // a tampa veste a haste com o aplicador (ou a escova, na máscara), que desce até o fundo
       // Petit (frasnaga): na foto fica em pé sobre a tampa quadrada preta (36% de baixo, como no desenho) e o
       // frasco longo e afunilado de topo arredondado em cima
-      if (/^Petit/.test(r.n)) { const fp = 0.36; ms = [P('Tampa', W, D, H * fp, { ...sq(0.14), rBot: 1, rTop: 0.4, _t: [0, fp] }), P('Frasco', W, D, H * (1 - fp), { vol: true, rBot: 0.4, rTop: W * 0.3, _t: [fp, 1] })]; break; }
+      if (/^Petit/.test(r.n)) { const fp = 0.36; ms = [P('Tampa', W, D, H * fp, { ...sq(0.14), rBot: 1, rTop: 0.4, _t: [0, fp] }), P('Frasco', W, D, H * (1 - fp), { ...sq(0.14), vol: true, rBot: 0.4, rTop: W * 0.25, _t: [fp, 1] })]; break; } // foto: corpo quadrado como a tampa, afinando para cima, topo arredondado
       const s0 = r.t === 'glosssq' ? sq(0.08) : {}, [f] = SPLIT_FIX[r.pg] ? [SPLIT_FIX[r.pg]] : incomFrac(pr, [0.52]), capH = H * (1 - f), masc = r.c === 'Máscaras';
       // gloss: frasco transparente (PET G/SAN, como no catálogo) com o gloss colorido dentro; máscara: frasco opaco
       const gl = masc ? {} : { own: true, finish: 'pet', color: '#ffffff', fundoGrosso: true, fundo: r1(Math.max(3, H * 0.05)), fundoR: r1(Math.min(W, D) / 2), // por dentro o fundo é uma concha (meio redondo)
@@ -8702,6 +8721,12 @@ function incomProduct(r) {
   // potes de acrílico transparente nas fotos (tampa branca); Gaia fosco; Apple Blow e Bold brancos opacos
   if (r.c === 'Potes' && !/Apple Blow|Bold/.test(r.n)) { const pt = ms.find(m => m.name === 'Pote'); if (pt) Object.assign(pt, { own: true, color: '#ffffff', finish: /Gaia/.test(r.n) ? 'vidroFosco' : 'pet' }); }
   if (r.c === 'Frascos' && /^(Amsterdam|Chicago|Miami|New York|Seoul 250|Sydney 60)$/.test(r.n)) { const fr = ms.find(m => m.name === 'Frasco'); if (fr) Object.assign(fr, { own: true, finish: 'pet', color: '#ffffff' }); }
+  // Sem vista lateral no catálogo: a profundidade das bisnagas achatadas (Charlotte) sai da capacidade informada
+  // (30 ml, +10% de folga até a boca), em vez de chute — as peças achatam por igual até o frasco dar esse volume
+  if (/^Charlotte/.test(r.n) && parseFloat(r.vol) > 0) { const want = parseFloat(r.vol) * 1.1, D0 = ms.map(m => m.D);
+    let lo = 0.2, hi = 1.6; for (let k = 0; k < 18; k++) { const mid = (lo + hi) / 2; ms.forEach((m, i) => { m.D = D0[i] * mid; });
+      const v = volumes({ modules: ms, wall: 1, finish: 'fosco', gap: 0 }).cap; if (v > want) hi = mid; else lo = mid; }
+    ms.forEach((m, i) => { m.D = r2(D0[i] * (lo + hi) / 2); }); }
   Object.assign(ms.find(m => /^(Base|Frasco|Pote|Corpo)/.test(m.name)) || ms[0], { forn: 'Incom', ref: r.n.toUpperCase(), fmat: r.mat, fterm: r.vol, fpg: r.pg, fest: r.est, fW: r.W, fD: r.D ?? r.W, fH: r.H, fcat: r.c });
   const fapp = ['Frascos', 'Frasnagas'].includes(r.c) || r.t.startsWith('flacon') ? 'Fármaco' : 'Beleza';
   // pote de acrílico (SAN/PMMA/PCTG) tem parede grossa; o de PP/PE, fina
