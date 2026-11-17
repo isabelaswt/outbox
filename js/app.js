@@ -577,7 +577,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-16.abaulada-lisa';
+const BUILD = '2026-11-16.pente-fotos4';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -8474,11 +8474,14 @@ const QUINTETO = (() => { const c = 0.2, e = 0.5, k = 0.1, T = [0, c], R = [c, 0
   return [[T, R, B, L], [PT, [e - k, e], [e, e - k], PR, R, T], [PR, [e, -e + k], [e - k, -e], PB, B, R],
     [PB, [-e + k, -e], [-e, -e + k], PL, L, B], [PL, [-e, e - k], [-e + k, e], PT, T, L]]; })();
 // Godês dos compactos e paletas: fileiras (quantos em cada) e formato, pelo nome do modelo
+// Tampa com janela (visor) nas fotos do catálogo: Frame M/P, Moon Eco, Moon G Quarteto e os "com Visor"/Quinteto
+const VISOR_RE = /com Visor|Quinteto|^Frame [MP]$|^Moon Eco$|^Moon G Quarteto$/i;
 function godesOf(r) {
-  const n = r.n, rect = /Flat|Big|Retangular/.test(n) && !/Redondo/.test(n);
+  const n = r.n, rect = /Flat|Big|Retangular|^Classic/.test(n) && !/Redondo/.test(n); // Classic: godês retangulares (foto)
   const rows = /Dez/.test(n) ? [5, 5] : /6 \+ 1/.test(n) ? [4, 3] : /Sexteto/.test(n) ? [3, 3] : /Quinteto/.test(n) ? [3, 2]
     : /Quarteto|Big 4/.test(n) ? [2, 2] : /Big 9/.test(n) ? [3, 3, 3] : /Trio/.test(n) ? [3] : /Duo/.test(n) ? [2] : [1];
-  const tr = /Quinteto/.test(n) ? { c: QUINTETO, ar: 1 } : INCOM_TRAYS[r.k];
+  let tr = /Quinteto/.test(n) ? { c: QUINTETO, ar: 1 } : INCOM_TRAYS[r.k];
+  if (tr && /6 \+ 1/.test(n)) tr = { ...tr, c: tr.c.map(c => c.map(([x, y]) => [-x, y])) }; // foto: o godê grande fica à direita
   return tr ? { rows, rect, cells: tr.c, ar: tr.ar } : { rows, rect };
 }
 // Produtos do catálogo Incom 2026 como modelos prontos (biblioteca Incom): medidas externas totais do
@@ -8522,7 +8525,7 @@ function fitValveIn(t, cap, wv0) {
 // godês) entra montado: aparece pela tampa transparente, ao abrir ou no Explodir. Compactos e
 // paletas têm o desenho em perspectiva no catálogo: ficam com a forma básica.
 // Divisão tampa × frasco lida a olho no desenho técnico (a extração automática não achou a linha)
-const SPLIT_FIX = { 102: 0.56, 96: 0.58, 98: 0.58, 100: 0.52, 102: 0.52, 103: 0.63, 104: 0.5, 107: 0.57, 108: 0.65, 123: 0.58, 124: 0.65, 125: 0.56, 126: 0.66, 130: 0.66, 131: 0.5 };
+const SPLIT_FIX = { 99: 0.62, 101: 0.55, 102: 0.54, 96: 0.58, 98: 0.58, 100: 0.6, 103: 0.63, 104: 0.5, 107: 0.57, 108: 0.65, 123: 0.58, 124: 0.65, 125: 0.56, 126: 0.66, 130: 0.66, 131: 0.5 };
 // Cor de exemplo do conteúdo (maquiagem): sempre a mesma para o mesmo modelo
 const BATOM_CORES = ['#9b1b30', '#e0604e', '#c43a3a', '#d9667f', '#7a2846', '#b5525a'];
 const GLOSS_CORES = ['#b8323f', '#d77a7a', '#a3473a', '#c9707e', '#8c2f45', '#e09a8a', '#b85c4f', '#d45f74'];
@@ -8562,7 +8565,7 @@ function incomProduct(r) {
       // a dobradiça sai 0,3 do raio para trás: a caixa perde isso na profundidade e o total bate com o catálogo
       const Dc = r2(D - 0.3 * clamp(Math.min(hb, ht) * 0.22, 1.1, 2.2)), pal = r.c === 'Paletas' && r.t !== 'cr', dB = pal ? { rect: true, top: true, w: r1(W * 0.42), h: r1(Math.min(4.5, hb * 0.58)), d: 2.4 } : { rect: true, top: true, w: nw, h: r1(Math.min(3.2, hb * 0.42)), d: 1.6 }; // desenho: entalhe retangular só na base
       ms = [P('Base', W, Dc, hb, { ...s0, rBot: r.t === 'cr' ? 1.5 : 1, rTop: 0.6, godes: godesOf(r), dedo: dB }),
-        P('Tampa', W, Dc, ht, { ...s0, rBot: 0.6, rTop: r.t === 'cr' ? 2 : 1.2, hinge: true, abre: 0, oco: true, visor: /com Visor|Quinteto/i.test(r.n), espelho: !/com Visor|Crystal|Quinteto/i.test(r.n), })]; break; }
+        P('Tampa', W, Dc, ht, { ...s0, rBot: 0.6, rTop: r.t === 'cr' ? 2 : 1.2, hinge: true, abre: 0, oco: true, visor: VISOR_RE.test(r.n), espelho: !VISOR_RE.test(r.n) && !/Crystal|^Case/i.test(r.n), })]; break; }
     case 'dsq': if (/Twist/.test(r.n)) {
       // Twist: base branca e corpo giratório (girando, o acionador aparece); refil com pump por dentro
       const [fs] = incomFrac(pr, [0.23]);
@@ -8599,14 +8602,18 @@ function incomProduct(r) {
         : M(fe === 'pump' ? 'pump' : 'spray');
       ms = [P('Frasco', W, D, H - nh, { vol: true, ...o, _t: [0, (H - nh) / H] }), NECK('24/410', { h: nh }), fc]; break; }
     case 'frn': case 'frnt': case 'frnr': case 'frnflat': {
-      const o = r.t === 'frnt' ? { taper: 88 } : {}, [f] = /Charlotte/.test(r.n) ? [0.32] : incomFrac(pr, [0.66]); // Charlotte: tampa embaixo, 32% (desenho)
+      const o = r.t === 'frnt' ? { taper: 88 } : {}, [f] = /Charlotte/.test(r.n) ? [0.32] : r.n === 'Olympea' ? [0.27] : incomFrac(pr, [0.66]); // Charlotte e Olympea: em pé sobre a tampa (fotos)
       // Charlotte (divisão abaixo da metade no desenho): fica em pé sobre a tampa, corpo em cima. Na foto é uma
       // bisnaga achatada (frente larga, seção de retângulo arredondado), não um cilindro
+      if (r.n === 'Olympea') { const sc = sq(0.4); // foto: em pé sobre a tampa preta, corpo achatado com o topo inclinado
+        ms = [P('Tampa', W, D, H * f, { ...sc, rBot: 2, rTop: 0.5 }), P('Frasco', W, D, H * (1 - f), { ...sc, vol: true, rBot: 0.5, rTop: 2.5, taperB: 94, tilt: [1, 0.86] })]; break; }
       if (f < 0.5) { const sc = { ...sq(0.42) }, Dc = r1(W * 0.58);
         ms = [P('Tampa', W, Dc, H * f, { ...sc, rBot: 2, rTop: 0.5, _t: [0, f] }), P('Frasco', W, Dc, H * (1 - f), { ...sc, vol: true, rBot: 0.5, rTop: r.t === 'frnr' ? W * 0.4 : 2, _t: [f, 1] })]; break; }
       const sb = r.n === 'Beatrice' ? sq(0.2) : {}; // Beatrice: frasco quadrado de cantos arredondados (foto)
       ms = [P('Frasco', W, D, H * f, { ...sb, vol: true, rBot: 3, rTop: 1, ...o, _t: [0, f] }), P('Tampa', W * (r.t === 'frnt' ? 0.88 : 1), D, H * (1 - f), { ...sb, rTop: r.t === 'frnr' ? W * 0.4 : 2, _t: [f, 1] })]; break; }
-    case 'tube': ms = [P('Frasco', W, D, H - 14, { vol: true, taper: 70, rTop: 3, rBot: 2, _t: [0, (H - 14) / H] }), P('Gargalo', W * 0.45, null, 14, { rTop: 1, _t: [(H - 14) / H, 1] })]; break;
+    case 'tube': { // foto: bisnaga em pé sobre a tampa redonda, achatando até a solda em cima (29 mm é a largura da solda)
+      const d = r1(W * 2 / Math.PI), hc = r1(H * 0.16);
+      ms = [P('Tampa', r1(d * 0.96), null, hc, { rBot: 1.2, rTop: 0.6 }), M('bisnaga', { name: 'Bisnaga', W: d, D: d, h: r1(H - hc), vol: true })]; break; }
     case 'gloss': case 'glosssq': { // a tampa veste a haste com o aplicador (ou a escova, na máscara), que desce até o fundo
       // Petit (frasnaga): na foto fica em pé sobre a tampa quadrada preta (36% de baixo, como no desenho) e o
       // frasco longo e afunilado de topo arredondado em cima
@@ -8637,14 +8644,14 @@ function incomProduct(r) {
       const ws = r1(Math.min(wcol - 1.6, 12.1 + 4.6)), wb = r1(Math.min(12.1, ws - 2.6)), hs = r1(hc * 0.58), lb = r1(Math.min(24, hc * 0.42, hs - 2)), visor = /Lipview|Spy/.test(r.n);
       // Long Lipview (foto): embaixo um copinho transparente com a cor do batom dentro, uma aba preta mais larga e,
       // acima dela, a base mais estreita (que a tampa veste até a aba)
-      if (/Lipview/.test(r.n)) { const hv = r1(H * 0.075), hf = r1(H * 0.035), hb = r1(H * 0.13), hd = r1(hv * 0.55), wb2 = r1(W * 0.84), hcL = r1(H - hv - hf);
-        const wcolL = r1(wb2 - 2 * 0.9), wsL = r1(Math.min(wcolL - 1.4, 12.1 + 4.6)), wbL = r1(Math.min(12.1, wsL - 2.6)), hsL = r1(hcL * 0.55), lbL = r1(Math.min(24, hcL * 0.4, hsL - 2));
+      if (/Lipview/.test(r.n)) { const hv = r1(H * 0.08), hf = r1(H * 0.045), hb = r1(H * 0.25), hd = r1(hv * 0.55), wb2 = r1(W * 0.84), hcL = r1(H - hv - hf); // foto aberto: base alta (~¼), tubo de metal ~45%, bala aparecendo pouco
+        const wsL = r1(wb2 * 0.78), wbL = r1(Math.min(12.1, wsL - 2.4)), hsL = r1(hcL * 0.5), lbL = r1(Math.min(24, hsL - 2));
         ms = [P('Visor de cor (fundo)', r1(W * 0.97), null, hv, { rTop: 0.4, rBot: 0.8, own: true, color: '#ffffff', finish: 'pet' }),
           P('Cor no visor', r1(W * 0.8), null, hd, { rTop: 0.6, rBot: 0.6, gap: r1(0.9 - hv), own: true, color: cor, finish: 'fosco' }),
           P('Aba da base', W, D, hf, { rTop: 0.5, rBot: 0.3, gap: r1(hv - 0.9 - hd) }),
           P('Base', wb2, null, hb, { rTop: 0.6, rBot: 0.2 }),
           P('Tubo (mecanismo)', wsL, null, hsL, { rTop: 0.5, rBot: 0.3, own: true, color: '#d6d8da', finish: 'metal' }),
-          P('Bala (batom)', wbL, null, lbL, { rTop: 0.8, rBot: 0.3, gap: r1(-(lbL + 1.2)), tilt: [1, 0.55], sobe: r1(lbL * 0.85), own: true, color: cor, finish: 'brilho' }),
+          P('Bala (batom)', wbL, null, lbL, { rTop: 0.8, rBot: 0.3, gap: r1(-(lbL + 1.2)), tilt: [1, 0.55], sobe: r1(lbL * 0.45), own: true, color: cor, finish: 'brilho' }),
           P('Tampa', W, D, hcL, { ...s0, rTop: 1.5, gap: r1(-(hsL + hb)), capa: true, oco: true, _t: [f, 0.895], ...(r.abaulada ? { domeTop: r1(W * 0.45) } : {}) })]; break; }
       ms = [...(visor ? [P('Visor de cor (fundo)', r1(Math.min(W, D) * 0.55), null, 1.2, { rTop: 0.2, rBot: 0.4, own: true, color: cor, finish: 'brilho' })] : []),
         P('Base', W, D, H * f, { ...s0, ...(visor ? { gap: -1 } : {}), _t: [0, f] }),
@@ -8665,6 +8672,23 @@ function incomProduct(r) {
     case 'stick': { const [f] = SPLIT_FIX[r.pg] ? [SPLIT_FIX[r.pg]] : incomFrac(pr, [0.5]), bh = H * (1 - f) * 0.84; ms = [P('Base', W, D, H * f, { rBot: 2, _t: [0, f] }), P('Bastão (produto)', W * 0.78, null, bh, { rTop: W * 0.2 }), P('Tampa', W, D, H * (1 - f), { rTop: 3, gap: r1(-bh), _t: [f, 1] })]; break; }
     default: ms = [P('Corpo', W, D, H, { vol: true, _t: [0, 1] })];
   }
+  // fotos: Case G/M com tampa toda transparente (sem espelho); "All Crystal" com base e tampa de cristal;
+  // Macaroon com a tampa em cúpula (a bola preta da foto)
+  if (r.c === 'Compactos') { const clear = { own: true, finish: 'pet', color: '#ffffff' };
+    ms.forEach(m => { if ((/Crystal/i.test(r.n) && /Base|Tampa/.test(m.name)) || (/^Case/.test(r.n) && m.name === 'Tampa')) Object.assign(m, clear, m.name === 'Tampa' ? { espelho: false } : {}); });
+    if (/Macaroon/.test(r.n)) { const t = ms.find(m => m.name === 'Tampa'); if (t) Object.assign(t, { rTop: r1(t.h * 0.95) }); } }
+  // fotos: conta-gotas, dispensadores e deluxes em frasco transparente com o conteúdo aparecendo (pipeta/pescante
+  // à vista); colar do conta-gotas liso; Dispensing Cube com a sobretampa opaca (a única não transparente)
+  if (['Conta-gotas', 'Dispensadores', 'Deluxes'].includes(r.c) && r.t !== 'onoff' && !/Twist/.test(r.n)) {
+    const fr = ms.find(m => m.name === 'Frasco'), disp = r.c === 'Dispensadores';
+    if (fr) Object.assign(fr, { own: true, finish: 'pet', color: '#ffffff', liq: true, liqLevel: disp ? 82 : 78,
+      liqType: disp ? 'cremoso' : 'transparente', liqColor: disp ? '#d9b49a' : '#e4edf0' });
+    ms.forEach(m => { if (m.type === 'contaGotas') m.ridges = 0; });
+    if (/Cube/.test(r.n)) { const c = ms.find(m => m.name === 'Sobretampa'); if (c) Object.assign(c, { own: false, casca: false }); } }
+  // frascos transparentes nas fotos (os brancos opacos — Apple Blow, Bulb Blow, Wall — ficam como estão)
+  // potes de acrílico transparente nas fotos (tampa branca); Gaia fosco; Apple Blow e Bold brancos opacos
+  if (r.c === 'Potes' && !/Apple Blow|Bold/.test(r.n)) { const pt = ms.find(m => m.name === 'Pote'); if (pt) Object.assign(pt, { own: true, color: '#ffffff', finish: /Gaia/.test(r.n) ? 'vidroFosco' : 'pet' }); }
+  if (r.c === 'Frascos' && /^(Amsterdam|Chicago|Miami|New York|Seoul 250|Sydney 60)$/.test(r.n)) { const fr = ms.find(m => m.name === 'Frasco'); if (fr) Object.assign(fr, { own: true, finish: 'pet', color: '#ffffff' }); }
   Object.assign(ms.find(m => /^(Base|Frasco|Pote|Corpo)/.test(m.name)) || ms[0], { forn: 'Incom', ref: r.n.toUpperCase(), fmat: r.mat, fterm: r.vol, fpg: r.pg, fest: r.est, fW: r.W, fD: r.D ?? r.W, fH: r.H, fcat: r.c });
   const fapp = ['Frascos', 'Frasnagas'].includes(r.c) || r.t.startsWith('flacon') ? 'Fármaco' : 'Beleza';
   // pote de acrílico (SAN/PMMA/PCTG) tem parede grossa; o de PP/PE, fina
