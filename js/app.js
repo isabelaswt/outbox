@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-17.cmp9';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-17.cmp10';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -590,7 +590,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-17.cmp9';
+const BUILD = '2026-11-17.cmp10';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -2236,9 +2236,9 @@ function sensCapGeo(m0, y0, opts) {
   let cap = moduleGeo({ ...m0, sens: false, h: H, rTop: 0.6, rBot: 0.6, W0: W, smoothProf: false, prof }, y0, opts);
   if (!opts.lo && cap) {
     // foto: topo reto — o disco ocupa quase todo o topo, rente à borda fina, só a linha de folga em volta (sem copo rebaixado)
-    const wall = Math.max(0.9, W * 0.03), hd = Math.min(1.8, H * 0.09), dep = hd, yT = y0 + H;
+    const wall = Math.max(0.9, W * 0.03), hd = Math.min(3, H * 0.13), dep = hd, yT = y0 + H;
     const pocket = new THREE.CylinderGeometry(R - wall, R - wall, dep + 2, 96); pocket.translate(0, yT - dep + (dep + 2) / 2, 0); // encaixe do disco
-    const uw = W * 0.58, ud = H * 0.12, sh = new THREE.Shape(); // U largo e raso na frente da borda
+    const uw = W * 0.58, ud = dep - 0.05, sh = new THREE.Shape(); // U largo e raso na frente da borda: só até o pé do disco (mais fundo, aparecia o oco de dentro)
     sh.moveTo(-uw / 2, yT + 2); sh.lineTo(-uw / 2, yT); sh.absellipse(0, yT, uw / 2, ud, Math.PI, 2 * Math.PI, false); sh.lineTo(uw / 2, yT + 2); sh.closePath();
     const u = new THREE.ExtrudeGeometry(sh, { depth: R + 2, bevelEnabled: false, curveSegments: 32 });
     for (const c of [pocket, u]) { const [o, inn] = cutHole(cap, c); if (o !== cap) cap = mergeLoose([o, inn]); } // um corte por vez (cortadores sobrepostos numa peça só deixavam uma aleta solta)
