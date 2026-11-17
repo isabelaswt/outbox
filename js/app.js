@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-17.cmp4';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-17.sens2';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -392,6 +392,7 @@ const LIB = {
   flipAba: { name: 'Flip-top com aba', W: 36, D: 36, h: 28, rBot: 0.8, rTop: 2.5, groove: 12, grooveD: 0.8, lidOver: 1.2, aba: true, topType: 'flip', lidSide: 'cima' },
   flipRedondo: { name: 'Tampa flip-top redonda', W: 40, D: 40, h: 30, rBot: 1, rTop: 2.5, groove: 10, notch: true, notchUp: false,
     notchW: 17, notchH: 8, notchD: 1.4, notchP: 6, topType: 'flip', lidSide: 'cima' },
+  tampaSens: { name: 'Tampa Sens', W: 30, D: 30, h: 21, rBot: 0.6, rTop: 0.4, sens: true },
   disctop: { name: 'Tampa disc-top', W: 48.3, D: 48.3, h: 32.5, taper: 95, rBot: 1, rTop: 0.8, topType: 'disc', discD: 42.4, discDip: 5 },
 };
 const newUid = () => Math.random().toString(36).slice(2, 10);
@@ -577,7 +578,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-17.cmp4';
+const BUILD = '2026-11-17.sens2';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -2204,6 +2205,21 @@ function slabGeo(m0, y0, { inset = 0, lift = 0, lo = false } = {}) {
 }
 
 // inset/lift geram o volume interno (parede e fundo) para a capacidade.
+// junta malhas com atributos diferentes (só posição e normal, todas não indexadas)
+function mergeLoose(list) {
+  return mergeGeometries(list.filter(Boolean).map(g => { const y = g.index ? g.toNonIndexed() : g; for (const k in y.attributes) if (k !== 'position' && k !== 'normal') y.deleteAttribute(k); if (!y.attributes.normal) y.computeVertexNormals(); return y; }));
+}
+// Tampa Sens (Incom): saia estreita embaixo que abre em degrau até o corpo cilíndrico; o topo é um disco inclinado
+// (abre apertando a borda alta) com a aba de apoio na borda baixa — como na foto do catálogo
+function sensCapGeo(m0, y0, opts) {
+  if (opts.inset) return moduleGeo({ ...m0, sens: false }, y0, opts);
+  const W = m0.W, D = m0.D ?? W, hb = m0.h * 0.78, hs = hb * 0.36, hf = hb * 0.14;
+  const body = moduleGeo({ ...m0, sens: false, h: hb, rTop: 0.4, rBot: 0.6, W0: W, smoothProf: false,
+    prof: [[0, 0.74, 0.74, 2, 0, 0], [hs / hb, 0.78, 0.78, 2, 0, 0], [(hs + hf) / hb, 1, 1, 2, 0, 0], [1, 1, 1, 2, 0, 0]] }, y0, opts); // foto: saia ~75% do corpo, abrindo um pouco, e degrau em cone
+  const lid = moduleGeo({ ...BASE, kind: 'giro', W: W * 0.96, D: D * 0.96, h: m0.h - hb + 0.4, rBot: 0, rTop: 0.7, tilt: [0.5, 1] }, y0 + hb - 0.4, opts);
+  const tab = new THREE.BoxGeometry(2.2, 1.6, W * 0.3); tab.translate(-W * 0.48 + 1.1, y0 + hb + (m0.h - hb) * 0.5 + 0.5, 0); // aba onde o dedo aperta
+  return mergeLoose([body, lid, tab]);
+}
 function moduleGeo(m0, y0, opts = {}) {
   if (m0.kind === 'mesh') return opts.inset ? null : importedMeshGeo(m0, y0);
   if (isSphereCap(m0)) {
@@ -2214,6 +2230,7 @@ function moduleGeo(m0, y0, opts = {}) {
   if (m0.kind === 'bisnaga') return tubeGeo(m0, y0, opts);
   if (m0.kind === 'gargalo') return opts.inset ? null : neckGeo(m0, y0, opts);
   if (m0.kind === 'spray') return opts.inset ? null : sprayGeo(m0, y0, opts);
+  if (m0.sens) return sensCapGeo(m0, y0, opts);
   const { inset = 0, lift = 0, lo = false, logoQuality = false } = opts;
   const m = inset ? { ...m0, W: m0.W - 2 * inset, D: m0.D - 2 * inset, h: m0.h - lift,
     rBot: Math.max(0, m0.rBot - inset), rTop: Math.max(0, m0.rTop - inset), groove: 0, notch: false, ridges: 0 } : m0;
@@ -7964,7 +7981,7 @@ function renderAll() { renderStack(); renderEditor(); renderGlobal(); renderPres
 // Corpo, tampa e peça de encaixe ficam em listas separadas.
 const CATS = [
   ['Corpo', ['reto', 'boston', 'quadrado', 'capsula', 'perfumeOval', 'plano', 'arco', 'cone', 'placa', 'bisnaga', ...DRAFT_KEYS.corpo]],
-  ['Tampa', ['esfera', 'esferaBisnaga', 'nuvem', 'taca', 'domo', 'seixo', 'flip', 'flipRedondo', 'flipAba', 'disctop', 'sobretampa', 'tampaBisnaga', 'tampaSextavada', 'disco']],
+  ['Tampa', ['esfera', 'esferaBisnaga', 'nuvem', 'taca', 'domo', 'seixo', 'flip', 'flipRedondo', 'flipAba', 'disctop', 'tampaSens', 'sobretampa', 'tampaBisnaga', 'tampaSextavada', 'disco']],
   ['Válvula', ['pump', 'pumpFrisos', 'locao', 'espuma', 'spray', 'sprayClassico', 'contaGotas', 'tampaGloss', 'pushPull', 'pushSport', 'bicoDosador', 'bicoConico', 'lamina', 'pumpOnda', 'gatilho', 'pumpBisnaga']],
   ['Peça de encaixe', ['gargalo', 'colar', 'barril', 'flare', 'anel', 'tigela', 'bola', 'sextavado', 'canelado']],
 ];
