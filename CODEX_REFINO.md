@@ -108,6 +108,7 @@ Ferramentas internas úteis:
   - Dobradiças desenhadas; slider de abrir.
   - O logo acompanha a tampa e pode ir no pó.
 - **Case G, Case M, Case M All Crystal e Moon M All Crystal:** a base é uma placa fina e o godê fica em cima, saltado, num colar. Nos cristal, a latinha de alumínio aparece inteira.
+- **Case G/M/All Crystal (foto enviada em 17/11/2026):** topo do godê, produto e colar circular no mesmo nível. O conjunto continua elevado sobre a placa fina da base; não deixar a latinha saltada acima do colar.
 - **Frame:** corpo e godê em superelipse (quadrado de lados curvos, n = 4). O visor tem borda fina. O losango do Quinteto tem 20,4 mm.
 - **Redondos (Moon, Macaroon, Moon Deck):** o fechamento é uma língua curva da parede da tampa, rente à superfície, encaixada no rebaixo da base. Não é um bloco saltado.
 - **Cristal:** acabamento `cristal`, com borda azul-lilás, reflexo e camadas sobrepostas. As tampas redondas de cristal têm anel interno.
@@ -168,6 +169,8 @@ Pendências conhecidas (precisam de dado ou de decisão; não invente):
 - Codex: godês sem fresta até a parede interna (foto ampliada da dona); em seguida encaixes/dobradiças das makes e chanfro da Malika. Thenue, painel fosco contínuo/borda polida (p194), segue em andamento no ramo `mat2`/helper de divisão de superfície. PDF final adiado.
 
 **Registro** (o mais novo em cima):
+
+- 2026-11-17, Codex, `2026-11-17.cdx11`: Case G/M/M All Crystal com topo do colar, borda do godê e produto alinhados, conforme nova foto da dona. Removido também o vão radial entre colar e latinha; posição elevada sobre a placa da base preservada. Três Case renderizados abertos/fechados e medidos: diferença entre os três topos menor que 0,00001 mm; cotas externas dentro de 0,1 mm. Moon M All Crystal usado como controle, sem alteração. Espessuras internas continuam estimadas pela foto. Relatório `tools/conferencia/validacao-cdx11.json`, renders locais `_ref/incom/validacao-cdx11/`. Demais correções e PDF ainda pendentes.
 
 - 2026-11-17, Codex, `2026-11-17.cdx10`: removida a fresta entre produto e parede interna do godê saltado (Case e Moon M All Crystal), conforme foto ampliada enviada pela dona. Produto agora alcança a parede interna, preservando borda metálica fina e rebaixo de 0,3 mm; espessuras internas continuam estimadas pela foto. Preenchimento ampliado também nos godês redondos, retangulares e de contorno próprio. Trinta compactos/paletas renderizados abertos/fechados, sem vértices inválidos; cotas fechadas dentro de 0,1 mm do catálogo. Relatório `tools/conferencia/validacao-cdx10.json`, evidências locais `_ref/incom/validacao-cdx10/`. Chanfro da Malika, dobradiças/recebedores dos fechos e Thenue ainda em andamento; PDF não gerado.
 

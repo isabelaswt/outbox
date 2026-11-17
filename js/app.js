@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-17.cdx10';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-17.cdx11';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -664,7 +664,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-17.cdx10';
+const BUILD = '2026-11-17.cdx11';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -6066,8 +6066,10 @@ function compactParts(product, L, S0) {
       const { rows, rect } = m.godes, top = y0 + m.h, one = rows.length === 1 && rows[0] === 1, wells = [];
       let aw = round && !one ? Math.min(w, d) * 0.68 : w - 2 * mg, ad = round && !one ? Math.min(w, d) * 0.68 : d - 2 * mg;
       if (m.godes.relevo) { // Case: godê assentado em cima da placa, dentro de um colar baixo da própria base
-        const R = m.godes.mm / 2, hg = m.godes.relevo, hc = r1(Math.min(3, hg - 1.4)), mat = objs[0].material;
-        const sh = new THREE.Shape(); sh.absarc(0, 0, R + 1.4, 0, Math.PI * 2, false); const ho = new THREE.Path(); ho.absarc(0, 0, R + 0.25, 0, Math.PI * 2, true); sh.holes.push(ho);
+        // Foto Case enviada pela dona: colar, borda da latinha e produto no mesmo nível.
+        const R = m.godes.mm / 2, hg = m.godes.relevo, rente = !!m.godes.rente,
+          hc = rente ? hg - 0.3 + 0.01 : r1(Math.min(3, hg - 1.4)), ph = hg - (rente ? 1.3 : 1.6), mat = objs[0].material;
+        const sh = new THREE.Shape(); sh.absarc(0, 0, R + 1.4, 0, Math.PI * 2, false); const ho = new THREE.Path(); ho.absarc(0, 0, R + (rente ? -0.01 : 0.25), 0, Math.PI * 2, true); sh.holes.push(ho);
         const col = new THREE.ExtrudeGeometry(sh, { depth: hc, bevelEnabled: false, curveSegments: 72 }); col.deleteAttribute('uv'); col.rotateX(-Math.PI / 2);
         add(col, mat, idx, 'colar', cx, top - 0.01, cz);
         // latinha aberta em cima (parede fina + fundo): o pó aparece dentro dela, não coberto por um disco
@@ -6076,7 +6078,7 @@ function compactParts(product, L, S0) {
         add(wall, lm, idx, 'bandeja', cx, top, cz); add(new THREE.CylinderGeometry(R - 0.3, R - 0.3, 1, 96), lm, idx, 'bandeja', cx, top + 0.5, cz);
         // Foto ampliada enviada pela dona: produto encosta na parede interna da latinha.
         // Sobreposição de 0,01 mm evita uma fresta numérica; preserva a borda metálica de 0,35 mm.
-        add(new THREE.CylinderGeometry(R - 0.34, R - 0.34, hg - 1.6, 96), godeCor(0, 1), idx, 'gode', cx, top + 1 + (hg - 1.6) / 2, cz);
+        add(new THREE.CylinderGeometry(R - 0.34, R - 0.34, ph, 96), godeCor(0, 1), idx, 'gode', cx, top + 1 + ph / 2, cz);
       } else if (m.godes.cells) { // contorno de cada godê do desenho da bandeja (Quinteto em cata-vento, 6 + 1…)
         // fundo: rebaixo mais fundo que o godê (Moon Eco: o pó fica afundado, com a parede da base aparecendo em volta)
         const ar = m.godes.ar || 1, sc = m.godes.mm ? (m.godes.mm + 1) / Math.max(ar, 1) : Math.min((w - 2 * mg) / ar, d - 2 * mg); const TW = sc * ar, TD = sc, WD = godeFundo(m), GH = 1.8;
@@ -8901,7 +8903,7 @@ function godesOf(r) {
   const mm = TRAY_MM[r.k];
   // Case G/M (desenho e foto): a base é só uma placa fina; o godê redondo fica em cima, saltado, num colar
   // Moon M All Crystal (foto): mesmo princípio, godê em cima da base de cristal (Ø ~56, medido na foto)
-  if (/^Case|^Moon M All Crystal/.test(n)) return { rows: [1], rect: false, mm: mm ?? 56, relevo: /^Case G/.test(n) ? 4.5 : 4.8 };
+  if (/^Case|^Moon M All Crystal/.test(n)) return { rows: [1], rect: false, mm: mm ?? 56, relevo: /^Case G/.test(n) ? 4.5 : 4.8, rente: /^Case/.test(n) };
   let tr = /Quinteto/.test(n) ? { c: QUINTETO, ar: 1 } : INCOM_TRAYS[r.k] ?? (/^Frame G/.test(n) ? INCOM_TRAYS.incomp_compactos_frame_g_tampa_fechada : undefined); // com Visor: mesma bandeja do Tampa Fechada
   // Classic Quarteto: entre as duas colunas de godês, o espaço do aplicador (cavidade funda, desenho da bandeja)
   // Flat Duo (foto, medida no catálogo): bandeja 1 de 60,4 × 44,4 à esquerda e bandeja 2 menor (~38 × 42) à direita
