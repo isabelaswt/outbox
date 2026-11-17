@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-17.cl1';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-17.cl2';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -677,7 +677,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-17.cl1';
+const BUILD = '2026-11-17.cl2';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -1885,6 +1885,14 @@ function hexCapGeo(m, y0, lo) {
 }
 
 function sprayGeo(m, y0, { lo = false } = {}) {
+  if (m.bocaBaixo) {
+    // Frasnaga em pé sobre a tampa (fotos do site Incom, Charlotte/Olympea): na ponta de baixo do corpo, gargalo
+    // com rosca e bico cônico dosador apontando para baixo; passagem central aberta. Medidas proporcionais à foto.
+    const R = m.W / 2, hn = m.h * 0.42, hc = m.h - hn, tip = Math.max(1.4, R * 0.2), bore = 0.7, pts = [[bore, m.h + 0.5], [R * 0.86, m.h + 0.5], [R * 0.86, m.h]];
+    for (let k = 0; k < 3; k++) { const y = m.h - hn * (0.18 + k * 0.28); pts.push([R * 0.86, y + 0.9], [R, y + 0.45], [R, y - 0.15], [R * 0.86, y - 0.6]); }
+    pts.push([R * 0.86, hc], [R * 0.62, hc - 0.6], [tip, 0.4], [tip * 0.7, 0], [bore, 0], [bore, m.h + 0.5]);
+    const g = new THREE.LatheGeometry(pts.map(([r, y]) => new THREE.Vector2(r, y0 + y)), lo ? 48 : 128); g.deleteAttribute('uv'); return g;
+  }
   if (m.incomTubeTip) {
     // P84 e foto aberta da dona: bico cônico separado, orifício passante Ø1,6 mm.
     const bore = 0.8, root = 6.4, lip = 8.4, h = m.h;
@@ -6235,6 +6243,7 @@ function ocoGeo(g, m, y0) {
   // oco = a própria forma da tampa encolhida pela parede (com caixa de cantos fixos, nas tampas de canto
   // bem arredondado o corte saía pela quina e deixava furos nos cantos)
   let cut = m.femaleThread ? femaleThreadCutter(m, y0, hh)
+    : m.ocoCima ? moduleGeo({ ...m, h: hh + 1, rTop: 0, rBot: 0, topDip: 0, quadDish: 0, dedo: null, oco: false, spout: null }, y0 + OT, { inset: OW, lo: false }) // tampa embaixo do frasco (Charlotte): boca para cima
     : moduleGeo({ ...m, h: hh + 1, rBot: 0, topDip: 0, quadDish: 0, dedo: null, oco: false, spout: null }, y0 - 1, { inset: OW, lo: false });
   if (!cut) { cut = m.sides ? new RoundedBoxGeometry(w, hh + 1, d, 3, Math.min(3, Math.min(w, d) * (m.sideR || 0.1) * 0.5 + 0.6)) : new THREE.CylinderGeometry(Math.min(w, d) / 2, Math.min(w, d) / 2, hh + 1, 96); cut.translate(cx, y0 - 1 + (hh + 1) / 2, cz); }
   const ni = x => { const y = x.index ? x.toNonIndexed() : x; for (const k in y.attributes) if (k !== 'position' && k !== 'normal') y.deleteAttribute(k); return y; };
@@ -6562,7 +6571,9 @@ function compactParts(product, L, S0) {
     const carries = m.capaCarry && L.some(e => e.idx === idx - 1 && e.m.sprayType === 'gloss');
     const carry = carries ? mine(idx - 1).filter(o => L.find(e => e.idx === idx - 1)?.m.wandInsert || o.userData.liquid) : [];
     const objs = [...mine(idx), ...carry]; if (!objs.length) return;
-    const rest = localBox(product.children.filter(o => o.isMesh && !objs.includes(o))), bb = localBox(objs), c = bb.getCenter(new THREE.Vector3());
+    const others = product.children.filter(o => o.isMesh && !objs.includes(o));
+    if (m.ocoCima) { const drop = localBox(others).min.y - localBox(objs).min.y; others.forEach(o => { o.position.y -= drop; o.updateMatrixWorld(true); }); } // tampa de baixo tirada: o frasco desce ao chão
+    const rest = localBox(others), bb = localBox(objs), c = bb.getCenter(new THREE.Vector3());
     const rot = m.capa === 'vira' ? new THREE.Matrix4().makeRotationX(Math.PI) : new THREE.Matrix4().makeRotationY(-Math.PI / 5).multiply(new THREE.Matrix4().makeRotationZ(Math.PI / 2));
     const T = new THREE.Matrix4().makeTranslation(c.x, c.y, c.z).multiply(rot).multiply(new THREE.Matrix4().makeTranslation(-c.x, -c.y, -c.z));
     objs.forEach(o => o.applyMatrix4(T));
@@ -9541,9 +9552,16 @@ function incomProduct(r) {
       // Charlotte (divisão abaixo da metade no desenho): fica em pé sobre a tampa, corpo em cima. Na foto é uma
       // bisnaga achatada (frente larga, seção de retângulo arredondado), não um cilindro
       if (r.n === 'Olympea') { const sc = sq(0.4); // foto: em pé sobre a tampa preta, corpo achatado com o topo inclinado
-        ms = [P('Tampa', W, D, H * f, { ...sc, rBot: 2, rTop: 0.5 }), P('Frasco', W, D, H * (1 - f), { ...sc, vol: true, rBot: 0.5, rTop: 2.5, taperB: 94, tilt: [1, 0.86], keepTiltHeight: true })]; break; }
+        const hcO = r1(H * f), hbO = r1(hcO - 2);
+        ms = [P('Tampa', W, D, hcO, { ...sc, rBot: 2, rTop: 0.5, oco: true, ocoCima: true, ocoTop: 1.6, capa: true }),
+          M('bicoAplicador', { name: 'Gargalo roscado e bico dosador', W: r1(Math.min(W, D) * 0.62), D: r1(Math.min(W, D) * 0.62), h: hbO, bocaBaixo: true, gap: -hbO, pesc: false, mola: false, own: true, finish: 'pet', color: '#f4efea' }),
+          P('Frasco', W, D, H * (1 - f), { ...sc, vol: true, rBot: 0.5, rTop: 2.5, taperB: 94, tilt: [1, 0.86], keepTiltHeight: true })]; break; }
       if (f < 0.5) { const sc = { ...sq(0.12) }, Dc = r1(W * 0.58); // foto: retângulo de arestas vivas (raio pequeno), não oval
-        ms = [P('Tampa', W, Dc, H * f, { ...sc, rBot: 2, rTop: 0.5, _t: [0, f] }), P('Frasco', W, Dc, H * (1 - f), { ...sc, vol: true, rBot: 0.5, rTop: r.t === 'frnr' ? W * 0.4 : 2, _t: [f, 1] })]; break; }
+        // fotos do site: tampa sai de baixo e mostra o gargalo roscado com o bico cônico dosador apontando para baixo
+        const hcC = r1(H * f), hbC = r1(hcC - 2);
+        ms = [P('Tampa', W, Dc, hcC, { ...sc, rBot: 2, rTop: 0.5, oco: true, ocoCima: true, ocoTop: 1.6, capa: true, _t: [0, f] }),
+          M('bicoAplicador', { name: 'Gargalo roscado e bico dosador', W: r1(Dc * 0.62), D: r1(Dc * 0.62), h: hbC, bocaBaixo: true, gap: -hbC, pesc: false, mola: false, own: true, finish: 'pet', color: '#f4efea' }),
+          P('Frasco', W, Dc, H * (1 - f), { ...sc, vol: true, rBot: 0.5, rTop: r.t === 'frnr' ? W * 0.4 : 2, _t: [f, 1] })]; break; }
       const sb = r.n === 'Beatrice' ? sq(0.2) : {}; // Beatrice: frasco quadrado de cantos arredondados (foto)
       ms = [P('Frasco', W, D, H * f, { ...sb, vol: true, rBot: 3, rTop: 1, ...o, _t: [0, f] }), P('Tampa', W * (r.t === 'frnt' ? 0.88 : 1), D, H * (1 - f), { ...sb, rTop: r.t === 'frnr' ? W * 0.4 : 2, _t: [f, 1] })]; break; }
     case 'tube': {

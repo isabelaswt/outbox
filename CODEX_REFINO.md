@@ -180,6 +180,7 @@ Pendências conhecidas (precisam de dado ou de decisão; não invente):
 **Registro** (o mais novo em cima):
 
 - 2026-11-17, Claude, `2026-11-17.cl1`: na troca de peça de um produto Incom aparece primeiro o grupo "Sugestões Incom para este produto", com a mesma peça nas variantes do catálogo (ex.: Long reta/abaulada, Case com tampa cristal, Moma tampa alta); produto genérico não mostra. Tampas dos produtos Incom (montadas com corpo 'reto') passam a abrir a troca de tampa/válvula, não de corpo. Fotos de todas as 152 páginas do site Incom baixadas em `_ref/incom/site/<produto>/` (com fichas PDF; índice em `indice.json`) para o próximo pente fino. Validações antigas cdx4–cdx26 movidas para a Lixeira (ficaram cdx27 e retomada-cdx28).
+- 2026-11-17, Claude, `2026-11-17.cl2`: Charlotte, Charlotte Rounded e Olympea (ficam em pé sobre a tampa) ganham, pelas fotos do site, tampa oca aberta em cima que sai no Abrir e gargalo roscado com bico dosador cônico apontando para baixo (`bocaBaixo`, `ocoCima`); ao abrir, o frasco desce ao chão e a tampa fica ao lado.
 
 - 2026-11-17, Claude, `2026-11-17.cdx28` publicado: o WIP do Codex (frasnagas Beatrice/Julie/Olive/Vênus com rosca; Tube com tampa roscada fina, bico Ø1,6 e corpo achatado) renderizado de frente, 3/4 e aberto. Tube: corpo + gargalo = 109,001 mm, tampa sem vértices inválidos, rosca do gargalo e bico visíveis com a tampa aberta. Não verificado: rosca vista por dentro da tampa e colisão bico/tampa em detalhe.
 
