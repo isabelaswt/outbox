@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-17.cl31';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-17.cl32';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -707,7 +707,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-17.cl31';
+const BUILD = '2026-11-17.cl32';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -9757,7 +9757,7 @@ function incomProduct(r) {
         miami: { rBot: 3, rTop: 3.5 } }[r.n === 'Miami' ? 'miami' : r.t];
       // rosca 24-410 do catálogo e o fechamento que aparece na foto de cada um (pode trocar em Peças)
       // fotos: Amsterdam com a tampa tambor preta, New York com a Tampa Sens, Wall com o flip-top transparente
-      const fe = { 'Amsterdam': 'tampa', 'Bulb Blow 250': 'bola', 'Bulb Blow 300': 'patoIncom', 'New York': 'sens', 'Wall': 'flip' }[r.n] || 'spray', nh = 16.6;
+      const fe = { 'Amsterdam': 'tampa', 'Bulb Blow 250': 'bola', 'Bulb Blow 300': 'patoIncom', 'New York': 'sens', 'Wall': 'flip' }[r.n] || 'spray', nh = r.n === 'Wall' ? 25 : 16.6; // p.74: o gargalo do Wall é cotado em 25 mm (rosca no alto, parte lisa embaixo); os demais 16,6
       // Fotos p65/66/69/70/72/73: pixels [corpo, saia L/A, guia L/A, proteção L/A].
       // Escala pela largura oficial; fechamento estimado pela foto, sem cotas internas.
       const sprayFoto = { 65: [238, 94, 65, 64, 29, 55, 56], 66: [168, 90, 64, 64, 28, 50, 53],
