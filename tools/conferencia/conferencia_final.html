@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="pt-BR"><meta charset="utf-8"><title>Conferência final Incom</title>
+<style>body{margin:0;font:15px system-ui;background:#f5f3ef}pre{padding:16px;white-space:pre-wrap}iframe{width:1500px;height:1100px;border:0}</style>
+<iframe id="app" src="about:blank"></iframe><pre id="status">Carregando ferramenta…</pre>
+<script type="module">
+const frame=document.querySelector('#app'), status=document.querySelector('#status'),
+  pause=ms=>new Promise(r=>setTimeout(r,ms)), query=new URLSearchParams(location.search),
+  slug=s=>s.normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-zA-Z0-9]+/g,'_'),
+  send=(name,body)=>fetch('http://127.0.0.1:8799/save?name='+name,{method:'POST',body});
+frame.src='/?v=conferencia-'+(query.get('v')||Date.now());
+while(!frame.contentWindow.OUTBOX)await pause(250);
+const O=frame.contentWindow.OUTBOX, doc=frame.contentDocument,
+  catalogue=await(await fetch('/_ref/incom/catalog-data.json')).json(), results=[],
+  names=Object.keys(O.PRESETS).filter(n=>n.startsWith('Incom ')&&new RegExp(query.get('filter')||'.*').test(n));
+const refOf=name=>{
+  const parent=name.replace(' Abaulada (',' (').replace('Flint (colar abaulado)','Flint');
+  return catalogue.products.find(r=>parent===`Incom ${r.n} (${r.c.toLowerCase()})`)
+    ||catalogue.caps.find(r=>parent===`Incom ${r.n} (tampa de perfume)`);
+};
+const measure=predicate=>{
+  const b={x0:Infinity,x1:-Infinity,y0:Infinity,y1:-Infinity,z0:Infinity,z1:-Infinity};let invalid=0;
+  O.product.updateMatrixWorld(true);
+  O.product.traverse(o=>{
+    if(!o.isMesh||o.userData.liquid||o.userData.logo||!predicate(o))return;
+    for(const key of ['position','normal'])for(const v of o.geometry.attributes[key]?.array||[])if(!Number.isFinite(v))invalid++;
+    o.geometry.computeBoundingBox();const box=o.geometry.boundingBox.clone().applyMatrix4(o.matrixWorld);
+    for(const a of ['x','y','z']){b[a+'0']=Math.min(b[a+'0'],box.min[a]);b[a+'1']=Math.max(b[a+'1'],box.max[a]);}
+  });
+  return Number.isFinite(b.x0)?{W:b.x1-b.x0,D:b.z1-b.z0,H:b.y1-b.y0,invalid}:null;
+};
+const shot=async(name,view='three')=>{
+  doc.querySelector(`[data-view="${view}"]`).click();await pause(220);O.render();
+  await send(name,O.renderer.domElement.toDataURL('image/jpeg',.93));return name+'.jpg';
+};
+for(const name of names){
+  try{
+    O.loadState({...structuredClone(O.PRESETS[name]),side:[],logos:[]},name);O.S.aberto=false;O.build();
+    const last=O.S.modules.length-1,bodyIndex=O.S.modules.findIndex(m=>m.vol),isCap=name.includes('(tampa de perfume)'),
+      all=measure(()=>true),body=measure(o=>o.userData.idx===bodyIndex||(o.userData.idx===bodyIndex+1&&O.S.modules[bodyIndex+1]?.kind==='gargalo')),
+      cap=isCap?measure(o=>o.userData.idx===last):null,base='pdf_'+slug(name),images={},ref=refOf(name),
+      modelTarget=O.S.modules.find(m=>m.fH),version=doc.querySelector('#build').textContent;
+    if(all?.invalid)throw Error('Posição ou normal inválida');
+    if(isCap){
+      const removed=O.product.children.filter(o=>o.userData.idx!==last);removed.forEach(o=>O.product.remove(o));
+      images.closed=await shot(base+'_tampa');
+      if(/Bouquet|Brilhante|Malika|Thenue|Victoria|Joya|Quartz|Laura/.test(name))images.detail=await shot(base+'_topo','top');
+      removed.forEach(o=>O.product.add(o));
+    }else{
+      images.closed=await shot(base+'_fechado');
+      if(O.S.modules.some(m=>m.hinge||m.capa||m.sobe>0)){
+        O.S.aberto=true;O.build();const open=measure(()=>true);if(open?.invalid)throw Error('Malha aberta inválida');
+        images.open=await shot(base+'_aberto');
+      }
+    }
+    results.push({name,version,ref,all,body,cap,images,
+      modelTarget:modelTarget?{W:modelTarget.fW,D:modelTarget.fD,H:modelTarget.fH}:null,
+      valveShow:isCap?O.S.modules[last].valveShow||0:0});
+  }catch(e){results.push({name,error:e.stack||String(e)});}
+  const progress={done:results.length,total:names.length,last:name,errors:results.filter(r=>r.error)};
+  status.textContent=JSON.stringify(progress,null,2);await send('pdf-progresso',JSON.stringify(progress));
+}
+await send('pdf-final',JSON.stringify(results));status.textContent='CONCLUÍDO '+results.length;
+</script></html>
