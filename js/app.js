@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-17.cl16';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-17.cl17';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -677,7 +677,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-17.cl16';
+const BUILD = '2026-11-17.cl17';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -9721,7 +9721,7 @@ function incomProduct(r) {
       // Monta como na foto aberta (gargalo para cima) e, fechado, vira: fica em pé sobre a tampa (viraFechado).
       // Gargalo, rosca e ponteira proporcionais à foto aberta, sem cota própria no catálogo.
       if (/^Petit/.test(r.n)) { const haste = /Haste/.test(r.n), capH = r1(H * 0.36), nw = r1(W * 0.6), nh = 5.5;
-        const body = P('Frasco', W, D, r1(H - capH), { ...sq(0.14), vol: true, rBot: r1(W * 0.3), rTop: 1 });
+        const body = P('Frasco', W, D, r1(H - capH), { ...sq(0.14), vol: true, rBot: r1(W * 0.3), rTop: 1, taperB: 88 }); // fotos: afina levemente para a ponta selada
         const neck = M('gargalo', { name: 'Gargalo roscado', neckStd: 'livre', W: nw, D: nw, h: nh, pitch: 1.1, turns: 2.5, threadD: 0.45,
           ringH: 0, ringW: 0, embed: 0, neckFillet: 0, exposedNeck: true, tuboAberto: true, own: true, finish: 'pet', color: '#f1f2f0' }); // fotos do site: gargalo translúcido
         const cap = P('Tampa', W, D, capH, { ...sq(0.14), rBot: 0.6, rTop: 0.6, oco: true, capa: 'vira', capaCarry: haste, viraFechado: true, color: '#1a1a1a', own: true });

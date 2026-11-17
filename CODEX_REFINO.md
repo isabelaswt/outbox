@@ -258,3 +258,4 @@ Pendências conhecidas (precisam de dado ou de decisão; não invente):
 - 2026-11-17, Claude, `2026-11-17.cl14`: base mais leve (a dona achou pesada): fundo de PET 2,5% da altura (era 4%), SAN sem refil 5% (era 10%).
 - 2026-11-17 cl15 (Claude): Flocada Cushion pela foto de uso — haste branca flocada larga, bola com leve cintura, disco translúcido; curto (h 13). Aplicador pode ter altura própria (APLIC.h) e a tampa compensa: fechado 104,6 mm.
 - 2026-11-17 cl16 (Claude): Silicone pela foto do catálogo — dedo ~5 mm × 17 mm com pé alargado, sem anel preto (h 17).
+- 2026-11-17 cl17 (Claude): frasco do Petit (Aplicador e com Haste) afina levemente para a ponta selada (taperB 88, fotos). Fechado 104,6 mm.
