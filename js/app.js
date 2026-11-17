@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-17.cmp7';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-17.cmp8';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -590,7 +590,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-17.cmp7';
+const BUILD = '2026-11-17.cmp8';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -2226,23 +2226,27 @@ function mergeLoose(list) {
 // e raso (onde o dedo encaixa). A saída do produto é só o furo do disco, que aparece ao abrir.
 function sensCapGeo(m0, y0, opts) {
   if (opts.inset) return moduleGeo({ ...m0, sens: false }, y0, opts);
-  const W = m0.W, R = W / 2, H = m0.h, hN = H * 0.24, hF = H * 0.22;
-  const prof = [[0, 0.73, 0.73, 2, 0, 0], [hN / H, 0.73, 0.73, 2, 0, 0]]; // foto: base estreita ~73% da largura
-  for (let k = 1; k <= 10; k++) { const t = k / 10, w = 0.73 + 0.27 * t * t; prof.push([(hN + hF * t) / H, w, w, 2, 0, 0]); }
-  prof.push([1, 1, 1, 2, 0, 0]);
+  const W = m0.W, R = W / 2, H = m0.h;
+  // perfil medido na foto de perto: em cima uma tigela larga de parede quase reta até ~48% da altura, o fundo dela
+  // arredondado entrando até ~79% da largura, e embaixo o pé que afina devagar até ~65% no frasco
+  const prof = [];
+  for (let k = 0; k <= 8; k++) { const t = k / 8 * 0.31, w = 0.645 + 0.125 * Math.pow(t / 0.31, 1.3); prof.push([t, w, w, 2, 0, 0]); }
+  for (let k = 0; k <= 12; k++) { const a = k / 12 * Math.PI / 2, t = 0.48 - 0.15 * Math.cos(a), w = 0.79 + 0.195 * Math.sin(a); prof.push([Math.max(t, 0.315), w, w, 2, 0, 0]); }
+  prof.push([0.75, 0.995, 0.995, 2, 0, 0], [1, 1, 1, 2, 0, 0]);
   let cap = moduleGeo({ ...m0, sens: false, h: H, rTop: 0.6, rBot: 0.6, W0: W, smoothProf: false, prof }, y0, opts);
   if (!opts.lo && cap) {
-    const wall = Math.max(1.3, W * 0.045), dep = H * 0.15, yT = y0 + H;
-    const pocket = new THREE.CylinderGeometry(R - wall, R - wall, dep + 2, 72); pocket.translate(0, yT - dep + (dep + 2) / 2, 0); // copo raso: o disco é o fundo dele
-    const uw = W * 0.58, ud = dep * 0.95, sh = new THREE.Shape(); // U largo e raso na frente da borda
+    // foto: topo reto — o disco ocupa quase todo o topo, rente à borda fina, só a linha de folga em volta (sem copo rebaixado)
+    const wall = Math.max(0.9, W * 0.03), hd = Math.min(1.8, H * 0.09), dep = hd, yT = y0 + H;
+    const pocket = new THREE.CylinderGeometry(R - wall, R - wall, dep + 2, 96); pocket.translate(0, yT - dep + (dep + 2) / 2, 0); // encaixe do disco
+    const uw = W * 0.58, ud = H * 0.12, sh = new THREE.Shape(); // U largo e raso na frente da borda
     sh.moveTo(-uw / 2, yT + 2); sh.lineTo(-uw / 2, yT); sh.absellipse(0, yT, uw / 2, ud, Math.PI, 2 * Math.PI, false); sh.lineTo(uw / 2, yT + 2); sh.closePath();
     const u = new THREE.ExtrudeGeometry(sh, { depth: R + 2, bevelEnabled: false, curveSegments: 32 });
     for (const c of [pocket, u]) { const [o, inn] = cutHole(cap, c); if (o !== cap) cap = mergeLoose([o, inn]); } // um corte por vez (cortadores sobrepostos numa peça só deixavam uma aleta solta)
     // dentro do copo, o disc-top: disco que se aperta, com folga fina em volta e a fenda de saída do lado do U
     // Fechado o disco fica liso (o pino de baixo veda a saída). Aberto (botão Abrir): o dedo aperta no U, o lado oposto
     // levanta e aparece o furo redondo por onde o produto sai
-    const hd = Math.min(1.8, dep * 0.6), aberto = !!(S?.aberto);
-    let disc = moduleGeo({ ...BASE, kind: 'giro', W: 2 * (R - wall - 0.35), D: 2 * (R - wall - 0.35), h: hd, rBot: 0.2, rTop: 0.5 }, yT - dep, opts);
+    const aberto = !!(S?.aberto);
+    let disc = moduleGeo({ ...BASE, kind: 'giro', W: 2 * (R - wall - 0.25), D: 2 * (R - wall - 0.25), h: hd, rBot: 0.2, rTop: 0.5 }, yT - dep, opts);
     if (aberto && disc) {
       const hole = new THREE.CylinderGeometry(Math.max(1.1, W * 0.045), Math.max(1.1, W * 0.045), hd + 4, 32); hole.translate(0, yT - dep + hd / 2, -R * 0.55); // furo no lado que levanta (oposto ao U)
       { const [o, inn] = cutHole(disc, hole); if (o !== disc) disc = mergeLoose([o, inn]); }
@@ -8762,7 +8766,7 @@ function incomProduct(r) {
       // tampa reta (foto do Amsterdam): alta, ~31% da altura do frasco, na largura dele, assentada no ombro (o app já a apoia no
       // gargalo e a saia desce até o corpo; descer à força a enterrava no frasco e a rosca aparecia por cima)
       const fc = fe === 'tampa' ? M('tampaTambor', { W: r1(W * 0.98), D: r1(W * 0.98), h: r2((H - nh) * 0.31 - 1.6) })
-        : fe === 'sens' ? M('tampaSens', { W: r1(W * 0.81), D: r1(W * 0.81), h: r1(W * 0.81 * 0.53) }) // foto do New York: larga (81% do frasco)
+        : fe === 'sens' ? M('tampaSens', { W: r1(W * 0.81), D: r1(W * 0.81), h: r1(W * 0.81 * 0.58) }) // foto do New York: larga (81% do frasco)
         : fe === 'bola' ? (bl => [M('reto', { name: 'Colar da tampa bola', W: r1(Math.max(bl * 0.62, 27.5)), D: r1(Math.max(bl * 0.62, 27.5)), h: r1(nh + 0.8), rTop: 0.6, rBot: 0.3 }), // ícone Incom: a bola fica sobre um colar que veste o gargalo
           M('bola', { name: 'Tampa bola', W: bl, D: bl, h: bl })])(r1(Math.min(W * 0.62, 36)))
         : fe === 'flip' ? M('flipRedondo', { W: 30, D: 30, h: 30, own: true, finish: 'pet', color: '#ffffff' }) // foto do Wall: flip-top transparente
