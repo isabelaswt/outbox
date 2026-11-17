@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-17.cl6';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-17.cl7';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -677,7 +677,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-17.cl6';
+const BUILD = '2026-11-17.cl7';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -1886,15 +1886,14 @@ function hexCapGeo(m, y0, lo) {
 
 function sprayGeo(m, y0, { lo = false } = {}) {
   if (m.incomBico) {
-    // Bico dosador Incom em PP, orifício Ø1,6 mm (fichas Olive, Julie e Vênus; perfil pelo detalhe "bico dosador"
-    // da ficha Olive, em rosca 20-410): colar Ø16,5 assentado na boca, garganta côncava até Ø6,4 e tubo levemente
-    // cônico até Ø4,8 na ponta. Altura nominal 18,3 mm; se a tampa fechada não comporta, achata só na altura.
-    // Medidas tiradas da foto do detalhe, sem desenho técnico próprio do bico.
-    const k = m.W / 16.5, sy = Math.min(1, (m.h - 3) / 18.3), Y = y => -3 + 3 + y * sy, bore = 0.8, pts = [[bore, -3], [6.4 * k, -3], [6.4 * k, 0], [8.25 * k, 0], [8.25 * k, 0.6]];
-    pts[0][1] = pts[1][1] = 0; pts[2][1] = 3; // trecho dentro da boca (3 mm), depois o colar sobre ela
-    pts.splice(0, pts.length, [bore, 0], [6.4 * k, 0], [6.4 * k, 3], [8.25 * k, 3], [8.25 * k, 3 + 0.6 * sy]);
-    for (let i = 1; i <= 16; i++) { const t = i / 16; pts.push([(3.2 + 5.05 * (1 - t) ** 2.5) * k, 3 + (0.6 + 8.2 * t) * sy]); }
-    pts.push([2.4 * k, 3 + 18.0 * sy], [2.1 * k, 3 + 18.3 * sy], [bore, 3 + 18.3 * sy], [bore, 0]);
+    // Bico dosador Incom em PP, orifício Ø1,6 mm (fichas Olive, Julie e Vênus). Perfil pela foto grande da Vênus 35
+    // aberta (site Incom), em rosca 20-410: bordinha fina Ø19 × 1,1 mm sobre a boca e cone de laterais retas de
+    // Ø13 a Ø4,2 mm, ponta levemente arredondada; ~10,5 mm acima da boca. Medidas pela foto, sem desenho próprio.
+    // Os 3 mm de baixo entram na boca do gargalo. Se a tampa fechada não comporta, o cone achata só na altura.
+    // A bordinha não passa da boca: o raio dela é o da boca do gargalo (m.W = diâmetro da boca sem a rosca).
+    const R = m.W / 2, sy = Math.min(1, (m.h - 4.1) / 9.4), bore = 0.8, top = 4.1 + 9.4 * sy, cb = Math.min(6.5, R - 1.2);
+    const pts = [[bore, 0], [Math.min(6.4, R - 1.6), 0], [Math.min(6.4, R - 1.6), 3], [R - 0.2, 3], [R, 3.25], [R, 3.85], [R - 0.25, 4.1],
+      [cb, 4.1], [2.4, top - 0.45 * sy], [2.25, top - 0.15 * sy], [1.95, top], [bore, top], [bore, 0]];
     const g = new THREE.LatheGeometry(pts.map(([r, y]) => new THREE.Vector2(r, y0 + y)), lo ? 48 : 128); g.deleteAttribute('uv'); return g;
   }
   if (m.bocaBaixo) {
@@ -9960,6 +9959,13 @@ function incomProduct(r) {
     cap.threadReceiver = { W: neck.W, h: neck.h, pitch: neck.pitch, turns: neck.turns,
       threadD: neck.threadD, ringH: neck.ringH, ...(free ? { threadTop: 0.45, threadBottom: 0.35 } : {}) };
     Object.assign(cap, { capa: 'vira', threadNeckUid: neck.uid }); ms.splice(1, 0, neck);
+    // Fotos abertas do site: Julie e Olive têm ponteira dosadora branca pontuda; Vênus, cone translúcido mais largo.
+    // Proporções pela foto, sem cota; limitada ao vão da tampa, que desce o mesmo tanto (altura fechada mantida).
+    if (!free) { const vn = /^Vênus/.test(r.n), room = cap.h - neck.h + 0.8; // ponteira nasce 3 mm dentro da boca: sobra ~2 mm até o teto da tampa
+      const th = r1(Math.min(room, 13.5)), tg = -r1(neck.h - 3); // o gargalo não ocupa altura na pilha: a ponteira nasce 3 mm dentro da boca
+      if (th > 4) { ms.splice(2, 0, M('bicoAplicador', { name: 'Bico dosador Ø1,6 mm', W: r1(neck.W - 2 * (neck.threadD || 0.8) - 0.2), D: r1(neck.W - 2 * (neck.threadD || 0.8) - 0.2), h: th, incomBico: true, gap: -tg, pesc: false, mola: false,
+          own: true, finish: vn ? 'pet' : 'fosco', color: vn ? '#efe4d6' : '#f4f1ec' }));
+        cap.gap = r2((cap.gap || 0) + tg); } } // o bico sobe até a boca sem ocupar altura na pilha: a tampa desce o mesmo tanto e mantém o assento
   }
   if (r.c === 'Frasnagas' && r.n === 'Tube') {
     const neck = ms[1]; Object.assign(ms.at(-1), { threadNeckUid: neck.uid, threadCavityFull: true, ocoWall: 1,
