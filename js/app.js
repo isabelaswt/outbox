@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-17.cl2';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-17.cl3';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -677,7 +677,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-17.cl2';
+const BUILD = '2026-11-17.cl3';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -2513,6 +2513,23 @@ function fanCapGeo(m, y0, opts) {
   });
   return loftPts(rings);
 }
+function lipstickBulletGeo(m, y0, { lo = false } = {}) {
+  // Bala clássica (foto): corpo levemente afunilado, face oblíqua oval com borda arredondada e leve convexidade.
+  // Ângulo e raio da borda estimados pelas fotos; a parte de baixo fica dentro do tubo.
+  const N = lo ? 32 : 96, A = m.W / 2, B = (m.D || m.W) / 2, ox = m.ox || 0, h = m.h, t = m.tilt || [1, 0.55],
+    rf = Math.min(A, B) * 0.3, hi = h * t[0], loH = h * t[1], band = rf / A, bulge = rf * 0.3;
+  const plane = x => hi + (loH - hi) * (x / A + 1) / 2, taper = y => 1 - 0.05 * clamp(y / h, 0, 1), rings = [];
+  const ring = (k, yAt) => Array.from({ length: N }, (_, i) => { const a = TAU * i / N, c = Math.cos(a), s = Math.sin(a), y = yAt(k * c * A), q = k * taper(y);
+    return [ox + A * q * c, y0 + y, B * q * s]; });
+  for (let j = 0; j <= 8; j++) rings.push(ring(1, x => (plane(x) - rf) * j / 8));
+  const nb = lo ? 6 : 14, nf = lo ? 4 : 10;
+  // borda: quarto de círculo medido a partir do próprio plano inclinado (contínua em todo o contorno)
+  for (let j = 1; j <= nb; j++) { const ph = j / nb * Math.PI / 2, d = rf * (1 - Math.cos(ph)), k = 1 - d / A;
+    rings.push(ring(k, x => plane(x) - rf + rf * Math.sin(ph))); }
+  const k0 = 1 - band;
+  for (let j = 1; j <= nf; j++) { const k = k0 * (1 - j / nf); rings.push(ring(k, x => plane(x) + bulge * (1 - (k / k0) ** 2))); }
+  return loftPts(rings);
+}
 function lipstickPointGeo(m, y0, { lo = false } = {}) {
   // Ella/Squared p88/92: corpo cilíndrico e ponta afilada convexa, sem plano oblíquo.
   // Início/curvatura do afilamento por proporção fotográfica; porção enterrada não é cotada.
@@ -2607,6 +2624,7 @@ function splitMalikaGeo(g, m, y0) {
 }
 function moduleGeo(m0, y0, opts = {}) {
   if (m0.lipPoint && !opts.inset) return lipstickPointGeo(m0, y0, opts);
+  if (m0.lipBullet && !opts.inset) return lipstickBulletGeo(m0, y0, opts);
   if (m0.facetBud && !opts.inset) return budCapGeo(m0, y0, opts);
   if (m0.roseTop && !opts.inset) return roseCapGeo(m0, y0, opts);
   if (m0.malikaFace && !opts.inset) return malikaCapGeo(m0, y0, opts);
@@ -6561,7 +6579,11 @@ function compactParts(product, L, S0) {
     objs.forEach(o => { o.userData.hinge = { y0, z: z + (bObjs.length ? clamp(Math.min(base.m.h, m.h) * 0.22, 1.1, 2.2) * 0.7 : 0), p: o.position.clone(), q: o.quaternion.clone() }; });
     if (ang > 0) setHinge(objs, ang);
   });
-  if (!aberto) return;
+  if (!aberto) { // fechado em pé sobre a tampa (Petit): monta como aberto (gargalo para cima) e vira o conjunto
+    if (L.some(e => e.m.viraFechado && !e.m.hidden)) { const all = product.children.filter(o => o.isMesh), bb = localBox(all), c = bb.getCenter(new THREE.Vector3());
+      const T = new THREE.Matrix4().makeTranslation(c.x, c.y, c.z).multiply(new THREE.Matrix4().makeRotationZ(Math.PI)).multiply(new THREE.Matrix4().makeTranslation(-c.x, -c.y, -c.z));
+      all.forEach(o => { o.applyMatrix4(T); o.updateMatrixWorld(true); }); }
+    return; }
   L.forEach(({ m, idx }) => { // bala do batom sobe
     if (m.hidden || !(m.sobe > 0)) return;
     mine(idx).forEach(o => { o.position.y += m.sobe; o.updateMatrixWorld(true); });
@@ -9584,7 +9606,22 @@ function incomProduct(r) {
     case 'gloss': case 'glosssq': { // a tampa veste a haste com o aplicador (ou a escova, na máscara), que desce até o fundo
       // Petit (frasnaga): na foto fica em pé sobre a tampa quadrada preta (36% de baixo, como no desenho) e o
       // frasco longo e afunilado de topo arredondado em cima
-      if (/^Petit/.test(r.n)) { const fp = 0.36; ms = [P('Tampa', W, D, H * fp, { ...sq(0.14), rBot: 1, rTop: 0.4, _t: [0, fp] }), P('Frasco', W, D, H * (1 - fp), { ...sq(0.14), vol: true, rBot: 0.4, rTop: W * 0.25, _t: [fp, 1] })]; break; } // foto: corpo quadrado como a tampa, afinando para cima, topo arredondado
+      // Fotos do site (Petit com Haste/Aplicador): frasco de seção quadrada com cantos redondos, ponta selada
+      // arredondada (não em bico) e ombro reto com gargalo roscado; tampa quadrada preta (36% da altura, desenho).
+      // Monta como na foto aberta (gargalo para cima) e, fechado, vira: fica em pé sobre a tampa (viraFechado).
+      // Gargalo, rosca e ponteira proporcionais à foto aberta, sem cota própria no catálogo.
+      if (/^Petit/.test(r.n)) { const haste = /Haste/.test(r.n), capH = r1(H * 0.36), nw = r1(W * 0.6), nh = 5.5;
+        const body = P('Frasco', W, D, r1(H - capH), { ...sq(0.14), vol: true, rBot: r1(W * 0.3), rTop: 1 });
+        const neck = M('gargalo', { name: 'Gargalo roscado', neckStd: 'livre', W: nw, D: nw, h: nh, pitch: 1.1, turns: 2.5, threadD: 0.45,
+          ringH: 0, ringW: 0, embed: 0, neckFillet: 0, exposedNeck: true, tuboAberto: true });
+        const cap = P('Tampa', W, D, capH, { ...sq(0.14), rBot: 0.6, rTop: 0.6, oco: true, capa: 'vira', capaCarry: haste, viraFechado: true, color: '#1a1a1a', own: true });
+        const insertW = r1(2 * (capHalfAt(cap, 0) - OCO.wall - 0.05));
+        ms = [body, neck, haste
+          ? M('tampaGloss', { name: 'Inserto roscado com haste e aplicador', W: insertW, D: insertW, h: r1(nh + 1.2),
+              wandInsert: { W: nw, h: nh, pitch: 1.1, turns: 2.5, threadD: 0.45, ringH: 0 }, pescD: 2.4, tipL: 11, tipW: 5.5, tipColor: '#f4f1ec' })
+          // Foto aberta: ponteira branca estreita de ponta arredondada saindo da boca do gargalo.
+          : P('Ponteira aplicadora', r1(nw * 0.7), null, 9, { rBot: 0, rTop: r1(nw * 0.33), gap: -2, own: true, color: '#f4f1ec' }),
+          cap]; break; }
       const s0 = r.t === 'glosssq' ? sq(0.08) : {}, [f] = SPLIT_FIX[r.pg] ? [SPLIT_FIX[r.pg]] : incomFrac(pr, [0.52]), capH = H * (1 - f), masc = r.c === 'Máscaras';
       // gloss: frasco transparente (PET G/SAN, como no catálogo) com o gloss colorido dentro; máscara: frasco opaco
       const gl = masc ? {} : { own: true, finish: 'pet', color: '#ffffff', fundoGrosso: true, fundo: r1(Math.max(3, H * 0.05)), fundoR: r1(Math.min(W, D) / 2), // por dentro o fundo é uma concha (meio redondo)
@@ -9650,20 +9687,20 @@ function incomProduct(r) {
       // Long p89: colar 96 px, tubo 170 px, largura do colar 94/112 da base (foto).
       // Ella p88: colar 26/230 da tampa; dois ressaltos visíveis, sem reproduzir trava oculta.
       const cor = corDe(BATOM_CORES, r.n), hcol = r1(long ? hc * 96 / 320 : ella ? hc * 26 / 230 : clamp(hc * 0.13, 4, 8)), wcol = r1(long ? W * 94 / 112 : ella ? W * 0.94 : Math.min(W, D) - 2 * OCO.wall - 0.8);
-      const ws = r1(Math.min(wcol - 1.6, 12.1 + 4.6)), wb = r1(Math.min(12.1, ws - 2.6)), hs = r1(hc * (long ? 170 / 320 : 0.58)), lb = r1(Math.min(24, hc * 0.42, hs - 2)), visor = false; // Spy: a janela da cor fica no topo da tampa (foto); Lipview tem o seu próprio desenho
+      const ws = r1(Math.min(wcol - 1.6, 12.1 + 4.6)), wb = r1(Math.min(12.1, ws - 0.8)), hs = r1(hc * (long ? 170 / 320 : 0.58)), lb = r1(Math.min(24, hc * 0.42, hs - 2)), visor = false; // Spy: a janela da cor fica no topo da tampa (foto); Lipview tem o seu próprio desenho
       // Long Lipview (foto): embaixo um copinho transparente com a cor do batom dentro, uma aba preta mais larga e,
       // acima dela, a base mais estreita (que a tampa veste até a aba)
       if (/Lipview/.test(r.n)) {
         // Foto p90 (1,3x): visor 32 px, aba 24 px, colar 96 px, tubo 166 px, tampa 316 px.
         // Escala vertical 74/(32+24+316); faixa incolor inferior ~12/32 do visor (estimativas).
         const hv = r1(H * 32 / 372), hf = r1(H * 24 / 372), hb = r1(H * 96 / 372), hd = r1(hv * 20 / 32), wb2 = r1(W * 92 / 110), hcL = r2(H - hv - hf);
-        const wsL = r1(wb2 * 0.78), wbL = r1(Math.min(12.1, wsL - 2.4)), hsL = r1(H * 166 / 372), lbL = r1(Math.min(24, hsL - 2));
+        const wsL = r1(wb2 * 0.78), wbL = r1(Math.min(12.1, wsL - 0.8)), hsL = r1(H * 166 / 372), lbL = r1(Math.min(24, hsL - 2));
         ms = [P('Visor de cor (fundo)', r1(W * 0.97), null, hv, { rTop: 0.4, rBot: 0.8, own: true, color: '#ffffff', finish: 'pet' }),
           P('Cor no visor', r1(W * 0.8), null, hd, { rTop: 0.6, rBot: 0.6, gap: r1(-hd), own: true, color: cor, finish: 'fosco' }),
           P('Aba da base', W, D, hf, { rTop: 0.5, rBot: 0.3 }),
           P('Base', wb2, null, hb, { rTop: 0.6, rBot: 0.2 }),
           P('Tubo (mecanismo)', wsL, null, hsL, { rTop: 0.5, rBot: 0.3, own: true, color: '#d6d8da', finish: 'metal' }),
-          P('Bala (batom)', wbL, null, lbL, { rTop: 0.8, rBot: 0.3, gap: r1(-(lbL + 1.2)), tilt: [1, 0.55], sobe: r1(lbL * 0.45), own: true, color: cor, finish: 'brilho' }),
+          P('Bala (batom)', wbL, null, lbL, { rTop: 0.8, rBot: 0.3, gap: r1(-(lbL + 1.2)), tilt: [1, 0.55], lipBullet: true, sobe: r1(lbL * 0.45), own: true, color: cor, finish: 'brilho' }),
           // A bala recua 1,2 mm: compensar esse recuo na tampa conserva os 74 mm fechados.
           P('Tampa', W, D, hcL, { ...s0, rTop: 1.5, gap: r1(-(hsL + hb - 1.2)), capa: true, oco: true, _t: [(hv + hf) / H, 0.895], ...(r.abaulada ? { domeTop: r1(W * 0.45) } : {}) })]; break; }
       ms = [...(visor ? [P('Visor de cor (fundo)', r1(Math.min(W, D) * 0.55), null, 1.2, { rTop: 0.2, rBot: 0.4, own: true, color: cor, finish: 'brilho' })] : []),
@@ -9672,8 +9709,8 @@ function incomProduct(r) {
         P('Colar interno', wcol, null, hcol, { rTop: 0.3, rBot: 0.2,
           ...(ella ? { smoothProf: false, prof: [[0, 1, 1, 2, 0, 0], [0.30, 1, 1, 2, 0, 0], [0.34, 0.94, 0.94, 2, 0, 0], [0.56, 0.94, 0.94, 2, 0, 0], [0.60, 1, 1, 2, 0, 0], [0.96, 1, 1, 2, 0, 0], [1, 0.98, 0.98, 2, 0, 0]] } : {}) }),
         P('Tubo (mecanismo)', ws, null, hs, { rTop: 0.5, rBot: 0.3, own: true, color: '#d6d8da', finish: 'metal' }),
-        P('Bala (batom)', wb, null, lb, { rTop: 0.8, rBot: 0.3, gap: r1(-(lb + 1.2)), tilt: [1, 0.55],
-          ...(ella || r.n === 'Squared' ? { lipPoint: true, tilt: null } : r.n === 'Spy' ? { taper: 75 } : {}),
+        P('Bala (batom)', wb, null, lb, { rTop: 0.8, rBot: 0.3, gap: r1(-(lb + 1.2)), tilt: [1, 0.55], lipBullet: true,
+          ...(ella || r.n === 'Squared' ? { lipPoint: true, lipBullet: false, tilt: null } : r.n === 'Spy' ? { taper: 75 } : {}),
           sobe: long ? r1(hc * 41 / 320 + 1.2) : r1(lb * 0.85), own: true, color: cor, finish: 'brilho' }),
         P('Tampa', W, D, hc, { ...s0, rTop: 1.5, gap: r1(-(hs + hcol - 1.2)), capa: true, oco: true, ...(r.n === 'Spy' ? { mat2: true, mat2Side: 'topo', mat2R: 70, mat2Color: cor, mat2Finish: 'brilho' } : {}), /* Spy: janela com a cor do batom no topo da tampa */ _t: [f, r.n === 'Ella' ? 0.975 : /^Long/.test(r.n) ? 0.895 : 1], ...(r.abaulada ? { domeTop: r1(W * 0.45) } : {}), // abaulada: cúpula lisa (o topo do desenho tinha quina)
           ...(r.n === 'Ella' ? { curvaTopo: 2.4 } : {}) })]; break; } // Ella: "detalhe curvilíneo no topo" — o topo desce em curva de um lado (o desenho virava uma aba)

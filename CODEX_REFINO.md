@@ -241,3 +241,4 @@ Pendências conhecidas (precisam de dado ou de decisão; não invente):
 - 2026-11-17, Codex, `2026-11-17.cdx1`: peças intercambiáveis separadas em Incom e Outbox / genérico nos menus de adicionar e trocar. Corpos, tampas e válvulas extraídos das montagens atuais do catálogo, com referência à página e dimensões preservadas ao selecionar. Geometrias existentes preservadas; inclusão na biblioteca não significa refino aprovado. Pendente: conferir modelo a modelo contra o PDF da dona; espumadora ainda compartilha `sprayType: 'dosadora'` com a dosadora. Nenhum mecanismo oculto foi inventado.
 
 - 2026-11-17, Claude: compactos, paletas, cristal, fechamentos dos frascos e Tampa Sens revisados pelas fotos (commits `8dfabe3` a `86ce7ad`); PDF de conferência refeito.
+- 2026-11-17 cl3 (Claude): bala do batom com face oblíqua de borda arredondada (lipstickBulletGeo) e largura cheia no tubo — sem anel escuro (foto). Ella/Squared seguem lipPoint.
