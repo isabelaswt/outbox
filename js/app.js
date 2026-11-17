@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-17.cl18';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-17.cl19';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -677,7 +677,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-17.cl18';
+const BUILD = '2026-11-17.cl19';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -9787,7 +9787,7 @@ function incomProduct(r) {
           W: insertW, D: insertW, h: r1(nh + 1.2), wandInsert: { W: neck.W, h: neck.h, pitch: neck.pitch, turns: neck.turns, threadD: neck.threadD, ringH: 0 }, pescD: r1(Math.min(3, nw * 0.3)),
           tipL: masc ? r1(Math.min(24, H * 0.2)) : 13, tipW: r1(Math.min(masc ? 7.5 : 6.5, Math.min(W, D) - 6)), tipColor: masc ? '#2b2b2b' : '#e2cdb8',
           ...(masc ? { brushStyle: r.n === 'Berlim Plus' ? 'cone' : ['Guggen', 'Oscar'].includes(r.n) ? 'fina' : 'fusiforme' } : {}),
-          ...(/All Crystal/.test(r.n) ? { rodClear: true } : {}) }), cap]; break; }
+          ...(/All Crystal/.test(r.n) ? { rodClear: true, own: true, finish: 'pet', color: '#ffffff' } : {}) }), cap]; break; } // All Crystal (foto): o inserto roscado também é incolor — pela tampa de cristal aparecem a rosca e a haste, não um bloco
     case 'baton': case 'batonsq': {
       // Batom como no catálogo: base, tubo de metal (mecanismo) saindo dela, bala de 12,1 mm com a ponta
       // chanfrada, recolhida dentro do tubo, e a tampa que desce até a base vestindo tudo. "Abrir" tira a
@@ -10040,7 +10040,8 @@ function incomProduct(r) {
   if (r.c === 'Frasnagas' && r.n === 'Tube') ms.find(m => m.vol).fMeasure = 'corpo + gargalo exposto, sem tampa e sem bico';
   const fapp = ['Frascos', 'Frasnagas'].includes(r.c) || r.t.startsWith('flacon') ? 'Fármaco' : 'Beleza';
   // pote de acrílico (SAN/PMMA/PCTG) tem parede grossa; o de PP/PE, fina
-  const wall = r.t.startsWith('pote') ? (/SAN|PMMA|PCTG/.test(r.mat) ? 3.2 : 1.6) : /Frasco em SAN/.test(r.mat) && !refillPhoto ? r1(Math.min(5, W * 0.13)) : undefined; // SAN: parede grossa (foto Dispensing 15: coluna do conteúdo ~70% da largura)
+  const wall = r.t.startsWith('pote') ? (/SAN|PMMA|PCTG/.test(r.mat) ? 3.2 : 1.6) : /Frasco em SAN/.test(r.mat) && !refillPhoto ? r1(Math.min(5, W * 0.13))
+    : r.c === 'Líquidos labiais' && /Frasco em PET/.test(r.mat) ? r1(Math.min(3, W * 0.11)) : undefined; // gloss de PET G (foto do Berlim): parede injetada grossa, ~11% da largura, o gloss não encosta na borda // SAN: parede grossa (foto Dispensing 15: coluna do conteúdo ~70% da largura)
   return { color: BEIGE, finish: 'fosco', modules: ms, forn: 'Incom', fcat: r.c, fapp, ...(wall ? { wall, wallAuto: false } : {}) };
 }
 INCOM_PRODUCTS.forEach(r => { PRESETS[`Incom ${r.n} (${r.c.toLowerCase()})`] = incomProduct(r); });
