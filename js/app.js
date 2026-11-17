@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-17.cdx1';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-17.cdx2';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -590,7 +590,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-17.cdx1';
+const BUILD = '2026-11-17.cdx2';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -2223,7 +2223,7 @@ function mergeLoose(list) {
 }
 // Tampa Sens (Incom), como nas fotos: embaixo uma parte estreita que abre numa curva suave até o corpo cilíndrico; em
 // cima a borda forma um copo raso com o disco (o tampo que se aperta) por dentro, e na frente a borda desce num U largo
-// e raso (onde o dedo encaixa). A saída do produto é só o furo do disco, que aparece ao abrir.
+// e raso (onde o dedo encaixa). A saída retangular na lateral do disco aparece ao abrir (pedido da dona).
 function sensCapGeo(m0, y0, opts) {
   if (opts.inset) return moduleGeo({ ...m0, sens: false }, y0, opts);
   const W = m0.W, R = W / 2, H = m0.h;
@@ -2246,13 +2246,16 @@ function sensCapGeo(m0, y0, opts) {
     for (const c of [pocket, u]) { const [o, inn] = cutHole(cap, c); if (o !== cap) cap = mergeLoose([o, inn]); } // um corte por vez (cortadores sobrepostos numa peça só deixavam uma aleta solta)
     // dentro do copo, o disc-top: disco que se aperta, com folga fina em volta e a fenda de saída do lado do U
     // Fechado o disco fica liso (o pino de baixo veda a saída). Aberto (botão Abrir): o dedo aperta no U, o lado oposto
-    // levanta e aparece o furo redondo por onde o produto sai
+    // levanta e expõe a saída retangular na lateral do disco
     const aberto = !!(S?.aberto);
     let disc = moduleGeo({ ...BASE, kind: 'giro', W: 2 * (R - wall - 0.25), D: 2 * (R - wall - 0.25), h: hd, rBot: 0.2, rTop: 0.5 }, yT - dep, opts);
     if (aberto && disc) {
-      // o disco é liso (sem furo em cima): a saída é um furinho no fundo do vão, embaixo do lado que levanta
-      const hole = new THREE.CylinderGeometry(Math.max(1.1, W * 0.045), Math.max(1.1, W * 0.045), 4, 32); hole.translate(0, yT - dep - cav - 2 + 0.05, -R * 0.55);
-      { const [o, inn] = cutHole(cap, hole); if (o !== cap) cap = mergeLoose([o, inn]); }
+      // Saída lateral retangular, sem perfurar o topo. Dimensões ainda pendentes de cota do catálogo.
+      const slotW = Math.min(m0.orifD || BASE.orifD, (R - wall) * 1.2), slotH = hd * 0.35;
+      const hole = new THREE.BoxGeometry(slotW, slotH, R);
+      hole.translate(0, yT - dep + hd * 0.5, -R * 0.85);
+      { const [o, inn] = cutHole(disc, hole); if (o !== disc) disc = mergeLoose([o, inn]); }
+      hole.dispose();
       const py = yT - dep + hd / 2, pz = R * 0.15; disc.translate(0, -py, -pz); disc.rotateX(0.27); disc.translate(0, py, pz); // ~15°: o dedo aperta no U e o lado oposto levanta
     }
     cap = mergeLoose([cap, disc]);
@@ -7797,6 +7800,7 @@ function adaptSwap(old, nw, label) {
 // Posição do scroll da grade de troca (não volta ao topo a cada clique).
 let swapScroll = { key: '', top: 0 };
 let swapQ = ''; // texto da busca na troca (fica entre uma troca e outra)
+let swapOrigin = store.get('shape.swapOrigin', 'outbox') === 'incom' ? 'incom' : 'outbox';
 const swapMemo = new Map(); // uid|tipo → peça como estava antes de ser trocada
 function renderSwap(ed, m) {
   const [label, keys] = categoryOf(m), cur = typeOf(m);
@@ -7807,18 +7811,24 @@ function renderSwap(ed, m) {
   if (closure && label === 'Válvula') groups.reverse(); // a família da peça clicada vem primeiro
   const box = document.createElement('details'); box.open = store.get('shape.swapOpen2', true) !== false; // aberto: clicou na peça, já pode trocar a forma (fecha se a pessoa fechar)
   box.addEventListener('toggle', () => store.set('shape.swapOpen2', box.open));
-  box.innerHTML = `<summary style="text-transform:none;letter-spacing:0;font-size:12px">${closure ? 'Trocar por outra tampa ou válvula' : `Trocar por outro(a) ${label.toLowerCase()}`}</summary><input type="search" class="swapSearch" placeholder="Buscar peça pelo nome (ex.: válvula, Aramis, pump)…"><div class="gallery swap"></div>`;
+  box.innerHTML = `<summary style="text-transform:none;letter-spacing:0;font-size:12px">${closure ? 'Trocar por outra tampa ou válvula' : `Trocar por outro(a) ${label.toLowerCase()}`}</summary><div class="libSwitch" role="tablist" aria-label="Biblioteca de peças"><button type="button" role="tab" data-origin="outbox">Outbox</button><button type="button" role="tab" data-origin="incom">Incom</button></div><input type="search" class="swapSearch" placeholder="Buscar peça pelo nome (ex.: válvula, Aramis, pump)…"><div class="gallery swap" role="tabpanel"></div>`;
   const grid = box.querySelector('.gallery'), q0 = box.querySelector('.swapSearch');
   // Busca: filtra os cartões pelo nome (sem acento/maiúscula) e esconde os grupos sem resultado
   const filt = () => { const q = norm(q0.value.trim()); swapQ = q0.value;
-    grid.querySelectorAll('.card').forEach(c => { c.style.display = !q || norm(c.title + ' ' + (c.dataset.grp || '')).includes(q) ? '' : 'none'; });
+    box.querySelectorAll('[role="tab"]').forEach(b => { const active = b.dataset.origin === swapOrigin; b.classList.toggle('on', active); b.setAttribute('aria-selected', String(active)); b.tabIndex = active ? 0 : -1; });
+    grid.querySelectorAll('.card').forEach(c => { c.style.display = c.dataset.origin === swapOrigin && (!q || norm(c.title + ' ' + (c.dataset.grp || '')).includes(q)) ? '' : 'none'; });
     grid.querySelectorAll('h4').forEach(h => { let n = h.nextElementSibling, any = false; while (n && n.tagName !== 'H4') { if (n.style.display !== 'none') any = true; n = n.nextElementSibling; } h.style.display = any ? '' : 'none'; }); };
   q0.value = swapQ; q0.oninput = filt;
+  const originTabs = box.querySelector('.libSwitch');
+  const chooseOrigin = origin => { swapOrigin = origin; store.set('shape.swapOrigin', origin); grid.scrollTop = 0; filt(); };
+  originTabs.onclick = e => { const origin = e.target.closest('button')?.dataset.origin; if (origin) chooseOrigin(origin); };
+  originTabs.onkeydown = e => { if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(e.key)) return; e.preventDefault(); chooseOrigin(e.key === 'Home' ? 'outbox' : e.key === 'End' ? 'incom' : swapOrigin === 'incom' ? 'outbox' : 'incom'); originTabs.querySelector(`[data-origin="${swapOrigin}"]`).focus(); };
   for (const [gTitle, gKeys] of groups) {
   if (gTitle) { const h = document.createElement('h4'); h.textContent = gTitle; grid.appendChild(h); }
   for (const k of gKeys) {
     const card = document.createElement('div');
     card.className = 'card' + (k === cur ? ' on' : ''); card.title = LIB[k].name; card.dataset.grp = gTitle || label;
+    card.dataset.origin = LIB[k].forn === 'Incom' ? 'incom' : 'outbox';
     // nome curto no cartão ("Corpo Boston (farmacêutico)" → "Boston"): a família já está no título; o nome inteiro fica na dica
     const fam = CATS.find(([, ks]) => ks.includes(k))?.[0] || label;
     const short = LIB[k].name.replace(new RegExp('^' + fam + '\\s+', 'i'), '').replace(/\s*\([^)]*\)\s*$/, '');
@@ -7840,10 +7850,10 @@ function renderSwap(ed, m) {
     };
     grid.appendChild(card);
     // miniatura sempre em bege fosco: é para ler a forma (na cor do produto, um dourado ou vidro escondia o formato)
-    queueThumb(card.querySelector('img'), { color: BEIGE, finish: 'fosco', modules: [M(k)] });
+    queueThumb(card.querySelector('img'), { color: BEIGE, finish: 'fosco', modules: [M(k, { own: false, color: BEIGE, finish: 'fosco', liq: false })] });
   }
   }
-  ed.appendChild(box); if (swapQ) filt();
+  ed.appendChild(box); filt();
   if (swapScroll.key !== skey) swapScroll = { key: skey, top: 0 };
   grid.scrollTop = swapScroll.top;
   grid.addEventListener('scroll', () => { swapScroll.top = grid.scrollTop; });

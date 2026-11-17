@@ -165,9 +165,11 @@ Pendências conhecidas (precisam de dado ou de decisão; não invente):
 
 **Em andamento** (quem está mexendo em quê agora; apague quando terminar):
 
-- (vazio)
+- Codex: auditoria visual do catálogo e dos renders por família. Revisores em modo somente leitura; correções centralizadas no Codex.
 
 **Registro** (o mais novo em cima):
+
+- 2026-11-17, Codex, `2026-11-17.cdx2`: abas Outbox/Incom e miniaturas bege fosco no seletor, conferidas no navegador. Tampa Sens: saída circular no fundo substituída por retângulo lateral no disco, conforme pedido da dona; cota exata da saída ainda pendente. Geometria da Sens validada apenas por sintaxe nesta etapa.
 
 - 2026-11-17, Codex, `2026-11-17.cdx1`: peças intercambiáveis separadas em Incom e Outbox / genérico nos menus de adicionar e trocar. Corpos, tampas e válvulas extraídos das montagens atuais do catálogo, com referência à página e dimensões preservadas ao selecionar. Geometrias existentes preservadas; inclusão na biblioteca não significa refino aprovado. Pendente: conferir modelo a modelo contra o PDF da dona; espumadora ainda compartilha `sprayType: 'dosadora'` com a dosadora. Nenhum mecanismo oculto foi inventado.
 
