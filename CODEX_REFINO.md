@@ -166,9 +166,11 @@ Pendências conhecidas (precisam de dado ou de decisão; não invente):
 
 **Em andamento** (quem está mexendo em quê agora; apague quando terminar):
 
-- Codex: godês sem fresta até a parede interna (foto ampliada da dona); em seguida encaixes/dobradiças das makes e chanfro da Malika. Thenue, painel fosco contínuo/borda polida (p194), segue em andamento no ramo `mat2`/helper de divisão de superfície. PDF final adiado.
+- Codex: duas dobradiças e par dente/alojamento do Case em `compactParts`; depois demais fechos das makes e chanfro da Malika. Thenue, painel fosco contínuo/borda polida (p194), segue em andamento no ramo `mat2`/helper de divisão de superfície. PDF final adiado.
 
 **Registro** (o mais novo em cima):
+
+- 2026-11-17, Codex, `2026-11-17.cdx12`: fechos das makes revisados pelas fotos abertas p3–33 e ampliações da dona. Case com duas dobradiças laterais e ponte vazada ligada ao colar, com língua/dente correspondente na tampa. Flat com duas articulações na faixa sem espelho, retirados os blocos isolados que não tinham par na base. Frame/Moon/Macaroon com eixo central mais curto, conforme fotos. Demais línguas ganham dente e rebaixo receptor recortado na base; curvos acompanham a parede. Dimensões internas/folgas estimadas, sem certificação de molde ou simulação da flexão de destravamento. Trinta conjuntos abertos/fechados sem vértices inválidos, cotas dentro de 0,1 mm; amostragem de três pontos do dente fora do sólido da base em 0/15/45/90 graus. `tools/conferencia/validacao-cdx12.json`, imagens locais `_ref/incom/validacao-cdx12/`. PDF adiado; seguem Malika e tampas pendentes.
 
 - 2026-11-17, Codex, `2026-11-17.cdx11`: Case G/M/M All Crystal com topo do colar, borda do godê e produto alinhados, conforme nova foto da dona. Removido também o vão radial entre colar e latinha; posição elevada sobre a placa da base preservada. Três Case renderizados abertos/fechados e medidos: diferença entre os três topos menor que 0,00001 mm; cotas externas dentro de 0,1 mm. Moon M All Crystal usado como controle, sem alteração. Espessuras internas continuam estimadas pela foto. Relatório `tools/conferencia/validacao-cdx11.json`, renders locais `_ref/incom/validacao-cdx11/`. Demais correções e PDF ainda pendentes.
 
