@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-17.sens4';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-17.sens8';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -578,7 +578,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-17.sens4';
+const BUILD = '2026-11-17.sens8';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -2209,24 +2209,30 @@ function slabGeo(m0, y0, { inset = 0, lift = 0, lo = false } = {}) {
 function mergeLoose(list) {
   return mergeGeometries(list.filter(Boolean).map(g => { const y = g.index ? g.toNonIndexed() : g; for (const k in y.attributes) if (k !== 'position' && k !== 'normal') y.deleteAttribute(k); if (!y.attributes.normal) y.computeVertexNormals(); return y; }));
 }
-// Tampa Sens (Incom): saia estreita embaixo que abre em degrau até o corpo cilíndrico; em cima um disco inclinado
-// (baixo de um lado) dentro da borda. No lado baixo um rebaixo em U entra pela borda (espaço para o dedo); no lado
-// alto do disco fica o furo de saída do produto — como nas fotos
+// Tampa Sens (Incom), como nas fotos: embaixo uma parte estreita que abre numa curva suave até o corpo cilíndrico; em
+// cima a borda forma um copo raso com o disco (o tampo que se aperta) por dentro, e na frente a borda desce num U largo
+// e raso (onde o dedo encaixa). O disco tem a fenda de saída do produto.
 function sensCapGeo(m0, y0, opts) {
   if (opts.inset) return moduleGeo({ ...m0, sens: false }, y0, opts);
-  const W = m0.W, D = m0.D ?? W, hb = m0.h * 0.78, hs = hb * 0.36, hf = hb * 0.14, R = W / 2, ht = m0.h - hb;
-  const body = moduleGeo({ ...m0, sens: false, h: hb, rTop: 0.4, rBot: 0.6, W0: W, smoothProf: false,
-    prof: [[0, 0.74, 0.74, 2, 0, 0], [hs / hb, 0.78, 0.78, 2, 0, 0], [(hs + hf) / hb, 1, 1, 2, 0, 0], [1, 1, 1, 2, 0, 0]] }, y0, opts); // foto: saia ~75% do corpo, abrindo um pouco, e degrau em cone
-  let lid = moduleGeo({ ...BASE, kind: 'giro', W: W * 0.9, D: D * 0.9, h: ht * 0.75 + 0.4, rBot: 0, rTop: 0.6, tilt: [0.45, 1] }, y0 + hb - 0.4, opts);
-  // furo de saída (fenda) no lado alto do disco
-  if (!opts.lo && lid) { const slot = new THREE.BoxGeometry(W * 0.17, ht * 3, W * 0.09); slot.translate(R * 0.55, y0 + hb + ht * 0.6, 0);
-    const [o, inn] = cutHole(lid, slot); if (o !== lid) lid = mergeLoose([o, inn]); }
-  // a volta: rebaixo em U entrando pela borda no lado baixo (onde o dedo encaixa), cortando o disco e o alto do corpo
-  let cap = mergeLoose([body, lid]);
-  if (!opts.lo && cap) { const w = W * 0.34, d = W * 0.22, sh = new THREE.Shape(), yb0 = y0 + hb - Math.min(3, hb * 0.2);
-    sh.moveTo(-R - 2, -w / 2); sh.lineTo(-R + d - w / 2, -w / 2); sh.absarc(-R + d - w / 2, 0, w / 2, -Math.PI / 2, Math.PI / 2, false); sh.lineTo(-R - 2, w / 2); sh.closePath();
-    const u = new THREE.ExtrudeGeometry(sh, { depth: y0 + m0.h + 2 - yb0, bevelEnabled: false, curveSegments: 24 }); u.rotateX(-Math.PI / 2); u.translate(0, yb0, 0);
-    const [o, inn] = cutHole(cap, u); if (o !== cap) cap = mergeLoose([o, inn]); }
+  const W = m0.W, R = W / 2, H = m0.h, hN = H * 0.24, hF = H * 0.22;
+  const prof = [[0, 0.73, 0.73, 2, 0, 0], [hN / H, 0.73, 0.73, 2, 0, 0]]; // foto: base estreita ~73% da largura
+  for (let k = 1; k <= 10; k++) { const t = k / 10, w = 0.73 + 0.27 * t * t; prof.push([(hN + hF * t) / H, w, w, 2, 0, 0]); }
+  prof.push([1, 1, 1, 2, 0, 0]);
+  let cap = moduleGeo({ ...m0, sens: false, h: H, rTop: 0.6, rBot: 0.6, W0: W, smoothProf: false, prof }, y0, opts);
+  if (!opts.lo && cap) {
+    const wall = Math.max(1.3, W * 0.045), dep = H * 0.15, yT = y0 + H;
+    const pocket = new THREE.CylinderGeometry(R - wall, R - wall, dep + 2, 72); pocket.translate(0, yT - dep + (dep + 2) / 2, 0); // copo raso: o disco é o fundo dele
+    const uw = W * 0.58, ud = dep * 0.95, sh = new THREE.Shape(); // U largo e raso na frente da borda
+    sh.moveTo(-uw / 2, yT + 2); sh.lineTo(-uw / 2, yT); sh.absellipse(0, yT, uw / 2, ud, Math.PI, 2 * Math.PI, false); sh.lineTo(uw / 2, yT + 2); sh.closePath();
+    const u = new THREE.ExtrudeGeometry(sh, { depth: R + 2, bevelEnabled: false, curveSegments: 32 });
+    const slot = new THREE.BoxGeometry(W * 0.16, 6, W * 0.07); slot.translate(0, yT - dep, R * 0.42); // fenda de saída no disco, perto do U
+    for (const c of [pocket, u, slot]) { const [o, inn] = cutHole(cap, c); if (o !== cap) cap = mergeLoose([o, inn]); } // um corte por vez (cortadores sobrepostos numa peça só deixavam uma aleta solta)
+    // dentro do copo, o disc-top: disco que se aperta, com folga fina em volta e a fenda de saída do lado do U
+    let disc = moduleGeo({ ...BASE, kind: 'giro', W: 2 * (R - wall - 0.35), D: 2 * (R - wall - 0.35), h: Math.min(1.8, dep * 0.6), rBot: 0.2, rTop: 0.5 }, yT - dep, opts);
+    const slot2 = new THREE.BoxGeometry(W * 0.16, 6, W * 0.07); slot2.translate(0, yT - dep, R * 0.42);
+    { const [o, inn] = cutHole(disc, slot2); if (o !== disc) disc = mergeLoose([o, inn]); }
+    cap = mergeLoose([cap, disc]);
+  }
   return cap;
 }
 function moduleGeo(m0, y0, opts = {}) {
