@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-17.cdx28';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-17.cl1';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -677,7 +677,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-17.cdx28';
+const BUILD = '2026-11-17.cl1';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -8404,6 +8404,8 @@ function renderBodyLiquid(ed, m) {
 // Trocar o módulo selecionado por outro da mesma categoria, vendo as opções.
 const typeOf = m => m.partKey || m.type || Object.keys(LIB).find(k => LIB[k].name === m.name);
 function categoryOf(m) {
+  // tampa dos produtos Incom é montada com o corpo genérico ('reto'): pelo nome, é tampa (não "corpo")
+  if (!m.vol && m.kind !== 'spray' && /^(Tampa|Sobretampa|Capa|Acionador)/i.test(m.name || '')) return CATS.find(([l]) => l === 'Tampa');
   const t = typeOf(m), c = CATS.find(([, keys]) => keys.includes(t));
   if (c) return c;
   const label = m.kind === 'spray' ? 'Válvula' : m.kind === 'mesh' || m.kind === 'gargalo' || ['octogono', 'cubo', 'piramide', 'prisma'].includes(t) ? 'Peça de encaixe' : m.vol ? 'Corpo' : 'Tampa';
@@ -8468,6 +8470,21 @@ let swapScroll = { key: '', top: 0 };
 let swapQ = ''; // texto da busca na troca (fica entre uma troca e outra)
 let swapOrigin = store.get('shape.swapOrigin', 'outbox') === 'incom' ? 'incom' : 'outbox';
 const swapMemo = new Map(); // uid|tipo → peça como estava antes de ser trocada
+// Sugestões da Incom para a peça do produto aberto: a mesma peça nas variantes oferecidas pelo catálogo
+// (tampa reta/abaulada, cristal, alta, colar abaulado…). Só para produto Incom; genérico não tem.
+const incomFamily = n => (n || '').replace(/^Incom /, '').replace(/\s*\([^)]*\)\s*$/, '').replace(/\s*\([^)]*\)\s*$/, '').replace(/\s+(Abaulada|Tampa Cristal|Tampa Alta)$/i, '').trim();
+function incomSuggestions(m) {
+  const nm = S.file || S.name, me = PRESETS[nm]; if (!me?.forn && !S.modules.some(x => x.forn === 'Incom')) return [];
+  const fam = incomFamily(nm), line = (nm.match(/\(([^)]*)\)\s*$/) || [])[1], out = [];
+  const sig = x => JSON.stringify([x.W, x.D, x.h, x.rTop, x.domeTop, x.own, x.finish, x.color, x._t, x.espelho, x.visor]);
+  for (const [k, p] of Object.entries(PRESETS)) {
+    if (!p.forn || incomFamily(k) !== fam || (line && !k.endsWith(`(${line})`))) continue;
+    const mod = p.modules.find(x => x.name === m.name); if (!mod || out.some(o => sig(o.mod) === sig(mod))) continue;
+    const v = k.replace(/^Incom /, '').replace(/\s*\([^)]*\)\s*$/, '');
+    out.push({ k, mod, label: v === fam ? `${fam} (padrão do catálogo)` : v, cur: sig(mod) === sig(m) });
+  }
+  return out.length > 1 ? out : [];
+}
 function renderSwap(ed, m) {
   const [label, keys] = categoryOf(m), cur = typeOf(m);
   // Tampa e válvula ocupam o mesmo lugar: a troca mostra as duas famílias.
@@ -8482,13 +8499,20 @@ function renderSwap(ed, m) {
   // Busca: filtra os cartões pelo nome (sem acento/maiúscula) e esconde os grupos sem resultado
   const filt = () => { const q = norm(q0.value.trim()); swapQ = q0.value;
     box.querySelectorAll('[role="tab"]').forEach(b => { const active = b.dataset.origin === swapOrigin; b.classList.toggle('on', active); b.setAttribute('aria-selected', String(active)); b.tabIndex = active ? 0 : -1; });
-    grid.querySelectorAll('.card').forEach(c => { c.style.display = c.dataset.origin === swapOrigin && (!q || norm(c.title + ' ' + (c.dataset.grp || '')).includes(q)) ? '' : 'none'; });
+    grid.querySelectorAll('.card').forEach(c => { c.style.display = (c.dataset.origin === swapOrigin || c.dataset.origin === 'sug') && (!q || norm(c.title + ' ' + (c.dataset.grp || '')).includes(q)) ? '' : 'none'; });
     grid.querySelectorAll('h4').forEach(h => { let n = h.nextElementSibling, any = false; while (n && n.tagName !== 'H4') { if (n.style.display !== 'none') any = true; n = n.nextElementSibling; } h.style.display = any ? '' : 'none'; }); };
   q0.value = swapQ; q0.oninput = filt;
   const originTabs = box.querySelector('.libSwitch');
   const chooseOrigin = origin => { swapOrigin = origin; store.set('shape.swapOrigin', origin); grid.scrollTop = 0; filt(); };
   originTabs.onclick = e => { const origin = e.target.closest('button')?.dataset.origin; if (origin) chooseOrigin(origin); };
   originTabs.onkeydown = e => { if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(e.key)) return; e.preventDefault(); chooseOrigin(e.key === 'Home' ? 'outbox' : e.key === 'End' ? 'incom' : swapOrigin === 'incom' ? 'outbox' : 'incom'); originTabs.querySelector(`[data-origin="${swapOrigin}"]`).focus(); };
+  const sugs = incomSuggestions(m);
+  if (sugs.length) { const h = document.createElement('h4'); h.textContent = 'Sugestões Incom para este produto'; grid.appendChild(h);
+    for (const sg of sugs) { const card = document.createElement('div'); card.className = 'card' + (sg.cur ? ' on' : ''); card.title = sg.label; card.dataset.grp = 'Sugestões Incom'; card.dataset.origin = 'sug';
+      card.innerHTML = `<img class="ph" alt=""><div>${sg.label}</div>`;
+      card.onclick = () => { if (sg.cur) return; swapScroll = { key: skey, top: grid.scrollTop }; swapMemo.set(m.uid + '|' + typeOf(m), structuredClone(m));
+        S.modules[sel] = { ...structuredClone(sg.mod), uid: m.uid }; setTimeout(() => toastUndo(`Trocada pela tampa de ${sg.label}`), 50); renderStack(); renderEditorKeepScroll(); build(); };
+      grid.appendChild(card); queueThumb(card.querySelector('img'), { color: BEIGE, finish: 'fosco', modules: [{ ...structuredClone(sg.mod), liq: false }] }); } }
   for (const [gTitle, gKeys] of groups) {
   if (gTitle) { const h = document.createElement('h4'); h.textContent = gTitle; grid.appendChild(h); }
   for (const k of gKeys) {
