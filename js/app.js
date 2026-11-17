@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-16.dos6';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-17.deck-spy-rollon3';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -577,7 +577,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-16.pente-fotos4';
+const BUILD = '2026-11-17.deck-spy-rollon3';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -5808,7 +5808,7 @@ function compactParts(product, L, S0) {
   });
   const aberto = !!S0?.aberto;
   L.forEach(({ m, idx, y0 }) => {
-    const ang = m.abre > 0 ? m.abre : aberto ? 105 : 0;
+    const ang = m.abre > 0 ? m.abre : aberto ? (m.abreAberto ?? 105) : 0; // andar do meio (Moon Deck) fica fechado no Abrir: a tampa mostra o godê dele
     if (m.hidden || !m.hinge) return;
     const objs = mine(idx); if (!objs.length) return;
     // guarda a posição fechada e o eixo: o slider da barra gira a tampa sem remontar a peça
@@ -6502,7 +6502,9 @@ document.querySelectorAll('[data-view]').forEach(b => b.onclick = () => fit(b.da
 $('#orthoBtn').onclick = () => setOrtho(cam !== ortho);
 $('#explodeBtn').onclick = () => { explode = !explode; $('#explodeBtn').classList.toggle('on', explode); build(); fit(); };
 // Abrir / fechar: aparece só em produto que abre (compacto com dobradiça, batom com tampa e bala)
-const hingeAng = () => { const m = S.modules.find(x => x.hinge); return !m ? 0 : m.abre > 0 ? m.abre : S.aberto ? 105 : 0; };
+// slider e botão: a tampa de cima (no Moon Deck o andar do meio tem o seu próprio controle em Peças)
+const hingeTop = () => S.modules.filter(x => x.hinge).at(-1);
+const hingeAng = () => { const m = hingeTop(); return !m ? 0 : m.abre > 0 ? m.abre : S.aberto ? (m.abreAberto ?? 105) : 0; };
 function syncOpenBtn() { const b = $('#openBtn'), r = $('#openAng'); if (!b) return; const ok = S.modules.some(m => m.hinge || m.capa), hinge = S.modules.some(m => m.hinge);
   const open = !!S.aberto || hingeAng() > 0;
   b.classList.toggle('hidden', !ok); b.classList.toggle('on', ok && open); b.textContent = ok && open ? 'Fechar' : 'Abrir';
@@ -6511,8 +6513,8 @@ function syncOpenBtn() { const b = $('#openBtn'), r = $('#openAng'); if (!b) ret
 $('#openBtn').onclick = () => { const open = !!S.aberto || hingeAng() > 0; S.aberto = !open; S.modules.forEach(m => { if (m.hinge) m.abre = 0; }); busy(() => { build(); fit(); }); saveLocalSoon(); };
 // Slider: gira só a tampa (sem remontar); ao soltar, guarda o ângulo na peça
 $('#openAng').oninput = e => { const v = +e.target.value;
-  S.modules.forEach(m => { if (m.hinge) m.abre = v; }); S.aberto = v > 0;
-  const idx = new Set(S.modules.map((m, i) => (m.hinge ? i : -1)).filter(i => i >= 0));
+  const tm = hingeTop(); if (tm) tm.abre = v; S.aberto = v > 0;
+  const idx = new Set([S.modules.indexOf(tm)]);
   setHinge(product.children.filter(o => o.isMesh && idx.has(o.userData.idx)), v);
   const b = $('#openBtn'); b.classList.toggle('on', v > 0); b.textContent = v > 0 ? 'Fechar' : 'Abrir'; renderFrame(); };
 $('#openAng').onchange = () => { busy(build); saveLocalSoon(); };
@@ -8564,6 +8566,11 @@ function incomProduct(r) {
       // paleta: abertura retangular larga (~42% da frente) só na base, logo abaixo da tampa, como no desenho
       // a dobradiça sai 0,3 do raio para trás: a caixa perde isso na profundidade e o total bate com o catálogo
       const Dc = r2(D - 0.3 * clamp(Math.min(hb, ht) * 0.22, 1.1, 2.2)), pal = r.c === 'Paletas' && r.t !== 'cr', dB = pal ? { rect: true, top: true, w: r1(W * 0.42), h: r1(Math.min(4.5, hb * 0.58)), d: 2.4 } : { rect: true, top: true, w: nw, h: r1(Math.min(3.2, hb * 0.42)), d: 1.6 }; // desenho: entalhe retangular só na base
+      // Moon Deck (foto): dois andares — base com godê, um andar do meio articulado com outro godê e a tampa com espelho
+      if (/Moon Deck/.test(r.n)) { const h1 = r1(H * 0.38), h2 = r1(H * 0.3), h3 = r1(H - h1 - h2), Dc = r2(D - 0.3 * clamp(Math.min(h1, h2, h3) * 0.22, 1.1, 2.2)); // dobradiças pelo andar mais baixo
+        ms = [P('Base', W, Dc, h1, { ...s0, rBot: 1.5, rTop: 0.6, godes: godesOf(r), dedo: { ...dB, h: r1(Math.min(3, h1 * 0.4)) } }),
+          P('Andar do meio', W, Dc, h2, { ...s0, rBot: 0.6, rTop: 0.6, hinge: true, abre: 0, abreAberto: 0, godes: godesOf(r), dedo: { ...dB, h: r1(Math.min(2.6, h2 * 0.4)) } }),
+          P('Tampa', W, Dc, h3, { ...s0, rBot: 0.6, rTop: 2, hinge: true, abre: 0, oco: true, espelho: true })]; break; }
       ms = [P('Base', W, Dc, hb, { ...s0, rBot: r.t === 'cr' ? 1.5 : 1, rTop: 0.6, godes: godesOf(r), dedo: dB }),
         P('Tampa', W, Dc, ht, { ...s0, rBot: 0.6, rTop: r.t === 'cr' ? 2 : 1.2, hinge: true, abre: 0, oco: true, visor: VISOR_RE.test(r.n), espelho: !VISOR_RE.test(r.n) && !/Crystal|^Case/i.test(r.n), })]; break; }
     case 'dsq': if (/Twist/.test(r.n)) {
@@ -8628,6 +8635,12 @@ function incomProduct(r) {
       const charm = /Charm/.test(r.n), arg = tl < 1 && charm ? (() => { const hl = H * (1 - tl), rr = 1.0; return { R: Math.round(Math.max(1.6, (hl + 0.6 - 2 * rr) / 2) * 1000) / 1000, r: rr }; })() : null;
       const cap = P('Tampa', W, D, H * (tl - f), { ...s0, ...(/All Crystal/.test(r.n) ? { own: true, finish: 'pet', color: '#ffffff', topDip: 0.5, roscaInt: { r: r1((Math.min(W, D) - 3) / 2 + 0.35), y0: r1(H * (tl - f) * 0.12), y1: r1(H * (tl - f) * 0.5), n: 5 } } : {}), rTop: arg ? 1.2 : r.t === 'gloss' ? W * 0.2 : 1.2, ...(tl < 1 && !arg ? { domeTop: r1(W * 0.42) } : {}), ...(arg ? { argola: arg } : {}), _t: [f, tl] });
       const wv = r1(Math.max(5, Math.min(Math.min(W, D) * 0.55, 2 * (capHalfAt(cap, 0) - 1.6))));
+      // Guggen Roll On (foto): no gargalo um suporte transparente com a bolinha de aço; a tampa veste os dois
+      if (/Roll On/.test(r.n)) { const hs = 6, db = r1(Math.min(8, Math.min(W, D) * 0.42)), wsup = r1(Math.min(W, D) * 0.62);
+        ms = [P('Frasco', W, D, H * f, { ...s0, vol: true, rBot: 2.4, ...gl, liqType: 'transparente', liqColor: '#cfe9f2', _t: [0, f] }),
+          P('Suporte do roll-on', wsup, null, hs, { rTop: 1.2, rBot: 0.3, own: true, finish: 'pet', color: '#ffffff' }),
+          P('Esfera de aço', db, null, db, { rTop: db / 2, rBot: db / 2, gap: r1(-db * 0.4), own: true, color: '#d6d8da', finish: 'metal' }),
+          { ...cap, gap: r1(-(hs + db * 0.6)) }]; break; } // tampa assenta no ombro do frasco: altura total = catálogo
       ms = [P('Frasco', W, D, H * f, { ...s0, vol: true, rBot: masc ? 1.5 : 2.4, ...gl, _t: [0, f] }),
         M('tampaGloss', { name: masc ? 'Haste com escova' : 'Haste com aplicador', W: wv, D: wv, h: r1(cap.h - 2.5), pescD: r1(Math.min(3, wv * 0.3)),
           tipL: masc ? r1(Math.min(24, H * 0.2)) : 13, tipW: r1(Math.min(masc ? 7.5 : 6.5, Math.min(W, D) - 6)), tipColor: masc ? '#2b2b2b' : '#e2cdb8',
@@ -8641,7 +8654,7 @@ function incomProduct(r) {
       const s0 = r.t === 'batonsq' ? sq(0.06) : {}, f = { Ella: 0.24, Long: 0.23, 'Long Lipview': 0.23, Spy: 0.17, Squared: 0.21 }[r.n] ?? 0.23, hc = H * (1 - f);
       // proporções da foto do Squared aberto: colar ~13% e tubo ~58% da altura da tampa; a bala sobe ~85% do comprimento
       const cor = corDe(BATOM_CORES, r.n), hcol = r1(clamp(hc * 0.13, 4, 8)), wcol = r1(Math.min(W, D) - 2 * OCO.wall - 0.8);
-      const ws = r1(Math.min(wcol - 1.6, 12.1 + 4.6)), wb = r1(Math.min(12.1, ws - 2.6)), hs = r1(hc * 0.58), lb = r1(Math.min(24, hc * 0.42, hs - 2)), visor = /Lipview|Spy/.test(r.n);
+      const ws = r1(Math.min(wcol - 1.6, 12.1 + 4.6)), wb = r1(Math.min(12.1, ws - 2.6)), hs = r1(hc * 0.58), lb = r1(Math.min(24, hc * 0.42, hs - 2)), visor = false; // Spy: a janela da cor fica no topo da tampa (foto); Lipview tem o seu próprio desenho
       // Long Lipview (foto): embaixo um copinho transparente com a cor do batom dentro, uma aba preta mais larga e,
       // acima dela, a base mais estreita (que a tampa veste até a aba)
       if (/Lipview/.test(r.n)) { const hv = r1(H * 0.08), hf = r1(H * 0.045), hb = r1(H * 0.25), hd = r1(hv * 0.55), wb2 = r1(W * 0.84), hcL = r1(H - hv - hf); // foto aberto: base alta (~¼), tubo de metal ~45%, bala aparecendo pouco
@@ -8658,7 +8671,7 @@ function incomProduct(r) {
         P('Colar interno', wcol, r.t === 'batonsq' ? wcol : null, hcol, { ...s0, rTop: 0.6, rBot: 0.2 }),
         P('Tubo (mecanismo)', ws, null, hs, { rTop: 0.5, rBot: 0.3, own: true, color: '#d6d8da', finish: 'metal' }),
         P('Bala (batom)', wb, null, lb, { rTop: 0.8, rBot: 0.3, gap: r1(-(lb + 1.2)), tilt: [1, 0.55], sobe: r1(lb * 0.85), own: true, color: cor, finish: 'brilho' }),
-        P('Tampa', W, D, hc, { ...s0, rTop: 1.5, gap: r1(-(hs + hcol - 1.2)), capa: true, oco: true, _t: [f, r.n === 'Ella' ? 0.975 : /^Long/.test(r.n) ? 0.895 : 1], ...(r.abaulada ? { domeTop: r1(W * 0.45) } : {}), // abaulada: cúpula lisa (o topo do desenho tinha quina)
+        P('Tampa', W, D, hc, { ...s0, rTop: 1.5, gap: r1(-(hs + hcol - 1.2)), capa: true, oco: true, ...(r.n === 'Spy' ? { mat2: true, mat2Side: 'topo', mat2R: 70, mat2Color: cor, mat2Finish: 'brilho' } : {}), /* Spy: janela com a cor do batom no topo da tampa */ _t: [f, r.n === 'Ella' ? 0.975 : /^Long/.test(r.n) ? 0.895 : 1], ...(r.abaulada ? { domeTop: r1(W * 0.45) } : {}), // abaulada: cúpula lisa (o topo do desenho tinha quina)
           ...(r.n === 'Ella' ? { curvaTopo: 2.4 } : {}) })]; break; } // Ella: "detalhe curvilíneo no topo" — o topo desce em curva de um lado (o desenho virava uma aba)
     case 'pote': case 'potesq': {
       // Pote como o de verdade: corpo oco com creme dentro (conteúdo editável), boca com rosca em hélice e
