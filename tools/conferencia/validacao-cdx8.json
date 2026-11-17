@@ -1,0 +1,54 @@
+{
+  "version": "2026-11-17.cdx8",
+  "method": "Tampas medidas isoladamente; superfícies base verificadas por arestas soldadas a 1e-5 mm. Distribuição das facetas estimada pelas fotos/desenho, ângulos industriais não certificados.",
+  "results": [
+    {
+      "name": "Incom Joya (tampa de perfume)",
+      "page": 167,
+      "measured": {
+        "W": 43,
+        "D": 43,
+        "H": 17
+      },
+      "target": {
+        "W": 43,
+        "H": 17
+      },
+      "invalid": 0,
+      "unpairedSurfaceEdges": 0,
+      "dimensionsWithin01": true
+    },
+    {
+      "name": "Incom Joya Mini (tampa de perfume)",
+      "page": 168,
+      "measured": {
+        "W": 33.5,
+        "D": 33.5,
+        "H": 16.900001525878906
+      },
+      "target": {
+        "W": 33.5,
+        "H": 16.9
+      },
+      "invalid": 0,
+      "unpairedSurfaceEdges": 0,
+      "dimensionsWithin01": true
+    },
+    {
+      "name": "Incom Quartz (tampa de perfume)",
+      "page": 181,
+      "measured": {
+        "W": 42.95000076293945,
+        "D": 42.95000076293945,
+        "H": 18
+      },
+      "target": {
+        "W": 42.95,
+        "H": 18
+      },
+      "invalid": 0,
+      "unpairedSurfaceEdges": 0,
+      "dimensionsWithin01": true
+    }
+  ]
+}

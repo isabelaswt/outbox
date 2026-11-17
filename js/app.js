@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-17.cdx7';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-17.cdx8';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -418,6 +418,12 @@ const CAP_FIX = { incom_slim_quadric: { sideR: 0.55 } /* foto de cima: quadrado 
 for (const key of ['incom_drop', 'incom_malika', 'incom_tahaa']) CAP_FIX[key] = { ...CAP_FIX[key], capTip: true };
 CAP_FIX.incom_tahaa.capTip = 'sphere'; // Pág.193: esfera Ø29, colar preservado.
 CAP_FIX.incom_malika.capTip = 'teardrop'; // Pág.171: ponta contínua, sem botão.
+// P167/168: tigela lisa até ~74% da altura, coroa lapidada até a mesa superior.
+// Distribuição radial de 12 setores estimada nas fotos; não é desenho industrial da lapidação.
+for (const key of ['incom_joya', 'incom_joya_mini']) CAP_FIX[key].facetCrown = { from: 0.74, rim: 0.76, sectors: 12 };
+// P181: faixa central com painéis hexagonais e facetas triangulares nas bordas.
+// Alturas relativas/mesa estimadas no desenho frontal; oito setores seguem a seção do modelo.
+CAP_FIX.incom_quartz = { noFit: true, facetGem: { sectors: 8, bevel: 0.15, table: 0.68, corner: 0.6 } };
 // Contorno do desenho técnico sem "escada": o traço extraído do PDF oscila uns centésimos e,
 // ligado em retas, a luz marcava cada mudança de inclinação como uma faixa. Média ponderada curta
 // (~0,3 mm na altura) e reamostragem fina (0,15 mm): degraus e anéis ficam, com o arredondado de molde.
@@ -607,6 +613,8 @@ function incomShape(r) {
   // A faixa ocupa ~18% da altura na foto; acabamento local, sem mudar os demais Surlyn.
   if (r.k === 'incom_malika') Object.assign(o, { own: true, color: '#e8dcc6', finish: 'fosco', smoothProf: true,
     mat2: true, mat2Mesh: true, mat2Side: 'baixo', mat2Y: 18, mat2Color: '#ffffff', mat2Finish: 'pet' });
+  if (fx.facetCrown) Object.assign(o, { facetCrown: fx.facetCrown, sides: 0, polyFrom: 0, facetBlend: 0 });
+  if (fx.facetGem) Object.assign(o, { facetGem: fx.facetGem, sides: 0, polyFrom: 0 });
   return o;
 }
 function incomShape0(r) {
@@ -651,7 +659,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-17.cdx7';
+const BUILD = '2026-11-17.cdx8';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -2352,7 +2360,69 @@ function sensCapGeo(m0, y0, opts) {
   }
   return cap;
 }
+// Coroa Joya: triângulos planos reais, preservando a tigela inferior do perfil medido.
+function facetCrownGeo(m, y0, opts) {
+  const plain = { ...m, facetCrown: null }, g = moduleGeo(plain, y0, opts), f = m.facetCrown;
+  if (!g) return g;
+  const yc = y0 + m.h * f.from, yr = y0 + m.h * f.rim, yt = y0 + m.h;
+  const [bottom, unused] = splitGeoY(g, yc), q = profAt(m, m.h * f.from), top = profAt(m, m.h);
+  const N = f.sectors, point = (a, b, y, th, cx = 0, cz = 0) => [(m.ox || 0) + cx + a * Math.cos(th), y, cz + b * Math.sin(th)];
+  const verts = [], tri = (a, b, c) => verts.push(...a, ...b, ...c);
+  const outer = i => point(m.W / 2, m.D / 2, yr, TAU * i / N);
+  const inner = i => point(top.a, top.b, yt, TAU * (i + 0.5) / N, top.cx, top.cz);
+  // Reutiliza cada vértice da borda recortada: evita frestas e junções em T no export.
+  const edge = new Map(), pos = bottom.attributes.position;
+  for (let i = 0; i < pos.count; i++) if (Math.abs(pos.getY(i) - yc) < 1e-5) {
+    const p = [pos.getX(i), pos.getY(i), pos.getZ(i)], key = p.map(v => Math.round(v * 1e5)).join(',');
+    if (!edge.has(key)) edge.set(key, p);
+  }
+  if (edge.size < 3) { bottom.dispose(); unused.dispose(); return g; }
+  const angle = p => (Math.atan2(p[2] - q.cz, p[0] - (m.ox || 0) - q.cx) + TAU) % TAU;
+  const ring = [...edge.values()].sort((a, b) => angle(a) - angle(b));
+  const starts = Array.from({ length: N }, (_, i) => ring.reduce((best, p, j) => Math.abs(angle(p) - TAU * i / N) < Math.abs(angle(ring[best]) - TAU * i / N) ? j : best, 0));
+  starts[0] = 0; starts.push(ring.length);
+  for (let i = 0; i < N; i++) {
+    for (let j = starts[i]; j < starts[i + 1]; j++) tri(ring[j % ring.length], outer(i), ring[(j + 1) % ring.length]);
+    tri(ring[starts[i + 1] % ring.length], outer(i), outer(i + 1));
+  }
+  for (let i = 0; i < N; i++) {
+    tri(outer(i), inner(i), outer(i + 1)); tri(inner(i), inner(i + 1), outer(i + 1));
+    tri([(m.ox || 0) + top.cx, yt, top.cz], inner(i + 1), inner(i));
+  }
+  const crown = new THREE.BufferGeometry(); crown.setAttribute('position', new THREE.Float32BufferAttribute(verts, 3)); crown.computeVertexNormals();
+  const out = mergeLoose([bottom, crown]); out.userData = g.userData;
+  g.dispose(); bottom.dispose(); unused.dispose(); crown.dispose(); return out;
+}
+// Quartz: painéis planos de seis lados, ligados por triângulos, sem torneamento arredondando as arestas.
+function facetGemGeo(m, y0) {
+  const f = m.facetGem, N = f.sectors, d = Math.PI / N, A = m.W / 2, verts = [];
+  const p = (i, offset, y) => { const th = TAU * i / N + offset, r = A / Math.cos(offset);
+    return [(m.ox || 0) + r * Math.cos(th), y0 + m.h * y, r * Math.sin(th) * m.D / m.W]; };
+  const table = (i, y) => [(m.ox || 0) + A * f.table * Math.cos(TAU * i / N), y0 + m.h * y, m.D / 2 * f.table * Math.sin(TAU * i / N)];
+  const face = (points, normal) => {
+    for (let j = 1; j < points.length - 1; j++) {
+      const [a, b, c] = [points[0], points[j], points[j + 1]], v = new THREE.Vector3().fromArray(b).sub(new THREE.Vector3().fromArray(a)), w = new THREE.Vector3().fromArray(c).sub(new THREE.Vector3().fromArray(a));
+      if (v.cross(w).dot(normal) < 0) verts.push(...a, ...c, ...b); else verts.push(...a, ...b, ...c);
+    }
+  };
+  const up = new THREE.Vector3(0, 1, 0), down = new THREE.Vector3(0, -1, 0), c = d * f.corner, b = f.bevel;
+  for (let i = 0; i < N; i++) {
+    const th = TAU * i / N, radial = new THREE.Vector3(Math.cos(th), 0, Math.sin(th));
+    face([p(i, -c, 1 - b), p(i, c, 1 - b), p(i, d, 0.5), p(i, c, b), p(i, -c, b), p(i, -d, 0.5)], radial);
+    const between = new THREE.Vector3(Math.cos(th + d), 0, Math.sin(th + d));
+    face([p(i, c, 1 - b), p(i + 1, -c, 1 - b), p(i, d, 0.5)], between);
+    face([p(i, c, b), p(i, d, 0.5), p(i + 1, -c, b)], between);
+    for (const [y, yt, n] of [[1 - b, 1, up], [b, 0, down]]) {
+      face([p(i, -c, y), p(i, c, y), table(i, yt)], n);
+      face([p(i, c, y), p(i + 1, -c, y), table(i + 1, yt), table(i, yt)], n);
+      face([[(m.ox || 0), y0 + m.h * yt, 0], table(i, yt), table(i + 1, yt)], n);
+    }
+  }
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(verts, 3)); g.computeVertexNormals(); return g;
+}
 function moduleGeo(m0, y0, opts = {}) {
+  if (m0.facetCrown && !opts.inset) return facetCrownGeo(m0, y0, opts);
+  if (m0.facetGem && !opts.inset) return facetGemGeo(m0, y0);
   if (m0.kind === 'mesh') return opts.inset ? null : importedMeshGeo(m0, y0);
   if (isSphereCap(m0)) {
     m0 = { ...m0 };

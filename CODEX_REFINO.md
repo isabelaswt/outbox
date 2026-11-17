@@ -165,9 +165,11 @@ Pendências conhecidas (precisam de dado ou de decisão; não invente):
 
 **Em andamento** (quem está mexendo em quê agora; apague quando terminar):
 
-- Nenhuma edição ativa. Restam as pendências discriminadas em `INCOM_AUDITORIA.md`; PDF completo adiado até concluir as correções, por pedido da dona.
+- Codex: Laura (p169), recortes e planos do leque. Gerador local nessa peça, sem alterar os padrões de `moduleGeo`. Sem desenhos adicionais, detalhes não visíveis continuam estimados ou não verificados. PDF adiado.
 
 **Registro** (o mais novo em cima):
+
+- 2026-11-17, Codex, `2026-11-17.cdx8`: Joya/Joya Mini com tigela inferior do perfil e coroa triangular real (p167/168); Quartz com painéis hexagonais e triângulos nas bordas (p181). Distribuição/setores/proporções de facetas estimados nas fotos/desenho frontal, sem planta industrial. Renders 3/4 e superior; cotas isoladas 43 × 17, 33,5 × 16,9 e 42,95 × 18 mm preservadas. Superfícies base sem bordas abertas na checagem de arestas; Quartz também testada em duas profundidades e com deslocamento. Registros em `tools/conferencia/validacao-cdx8.json`, renders locais `_ref/incom/validacao-cdx8/`. Não certifica ângulos exatos, acabamento cristal ou alojamentos ocultos. Dona confirmou que só dispõe do catálogo/fotos; detalhes não revelados não serão apresentados como conhecidos.
 
 - 2026-11-17, Codex, `2026-11-17.cdx7`: Guggen Roll On com suporte aberto roscado e esfera assentada, pela p.98; passo/relevo estimados pela foto e comentados, sem norma industrial presumida. Moma/Oscar Charm com apoios alargados sob o olhal (p100/104), preservando o vão Ø4,5 mm e alturas totais; espessuras dos apoios estimadas. Três montagens conferidas fechadas e abertas, sem vértices inválidos e cotas comparáveis dentro de 0,1 mm. Medições em `tools/conferencia/validacao-cdx7.json`, renders locais em `_ref/incom/validacao-cdx7/`. Persistem formatos específicos das ponteiras e a reprodução industrial dos retentores/encaixes.
 
