@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-17.cl22';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-17.cl23';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -344,6 +344,12 @@ const LIB = {
              guideW: 19, guideH: 5.5, actW: 14.5, actH: 14.5, stemH: 0, stemD: 4.8, houseD: 6.5, springL: 16 },
   lamina:  { name: 'Pump escultural', kind: 'spray', sprayType: 'pato', W: 38.5, D: 38.5, h: 33, collarR: 14, stemD: 11, stemH: 12,
              actW: 24, headH: 12, nozzleL: 26, armW: 10.5, armT: 4.6, droop: 1.2, outletD: 2.8 },
+  // Válvula própria Incom (P68, foto do Bulb Blow 300 e ícone "Bico de pato" da lista de fechamentos): saia lisa e alta,
+  // haste grossa e cabeça em lâmina comprida que nasce arredondada atrás da haste, afina para a frente e curva para
+  // baixo na ponta. Medidas pela foto (saia Ø26,9 × 18,7; haste Ø14,1 × 15,3; cabeça 41,6 × 8, 8,6 mm para a frente);
+  // largura da cabeça sem vista lateral: estimada igual à haste
+  patoIncom: { name: 'Incom · Válvula bico de pato', kind: 'spray', sprayType: 'patoIncom', W: 26.9, D: 26.9, h: 18.7, collarR: 1, ridges: 0,
+             stemD: 14.1, stemH: 15.3, headH: 8, headBack: 12.2, nozzleL: 29.4, armT: 3, armW: 14, droop: 3 },
   pump:    { name: 'Válvula pump', kind: 'spray', sprayType: 'pato', W: 26.3, D: 26.3, h: 14.5, collarR: 1, ridges: 44, ridgeD: 0.3,
              stemD: 9, stemH: 12, actW: 20, headH: 11, armT: 4, armW: 9, nozzleL: 22, droop: 1 },
   // Espumadora da lista Incom (ícone): estreita como a dosadora, cabeça cilíndrica com o bico reto e curto no alto
@@ -405,6 +411,24 @@ const LIB = {
   sobretampaFineMistBig: { name: 'Sobretampa fine mist big', W: 33, D: 33, h: 46, rBot: 0.4, rTop: 1, own: true, finish: 'pet', color: '#ffffff', casca: true },
   disctop: { name: 'Tampa disc-top', W: 48.3, D: 48.3, h: 32.5, taper: 95, rBot: 1, rTop: 0.8, topType: 'disc', discD: 42.4, discDip: 5 },
 };
+// Fechamentos Incom (lista das págs. 58–74: Spray, Dosadora, Bico de pato, Trigger, Tampa bola, Tampa Sens, Bico aplicador,
+// Fine mist, Fine mist big, Espumadora, Tampa tambor), todos para rosca 24/410. Peças próprias com o nome Incom, separadas
+// das genéricas do OUTBOX; as que levam sobretampa transparente são montadas com duas peças (válvula + sobretampa)
+const INCOM_VALV = {
+  incomSpray: { ...LIB.spray, name: 'Incom · Spray' },
+  incomDosadora: { ...LIB.pumpDosadora, name: 'Incom · Dosadora' },
+  incomTrigger: { ...LIB.gatilho, name: 'Incom · Trigger' },
+  incomEspumadora: { ...LIB.espumadora, name: 'Incom · Espumadora' },
+  incomBicoAplicador: { ...LIB.bicoAplicador, name: 'Incom · Bico aplicador' },
+  incomSens: { ...LIB.tampaSens, name: 'Incom · Tampa Sens' },
+  incomTambor: { ...LIB.tampaTambor, name: 'Incom · Tampa tambor' },
+  incomBola: { ...LIB.bola, name: 'Incom · Tampa bola', W: 36, D: 36, h: 36 },
+  incomColarBola: { name: 'Incom · Colar da tampa bola', W: 27.5, D: 27.5, h: 17.4, rTop: 0.6, rBot: 0.3 }, // ícone: a bola fica sobre um colar que veste o gargalo
+  incomCapaMist: { ...LIB.sobretampaFineMist, name: 'Incom · Sobretampa fine mist / dosadora / espumadora' },
+  incomCapaMistBig: { ...LIB.sobretampaFineMistBig, name: 'Incom · Sobretampa fine mist big' },
+};
+Object.values(INCOM_VALV).forEach(v => { v.forn = 'Incom'; }); LIB.patoIncom.forn = 'Incom';
+Object.assign(LIB, INCOM_VALV); // as genéricas iguais (tampaSens, tampaTambor, sobretampas fine mist, espumadora, bicoAplicador) saem do menu e ficam só para modelos salvos
 const newUid = () => Math.random().toString(36).slice(2, 10);
 // Peça de lados (4, 8): o parâmetro W é de canto a canto; a medida do catálogo é de face a face.
 // Converte para a medida externa sair igual à do fornecedor (medido na geometria: c + (1 − c)·arredondamento).
@@ -678,7 +702,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-17.cl22';
+const BUILD = '2026-11-17.cl23';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -1993,6 +2017,24 @@ function sprayGeo(m, y0, { lo = false } = {}) {
     const slit = new THREE.BoxGeometry(3.5, m.armT * 0.22, m.armW * 0.55); slit.deleteAttribute('uv');
     slit.translate(x1 - 1.25, yc - m.droop, 0);
     const [billC, cav] = cutHole(loftPts(bill), slit); head.push(billC); holes.push(cav);
+  } else if (m.sprayType === 'patoIncom') {
+    // Bico de pato Incom: haste lisa saindo da saia (sem torre aparente na foto) e cabeça em lâmina desenhada pelo
+    // perfil de lado (x para a frente, y para cima), extrudada na largura com quinas arredondadas
+    head.push(cyl(m.stemD / 2, top - sink, m.stemH + sink + 0.6, 0, 0, lo));
+    const T = m.headH, L = m.nozzleL, B = m.headBack ?? m.stemD / 2 + 3, t2 = m.armT, d = m.droop ?? T * 0.4, rb = Math.min(T * 0.45, 3);
+    const xs = m.stemD / 2 + 1.5, sh = new THREE.Shape();
+    sh.moveTo(-B + rb, 0); sh.lineTo(xs, 0);
+    sh.quadraticCurveTo(L * 0.55, 0, L * 0.86, T - t2 - d * 0.55); // a base sobe afinando a lâmina
+    sh.quadraticCurveTo(L * 0.97, T - t2 - d * 0.88, L, T - t2 - d); // e desce na ponta
+    sh.lineTo(L, T - d); // face da ponta (saída)
+    sh.quadraticCurveTo(L * 0.92, T - d * 0.12, L * 0.68, T); // o topo curva para baixo só no fim
+    sh.lineTo(-B + rb, T); sh.quadraticCurveTo(-B, T, -B, T - rb); sh.lineTo(-B, rb); sh.quadraticCurveTo(-B, 0, -B + rb, 0);
+    const bev = Math.min(1.1, m.armW * 0.12, t2 * 0.35);
+    const blade = new THREE.ExtrudeGeometry(sh, { depth: Math.max(0.5, m.armW - 2 * bev), bevelEnabled: true, bevelThickness: bev, bevelSize: bev * 0.85,
+      bevelOffset: -bev * 0.85, bevelSegments: lo ? 1 : 4, curveSegments: lo ? 8 : 24 });
+    blade.deleteAttribute('uv'); blade.translate(0, top + m.stemH, -(m.armW - 2 * bev) / 2);
+    const oh = cyl(1, 0, 4); oh.scale(Math.min(0.9, t2 * 0.28), 1, Math.min(1.6, m.armW * 0.18)); oh.rotateZ(-Math.PI / 2); oh.translate(L - 2.2, top + m.stemH + T - d - t2 / 2, 0);
+    const [bladeC, cav] = cutHole(blade, oh); head.push(bladeC); holes.push(cav);
   } else if (m.sprayType === 'draftpump') {
     turret();
     head.push(cyl(m.stemD / 2, top - sink, m.stemH + sink + 1, 0, 0, lo));
@@ -8911,8 +8953,8 @@ function renderAll() { renderStack(); renderEditor(); renderGlobal(); renderPres
 // Corpo, tampa e peça de encaixe ficam em listas separadas.
 const CATS = [
   ['Corpo', ['reto', 'boston', 'quadrado', 'capsula', 'perfumeOval', 'plano', 'arco', 'cone', 'placa', 'bisnaga', ...DRAFT_KEYS.corpo]],
-  ['Tampa', ['esfera', 'esferaBisnaga', 'nuvem', 'taca', 'domo', 'seixo', 'flip', 'flipRedondo', 'flipAba', 'disctop', 'tampaSens', 'tampaTambor', 'sobretampa', 'sobretampaFineMist', 'sobretampaFineMistBig', 'tampaBisnaga', 'tampaSextavada', 'disco']],
-  ['Válvula', ['pump', 'pumpFrisos', 'locao', 'espuma', 'espumadora', 'pumpDosadora', 'spray', 'sprayClassico', 'contaGotas', 'tampaGloss', 'pushPull', 'pushSport', 'bicoDosador', 'bicoAplicador', 'bicoConico', 'lamina', 'pumpOnda', 'gatilho', 'pumpBisnaga']],
+  ['Tampa', ['incomSens', 'incomTambor', 'incomBola', 'incomColarBola', 'incomCapaMist', 'incomCapaMistBig', 'esfera', 'esferaBisnaga', 'nuvem', 'taca', 'domo', 'seixo', 'flip', 'flipRedondo', 'flipAba', 'disctop', 'sobretampa', 'tampaBisnaga', 'tampaSextavada', 'disco']],
+  ['Válvula', ['patoIncom', 'incomSpray', 'incomDosadora', 'incomEspumadora', 'incomTrigger', 'incomBicoAplicador', 'pump', 'pumpFrisos', 'locao', 'espuma', 'pumpDosadora', 'spray', 'sprayClassico', 'contaGotas', 'tampaGloss', 'pushPull', 'pushSport', 'bicoDosador', 'bicoConico', 'lamina', 'pumpOnda', 'gatilho', 'pumpBisnaga']],
   ['Peça de encaixe', ['gargalo', 'colar', 'barril', 'flare', 'anel', 'tigela', 'bola', 'sextavado', 'canelado']],
 ];
 function partOriginGroups(label, keys) {
@@ -9656,24 +9698,14 @@ function incomProduct(r) {
           const cap = P('Proteção transparente do spray', mm(pw), null, mm(ph), { ...clear, casca: true,
             rTop: 0.4, rBot: 0, seatV: true, gap: valve.guideH, capa: true });
           return [valve, cap]; })()
-        : fe === 'patoIncom' ? (() => {
-          // P68: corpo 196 px; saia 88×61; haste 46×50; cabeça 136×26, deslocada 28 px.
-          // Volumes externos próprios; ponta/saída e mecanismo oculto não cotados.
-          const mm = px => r1(px * W / 196), cw = mm(88), sh = mm(50), hh = mm(26);
-          return [P('Saia lisa do bico pato', cw, null, mm(61), { rTop: 1, rBot: 0.3 }),
-            P('Haste exposta do bico pato', mm(46), null, sh, { rTop: 0, rBot: 0 }),
-            // Sem vista lateral: D=20 mm provisório, herdado da cabeça anterior.
-            P('Cabeça curva do bico pato', mm(136), LIB.pump.actW, hh, { gap: -mm(10), rTop: 0, rBot: 0, smoothProf: false,
-              prof: [[0, 0.94, 0.70, 2, -mm(28), 0], [0.18, 1, 0.90, 2, -mm(28), 0],
-                [0.48, 0.94, 1, 2, -mm(24), 0], [0.78, 0.80, 0.88, 2, -mm(15), 0],
-                [1, 0.48, 0.55, 2, -mm(2), 0]] })]; })()
-        : fe === 'tampa' ? M('tampaTambor', { W: r1(W * 0.98), D: r1(W * 0.98), h: r2((H - nh) * 0.31 - 1.6) })
-        : fe === 'sens' ? M('tampaSens', { W: r1(W * 0.727), D: r1(W * 0.727), h: r1(W * 0.424) }) // foto do New York 250 de frente: 72,7% da largura do frasco e altura de 42,4% dela
-        : fe === 'bola' ? (bl => [M('reto', { name: 'Colar da tampa bola', W: r1(Math.max(bl * 0.62, 27.5)), D: r1(Math.max(bl * 0.62, 27.5)), h: r1(nh + 0.8), rTop: 0.6, rBot: 0.3 }), // ícone Incom: a bola fica sobre um colar que veste o gargalo
-          M('bola', { name: 'Tampa bola', W: bl, D: bl, h: bl })])(r1(Math.min(W * 0.62, 36)))
+        : fe === 'patoIncom' ? M('patoIncom', { W: r1(W * 88 / 196), D: r1(W * 88 / 196) }) // P68: válvula própria (saia 88 px de 196 do corpo)
+        : fe === 'tampa' ? M('incomTambor', { W: r1(W * 0.98), D: r1(W * 0.98), h: r2((H - nh) * 0.31 - 1.6) })
+        : fe === 'sens' ? M('incomSens', { W: r1(W * 0.727), D: r1(W * 0.727), h: r1(W * 0.424) }) // foto do New York 250 de frente: 72,7% da largura do frasco e altura de 42,4% dela
+        : fe === 'bola' ? (bl => [M('incomColarBola', { W: r1(Math.max(bl * 0.62, 27.5)), D: r1(Math.max(bl * 0.62, 27.5)), h: r1(nh + 0.8) }), // ícone Incom: a bola fica sobre um colar que veste o gargalo
+          M('incomBola', { W: bl, D: bl, h: bl })])(r1(Math.min(W * 0.62, 36)))
         : fe === 'flip' ? M('flipRedondo', { W: 30, D: 30, h: 30, own: true, finish: 'pet', color: '#ffffff' }) // foto do Wall: flip-top transparente
         : fe === 'disctop' ? M('disctop', { name: 'Tampa disc-top', W: r1(Math.min(D, 38)), D: r1(Math.min(D, 38)) })
-        : M(fe === 'pump' ? 'pump' : 'spray');
+        : M(fe === 'pump' ? 'pump' : 'incomSpray');
       ms = [P('Frasco', W, D, H - nh, { vol: true, ...o, _t: [0, (H - nh) / H] }), NECK('24/410', { h: nh }), ...[].concat(fc)];
       // P64–74: fechamento 24-410; mesmo passo/fase no gargalo e na saia receptora.
       // Folga radial 0,16 mm de representação, sem desenho industrial do alojamento.
