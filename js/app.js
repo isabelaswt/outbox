@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-17.cl15';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-17.cl16';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -677,7 +677,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-17.cl15';
+const BUILD = '2026-11-17.cl16';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -2547,8 +2547,10 @@ function lipstickBulletGeo(m, y0, { lo = false } = {}) {
 const APLIC = {
   cerdas: { nome: 'Cerdas', color: '#eef2f3', finish: 'pet', c2: '#f6f4f0', f2: 'fosco', s: 5, base: [[0, 1.25], [0.05, 1.25], [0.055, 1.05], [0.1, 1.05]],
     r: [[0, 1], [0.12, 1], [0.2, 0.85], [0.5, 0.6], [0.72, 0.38], [0.76, 0.34], [0.86, 0.27], [0.94, 0.17], [1, 0.04]] },
-  silicone: { nome: 'Silicone', color: '#eeeae4', finish: 'pet', c3: '#1a1a1a', f3: 'brilho', base: [[0, 1.12], [0.08, 1.12], [0.085, 0.95]],
-    r: [[0, 0.95], [0.12, 0.95], [0.2, 0.8], [0.7, 0.76], [0.82, 0.7], [0.9, 0.58], [0.96, 0.38], [1, 0.08]] },
+  // Silicone (foto do catálogo): dedo translúcido fosco que sai direto do gargalo com o pé alargado; ~5 mm de largura
+  // e ~17 mm de altura (0,45 e 1,6× a largura do gargalo), ponta arredondada levemente inclinada.
+  silicone: { nome: 'Silicone', color: '#eeeeeb', finish: 'pet', h: 17,
+    r: [[0, 0.9], [0.06, 0.88], [0.16, 0.7], [0.26, 0.62], [0.72, 0.58], [0.85, 0.55, 0.55, 0.03], [0.93, 0.44, 0.44, 0.06], [0.98, 0.26, 0.26, 0.08], [1, 0.05, 0.05, 0.09]] },
   chanfrada: { nome: 'Flocada Chanfrada', color: '#1a1a1a', finish: 'brilho', c2: '#f4f1ec', f2: 'fosco', s: 4, base: [[0, 1.15], [0.06, 1.15], [0.065, 0.95]],
     r: [[0, 0.95], [0.1, 0.95], [0.16, 0.72], [0.74, 0.72], [0.78, 0.8, 0.8, 0, 12], [0.9, 0.8, 0.8, 0, 28], [0.96, 0.7, 0.72, 0, 28], [1, 0.4, 0.42, 0, 28]] },
   // Cushion (foto de uso): disco translúcido fino sobre o gargalo, haste branca flocada larga e bola pouco mais larga
