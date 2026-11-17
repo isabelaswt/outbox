@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-17.cdx25';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-17.cdx26';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -677,7 +677,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-17.cdx25';
+const BUILD = '2026-11-17.cdx26';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -9634,7 +9634,7 @@ function incomProduct(r) {
         P('Tampa', W, D, ht, { rTop: 3, gap: r1(-hcol - hm), capa: true, oco: true, ocoWall: r2(W * (1 - (g ? 110 : 112) / 120) / 2), _t: [f, 1] })]; break; }
     default: ms = [P('Corpo', W, D, H, { vol: true, _t: [0, 1] })];
   }
-  // fotos: Case G/M com tampa toda transparente (sem espelho); "All Crystal" com base e tampa de cristal;
+  // P3/4: Case G/M oferecem tampa fechada ou cristal e espelho opcional; padrão com espelho por pedido da dona.
   // Macaroon com a tampa em cúpula (a bola preta da foto)
   if (r.c === 'Compactos' || r.c === 'Paletas') { const clear = { own: true, finish: 'cristal', color: '#ffffff' }; // (paletas: só o degrau abaixo vale para elas)
     if (/^Case/.test(r.n)) { const t = ms.find(m => m.name === 'Tampa'); if (t) { Object.assign(t, { hingePair: { x: 0.30, w: 0.11 }, caseLatch: true });
@@ -9653,7 +9653,8 @@ function incomProduct(r) {
       // Foto fechada do Quinteto: moldura mais larga; proporção estimada na imagem, não cota.
       if (t && r.n === 'Frame G Quinteto') t.visorBorder = r1(W * 0.14);
     }
-    ms.forEach(m => { if ((/Crystal/i.test(r.n) && /Base|Tampa/.test(m.name)) || (/^Case/.test(r.n) && m.name === 'Tampa')) Object.assign(m, clear, m.name === 'Tampa' ? { espelho: false } : {}); });
+    ms.forEach(m => { if (/Crystal/i.test(r.n) && /Base|Tampa/.test(m.name)) Object.assign(m, clear, m.name === 'Tampa' ? { espelho: false } : {});
+      else if (/^Case [GM]$/.test(r.n) && m.name === 'Tampa') m.espelho = true; });
     // cristal (foto): a latinha de alumínio do godê aparece inteira pela base transparente
     ms.forEach(m => { if (/Crystal/i.test(r.n) && m.godes) m.godes = { ...m.godes, lata: true }; });
     // Moon (fotos e desenho): godê afundado na base, visor de borda fina e aba de fechamento para fora na tampa,
@@ -9785,6 +9786,14 @@ function incomProduct(r) {
   return { color: BEIGE, finish: 'fosco', modules: ms, forn: 'Incom', fcat: r.c, fapp, ...(wall ? { wall, wallAuto: false } : {}) };
 }
 INCOM_PRODUCTS.forEach(r => { PRESETS[`Incom ${r.n} (${r.c.toLowerCase()})`] = incomProduct(r); });
+// P3/4: opção cristal separada, sem retirar o espelho da tampa fechada padrão.
+for (const size of ['G', 'M']) {
+  const p = structuredClone(PRESETS[`Incom Case ${size} (compactos)`]);
+  p.modules.forEach(m => { m.uid = newUid(); });
+  Object.assign(p.modules.find(m => m.name === 'Tampa'), { own: true, finish: 'cristal', color: '#ffffff', espelho: false });
+  p.fsourceKey = `incomp_compactos_case_${size.toLowerCase()}`; p.fvariant = 'Tampa cristal · sem espelho';
+  PRESETS[`Incom Case ${size} Tampa Cristal (compactos)`] = p;
+}
 // P99: duas alturas cotadas do Moma. Mesmo frasco; muda só o comprimento da tampa externa.
 const MOMA_HIGH = 'Incom Moma Tampa Alta (líquidos labiais)';
 {

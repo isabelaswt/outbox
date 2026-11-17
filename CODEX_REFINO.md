@@ -166,11 +166,13 @@ Pendências conhecidas (precisam de dado ou de decisão; não invente):
 
 **Em andamento** (quem está mexendo em quê agora; apague quando terminar):
 
-- Codex: cdx25 pares de rosca em frascos/fechamentos 24-410 e demais famílias 20-410, por fonte do catálogo. Depois frasnagas/variantes e PDF.
+- Codex: cdx26 Case G/M fechados com espelho e tampa cristal separada, por pedido da dona. Depois pares 20-410/24-410 restantes, variantes e PDF.
 
 - Codex: PDF suspenso por novos achados da dona. Corrigir fecho frontal/espelho das paletas em `compactParts`; roscas externas e internas em todos os fechamentos documentados; variantes de tampas; conferir fundo externo plano/cavidade U do Guggen. Inventários extraídos do catálogo em andamento. Não alterar largura estimada nem mecanismos ocultos como se fossem cotados.
 
 **Registro** (o mais novo em cima):
+
+- 2026-11-17, Codex, `2026-11-17.cdx26`: Case M/G padrão com tampa bege fechada e espelho, por pedido da dona; p3/4 oferecem tampa fechada/cristal e espelho opcional. Versões Tampa Cristal separadas, preservando também M All Crystal. Cinco conjuntos abertos/fechados com alturas dentro de 0,1 mm, fechos livres em quatro ângulos e dois espelhos contidos (1.024 pontos), sem posições/normais inválidas. Relatório `tools/conferencia/validacao-cdx26.json`, evidências `_ref/incom/validacao-cdx26/`. Demais roscas, variantes e PDF continuam em andamento.
 
 - 2026-11-17, Codex, `2026-11-17.cdx25`: onze frascos p64–74 com cavidade fêmea 24-410 na própria saia do fechamento, pareada ao gargalo existente; fase axial acompanha o assentamento sobre o ombro. Sens mantém espaço do disco sem eliminar a parede da rosca. 264 amostras de cristas com folga radial medida de 0,156–0,160 mm, sem ausências; onze montagens abertas/fechadas finitas e corpo+gargalo dentro de 0,1 mm. Folgas e alojamentos internos representativos, não cotas industriais. Relatório `tools/conferencia/validacao-cdx25.json`; evidências `_ref/incom/validacao-cdx25/`. Restam dispensadores/Deluxes/frasnagas, variantes e PDF.
 
