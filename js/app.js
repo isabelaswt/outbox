@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-17.cdx19';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-17.cdx20';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -677,7 +677,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-17.cdx19';
+const BUILD = '2026-11-17.cdx20';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -1631,6 +1631,40 @@ function loftPts(pts) {
   return g;
 }
 
+// Mesmo campo helicoidal para o gargalo e a cavidade roscada que o recebe.
+// Passos sem norma/cota do fornecedor são parâmetros de representação estimados nas fotos.
+function neckThreadField(m) {
+  const pitch = Math.max(m.pitch, 0.5), w = pitch * 0.45, yT1 = m.h - 1.2 - pitch * 0.25,
+    turns = Math.min(m.turns, Math.max(0, (yT1 - (m.ringH + 1.2)) / pitch)), yT0 = yT1 - turns * pitch;
+  return (ly, th) => {
+    if (turns <= 0 || ly < yT0 - w || ly > yT1 + w) return 0;
+    let f = 0; const k = Math.round((ly - yT0) / pitch - th / TAU);
+    for (let kk = k - 1; kk <= k + 1; kk++) {
+      const phi = th + TAU * kk; if (phi < 0 || phi > turns * TAU) continue;
+      const dy = Math.abs(ly - (yT0 + pitch * phi / TAU)), ends = clamp(Math.min(phi, turns * TAU - phi) / (Math.PI / 4), 0, 1);
+      f = Math.max(f, clamp((w / 2 - dy) / (w * 0.3), 0, 1) * ends);
+    }
+    return m.threadD * f;
+  };
+}
+// Copo independente: rosca fêmea na cavidade e placa superior que segura a haste.
+function wandInsertGeo(m, y0, lo) {
+  const neck = m.wandInsert, field = neckThreadField(neck), N = lo ? 48 : 128,
+    outer = m.W / 2, bore = Math.max(0.3, m.pescD / 2 - 0.01), plate = m.h - 0.8,
+    root = neck.W / 2 - neck.threadD, clearance = 0.16, rings = [],
+    ring = (y, radius) => Array.from({ length: N }, (_, i) => { const th = TAU * i / N,
+      r = typeof radius === 'function' ? radius(th) : radius; return [r * Math.cos(th), y0 + y, r * Math.sin(th)]; });
+  rings.push(ring(0, outer), ring(m.h, outer), ring(m.h, bore), ring(plate, bore), ring(plate, root + clearance));
+  const steps = Math.ceil(plate / (lo ? 0.5 : 0.12));
+  for (let j = steps - 1; j >= 0; j--) { const y = plate * j / steps;
+    rings.push(ring(y, th => root + clearance + field(y, th)));
+  }
+  rings.push(rings[0]);
+  const raw = loftPts(rings); // Fecha somente as tiras: boca anular, sem leques cobrindo a cavidade.
+  raw.setIndex(Array.from(raw.index.array).slice(0, (rings.length - 1) * N * 6)); raw.deleteAttribute('normal');
+  const g = mergeVertices(raw, 0.00001); raw.dispose(); g.computeVertexNormals(); return g;
+}
+
 // Gargalo: base que entra no corpo, anel de apoio e rosca helicoidal.
 function neckGeo(m, y0, { lo = false, body = null } = {}) {
   const R0 = m.W / 2, E = Math.max(R0 - m.threadD, 1), ringR = E + m.threadD + m.ringW, rh = m.ringH, h = m.h;
@@ -1680,22 +1714,10 @@ function neckGeo(m, y0, { lo = false, body = null } = {}) {
     const d = Math.min(h - rh - 1, 9);
     [[h - 0.25, rIn], [h - d, rIn], [h - d, rIn * 0.5]].forEach(([ly, r]) => rings.push({ y: y0 + ly, ly, a: r, b: r, n: 2, noDisp: true }));
   }
-  // A hélice termina perto da boca, como no gargalo real.
-  const pitch = Math.max(m.pitch, 0.5), w = pitch * 0.45, yT1 = h - 1.2 - pitch * 0.25;
-  const turns = Math.min(m.turns, Math.max(0, (yT1 - (rh + 1.2)) / pitch)), yT0 = yT1 - turns * pitch;
-  const disp = lo || turns <= 0 ? null : (x, ly, z, th) => {
-    if (ly < yT0 - w || ly > yT1 + w) return [x, z];
-    let f = 0;
-    const k = Math.round((ly - yT0) / pitch - th / TAU);
-    for (let kk = k - 1; kk <= k + 1; kk++) {
-      const phi = th + TAU * kk; if (phi < 0 || phi > turns * TAU) continue;
-      const dy = Math.abs(ly - (yT0 + pitch * phi / TAU));
-      // Filete trapezoidal, com as pontas afinando em 45°.
-      const ends = clamp(Math.min(phi, turns * TAU - phi) / (Math.PI / 4), 0, 1);
-      f = Math.max(f, clamp((w / 2 - dy) / (w * 0.3), 0, 1) * ends);
-    }
-    if (f > 0) { const rr = Math.hypot(x, z) || 1; x += x / rr * m.threadD * f; z += z / rr * m.threadD * f; }
-    return [x, z];
+  const thread = neckThreadField(m);
+  const disp = lo ? null : (x, ly, z, th) => {
+    const d = thread(ly, th), rr = Math.hypot(x, z) || 1;
+    return [x + x / rr * d, z + z / rr * d];
   };
   const g = loft(rings, lo ? 48 : 256, disp);
   if (mouth) { // fundo escuro da boca (sombra de dentro do frasco)
@@ -1847,6 +1869,7 @@ function hexCapGeo(m, y0, lo) {
 }
 
 function sprayGeo(m, y0, { lo = false } = {}) {
+  if (m.wandInsert) return wandInsertGeo(m, y0, lo);
   if (m.sprayType === 'tubo') return tubePumpGeo(m, y0, lo);
   if (m.sprayType === 'sextavada') return hexCapGeo(m, y0, lo);
   const ring = (W, h, y, o = {}) => moduleGeo({ ...BASE, kind: 'giro', W, D: W, h, ...o }, y, { lo });
@@ -6476,7 +6499,7 @@ function compactParts(product, L, S0) {
   L.forEach(({ m, idx }) => { // tampa tirada: deitada no chão, ao lado
     if (m.hidden || !m.capa) return;
     const carries = m.capaCarry && L.some(e => e.idx === idx - 1 && e.m.sprayType === 'gloss');
-    const carry = carries ? mine(idx - 1).filter(o => o.userData.liquid) : [];
+    const carry = carries ? mine(idx - 1).filter(o => L.find(e => e.idx === idx - 1)?.m.wandInsert || o.userData.liquid) : [];
     const objs = [...mine(idx), ...carry]; if (!objs.length) return;
     const rest = localBox(product.children.filter(o => o.isMesh && !objs.includes(o))), bb = localBox(objs), c = bb.getCenter(new THREE.Vector3());
     const rot = m.capa === 'vira' ? new THREE.Matrix4().makeRotationX(Math.PI) : new THREE.Matrix4().makeRotationY(-Math.PI / 5).multiply(new THREE.Matrix4().makeRotationZ(Math.PI / 2));
@@ -6711,7 +6734,7 @@ function buildInto(product, S, explodeAmt = 0) {
     if (!tubeBody && !solidBody && (m.kind === 'spray' || (m.kind === 'perfil' && !m.vol)) && m.pesc && isFinite(floor)) { // recheio sólido: sem tubo
       // Comprimento medido montado; na vista explodida desce junto com a válvula.
       const add = (geo, name) => { const pm = new THREE.Mesh(geo, innerMat); pm.userData.idx = idx; pm.name = `${String(idx + 1).padStart(2, '0')}_${name}`; product.add(pm); };
-      let yTop = y0 + m.h * (m.wandNeck ? 1 : 0.6);
+      let yTop = y0 + (m.wandInsert ? m.h - 0.8 : m.h * (m.wandNeck ? 1 : 0.6));
       if (m.mola && !isWand(m)) { // conta-gotas não tem mola
         const mech = pumpMechGeo(m, yTop, y0); mech.parts.forEach(g => add(g, 'bomba')); yTop = mech.yEnd;
         if (mech.sleeve) {
@@ -9457,12 +9480,23 @@ function incomProduct(r) {
             neckFillet: 0, exposedNeck: true, tuboAberto: true, own: true, finish: 'pet', color: '#ffffff' }),
           P('Esfera de aço', db, null, db, { rTop: db / 2, rBot: db / 2, gap: r1(hs - db * 0.4), own: true, color: '#d6d8da', finish: 'metal' }),
           { ...cap, gap: r1(-(hs + db * 0.6)) }]; break; } // tampa assenta no ombro do frasco: altura total = catálogo
-      ms = [P('Frasco', W, D, H * f, { ...s0, vol: true, rBot: masc ? 1.5 : 2.4, ...gl, wandMouth: Math.max(1, (wv - 0.8) / 2 - 1.2), _t: [0, f] }),
-        M('tampaGloss', { name: masc ? 'Haste com escova' : 'Haste com aplicador', W: wv, D: wv, h: r1(cap.h - 2.5), pescD: r1(Math.min(3, wv * 0.3)),
-          wandNeck: true, neckH: Math.min(6, cap.h * 0.16),
+      // Foto da dona: tampa externa e inserto roscado portando a haste são peças distintas.
+      // Diâmetro/passo/folga internos estimados; dimensões fechadas do catálogo preservadas.
+      const nh = /All Crystal/.test(r.n) ? r1(cap.h * 0.55) : r1(Math.min(6, cap.h * 0.16)),
+        insertW = r1(2 * (capHalfAt(cap, 0) - OCO.wall - 0.05)),
+        nw = r1(Math.min(wv, insertW - 2.2)),
+        neck = M('gargalo', { name: 'Gargalo roscado', neckStd: 'livre', W: nw, D: nw, h: nh,
+          pitch: r1(Math.min(1.3, nh * 0.22)), turns: /All Crystal/.test(r.n) ? 5 : 2.5,
+          threadD: r1(Math.min(0.5, nw * 0.045)), ringH: 0, ringW: 0, embed: 0,
+          neckFillet: 0, exposedNeck: true, tuboAberto: true });
+      delete cap.roscaInt; // A rosca pertence ao inserto, não à casca decorativa.
+      ms = [P('Frasco', W, D, H * f, { ...s0, vol: true, rBot: masc ? 1.5 : 2.4, ...gl,
+          wandMouth: Math.max(0.5, Math.min(neckBore(neck), nw / 2 - neck.threadD - 1.2)), _t: [0, f] }), neck,
+        M('tampaGloss', { name: masc ? 'Inserto roscado com haste e escova' : 'Inserto roscado com haste e aplicador',
+          W: insertW, D: insertW, h: r1(nh + 1.2), wandInsert: { W: neck.W, h: neck.h, pitch: neck.pitch, turns: neck.turns, threadD: neck.threadD, ringH: 0 }, pescD: r1(Math.min(3, nw * 0.3)),
           tipL: masc ? r1(Math.min(24, H * 0.2)) : 13, tipW: r1(Math.min(masc ? 7.5 : 6.5, Math.min(W, D) - 6)), tipColor: masc ? '#2b2b2b' : '#e2cdb8',
           ...(masc ? { brushStyle: r.n === 'Berlim Plus' ? 'cone' : ['Guggen', 'Oscar'].includes(r.n) ? 'fina' : 'fusiforme' } : {}),
-          ...(/All Crystal/.test(r.n) ? { own: true, finish: 'brilho', color: gl.liqColor, rodClear: true, neckH: r1(cap.h * 0.55), W: r1(Math.min(W, D) - 3), D: r1(Math.min(W, D) - 3) } : {}) }), cap]; break; } // All Crystal: gargalo com rosca e gloss aparecendo pela tampa de cristal
+          ...(/All Crystal/.test(r.n) ? { rodClear: true } : {}) }), cap]; break; }
     case 'baton': case 'batonsq': {
       // Batom como no catálogo: base, tubo de metal (mecanismo) saindo dela, bala de 12,1 mm com a ponta
       // chanfrada, recolhida dentro do tubo, e a tampa que desce até a base vestindo tudo. "Abrir" tira a
@@ -10494,7 +10528,9 @@ async function exportRoot(scale) {
     await new Promise(r => requestAnimationFrame(r));
     const root = new THREE.Group(); root.name = S.name || 'embalagem';
     for (const o of product.children) {
-      if (o.name === 'cavidade' || o.name === 'boca' || o.userData.liquid) continue;
+      // Haste e aplicador são peças reais; compartilham o sinal de descarte de material do líquido.
+      const content = o.userData.liquid && !/_(haste|aplicador)$/.test(o.name);
+      if (o.name === 'cavidade' || o.name === 'boca' || content) continue;
       root.add(cloneForExport(o));
     }
     sideRoot.children.forEach(g => root.add(cloneForExport(g))); // produtos ao lado, já na posição
