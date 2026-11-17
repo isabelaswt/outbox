@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-17.cl21';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-17.cl22';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -425,6 +425,7 @@ CAP_FIX.incom_bouquet = { roseTop: true }; // P141: volutas/pétalas, não anéi
 for (const key of ['incom_joya', 'incom_joya_mini']) CAP_FIX[key].facetCrown = { from: 0.74, rim: 0.76, sectors: 12 };
 // P181: faixa central com painéis hexagonais e facetas triangulares nas bordas.
 // Alturas relativas/mesa estimadas no desenho frontal; oito setores seguem a seção do modelo.
+CAP_FIX.incom_crown_mini = { sides: 0, lobes: 12, lobeD: 1.4, lobeFrom: 0.45 }; // fotos do site: topo canelado de gomos redondos (flor), não octógono
 CAP_FIX.incom_quartz = { noFit: true, facetGem: { sectors: 8, bevel: 0.15, table: 0.68, corner: 0.6 } };
 // Contorno do desenho técnico sem "escada": o traço extraído do PDF oscila uns centésimos e,
 // ligado em retas, a luz marcava cada mudança de inclinação como uma faixa. Média ponderada curta
@@ -677,7 +678,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-17.cl21';
+const BUILD = '2026-11-17.cl22';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
