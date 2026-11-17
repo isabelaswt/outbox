@@ -166,11 +166,13 @@ Pendências conhecidas (precisam de dado ou de decisão; não invente):
 
 **Em andamento** (quem está mexendo em quê agora; apague quando terminar):
 
-- Codex: cdx23 roscas dos potes: restaurar gargalo documentado e criar cavidade helicoidal correspondente na tampa, sem inventar norma para passos não cotados. Depois demais fechamentos/variantes e PDF.
+- Codex: cdx24 roscas dos potes: par macho/fêmea na boca e na tampa, passos sem norma estimados; depois demais fechamentos e variantes, PDF por último.
 
 - Codex: PDF suspenso por novos achados da dona. Corrigir fecho frontal/espelho das paletas em `compactParts`; roscas externas e internas em todos os fechamentos documentados; variantes de tampas; conferir fundo externo plano/cavidade U do Guggen. Inventários extraídos do catálogo em andamento. Não alterar largura estimada nem mecanismos ocultos como se fossem cotados.
 
 **Registro** (o mais novo em cima):
+
+- 2026-11-17, Codex, `2026-11-17.cdx23`: Case G/M/M All Crystal com lingueta simples saindo da placa, sem caixa vazada nem apoios; pela foto nova do G e p4/5 do M. Altura da lingueta proporcional à foto e abertura correspondente menor na tampa; godê/colar/cotas preservados. Frame/Classic com aba rente de cantos inferiores arredondados e rebaixo da mesma largura; aba Frame acompanha a curva da face. Quinteto com moldura mais larga no visor (14% da largura por lado, estimado na foto nova), demais visores preservados. Quatorze montagens/controles conferidos; três Case sem qualquer caixa/apoio e com uma lingueta na base; amostras dos dentes livres em 0/15/45/90, espelhos contidos e posições/normais finitas. Cotas externas dos compactos/paleta controle preservadas dentro de 0,1 mm. `tools/conferencia/validacao-cdx23.json`, evidências `_ref/incom/validacao-cdx23/`. Seguem roscas de potes/demais fechamentos e variantes; PDF por último.
 
 - 2026-11-17, Codex, `2026-11-17.cdx22`: Moma p99 com tampa baixa (74 mm, principal) e variante Tampa Alta (85 mm), ambas as alturas cotadas no desenho. Corpo comum de ~48,3 mm proporcional à cota do desenho; só a tampa externa aumenta 11 mm na alta, mantendo gargalo/inserto/haste. Tampa alta também na biblioteca de peças Incom. Quatro Moma/controles abertos/fechados, alturas 74/85 dentro de 0,1 mm, corpo+gargalo iguais entre variantes, insertos fechados e solidários às tampas abertas, sem posições/normais inválidas. `tools/conferencia/validacao-cdx22.json`, evidências `_ref/incom/validacao-cdx22/`. Outros tamanhos internos seguem estimados; demais variantes e roscas ainda pendentes.
 

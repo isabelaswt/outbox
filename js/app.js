@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-17.cdx22';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-17.cdx23';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -677,7 +677,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-17.cdx22';
+const BUILD = '2026-11-17.cdx23';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -6243,7 +6243,7 @@ function seShape(a, b, n, seg = 128, bow = 0) { const sh = new THREE.Shape(); fo
 function seSlab(a, b, n, h) { const g = new THREE.ExtrudeGeometry(seShape(a, b, n), { depth: h, bevelEnabled: false, curveSegments: 4 }); g.deleteAttribute('uv'); g.rotateX(-Math.PI / 2); g.translate(0, -h / 2, 0); return g; }
 // Frame (foto da tampa aberta): a janela vai quase de parede a parede, moldura fina (~3 mm); o preto largo visto
 // de fora é a base por baixo do visor
-const visorBox = (m, w, d) => { const f = m.visorFino || (!m.sides && m.n > 2) ? OCO.wall + 1.2 : Math.max(4.5, Math.min(w, d) * 0.12); return { w: w - 2 * f, d: m.sides ? d - 2 * f : w - 2 * f }; };
+const visorBox = (m, w, d) => { const f = m.visorBorder ?? (m.visorFino || (!m.sides && m.n > 2) ? OCO.wall + 1.2 : Math.max(4.5, Math.min(w, d) * 0.12)); return { w: w - 2 * f, d: m.sides ? d - 2 * f : w - 2 * f }; };
 // Faixa curva da parede redonda (setor de anel) na frente (+z): rebaixo e aba de fechamento acompanham o ângulo
 function arcSlab(R0, R1, span, h) { const a0 = -Math.PI / 2 - span / 2, a1 = -Math.PI / 2 + span / 2, sh = new THREE.Shape();
   sh.absarc(0, 0, R1, a0, a1, false); sh.lineTo(R0 * Math.cos(a1), R0 * Math.sin(a1)); sh.absarc(0, 0, R0, a1, a0, true); sh.closePath();
@@ -6411,6 +6411,12 @@ function compactParts(product, L, S0) {
             sh.quadraticCurveTo(half, yB, half - rc, yB); sh.lineTo(-half + rc, yB);
             sh.quadraticCurveTo(-half, yB, -half, yB + rc); sh.closePath();
             const stem = new THREE.ExtrudeGeometry(sh, { depth: 0.65, bevelEnabled: false, curveSegments: 16 }); stem.deleteAttribute('uv');
+            if (m.snapConform) {
+              const p = stem.attributes.position, A = w / 2, B = d / 2;
+              for (let j = 0; j < p.count; j++) { const x = Math.min(0.9999, Math.abs(p.getX(j)) / A);
+                p.setZ(j, p.getZ(j) + B * (Math.pow(1 - x ** m.n, 1 / m.n) - 1)); }
+              p.needsUpdate = true; stem.computeVertexNormals();
+            }
             add(stem, objs[0].material, idx, 'lingua_fecho', cx, 0, cz + inner);
             // Face externa 0,01 mm atrás da parede para unir visualmente sem sobreposição coplanar.
             // Sem ponte/apoio: a aba prolonga a face da tampa, como na foto da dona.
@@ -6458,18 +6464,27 @@ function compactParts(product, L, S0) {
           tw = w * 0.10, side = 0.55, slotW = tw + 0.3, outerW = slotW + 2 * side,
           front = bb.max.z - OCO.wall, back = front - 0.8, bottom = top - 0.02,
           slotB = lip - 1.4, slotT = lip - 0.5, roof = y0 + m.dedo.h + 0.25;
-        const sh = new THREE.Shape(); sh.moveTo(-outerW / 2, bottom); sh.lineTo(outerW / 2, bottom);
-        sh.lineTo(outerW / 2, lip); sh.lineTo(-outerW / 2, lip); sh.closePath();
-        const hole = new THREE.Path(); hole.moveTo(-slotW / 2, slotB); hole.lineTo(-slotW / 2, slotT);
-        hole.lineTo(slotW / 2, slotT); hole.lineTo(slotW / 2, slotB); hole.closePath(); sh.holes.push(hole);
-        const frame = new THREE.ExtrudeGeometry(sh, { depth: 0.8, bevelEnabled: false }); frame.deleteAttribute('uv');
-        add(frame, bObjs[0].material, base.idx, 'alojamento_fecho', cx, 0, back);
-        const collarZ = cz + b.godes.mm / 2 + 0.5, reach = back - collarZ;
-        if (reach > 0) [-1, 1].forEach(k => add(new THREE.BoxGeometry(side, lip - bottom, reach + 0.05),
-          bObjs[0].material, base.idx, 'apoio_fecho', cx + k * (slotW + side) / 2, (lip + bottom) / 2, collarZ + reach / 2));
-        const hookB = lip - 1.15, hookH = 0.4, stemB = hookB, stemZ = back - 0.4;
+        let catchTop = lip;
+        if (m.caseLatchSimple) {
+          // Case G da dona e Case M p4/5: lingueta moldada na placa, sem caixa ou apoios.
+          catchTop = top + b.godes.relevo * 0.55;
+          const h = catchTop - bottom;
+          add(new RoundedBoxGeometry(tw, h, 0.8, 3, 0.15), bObjs[0].material, base.idx,
+            'lingueta_rebaixo', cx, bottom + h / 2, back + 0.4);
+        } else {
+          const sh = new THREE.Shape(); sh.moveTo(-outerW / 2, bottom); sh.lineTo(outerW / 2, bottom);
+          sh.lineTo(outerW / 2, lip); sh.lineTo(-outerW / 2, lip); sh.closePath();
+          const hole = new THREE.Path(); hole.moveTo(-slotW / 2, slotB); hole.lineTo(-slotW / 2, slotT);
+          hole.lineTo(slotW / 2, slotT); hole.lineTo(slotW / 2, slotB); hole.closePath(); sh.holes.push(hole);
+          const frame = new THREE.ExtrudeGeometry(sh, { depth: 0.8, bevelEnabled: false }); frame.deleteAttribute('uv');
+          add(frame, bObjs[0].material, base.idx, 'alojamento_fecho', cx, 0, back);
+          const collarZ = cz + b.godes.mm / 2 + 0.5, reach = back - collarZ;
+          if (reach > 0) [-1, 1].forEach(k => add(new THREE.BoxGeometry(side, lip - bottom, reach + 0.05),
+            bObjs[0].material, base.idx, 'apoio_fecho', cx + k * (slotW + side) / 2, (lip + bottom) / 2, collarZ + reach / 2));
+        }
+        const hookB = m.caseLatchSimple ? catchTop - 0.7 : lip - 1.15, hookH = 0.4, stemB = hookB, stemZ = back - 0.4;
         add(new THREE.BoxGeometry(tw, roof - stemB, 0.45), objs[0].material, idx, 'lingua_fecho', cx, (roof + stemB) / 2, stemZ);
-        add(new THREE.BoxGeometry(tw, hookH, 0.9), objs[0].material, idx, 'dente_fecho', cx, hookB + hookH / 2, back - 0.05);
+        add(new THREE.BoxGeometry(tw, hookH, 0.9), objs[0].material, idx, 'dente_fecho', cx, hookB + hookH / 2, back - (m.caseLatchSimple ? 0.55 : 0.05));
       }
     }
     if (m.espelho) { // no teto do oco da tampa, virado para baixo (fechada, fica escondido dentro dela)
@@ -9593,7 +9608,8 @@ function incomProduct(r) {
   // fotos: Case G/M com tampa toda transparente (sem espelho); "All Crystal" com base e tampa de cristal;
   // Macaroon com a tampa em cúpula (a bola preta da foto)
   if (r.c === 'Compactos' || r.c === 'Paletas') { const clear = { own: true, finish: 'cristal', color: '#ffffff' }; // (paletas: só o degrau abaixo vale para elas)
-    if (/^Case/.test(r.n)) { const t = ms.find(m => m.name === 'Tampa'); if (t) Object.assign(t, { hingePair: { x: 0.30, w: 0.11 }, caseLatch: true }); }
+    if (/^Case/.test(r.n)) { const t = ms.find(m => m.name === 'Tampa'); if (t) { Object.assign(t, { hingePair: { x: 0.30, w: 0.11 }, caseLatch: true });
+      t.caseLatchSimple = true; t.dedo.h = Math.min(2.4, t.h * 0.45); } }
     // Fotos p9–25: Frame e redondos usam um eixo central curto. P28–33: Flat tem dois apoios.
     if (/^Frame|^Moon|^Macaroon/.test(r.n)) ms.filter(m => m.hinge).forEach(m => { m.hingeWidth = 0.18; });
     if (/^Flat/.test(r.n)) { const t = ms.find(m => m.name === 'Tampa'); if (t) {
@@ -9602,6 +9618,12 @@ function incomProduct(r) {
       else t.hingePair = { x: 0.26, w: 0.07 };
     } }
     ms.forEach((m, i) => { if (m.hinge && !m.caseLatch && ms[i - 1]?.dedo) m.snapFront = true; });
+    if (/^(Frame|Classic)/.test(r.n)) {
+      const t = ms.find(m => m.name === 'Tampa'), b = ms.find(m => m.name === 'Base');
+      if (t && b?.dedo) { t.snapFlat = true; t.snapConform = !t.sides; t.snapWidth = r1(b.dedo.w - 0.2); b.fechoRebaixo = true; }
+      // Foto fechada do Quinteto: moldura mais larga; proporção estimada na imagem, não cota.
+      if (t && r.n === 'Frame G Quinteto') t.visorBorder = r1(W * 0.14);
+    }
     ms.forEach(m => { if ((/Crystal/i.test(r.n) && /Base|Tampa/.test(m.name)) || (/^Case/.test(r.n) && m.name === 'Tampa')) Object.assign(m, clear, m.name === 'Tampa' ? { espelho: false } : {}); });
     // cristal (foto): a latinha de alumínio do godê aparece inteira pela base transparente
     ms.forEach(m => { if (/Crystal/i.test(r.n) && m.godes) m.godes = { ...m.godes, lata: true }; });
