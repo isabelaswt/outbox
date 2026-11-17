@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-17.cl24';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-17.cl25';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -349,7 +349,7 @@ const LIB = {
   // baixo na ponta. Medidas pela foto (saia Ø26,9 × 18,7; haste Ø14,1 × 15,3; cabeça 41,6 × 8, 8,6 mm para a frente);
   // largura da cabeça sem vista lateral: estimada igual à haste
   patoIncom: { name: 'Incom · Válvula bico de pato', kind: 'spray', sprayType: 'patoIncom', W: 26.9, D: 26.9, h: 18.7, collarR: 1, ridges: 0,
-             stemD: 14.1, stemH: 15.3, headH: 8, headBack: 12.2, nozzleL: 29.4, armT: 3, armW: 14, droop: 3 },
+             stemD: 14.1, stemH: 15.3, headH: 3.4, headBack: 9.5, nozzleL: 29.4, armT: 2.8, armW: 14, droop: 4 },
   pump:    { name: 'Válvula pump', kind: 'spray', sprayType: 'pato', W: 26.3, D: 26.3, h: 14.5, collarR: 1, ridges: 44, ridgeD: 0.3,
              stemD: 9, stemH: 12, actW: 20, headH: 11, armT: 4, armW: 9, nozzleL: 22, droop: 1 },
   // Espumadora da lista Incom (ícone): estreita como a dosadora, cabeça cilíndrica com o bico reto e curto no alto
@@ -418,11 +418,11 @@ const INCOM_VALV = {
   incomSpray: { ...LIB.spray, name: 'Incom · Spray', ridges: 0 }, // ícone: saia lisa, sem frisos
   incomDosadora: { ...LIB.pumpDosadora, name: 'Incom · Dosadora' },
   incomTrigger: { ...LIB.gatilho, name: 'Incom · Trigger' },
-  incomEspumadora: { ...LIB.espumadora, name: 'Incom · Espumadora' },
-  incomBicoAplicador: { ...LIB.bicoAplicador, name: 'Incom · Bico aplicador' },
+  incomEspumadora: { ...LIB.espumadora, name: 'Incom · Espumadora', sprayType: 'espumadoraIncom', h: 13, guideW: 20, guideH: 7.5, actW: 14, headH: 13, armT: 4, armW: 5.5, nozzleL: 3 }, // ícone ampliado: atuador reto e largo, bico retangular curto no alto
+  incomBicoAplicador: { ...LIB.bicoAplicador, name: 'Incom · Bico aplicador', sprayType: 'aplicadorIncom', h: 16.8, ridges: 0, actW: 15, spoutD: 7.2, tipH: 7.6, nozzleL: 31.2 }, // ícone ampliado: saia lisa, degrau, cone côncavo e ponteira
   incomSens: { ...LIB.tampaSens, name: 'Incom · Tampa Sens' },
   incomTambor: { ...LIB.tampaTambor, name: 'Incom · Tampa tambor' },
-  incomBola: { ...LIB.bola, name: 'Incom · Tampa bola', W: 36, D: 36, h: 36 },
+  incomBola: { ...LIB.bola, name: 'Incom · Tampa bola', W: 36, D: 36, h: 36, rBot: 18, rTop: 18, gap: -10.9 }, // ícone: a bola desce sobre o colar e só ~10 mm dele aparecem
   incomColarBola: { name: 'Incom · Colar da tampa bola', W: 27.5, D: 27.5, h: 17.4, rTop: 0.6, rBot: 0.3 }, // ícone: a bola fica sobre um colar que veste o gargalo
   incomCapaMist: { ...LIB.sobretampaFineMist, name: 'Incom · Sobretampa fine mist / dosadora / espumadora' },
   incomCapaMistBig: { ...LIB.sobretampaFineMistBig, name: 'Incom · Sobretampa fine mist big' },
@@ -702,7 +702,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-17.cl24';
+const BUILD = '2026-11-17.cl25';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -2021,19 +2021,23 @@ function sprayGeo(m, y0, { lo = false } = {}) {
     // Bico de pato Incom: haste lisa saindo da saia (sem torre aparente na foto) e cabeça em lâmina desenhada pelo
     // perfil de lado (x para a frente, y para cima), extrudada na largura com quinas arredondadas
     head.push(cyl(m.stemD / 2, top - sink, m.stemH + sink + 0.6, 0, 0, lo));
-    const T = m.headH, L = m.nozzleL, B = m.headBack ?? m.stemD / 2 + 3, t2 = m.armT, d = m.droop ?? T * 0.4, rb = Math.min(T * 0.45, 3);
-    const xs = m.stemD / 2 + 1.5, sh = new THREE.Shape();
+    // ícone p.64 ampliado: lâmina FINA (≈3,4 mm) de espessura quase constante, topo reto até ~30% do comprimento e daí
+    // curvando para baixo cada vez mais até a ponta, cortada de esquina (face da saída perpendicular à curva)
+    const T = m.headH, L = m.nozzleL, B = m.headBack ?? m.stemD / 2 + 3, tT = Math.min(m.armT, T), d = m.droop ?? T, rb = Math.min(T * 0.45, 1.6);
+    const x1 = L * 0.3, xs = m.stemD / 2, yT = x => x <= x1 ? T : T - d * ((x - x1) / (L - x1)) ** 2;
+    const th = x => x <= xs ? T : T - (T - tT) * (x - xs) / (L - xs), sl = 2 * d / (L - x1), n = Math.hypot(1, sl);
+    const xb = L - sl * tT / n, yb = yT(L) - tT / n, N = lo ? 10 : 36, sh = new THREE.Shape();
     sh.moveTo(-B + rb, 0); sh.lineTo(xs, 0);
-    sh.quadraticCurveTo(L * 0.55, 0, L * 0.86, T - t2 - d * 0.55); // a base sobe afinando a lâmina
-    sh.quadraticCurveTo(L * 0.97, T - t2 - d * 0.88, L, T - t2 - d); // e desce na ponta
-    sh.lineTo(L, T - d); // face da ponta (saída)
-    sh.quadraticCurveTo(L * 0.92, T - d * 0.12, L * 0.68, T); // o topo curva para baixo só no fim
+    for (let i = 1; i < N; i++) { const x = xs + (xb - xs) * i / N; sh.lineTo(x, Math.min(yT(x) - th(x), yb + (yT(x) - yT(xb)))); }
+    sh.lineTo(xb, yb); sh.lineTo(L, yT(L)); // face da ponta (saída)
+    for (let i = 1; i <= N; i++) { const x = L - (L - x1) * i / N; sh.lineTo(x, yT(x)); }
     sh.lineTo(-B + rb, T); sh.quadraticCurveTo(-B, T, -B, T - rb); sh.lineTo(-B, rb); sh.quadraticCurveTo(-B, 0, -B + rb, 0);
-    const bev = Math.min(1.1, m.armW * 0.12, t2 * 0.35);
+    const bev = Math.min(1.1, m.armW * 0.12, tT * 0.35);
     const blade = new THREE.ExtrudeGeometry(sh, { depth: Math.max(0.5, m.armW - 2 * bev), bevelEnabled: true, bevelThickness: bev, bevelSize: bev * 0.85,
       bevelOffset: -bev * 0.85, bevelSegments: lo ? 1 : 4, curveSegments: lo ? 8 : 24 });
     blade.deleteAttribute('uv'); blade.translate(0, top + m.stemH, -(m.armW - 2 * bev) / 2);
-    const oh = cyl(1, 0, 4); oh.scale(Math.min(0.9, t2 * 0.28), 1, Math.min(1.6, m.armW * 0.18)); oh.rotateZ(-Math.PI / 2); oh.translate(L - 2.2, top + m.stemH + T - d - t2 / 2, 0);
+    const oh = cyl(1, 0, 4); oh.scale(Math.min(0.9, tT * 0.26), 1, Math.min(1.6, m.armW * 0.18)); oh.rotateZ(-Math.PI / 2 - Math.atan(sl));
+    oh.translate((L + xb) / 2 - 2.5 / n, top + m.stemH + (yT(L) + yb) / 2 + 2.5 * sl / n, 0);
     const [bladeC, cav] = cutHole(blade, oh); head.push(bladeC); holes.push(cav);
   } else if (m.sprayType === 'draftpump') {
     turret();
@@ -2077,6 +2081,30 @@ function sprayGeo(m, y0, { lo = false } = {}) {
     const drill = cyl(Math.max(0.32, tipW * 0.14), yN + m.nozzleL + 2.4 - 3.5, 4.5);
     const [coneC, c1] = cutHole(cone, drill), [nubC, c2] = cutHole(nub, drill);
     head.push(coneC, nubC); holes.push(c1, c2);
+  } else if (m.sprayType === 'espumadoraIncom') {
+    // Espumadora Incom (ícone p.64 ampliado): anel-guia largo (~83% da saia) com friso perto da base; atuador cilíndrico
+    // RETO de topo plano (sem rampa); bico curto e retangular rente ao topo, saindo para a frente, com a boca na face
+    const gW = m.guideW, gH = m.guideH;
+    head.push(ring(gW, gH + sink, top - sink, { rBot: 0, rTop: Math.min(0.8, gH * 0.15), groove: sink + gH * 0.16, grooveD: 0.3 }));
+    const yA = top + gH - 0.4, H = m.headH + 0.4, R = m.actW / 2, bv = extrudeBevel(m.armW);
+    head.push(ring(m.actW, H, yA, { rBot: 0, rTop: Math.min(1, R * 0.14) }));
+    const yt = yA + H - bv, yb = yt - m.armT + 2 * bv, xf = R + m.nozzleL - bv, shp = new THREE.Shape();
+    shp.moveTo(R * 0.4, yb); shp.lineTo(xf, yb); shp.lineTo(xf, yt); shp.lineTo(R * 0.4, yt); shp.lineTo(R * 0.4, yb);
+    const spout = sideExtrude(shp, m.armW, lo), mg = 0.8, dp = 2.5;
+    const oh = new THREE.BoxGeometry(1 + dp, Math.max(0.5, m.armT - 2 * mg), Math.max(0.5, m.armW - 2 * mg)); oh.deleteAttribute('uv');
+    oh.translate(xf + bv + 1 - (1 + dp) / 2, (yt + yb) / 2, 0);
+    const [spoutC, cav] = cutHole(spout, oh); head.push(spoutC); holes.push(cav);
+  } else if (m.sprayType === 'aplicadorIncom') {
+    // Bico aplicador Incom (ícone p.64 ampliado): saia lisa; degrau em dois anéis; cone CÔNCAVO (abre em trombeta na base)
+    // que termina numa ponteira quase cilíndrica de topo plano, furada no centro. Os riscos claros do ícone são reflexo.
+    const y1 = top - 0.05, rB = m.actW / 2, rT = m.spoutD / 2, tipH = m.tipH ?? m.spoutD * 1.05, cH = m.nozzleL - tipH;
+    head.push(ring(m.W * 0.79, 2.6, y1, { rBot: 0, rTop: 0.3 }), ring(m.W * 0.75, 2.2, y1 + 2.5, { rBot: 0, rTop: 0.5 }));
+    const yc = y1 + 4.6, N = lo ? 10 : 32, pr = [[0, yc - 0.2], [rB, yc - 0.2]];
+    for (let i = 0; i <= N; i++) { const t = i / N; pr.push([rT + (rB - rT) * (1 - t) ** 1.6, yc + cH * t]); }
+    pr.push([rT * 0.94, yc + cH + tipH - 0.5], [rT * 0.94 - 0.5, yc + cH + tipH], [0, yc + cH + tipH]);
+    const cone = new THREE.LatheGeometry(pr.map(([x, y]) => new THREE.Vector2(x, y)), lo ? 32 : 96); cone.deleteAttribute('uv');
+    const drill = cyl(Math.max(0.5, rT * 0.24), yc + cH + tipH - 4, 6);
+    const [coneC, c1] = cutHole(mergeVertices(cone), drill); head.push(coneC); holes.push(c1);
   } else if (m.sprayType === 'conico') {
     // Bico cônico (ketchup/molho): tampa de rosca larga com topo plano e ponteira cônica furada no centro.
     const baseW = Math.min(m.actW, m.W * 0.8), tipW = Math.max(m.spoutD, 2), y1 = top - 0.05;
@@ -9713,7 +9741,7 @@ function incomProduct(r) {
         : fe === 'tampa' ? M('incomTambor', { W: r1(W * 0.98), D: r1(W * 0.98), h: r2((H - nh) * 0.31 - 1.6) })
         : fe === 'sens' ? M('incomSens', { W: r1(W * 0.727), D: r1(W * 0.727), h: r1(W * 0.424) }) // foto do New York 250 de frente: 72,7% da largura do frasco e altura de 42,4% dela
         : fe === 'bola' ? (bl => [M('incomColarBola', { W: r1(Math.max(bl * 0.62, 27.5)), D: r1(Math.max(bl * 0.62, 27.5)), h: r1(nh + 0.8) }), // ícone Incom: a bola fica sobre um colar que veste o gargalo
-          M('incomBola', { W: bl, D: bl, h: bl })])(r1(Math.min(W * 0.62, 36)))
+          M('incomBola', { W: bl, D: bl, h: bl, rBot: r1(bl / 2), rTop: r1(bl / 2), gap: -r1(nh + 0.8 - bl * 0.18) })])(r1(Math.min(W * 0.62, 36))) // bola desce sobre o colar (pé dela a 18% do diâmetro acima da base do colar)
         : fe === 'flip' ? M('flipRedondo', { W: 30, D: 30, h: 30, own: true, finish: 'pet', color: '#ffffff' }) // foto do Wall: flip-top transparente
         : fe === 'disctop' ? M('disctop', { name: 'Tampa disc-top', W: r1(Math.min(D, 38)), D: r1(Math.min(D, 38)) })
         : M(fe === 'pump' ? 'pump' : 'incomSpray');
