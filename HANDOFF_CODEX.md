@@ -1,5 +1,41 @@
 # Retomada OUTBOX / Incom — 17/11/2026
 
+## ATUALIZAÇÃO MAIS RECENTE — 17/11/2026, fim da sessão Claude (ler primeiro)
+
+Versão no ar: **`2026-11-17.cl17`** (`main`). Duas sessões Claude trabalharam em paralelo na mesma pasta (a "fork" fez os aplicadores do Petit, cl5–cl17). Antes de commitar: `git fetch` + `git log HEAD..origin/main`; push por SSH `git@github.com:isabelaswt/outbox.git`; carimbo em 3 lugares (BUILD e import `incom.js?v=` em `js/app.js`, `?v=` de css/js em `index.html`). Próximo carimbo: **cl18**. Registro de cada envio na seção 8 do CODEX_REFINO.md.
+
+### Regras da dona reforçadas nesta sessão
+- Forma e detalhes vêm das FOTOS (site Incom); desenho técnico só para medidas.
+- Cuidar de detalhes minuciosos: fechamento, altura exata onde cada peça começa (linha de divisão), arredondamento de abas/bordas.
+- Conteúdo sempre CHEIO (92–94%) e com cor real; líquido transparente tingido (não leitoso — cor pálida vira bloco de leite no material de lente); o frasco tem que aparecer.
+- Fundo de PET: leve (2,5% da altura); ela achou 4% pesado. SAN sem refil: 5%.
+
+### Feito nesta sessão (cl1–cl14, Claude)
+- Fotos do site: 152 produtos em `_ref/incom/site/<slug>/` + `indice.json` (fichas PDF dentro). Validações antigas foram para a Lixeira (ficaram cdx27 e retomada-cdx28).
+- Troca de peça: grupo "Sugestões Incom para este produto" (variantes do catálogo; genérico não mostra).
+- Charlotte/Charlotte Rounded/Olympea: em pé sobre a tampa; Abrir mostra gargalo roscado + bico para baixo (`bocaBaixo`, `ocoCima`).
+- Petit com Haste/Aplicador: montados como a foto aberta e virados fechados (`viraFechado` em compactParts); ponta arredondada.
+- Bico dosador padrão Incom Ø1,6 (`incomBico` em sprayGeo) em Julie, Olive, Vênus 35/45: bordinha rente à boca (não passa para fora) + cone reto. Julie: anel do ombro no frasco.
+- **Case: fecho resolvido** (prioridade 1 antiga): painel central rebaixado ~41% da frente, quase a parede toda (`dedo.panel`, `latchRoof`).
+- Classic Duo: bandeja com godês desiguais (foto). Moon P com visor.
+- Miami = cilindro Ø50,5 (fotos + volume). Chicago com quinas de baixo arredondadas.
+- Conteúdo: SERUM_CORES / BASE_CORES / GEL_CORES / CREME_CORES (escolha por nome com `corDe`). Potes e refis com conteúdo. Dispensing 30/60/Quadrado: só casca grossa + coluna (cavidade encosta no refil; coluna 76/82/70%). On-Off: PET transparente com líquido.
+- Tube (cdx28) validado antes nesta sessão.
+
+### Conferência foto × render — onde parou
+Esteira: preview "shape" (porta 8765, aba "seed"), `window.__rcat(categoria, prefixo, vistaAberta)` renderiza fechado 3/4 + aberto e manda para um receptor local (Claude usou `scratchpad/recv97.py` na porta 8797; 8798 é de outra sessão, 8799 é do Codex). `scratchpad/cmpsheet.py <prefixo>` monta folhas fotos do site × render (tem ALIAS para páginas com título errado: Amsterdam→amsterdam-200, NY Deluxe 100→amsterdam).
+- **Conferidos:** compactos, paletas, frascos, conta-gotas, dispensadores (exceto detalhes do Cube/Elíptico), deluxes, frasnagas.
+- **Faltam:** batons, líquidos labiais, máscaras, sticks, potes (renders estavam sendo gerados quando a sessão parou) e as 68 tampas de perfume.
+- Pendentes vistos e não feitos: Julie — opções do site (bico aplicador, conta-gotas, válvula) como sugestões de troca; Dispensing Elíptico sem página casada no site; fundo grosso SAN ainda renderiza branco (deveria parecer cristal).
+
+### Continua aberto da lista anterior
+- Válvulas próprias Incom (`Incom · Válvula`), começando pelo bico de pato do Bulb Blow 300 (ramo `patoIncom`) — ver abaixo.
+- Conta-gotas: roscas onde documentadas. Variantes documentadas (máscaras Guggen/Plus/Oscar, potes Avante/Oval, batons tampa opaca/transparente, colares Brilhante/Iridium/Tahaa, fechamentos Deluxes 200).
+- Só depois: captura final e PDF (`tools/conferencia/`).
+
+---
+## (Histórico — retomada anterior do Codex; itens 1 Case e 2 Tube já resolvidos acima)
+
 Leia este arquivo e **CODEX_REFINO.md inteiro** antes de editar. A dona pediu o repasse porque está ficando sem crédito. Não reiniciar a auditoria nem apagar o trabalho local.
 
 ## Objetivo ainda aberto
