@@ -166,11 +166,13 @@ Pendências conhecidas (precisam de dado ou de decisão; não invente):
 
 **Em andamento** (quem está mexendo em quê agora; apague quando terminar):
 
-- Codex: cdx24 roscas dos potes: par macho/fêmea na boca e na tampa, passos sem norma estimados; depois demais fechamentos e variantes, PDF por último.
+- Codex: cdx25 pares de rosca em frascos/fechamentos 24-410 e demais famílias 20-410, por fonte do catálogo. Depois frasnagas/variantes e PDF.
 
 - Codex: PDF suspenso por novos achados da dona. Corrigir fecho frontal/espelho das paletas em `compactParts`; roscas externas e internas em todos os fechamentos documentados; variantes de tampas; conferir fundo externo plano/cavidade U do Guggen. Inventários extraídos do catálogo em andamento. Não alterar largura estimada nem mecanismos ocultos como se fossem cotados.
 
 **Registro** (o mais novo em cima):
+
+- 2026-11-17, Codex, `2026-11-17.cdx24`: onze potes p110–120 com boca roscada visível e cavidade helicoidal correspondente na própria tampa; restauradas as roscas antes ocultas. Mesmo campo/posição do par macho/fêmea; passo, relevo e folga de 0,16 mm estimados por falta de norma cotada. Altura do gargalo limitada ao envelope interno; assentamento antigo da tampa preservado, inclusive nos potes opacos, sem mudar altura fechada. Roll On p98 também ganha a rosca interna da tampa pareada ao suporte existente, preservando esfera. Treze montagens/controles abertos/fechados sem coordenadas/normais inválidas, alturas dentro de 0,1 mm; 768 amostras das doze cavidades contidas no sólido externo das tampas; export dos controles Avante/Squared/Roll On com peças roscadas presentes. Campo padrão das roscas anteriores igual em 1.080.000 amostras (erro zero), opção de margens curtas exclusiva dos potes. `tools/conferencia/validacao-cdx24.json`, evidências `_ref/incom/validacao-cdx24/`. Ainda faltam pares internos/externos em dispensadores/Deluxes/frascos/frasnagas e variantes adicionais; PDF ao fim.
 
 - 2026-11-17, Codex, `2026-11-17.cdx23`: Case G/M/M All Crystal com lingueta simples saindo da placa, sem caixa vazada nem apoios; pela foto nova do G e p4/5 do M. Altura da lingueta proporcional à foto e abertura correspondente menor na tampa; godê/colar/cotas preservados. Frame/Classic com aba rente de cantos inferiores arredondados e rebaixo da mesma largura; aba Frame acompanha a curva da face. Quinteto com moldura mais larga no visor (14% da largura por lado, estimado na foto nova), demais visores preservados. Quatorze montagens/controles conferidos; três Case sem qualquer caixa/apoio e com uma lingueta na base; amostras dos dentes livres em 0/15/45/90, espelhos contidos e posições/normais finitas. Cotas externas dos compactos/paleta controle preservadas dentro de 0,1 mm. `tools/conferencia/validacao-cdx23.json`, evidências `_ref/incom/validacao-cdx23/`. Seguem roscas de potes/demais fechamentos e variantes; PDF por último.
 

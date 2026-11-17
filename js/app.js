@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-17.cdx23';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-17.cdx24';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -677,7 +677,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-17.cdx23';
+const BUILD = '2026-11-17.cdx24';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -1634,8 +1634,8 @@ function loftPts(pts) {
 // Mesmo campo helicoidal para o gargalo e a cavidade roscada que o recebe.
 // Passos sem norma/cota do fornecedor são parâmetros de representação estimados nas fotos.
 function neckThreadField(m) {
-  const pitch = Math.max(m.pitch, 0.5), w = pitch * 0.45, yT1 = m.h - 1.2 - pitch * 0.25,
-    turns = Math.min(m.turns, Math.max(0, (yT1 - (m.ringH + 1.2)) / pitch)), yT0 = yT1 - turns * pitch;
+  const pitch = Math.max(m.pitch, 0.5), w = pitch * 0.45, yT1 = m.h - (m.threadTop ?? 1.2) - pitch * 0.25,
+    turns = Math.min(m.turns, Math.max(0, (yT1 - (m.ringH + (m.threadBottom ?? 1.2))) / pitch)), yT0 = yT1 - turns * pitch;
   return (ly, th) => {
     if (turns <= 0 || ly < yT0 - w || ly > yT1 + w) return 0;
     let f = 0; const k = Math.round((ly - yT0) / pitch - th / TAU);
@@ -1646,6 +1646,20 @@ function neckThreadField(m) {
     }
     return m.threadD * f;
   };
+}
+// Cavidade fêmea na própria tampa, com fase/passo iguais aos do gargalo.
+function femaleThreadCutter(cap, y0, height) {
+  const n = cap.femaleThread, field = neckThreadField(n), root = n.W / 2 - n.threadD,
+    seg = 128, step = 0.08, ys = [-1, 0], fineTop = Math.min(height, n.h + 0.6);
+  for (let y = step; y < fineTop; y += step) ys.push(y); ys.push(fineTop);
+  for (let y = fineTop + 0.4; y < height; y += 0.4) ys.push(y); if (height > fineTop) ys.push(height);
+  const rings = ys.map(y => Array.from({ length: seg }, (_, j) => {
+    const th = TAU * j / seg, threadR = root + 0.16 + field(y, th),
+      upperR = Math.max(0.2, capHalfAt(cap, Math.max(0, y)) - (cap.ocoWall ?? OCO.wall)),
+      blend = smooth(0, 0.6, y - n.h), r = threadR * (1 - blend) + upperR * blend;
+    return [r * Math.cos(th), y0 + y, r * Math.sin(th)];
+  }));
+  return loftPts(rings);
 }
 // Copo independente: rosca fêmea na cavidade e placa superior que segura a haste.
 function wandInsertGeo(m, y0, lo) {
@@ -6212,7 +6226,8 @@ function ocoGeo(g, m, y0) {
   const cx = (b.max.x + b.min.x) / 2, cz = (b.max.z + b.min.z) / 2;
   // oco = a própria forma da tampa encolhida pela parede (com caixa de cantos fixos, nas tampas de canto
   // bem arredondado o corte saía pela quina e deixava furos nos cantos)
-  let cut = moduleGeo({ ...m, h: hh + 1, rBot: 0, topDip: 0, quadDish: 0, dedo: null, oco: false, spout: null }, y0 - 1, { inset: OW, lo: false });
+  let cut = m.femaleThread ? femaleThreadCutter(m, y0, hh)
+    : moduleGeo({ ...m, h: hh + 1, rBot: 0, topDip: 0, quadDish: 0, dedo: null, oco: false, spout: null }, y0 - 1, { inset: OW, lo: false });
   if (!cut) { cut = m.sides ? new RoundedBoxGeometry(w, hh + 1, d, 3, Math.min(3, Math.min(w, d) * (m.sideR || 0.1) * 0.5 + 0.6)) : new THREE.CylinderGeometry(Math.min(w, d) / 2, Math.min(w, d) / 2, hh + 1, 96); cut.translate(cx, y0 - 1 + (hh + 1) / 2, cz); }
   const ni = x => { const y = x.index ? x.toNonIndexed() : x; for (const k in y.attributes) if (k !== 'position' && k !== 'normal') y.deleteAttribute(k); return y; };
   let [outer, inner] = cutHole(g, cut); if (outer === g) return g;
@@ -9519,7 +9534,9 @@ function incomProduct(r) {
             pitch: r1(wsup * 0.12), turns: 2.5, threadD: r1(wsup * 0.04), ringH: 0, ringW: 0, embed: 0,
             neckFillet: 0, exposedNeck: true, tuboAberto: true, own: true, finish: 'pet', color: '#ffffff' }),
           P('Esfera de aço', db, null, db, { rTop: db / 2, rBot: db / 2, gap: r1(hs - db * 0.4), own: true, color: '#d6d8da', finish: 'metal' }),
-          { ...cap, gap: r1(-(hs + db * 0.6)) }]; break; } // tampa assenta no ombro do frasco: altura total = catálogo
+          { ...cap, gap: r1(-(hs + db * 0.6)) }];
+        const n = ms[1]; ms.at(-1).femaleThread = { W: n.W, h: n.h, pitch: n.pitch, turns: n.turns, threadD: n.threadD, ringH: n.ringH };
+        break; } // tampa assenta no ombro; rosca fêmea corresponde ao suporte do roll-on.
       // Foto da dona: tampa externa e inserto roscado portando a haste são peças distintas.
       // Diâmetro/passo/folga internos estimados; dimensões fechadas do catálogo preservadas.
       const nh = /All Crystal/.test(r.n) ? r1(cap.h * 0.55) : r1(Math.min(6, cap.h * 0.16)),
@@ -9714,8 +9731,6 @@ function incomProduct(r) {
       const pot = ms[0], hp = pot.h, floor = r2(H * cup.floor), cw = r1(W * cup.mouth), cd = r1(D * cup.mouth);
       Object.assign(pot, { liq: false, ocoTopo: false, casca: true, apoio: false,
         incomPoteCavity: { W: cw, D: cd, floor, rBot: r1(Math.min(hp - floor, cw / 2, cd / 2) * cup.round) } });
-      // Conserva o assentamento da tampa sem exibir filetes genéricos não verificados.
-      const neck = ms.find(m => m.kind === 'gargalo'); if (neck) neck.hidden = true;
       if (cup.refill) {
         const rw = r1(W * cup.refill), rd = r1(D * cup.refill), bottom = r2(H * cup.bottom), rh = r2(hp - bottom);
         // Parede 3% do diâmetro (0,8–1,5 mm), estimada, pendente peça/corte.
@@ -9725,6 +9740,23 @@ function incomProduct(r) {
           rBot: rb, rTop: 0.3, incomPoteCavity: { W: r1(rw - 2 * wall), D: r1(rd - 2 * wall), floor: wall, rBot: Math.max(0, rb - wall) } });
         ms.splice(1, 0, refill);
       }
+    }
+  }
+  if (r.c === 'Potes') {
+    const neck = ms.find(m => m.kind === 'gargalo'), cap = ms.find(m => m.name === 'Tampa');
+    if (neck && cap) {
+      // Preserva a posição de assentamento existente, inclusive nos ombros dos potes opacos.
+      const ni = ms.indexOf(neck), before = layout({ modules: ms, finish: 'fosco' }),
+        seat = before.find(e => e.idx === ni), previous = before.findLast(e => e.idx === ni - 1),
+        seatingGap = seat && previous ? seat.y0 - (previous.y0 + previous.m.h - Math.max(0, previous.m.cutTop || 0)) : neck.gap;
+      // Págs.110–120: fechamento por rosca. Altura/passo/folga internos estimados; norma não informada.
+      const nh = r1(Math.max(1.8, Math.min(5.5, neck.h, cap.h - OCO.top - 0.8)));
+      let room = Infinity;
+      for (let j = 0; j <= 24; j++) room = Math.min(room, capHalfAt(cap, nh * j / 24) - 1.16);
+      const nw = r1(Math.min(neck.W, Math.max(4, 2 * room)));
+      Object.assign(neck, { hidden: false, exposedNeck: true, gap: seatingGap, W: nw, D: nw, h: nh,
+        pitch: Math.max(0.5, r1(Math.min(1.2, nh * 0.22))), turns: 1.5, threadD: r1(Math.min(0.8, nw * 0.02)), threadTop: 0.45, threadBottom: 0.35 });
+      cap.femaleThread = { W: nw, h: nh, pitch: neck.pitch, turns: neck.turns, threadD: neck.threadD, ringH: 0, threadTop: 0.45, threadBottom: 0.35 };
     }
   }
   if (r.c === 'Frascos' && /^(Amsterdam|Chicago|Miami|New York|Seoul 250|Sydney 60)$/.test(r.n)) { const fr = ms.find(m => m.name === 'Frasco'); if (fr) Object.assign(fr, { own: true, finish: 'pet', color: '#ffffff' }); }
