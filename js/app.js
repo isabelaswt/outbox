@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-17.cl13';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-17.cl14';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -677,7 +677,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-17.cl13';
+const BUILD = '2026-11-17.cl14';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -9911,8 +9911,8 @@ function incomProduct(r) {
       liqType: disp ? 'cremoso' : 'transparente', liqColor: corDe(disp ? BASE_CORES : SERUM_CORES, r.n), ...(disp ? {} : { liqClear: 85 }) });
     // Frasco em SAN (fotos Dispensing 15/30/60, Bulb, Elíptico, Quadrado): acrílico de fundo grosso (~10% da altura),
     // o conteúdo fica numa coluna acima dele. Medida na foto do Dispensing 15, sem cota de molde.
-    if (fr && /Frasco em SAN/.test(r.mat)) Object.assign(fr, { fundoGrosso: true, fundo: r1(H * 0.1), fundoR: 2 });
-    else if (fr && /Frasco em PET/.test(r.mat)) Object.assign(fr, { fundoGrosso: true, fundo: r1(H * 0.04), fundoR: 2 }); // PET (fotos Sydney, Flacon, Deluxes): fundo pesado ~4%
+    if (fr && /Frasco em SAN/.test(r.mat)) Object.assign(fr, { fundoGrosso: true, fundo: r1(H * 0.05), fundoR: 2 }); // a dona achou 10% pesado demais
+    else if (fr && /Frasco em PET/.test(r.mat)) Object.assign(fr, { fundoGrosso: true, fundo: r1(H * 0.025), fundoR: 2 }); // PET (fotos Sydney, Flacon, Deluxes): fundo pesado ~2,5% (4% ficou pesado)
     ms.forEach(m => { if (m.type === 'contaGotas') m.ridges = 0; });
     // Julie p43: frasco PE opaco na foto e na lista de materiais; demais PET/SAN preservados.
     if (r.c === 'Conta-gotas' && r.n === 'Julie' && fr) Object.assign(fr, { own: true, color: BEIGE, finish: 'fosco' });
@@ -9998,7 +9998,7 @@ function incomProduct(r) {
       cap.femaleThread = { W: nw, h: nh, pitch: neck.pitch, turns: neck.turns, threadD: neck.threadD, ringH: 0, threadTop: 0.45, threadBottom: 0.35 };
     }
   }
-  if (r.c === 'Frascos' && /^(Amsterdam|Chicago|Miami|New York|Seoul 250|Sydney 60)$/.test(r.n)) { const fr = ms.find(m => m.name === 'Frasco'); if (fr) Object.assign(fr, { own: true, finish: 'pet', color: '#ffffff', liq: true, liqLevel: 92, liqType: 'transparente', liqClear: 85, liqColor: corDe(GEL_CORES, r.n), fundoGrosso: true, fundo: r1(H * 0.04), fundoR: 2 }); } // PET transparente: gel quase incolor (o frasco aparece) sobre o fundo grosso ("plástico pesado", ~4% da altura na foto do Chicago)
+  if (r.c === 'Frascos' && /^(Amsterdam|Chicago|Miami|New York|Seoul 250|Sydney 60)$/.test(r.n)) { const fr = ms.find(m => m.name === 'Frasco'); if (fr) Object.assign(fr, { own: true, finish: 'pet', color: '#ffffff', liq: true, liqLevel: 92, liqType: 'transparente', liqClear: 85, liqColor: corDe(GEL_CORES, r.n), fundoGrosso: true, fundo: r1(H * 0.025), fundoR: 2 }); } // PET transparente: gel quase incolor (o frasco aparece) sobre o fundo grosso ("plástico pesado", ~4% da altura na foto do Chicago)
   if (r.c === 'Frasnagas' && /^(Beatrice|Julie|Olive|Vênus 35|Vênus 45)$/.test(r.n)) {
     const cap = ms[1], free = r.n === 'Beatrice';
     // P79/81/85/86: 20-410. Beatrice p76: rosca sem norma cotada, dimensões representativas.
