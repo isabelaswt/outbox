@@ -245,3 +245,4 @@ Pendências conhecidas (precisam de dado ou de decisão; não invente):
 - 2026-11-17 cl3 (Claude): bala do batom com face oblíqua de borda arredondada (lipstickBulletGeo) e largura cheia no tubo — sem anel escuro (foto). Ella/Squared seguem lipPoint.
 - 2026-11-17 cl4 (Claude): Flacon 15/30 Botão com proporções frasco/tampa/botão medidas nas fotos do site (15: tampa na largura do frasco; frasco ~55% da altura); botão liso de topo arredondado.
 - 2026-11-17 cl5 (Claude): Petit Aplicador com os 8 aplicadores do catálogo (Cerdas, Silicone, Flocada Chanfrada [padrão], Flocada Cushion, Pin Point, Flat Pad, Metal Effect, Bristles) como variantes; a troca da peça Ponteira aplicadora sugere os 8. Fechado segue 104,6 mm. Obs.: o ajuste do Flacon Botão (cl4) entrou no commit 62f290f.
+- 2026-11-17 cl6 (Claude): aplicadores do Petit com malha lisa (interpolação Catmull-Rom entre anéis, 128 segmentos); Bristles mantém dentes retos.
