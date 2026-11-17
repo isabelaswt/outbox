@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-17.cdx27';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-17.cdx28';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -677,7 +677,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-17.cdx27';
+const BUILD = '2026-11-17.cdx28';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -1656,8 +1656,10 @@ function femaleThreadCutter(cap, y0, height) {
   const rings = ys.map(y => Array.from({ length: seg }, (_, j) => {
     const th = TAU * j / seg, threadR = root + 0.16 + field(y + phase, th),
       upperR = Math.max(0.2, capHalfAt(cap, Math.max(0, y)) - (cap.ocoWall ?? OCO.wall)),
-      blend = cap.threadReceiver ? 0 : smooth(0, 0.6, y + phase - n.h), r = threadR * (1 - blend) + upperR * blend;
-    return [r * Math.cos(th), y0 + y, r * Math.sin(th)];
+      blend = cap.threadReceiver && !cap.threadCavityFull ? 0 : smooth(0, 0.6, y + phase - n.h), r = threadR * (1 - blend) + upperR * blend,
+      lead = cap.threadLead ? 1 - smooth(cap.threadLead.h - 0.8, cap.threadLead.h, y) : 0,
+      radius = r + Math.max(0, (cap.threadLead?.r || 0) - r) * lead;
+    return [radius * Math.cos(th), y0 + y, radius * Math.sin(th)];
   }));
   return loftPts(rings);
 }
@@ -1883,6 +1885,12 @@ function hexCapGeo(m, y0, lo) {
 }
 
 function sprayGeo(m, y0, { lo = false } = {}) {
+  if (m.incomTubeTip) {
+    // P84 e foto aberta da dona: bico cônico separado, orifício passante Ø1,6 mm.
+    const bore = 0.8, root = 6.4, lip = 8.4, h = m.h;
+    const points = [[bore,-1.2],[root,-1.2],[root,0],[lip,0.1],[lip,0.5],[2.2,h-0.3],[1.8,h],[bore,h],[bore,-1.2]];
+    const g = new THREE.LatheGeometry(points.map(([r,y]) => new THREE.Vector2(r,y0+y)), lo ? 48 : 128); g.deleteAttribute('uv'); return g;
+  }
   if (m.wandInsert) return wandInsertGeo(m, y0, lo);
   if (m.sprayType === 'tubo') return tubePumpGeo(m, y0, lo);
   if (m.sprayType === 'sextavada') return hexCapGeo(m, y0, lo);
@@ -6642,15 +6650,15 @@ function buildInto(product, S, explodeAmt = 0) {
     if (m0.kind === 'gargalo' && !under && L[i - 1]?.m.vol && isGlass(L[i - 1].m.own ? L[i - 1].m.finish : S.finish)) m = { ...m, embed: Math.min(m.embed ?? 8, 1) };
     // Rosca do fechamento na fase axial real: a saia pode descer sobre o ombro.
     if (m0.threadReceiver) {
-      const neckSeat = m0.threadNeckUid ? L.find(e => e.m.uid === m0.threadNeckUid) : dn?.kind === 'gargalo' ? L[i - 1] : null;
-      if (neckSeat) m = { ...m, threadPhase: y0 - neckSeat.y0 };
+      const neckSeat = m0.threadNeckUid ? base.find(e => e.m.uid === m0.threadNeckUid) : dn?.kind === 'gargalo' ? base[i - 1] : null;
+      if (neckSeat) m = { ...m, threadPhase: base[i].y0 + (y0 - yl) - neckSeat.y0 };
     }
     let g = moduleGeo(m, y0, { logoQuality: hasLogo, body: under, ...(THUMB_LITE ? { lo: true } : {}) }); if (!g) return; // miniatura: malha leve
     if (!THUMB_LITE && (m0.incomRefillCavity || m0.incomTwistOutlet)) g = cutCached('incomDispensing', [m, y0], g, () => incomDispensingGeo(g, m, y0));
     if (!THUMB_LITE && m0.incomPoteCavity) g = cutCached('incomPote', [m, y0], g, () => incomPoteGeo(g, m, y0));
     if (m0.oco && !m0.threadReceiver && !THUMB_LITE) g = cutCached('oco', [m, y0, hasLogo], g, () => ocoGeo(g, m, y0));
     if (m0.threadReceiver && !THUMB_LITE) g = cutCached('threadReceiver', [m, y0], g, () => {
-      const height = m.threadThrough ? m.h + 0.6 : Math.min(m.h - 0.8, m.threadReceiver.h - m.threadPhase + 0.3);
+      const height = m.threadThrough ? m.h + 0.6 : m.threadCavityFull ? m.h - (m.ocoTop ?? OCO.top) : Math.min(m.h - 0.8, m.threadReceiver.h - m.threadPhase + 0.3);
       const cut = femaleThreadCutter({ ...m, femaleThread: m.threadReceiver }, y0, height), extras = g.userData.extras;
       const [outer, inner] = cutHole(g, cut); cut.dispose();
       const result = outer !== g ? mergeLoose([outer, inner]) : g;
@@ -7799,7 +7807,7 @@ function renderEditor() {
   if (m.kind === 'gargalo') neckPrevW.set(m, m.W);
   if (m.forn) { const L = LIB[m.type] || {}, est = { W: 'largura estimada', D: 'profundidade estimada', WD: 'largura e profundidade estimadas' }[m.fest] || '';
     const changed = L.W && (Math.abs(m.W - L.W) > 0.05 || Math.abs(m.h - L.h) > 0.05);
-    const prod = m.fH != null, dims = prod ? `${m.fW}${m.fD !== m.fW ? ' × ' + m.fD : ''} × ${m.fH} mm (produto montado${m.fcat ? ', ' + m.fcat.toLowerCase() : ''})` : `${L.W} × ${L.h} mm`;
+    const prod = m.fH != null, scope = m.fMeasure || (m.fcat === 'Frascos' ? 'corpo + gargalo, sem fechamento' : `produto montado${m.fcat ? ', ' + m.fcat.toLowerCase() : ''}`), dims = prod ? `${m.fW}${m.fD !== m.fW ? ' × ' + m.fD : ''} × ${m.fH} mm (${scope})` : `${L.W} × ${L.h} mm`;
     ed.insertAdjacentHTML('afterbegin', `<div class="tip" style="border:1px solid var(--rule,#e2e1de);padding:8px 10px;margin:4px 0 10px"><b>${m.forn} · ${m.ref}</b>${m.fmat ? ' · ' + m.fmat : ''}${m.fterm ? ' · ' + m.fterm : ''}<br>Medidas do catálogo ${m.forn} 2026 (p. ${m.fpg}): ${dims}${est ? ' · ' + est : ''}. Forma aproximada.${!prod && changed ? '<br><b>Medidas alteradas: não é mais a peça do catálogo.</b>' : ''}</div>`); }
   $('#inspTitle').textContent = m.name || 'Peça selecionada';
   const top = document.createElement('div');
@@ -9515,17 +9523,21 @@ function incomProduct(r) {
       const sb = r.n === 'Beatrice' ? sq(0.2) : {}; // Beatrice: frasco quadrado de cantos arredondados (foto)
       ms = [P('Frasco', W, D, H * f, { ...sb, vol: true, rBot: 3, rTop: 1, ...o, _t: [0, f] }), P('Tampa', W * (r.t === 'frnt' ? 0.88 : 1), D, H * (1 - f), { ...sb, rTop: r.t === 'frnr' ? W * 0.4 : 2, _t: [f, 1] })]; break; }
     case 'tube': {
-      // Pág. 84: frasco PE sem solda, 29 × 109 mm fechado; orientação do desenho (foto invertida).
+      // Pág. 84: frasco PE sem solda; 29 × 109 mm no desenho de corpo com gargalo, sem tampa.
       // Junção a ~83% da altura, medida no desenho. Seção traseira não cotada: D=W provisório.
-      const f = 0.83, nh = NECKS['20/410'].h, lift = r2(nh - 6.5);
-      const body = P('Frasco', W, D, H * f, { vol: true, ocoTopo: true, rTop: 0, _t: [0, f] });
+      const f = 0.83, nh = NECKS['20/410'].h, lift = r2(nh - 0.5);
+      // Foto 3/4 da dona: seção achatada e cantos arredondados. D≈80% de W é estimado, não cotado.
+      const tubeD = r1(W * 0.8); r = { ...r, D: tubeD, est: 'D' };
+      const body = P('Frasco', W, tubeD, H - nh, { ...sq(0.35), vol: true, ocoTopo: true, rTop: 0, _t: [0, f] });
       // Inserto fica dentro da rosca exposta, não veste nem encurta o gargalo (detalhe p.84).
       const neck = NECK('20/410', { name: 'Rosca 20-410', exposedNeck: true, ringH: 0, ringW: 0, embed: 1, neckFillet: 0, tuboAberto: true });
       // Detalhe aberto: inserto cônico; dimensões externas proporcionais à rosca, sem cota própria.
-      // O gerador existente fura com raio spoutD*0,28: este valor produz Ø1,6 mm, sem alterá-lo.
-      const tip = M('bicoAplicador', { name: 'Inserto dosador Ø1,6 mm', W: 18, D: 18, h: 1, ridges: 0,
-        collarR: 0, actW: 9, nozzleL: 4, spoutD: 1.6 / 0.56, gap: lift, pesc: false, mola: false });
-      const cap = P('Tampa', W, D, H * (1 - f), { rBot: 0.5, rTop: 1, oco: true, capa: 'vira', gap: -lift, _t: [f, 1] });
+      // Cone proporcional à foto aberta; passagem Ø1,6 mm cotada no catálogo.
+      const tip = M('bicoAplicador', { name: 'Inserto dosador Ø1,6 mm', W: 16.8, D: 16.8, h: 7, incomTubeTip: true,
+        gap: lift, pesc: false, mola: false });
+      // Foto aberta da dona: tampa ~84% da largura / 32% da altura do corpo, sem cotas próprias.
+      // Os 109 mm do desenho medem corpo + gargalo exposto, não o conjunto fechado.
+      const cap = P('Tampa', r1(W * 0.84), null, r1(body.h * 0.322), { rBot: 0.5, rTop: 0.7, oco: true, capa: 'vira', gap: -lift });
       ms = [body, neck, tip, cap]; break; }
     case 'gloss': case 'glosssq': { // a tampa veste a haste com o aplicador (ou a escova, na máscara), que desce até o fundo
       // Petit (frasnaga): na foto fica em pé sobre a tampa quadrada preta (36% de baixo, como no desenho) e o
@@ -9789,6 +9801,23 @@ function incomProduct(r) {
     }
   }
   if (r.c === 'Frascos' && /^(Amsterdam|Chicago|Miami|New York|Seoul 250|Sydney 60)$/.test(r.n)) { const fr = ms.find(m => m.name === 'Frasco'); if (fr) Object.assign(fr, { own: true, finish: 'pet', color: '#ffffff' }); }
+  if (r.c === 'Frasnagas' && /^(Beatrice|Julie|Olive|Vênus 35|Vênus 45)$/.test(r.n)) {
+    const cap = ms[1], free = r.n === 'Beatrice';
+    // P79/81/85/86: 20-410. Beatrice p76: rosca sem norma cotada, dimensões representativas.
+    const neck = free ? M('gargalo', { name: 'Gargalo roscado', neckStd: 'livre', W: 22, D: 22, h: 6,
+      pitch: 1.2, turns: 2, threadD: 0.7, threadTop: 0.45, threadBottom: 0.35, ringH: 0, ringW: 0 })
+      : NECK('20/410', { name: 'Rosca 20-410', ringH: 0, ringW: 0 });
+    Object.assign(neck, { exposedNeck: true, embed: 0, neckFillet: 0 });
+    ms[0].wandMouth = Math.max(2, neck.W / 2 - 3.2);
+    cap.threadReceiver = { W: neck.W, h: neck.h, pitch: neck.pitch, turns: neck.turns,
+      threadD: neck.threadD, ringH: neck.ringH, ...(free ? { threadTop: 0.45, threadBottom: 0.35 } : {}) };
+    Object.assign(cap, { capa: 'vira', threadNeckUid: neck.uid }); ms.splice(1, 0, neck);
+  }
+  if (r.c === 'Frasnagas' && r.n === 'Tube') {
+    const neck = ms[1]; Object.assign(ms.at(-1), { threadNeckUid: neck.uid, threadCavityFull: true, ocoWall: 1,
+      threadLead: { r: ms.at(-1).W / 2 - 1, h: 6.8 },
+      threadReceiver: { W: neck.W, h: neck.h, pitch: neck.pitch, turns: neck.turns, threadD: neck.threadD, ringH: 0 } });
+  }
   // Sem vista lateral no catálogo: a profundidade das bisnagas achatadas (Charlotte) sai da capacidade informada
   // (30 ml, +10% de folga até a boca), em vez de chute — as peças achatam por igual até o frasco dar esse volume
   if (/^Charlotte/.test(r.n) && parseFloat(r.vol) > 0) { const want = parseFloat(r.vol) * 1.1, D0 = ms.map(m => m.D);
@@ -9796,6 +9825,7 @@ function incomProduct(r) {
       const v = volumes({ modules: ms, wall: 1, finish: 'fosco', gap: 0 }).cap; if (v > want) hi = mid; else lo = mid; }
     ms.forEach((m, i) => { m.D = r2(D0[i] * (lo + hi) / 2); }); }
   Object.assign(ms.find(m => /^(Base|Frasco|Pote|Corpo)/.test(m.name)) || ms[0], { forn: 'Incom', ref: r.n.toUpperCase(), fmat: r.mat, fterm: r.vol, fpg: r.pg, fest: r.est, fW: r.W, fD: r.D ?? r.W, fH: r.H, fcat: r.c });
+  if (r.c === 'Frasnagas' && r.n === 'Tube') ms.find(m => m.vol).fMeasure = 'corpo + gargalo exposto, sem tampa e sem bico';
   const fapp = ['Frascos', 'Frasnagas'].includes(r.c) || r.t.startsWith('flacon') ? 'Fármaco' : 'Beleza';
   // pote de acrílico (SAN/PMMA/PCTG) tem parede grossa; o de PP/PE, fina
   const wall = r.t.startsWith('pote') ? (/SAN|PMMA|PCTG/.test(r.mat) ? 3.2 : 1.6) : undefined;
