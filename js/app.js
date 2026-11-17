@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-17.cl20';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-17.cl21';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -677,7 +677,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-17.cl20';
+const BUILD = '2026-11-17.cl21';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -9734,7 +9734,7 @@ function incomProduct(r) {
             own: true, color: '#f1f2f0', finish: 'pet' }),
           ...(haste ? [] : [aplicPart(P, r.aplic || 'chanfrada', r1(nw * 0.75))]), // foto de uso: ~22 mm para fora do gargalo (1,2× a largura do frasco)
           haste ? cap : { ...cap, gap: r1(-((APLIC[r.aplic || 'chanfrada'].h || 21) + nh)), capa: true }]; break; } // a tampa veste gargalo, inserto e aplicador e assenta no ombro // a tampa veste gargalo e ponteira e assenta no ombro
-      const s0 = r.t === 'glosssq' ? sq(0.08) : {}, [f] = SPLIT_FIX[r.pg] ? [SPLIT_FIX[r.pg]] : incomFrac(pr, [0.52]), capH = H * (1 - f), masc = r.c === 'Máscaras';
+      const s0 = r.t === 'glosssq' ? sq(0.24) : {}, /* Timeless (foto do site): quadrado de quinas verticais bem arredondadas */ [f] = SPLIT_FIX[r.pg] ? [SPLIT_FIX[r.pg]] : incomFrac(pr, [0.52]), capH = H * (1 - f), masc = r.c === 'Máscaras';
       // gloss: frasco transparente (PET G/SAN, como no catálogo) com o gloss colorido dentro; máscara: frasco opaco
       const gl = masc ? {} : { own: true, finish: 'pet', color: '#ffffff', fundoGrosso: true, fundo: r1(Math.max(3, H * 0.05)), fundoR: r1(Math.min(W, D) / 2), // por dentro o fundo é uma concha (meio redondo)
          liq: true, liqType: 'cremoso', liqLevel: 100, liqColor: corDe(GLOSS_CORES, r.n) };
@@ -9751,13 +9751,14 @@ function incomProduct(r) {
       // Págs.100/104: vão circular Ø4,5 mm. Seção do aro 1 mm continua estimada;
       // a altura reservada ao olhal é compensada na tampa para manter a cota total.
       const charm = /Charm/.test(r.n), arg = tl < 1 && charm ? { R: 3.25, r: 1, feet: true } : null;
-      const cap = P('Tampa', W, D, H * (tl - f), { ...s0, ...(/All Crystal/.test(r.n) ? { own: true, finish: 'pet', color: '#ffffff', topDip: 0.5, roscaInt: { r: r1((Math.min(W, D) - 3) / 2 + 0.35), y0: r1(H * (tl - f) * 0.12), y1: r1(H * (tl - f) * 0.5), n: 5 } } : {}), rTop: arg ? 1.2 : r.t === 'gloss' ? W * 0.2 : 1.2, ...(tl < 1 && !arg ? { domeTop: r1(W * 0.42) } : {}), ...(arg ? { argola: arg } : {}), _t: [f, tl] });
+      const cap = P('Tampa', W, D, H * (tl - f), { ...s0, ...(/All Crystal/.test(r.n) ? { own: true, finish: 'pet', color: '#ffffff', topDip: 0.5, roscaInt: { r: r1((Math.min(W, D) - 3) / 2 + 0.35), y0: r1(H * (tl - f) * 0.12), y1: r1(H * (tl - f) * 0.5), n: 5 } } : {}), rTop: arg ? 1.2 : r.t === 'gloss' ? W * 0.2 : r.t === 'glosssq' ? r1(Math.min(W, D ?? W) * 0.18) : 1.2, ...(tl < 1 && !arg && r.t !== 'glosssq' ? { domeTop: r1(W * 0.42) } : {}), ...(arg ? { argola: arg } : {}), ...(r.t === 'glosssq' ? {} : { _t: [f, tl] }) }); // Timeless: tampa quadrada de topo reto e borda arredondada (o perfil redondo do desenho virava ponta de pirâmide)
       // Fotos p.94-108 e 122-126: tampa, haste e aplicador saem juntos para conferência aberta.
       Object.assign(cap, { capa: true, capaCarry: true, oco: true });
       if (r.n === 'Moma') cap.name = 'Tampa baixa'; // P99: 74 mm; corpo ~48,3 mm medido no desenho pela cota total.
       if (arg) cap.h = r2(H * (1 - f) - (2 * (arg.R + arg.r) - 0.6));
       // Oscar/Tate: o corte usado para arredondar o ápice não deve retirar altura do conjunto.
       if (!charm && /^(Oscar|Tate)$/.test(r.n) && tl < 1) cap.h = r2(cap.h + H * (1 - tl));
+      if (r.t === 'glosssq') cap.h = r2(H * (1 - f)); // Timeless: sem o recorte do ápice, a tampa vai até a cota total
       const wv = r1(Math.max(5, Math.min(Math.min(W, D) * 0.55, 2 * (capHalfAt(cap, 0) - 1.6))));
       // Guggen Roll On (foto): no gargalo um suporte transparente com a bolinha de aço; a tampa veste os dois
       if (/Roll On/.test(r.n)) { const hs = 6, db = r1(Math.min(8, Math.min(W, D) * 0.42)), wsup = r1(Math.min(W, D) * 0.62);
