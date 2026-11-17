@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-17.flacon3';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-17.cmp4';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -577,7 +577,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-17.flacon3';
+const BUILD = '2026-11-17.cmp4';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -8612,8 +8612,8 @@ function incomProduct(r) {
       // frasco, colar e bulbo/botão medidos no desenho: o frasco acaba onde a largura cai abaixo de 90%; o colar
       // vai até a próxima queda forte; o resto é o bulbo (proporção fixa deixava frasco curto e bulbo enorme)
       const Pp = (pr?.p || []).map(q => [q[0], (q[1] + q[2]) / 2 / gmax]), wAt = (a, z) => { const v = Pp.filter(q => q[0] >= a && q[0] <= z).map(q => q[1]).sort((x, y) => x - y); return v.length ? v[v.length >> 1] : 0; };
-      const f = (Pp.find(q => q[0] > 0.3 && q[1] < 0.9) || [0.56])[0], cw = wAt(f + 0.03, f + 0.12) || 0.62;
-      const tb = (Pp.find(q => q[0] > f + 0.05 && q[1] < cw * 0.8) || [f + (1 - f) * 0.45])[0], bw = wAt(tb + 0.02, 0.95) || 0.42;
+      const wB = wAt(0.15, 0.45) || 1, f = (Pp.find(q => q[0] > 0.3 && q[1] < wB - 0.012) || [0.56])[0], cw = wAt(f + 0.03, f + 0.12) || 0.62; // fim do frasco: 1ª mudança de largura (o colar dos Flacon 15 tem quase a largura do frasco)
+      const tb = (Pp.find(q => q[0] > f + 0.05 && q[1] < cw * 0.85) || [f + (1 - f) * 0.45])[0], bw = wAt(tb + 0.02, 0.95) || 0.42;
       ms = [P('Frasco', W, D, H * f, { vol: true, rBot: 2, rTop: W * 0.18, _t: [0, f] }),
         M('contaGotas', { ...(b ? { botao: true, ridges: 0 } : {}), name: b ? 'Conta-gotas de botão' : 'Conta-gotas', W: r1(W * cw), D: r1(W * cw), h: r2(H * (tb - f)), actW: r1(W * bw), actH: r2(H * (1 - tb) + 0.5) })]; break; } // +0,5: o conta-gotas encaixa 0,5 mm no gargalo
     case 'fr': case 'frr': case 'frsq': case 'frsqr': case 'frt': case 'frsh': case 'frap': case 'frflat': {
@@ -8621,7 +8621,9 @@ function incomProduct(r) {
         frt: { taperB: 82, rBot: W * 0.25, rTop: 4 }, frsh: { rTop: W * 0.35, rBot: 3 }, frap: { taper: 70, rTop: 6, rBot: 6 }, frflat: { ...sq(0.1), rTop: 6 } }[r.t];
       // rosca 24-410 do catálogo e o fechamento que aparece na foto de cada um (pode trocar em Peças)
       const fe = { 'Amsterdam': 'tampa', 'Bulb Blow 250': 'bola', 'Bulb Blow 300': 'pump', 'New York': 'flip', 'Wall': 'disctop' }[r.n] || 'spray', nh = 16.6;
-      const fc = fe === 'tampa' ? M('reto', { name: 'Tampa de rosca', W: r1(W * 0.98), D: r1(W * 0.98), h: 22, rTop: 1.2, rBot: 0.4, gap: r1(-(nh - 0.6)) })
+      // tampa reta (foto do Amsterdam): alta, ~31% da altura do frasco, na largura dele, assentada no ombro (o app já a apoia no
+      // gargalo e a saia desce até o corpo; descer à força a enterrava no frasco e a rosca aparecia por cima)
+      const fc = fe === 'tampa' ? M('reto', { name: 'Tampa de rosca', W: r1(W * 0.98), D: r1(W * 0.98), h: r2((H - nh) * 0.31 - 1.6), rTop: 1.2, rBot: 0.4 })
         : fe === 'bola' ? M('bola', { name: 'Tampa bola', W: r1(Math.min(W * 0.62, 36)), D: r1(Math.min(W * 0.62, 36)), h: r1(Math.min(W * 0.62, 36)) })
         : fe === 'flip' ? M('flip', { name: 'Tampa flip-top', W: r1(Math.min(W * 0.58, 34)), D: r1(Math.min(W * 0.58, 34)) })
         : fe === 'disctop' ? M('disctop', { name: 'Tampa disc-top', W: r1(Math.min(D, 38)), D: r1(Math.min(D, 38)) })
@@ -8638,8 +8640,12 @@ function incomProduct(r) {
       const sb = r.n === 'Beatrice' ? sq(0.2) : {}; // Beatrice: frasco quadrado de cantos arredondados (foto)
       ms = [P('Frasco', W, D, H * f, { ...sb, vol: true, rBot: 3, rTop: 1, ...o, _t: [0, f] }), P('Tampa', W * (r.t === 'frnt' ? 0.88 : 1), D, H * (1 - f), { ...sb, rTop: r.t === 'frnr' ? W * 0.4 : 2, _t: [f, 1] })]; break; }
     case 'tube': { // foto: bisnaga em pé sobre a tampa redonda, achatando até a solda em cima (29 mm é a largura da solda)
-      const d = r1(W * 2 / Math.PI), hc = r1(H * 0.16);
-      ms = [P('Tampa', r1(d * 0.96), null, hc, { rBot: 1.2, rTop: 0.6 }), M('bisnaga', { name: 'Bisnaga', W: d, D: d, h: r1(H - hc), vol: true })]; break; }
+      // desenho: junto ao ombro a bisnaga tem ~79% da solda (23 de 29 mm); a foto mostra a tampa com essa largura e ~25% da
+      // altura. A profundidade sai do perímetro: a seção oval que, achatada, dá exatamente a solda de 29 mm (não é chute)
+      const a = W * 0.395, perimE = (A, Bq) => Math.PI * (3 * (A + Bq) - Math.sqrt((3 * A + Bq) * (A + 3 * Bq)));
+      let lo = 0.5, hi = a; for (let k = 0; k < 40; k++) { const mid = (lo + hi) / 2; perimE(a, mid) / 2 > W ? hi = mid : lo = mid; }
+      const wb = r2(2 * a), db = r2(lo + hi), hc = r2(H * 0.25);
+      ms = [P('Tampa', r2(wb * 1.02), null, hc, { rBot: 1.2, rTop: 0.6 }), M('bisnaga', { name: 'Bisnaga', W: wb, D: db, h: r2(H - hc), rBot: 0.8, vol: true })]; break; } // encosta reta na tampa (foto)
     case 'gloss': case 'glosssq': { // a tampa veste a haste com o aplicador (ou a escova, na máscara), que desce até o fundo
       // Petit (frasnaga): na foto fica em pé sobre a tampa quadrada preta (36% de baixo, como no desenho) e o
       // frasco longo e afunilado de topo arredondado em cima
