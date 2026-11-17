@@ -1,5 +1,7 @@
 # Refino das modelagens Incom — briefing para o Codex
 
+> **Retomada de 17/11/2026:** leia também `HANDOFF_CODEX.md`. Último publicado: `cdx27` (`f24ec1e`). Há alterações LOCAIS de `cdx28` ainda sem commit e sem validação final após a última correção da tampa do Tube. Não descarte essas alterações nem declare o catálogo concluído.
+
 Você vai trabalhar junto com o Claude na biblioteca **Incom** do OUTBOX. Ela tem 186 itens: 116 produtos e 67 tampas de perfume, mais as variantes "Abaulada" dos batons Long. O objetivo é que cada modelo 3D fique **igual ao catálogo Incom 2026**:
 
 - a forma bate com a foto e com o desenho técnico;
@@ -98,6 +100,7 @@ Ferramentas internas úteis:
 
 - **Medidas:** cada produto Incom tem de bater com o catálogo **fechado**.
   - Nos frascos, o catálogo mede só frasco + gargalo; o fechamento soma por cima.
+  - **Tube p84 também:** desenho de 109 mm é de corpo + gargalo exposto, sem tampa e sem bico dosador. A leitura anterior como conjunto fechado foi corrigida no WIP `cdx28`; tampa e profundidade são proporcionais às fotos, não cotas oficiais.
   - Nas tampas de perfume, Chelsea, Soho e Manhattan têm na altura do catálogo a válvula de metal aparente.
   - Crown, Dora e Domini têm largura estimada no catálogo.
 - **Compactos e paletas:**
@@ -166,11 +169,15 @@ Pendências conhecidas (precisam de dado ou de decisão; não invente):
 
 **Em andamento** (quem está mexendo em quê agora; apague quando terminar):
 
-- Codex: cdx27 roscas 20-410/24-410 de dispensadores/Deluxes em `buildInto`, por fonte do catálogo; depois frasnagas/variantes e PDF.
+- **Novo achado da dona para a retomada:** recorte frontal fechado do Case ainda não corresponde à foto: referência alta/larga na parede da tampa; render atual com pequeno recorte baixo. Corrigir caso a caso, preservando lingueta simples na base e espelho do Case M. Duas imagens preservadas em `_ref/incom/retomada-cdx28/`; ver prioridade 1 do `HANDOFF_CODEX.md`.
+
+- Codex: RETOMADA — `cdx28` local, ainda sem commit. Seis frasnagas de tampa superior e refino do Tube; último pedido: tampa do Tube também roscada, com borda mais fina. O ajuste final da entrada de 1 mm ainda precisa ser renderizado/validado. Ver `HANDOFF_CODEX.md`; continuar roscas inferiores/variantes antes do PDF.
 
 - Codex: PDF suspenso por novos achados da dona. Corrigir fecho frontal/espelho das paletas em `compactParts`; roscas externas e internas em todos os fechamentos documentados; variantes de tampas; conferir fundo externo plano/cavidade U do Guggen. Inventários extraídos do catálogo em andamento. Não alterar largura estimada nem mecanismos ocultos como se fossem cotados.
 
 **Registro** (o mais novo em cima):
+
+- 2026-11-17, Codex, **WIP `cdx28` sem commit**: Beatrice/Julie/Olive/Vênus35/45 com pares de rosca e abertura da tampa; Tube ganha tampa cilíndrica própria (não o perfil do gargalo), bico cônico com passagem Ø1,6 mm e corpo achatado, pelas fotos novas e https://incom.com.br/packing/produto/frasnaga-tube/. Corpo + gargalo em 109 mm; tampa e profundidade estimadas e identificadas. Testes anteriores das seis frasnagas passaram nas cristas; Tube revisado passou export, passagem do bico e contenção na tampa antes da ÚLTIMA alteração para afinar a entrada. Última mudança (`threadLead`, parede 1 mm e alívio acima da rosca) AINDA NÃO validada. Snapshot em `_ref/incom/retomada-cdx28/`, instruções completas em `HANDOFF_CODEX.md`. Não publicar como aprovado antes de conferir. PDF não gerado.
 
 - 2026-11-17, Codex, `2026-11-17.cdx27`: sete dispensadores p46–51/54 e seis Deluxes p57–62 com gargalos 20-410 ou 24-410 conforme texto. Passagem fêmea contínua pelo anel e saia da válvula, sem mudar o envelope externo ou o refil; largura interna mínima da saia ajustada para caber a rosca (parede estimada). On-Off/Twist preservados sem pressupor rosca. Dezesseis controles e três regressões finais sem posições/normais inválidas, dimensões fechadas iguais à base dentro de 0,1 mm; amostras das cristas encontram folga radial ~0,156–0,160 mm. Saídas das válvulas preservam geometrias auxiliares. `tools/conferencia/validacao-cdx27.json`, evidências `_ref/incom/validacao-cdx27/`. Restam frasnagas e variantes; PDF ao fim.
 
