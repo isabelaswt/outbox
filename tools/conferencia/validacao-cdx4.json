@@ -1,0 +1,1001 @@
+{
+  "version": "2026-11-17.cdx4",
+  "method": "Malha fechada medida em coordenadas da cena. Tampas de perfume medidas isoladamente. Vértices verificados fechado e nas vistas abertas. Dimensões não certificam mecanismo ou medidas internas. Oscar líquido usa alvo substituído documentado.",
+  "count": 58,
+  "results": [
+    {
+      "name": "Incom Case M All Crystal (compactos)",
+      "page": 5,
+      "measured": {
+        "W": 57.793,
+        "D": 56.039,
+        "H": 13.7
+      },
+      "target": {
+        "W": 57.8,
+        "D": 56,
+        "H": 13.7
+      },
+      "invalid": 0,
+      "invalidOpen": 0,
+      "triangles": 50515,
+      "dimensionsWithin01": true
+    },
+    {
+      "name": "Incom Frame G Quinteto (compactos)",
+      "page": 10,
+      "measured": {
+        "W": 69.3,
+        "D": 69.315,
+        "H": 17.3
+      },
+      "target": {
+        "W": 69.3,
+        "H": 17.3
+      },
+      "invalid": 0,
+      "invalidOpen": 0,
+      "triangles": 72346,
+      "dimensionsWithin01": true
+    },
+    {
+      "name": "Incom Moon Eco All Crystal (compactos)",
+      "page": 16,
+      "measured": {
+        "W": 69.6,
+        "D": 69.635,
+        "H": 18.1
+      },
+      "target": {
+        "W": 69.6,
+        "H": 18.1
+      },
+      "invalid": 0,
+      "invalidOpen": 0,
+      "triangles": 52115,
+      "dimensionsWithin01": true
+    },
+    {
+      "name": "Incom Moon G Quarteto (compactos)",
+      "page": 20,
+      "measured": {
+        "W": 69.4,
+        "D": 69.375,
+        "H": 16
+      },
+      "target": {
+        "W": 69.4,
+        "H": 16
+      },
+      "invalid": 0,
+      "invalidOpen": 0,
+      "triangles": 52842,
+      "dimensionsWithin01": true
+    },
+    {
+      "name": "Incom Moon M All Crystal (compactos)",
+      "page": 21,
+      "measured": {
+        "W": 69.6,
+        "D": 69.63,
+        "H": 18.1
+      },
+      "target": {
+        "W": 69.6,
+        "H": 18.1
+      },
+      "invalid": 0,
+      "invalidOpen": 0,
+      "triangles": 53009,
+      "dimensionsWithin01": true
+    },
+    {
+      "name": "Incom Flat Dez (paletas)",
+      "page": 28,
+      "measured": {
+        "W": 119.684,
+        "D": 63.004,
+        "H": 14.1
+      },
+      "target": {
+        "W": 119.7,
+        "D": 63,
+        "H": 14.1
+      },
+      "invalid": 0,
+      "invalidOpen": 0,
+      "triangles": 48552,
+      "dimensionsWithin01": true
+    },
+    {
+      "name": "Incom Flat Duo (paletas)",
+      "page": 29,
+      "measured": {
+        "W": 119.684,
+        "D": 63.004,
+        "H": 14.1
+      },
+      "target": {
+        "W": 119.7,
+        "D": 63,
+        "H": 14.1
+      },
+      "invalid": 0,
+      "invalidOpen": 0,
+      "triangles": 41682,
+      "dimensionsWithin01": true
+    },
+    {
+      "name": "Incom Flat Sexteto (paletas)",
+      "page": 30,
+      "measured": {
+        "W": 119.684,
+        "D": 63.004,
+        "H": 14.1
+      },
+      "target": {
+        "W": 119.7,
+        "D": 63,
+        "H": 14.1
+      },
+      "invalid": 0,
+      "invalidOpen": 0,
+      "triangles": 45499,
+      "dimensionsWithin01": true
+    },
+    {
+      "name": "Incom Flat Trio Retangular (paletas)",
+      "page": 31,
+      "measured": {
+        "W": 119.684,
+        "D": 63.004,
+        "H": 14.1
+      },
+      "target": {
+        "W": 119.7,
+        "D": 63,
+        "H": 14.1
+      },
+      "invalid": 0,
+      "invalidOpen": 0,
+      "triangles": 42396,
+      "dimensionsWithin01": true
+    },
+    {
+      "name": "Incom Flat Trio Redondo (paletas)",
+      "page": 32,
+      "measured": {
+        "W": 119.684,
+        "D": 63.004,
+        "H": 14.1
+      },
+      "target": {
+        "W": 119.7,
+        "D": 63,
+        "H": 14.1
+      },
+      "invalid": 0,
+      "invalidOpen": 0,
+      "triangles": 46083,
+      "dimensionsWithin01": true
+    },
+    {
+      "name": "Incom Flat 6 + 1 (paletas)",
+      "page": 33,
+      "measured": {
+        "W": 119.684,
+        "D": 63.004,
+        "H": 14.1
+      },
+      "target": {
+        "W": 119.7,
+        "D": 63,
+        "H": 14.1
+      },
+      "invalid": 0,
+      "invalidOpen": 0,
+      "triangles": 45530,
+      "dimensionsWithin01": true
+    },
+    {
+      "name": "Incom Amsterdam Deluxe 100 (conta-gotas)",
+      "page": 35,
+      "measured": {
+        "W": 42,
+        "D": 42,
+        "H": 134.8
+      },
+      "target": {
+        "W": 42,
+        "H": 134.8
+      },
+      "invalid": 0,
+      "invalidOpen": 0,
+      "triangles": 453696,
+      "dimensionsWithin01": true
+    },
+    {
+      "name": "Incom Dispensing 15 (conta-gotas)",
+      "page": 37,
+      "measured": {
+        "W": 33.7,
+        "D": 33.7,
+        "H": 110.11
+      },
+      "target": {
+        "W": 33.7,
+        "H": 110.1
+      },
+      "invalid": 0,
+      "invalidOpen": 0,
+      "triangles": 387696,
+      "dimensionsWithin01": true
+    },
+    {
+      "name": "Incom Dispensing 30 (conta-gotas)",
+      "page": 38,
+      "measured": {
+        "W": 33.7,
+        "D": 33.7,
+        "H": 145
+      },
+      "target": {
+        "W": 33.7,
+        "H": 145
+      },
+      "invalid": 0,
+      "invalidOpen": 0,
+      "triangles": 457296,
+      "dimensionsWithin01": true
+    },
+    {
+      "name": "Incom Dispensing 15 (dispensadores)",
+      "page": 47,
+      "measured": {
+        "W": 33.7,
+        "D": 33.7,
+        "H": 114.3
+      },
+      "target": {
+        "W": 33.7,
+        "H": 114.3
+      },
+      "invalid": 0,
+      "invalidOpen": 0,
+      "triangles": 454923,
+      "dimensionsWithin01": true
+    },
+    {
+      "name": "Incom Dispensing 30 (dispensadores)",
+      "page": 48,
+      "measured": {
+        "W": 33.7,
+        "D": 33.7,
+        "H": 145
+      },
+      "target": {
+        "W": 33.7,
+        "H": 145
+      },
+      "invalid": 0,
+      "invalidOpen": 0,
+      "triangles": 516709,
+      "dimensionsWithin01": true
+    },
+    {
+      "name": "Incom Dispensing 60 (dispensadores)",
+      "page": 49,
+      "measured": {
+        "W": 33.7,
+        "D": 33.7,
+        "H": 114.3
+      },
+      "target": {
+        "W": 33.7,
+        "H": 114.3
+      },
+      "invalid": 0,
+      "invalidOpen": 0,
+      "triangles": 455322,
+      "dimensionsWithin01": true
+    },
+    {
+      "name": "Incom Dispensing Cube (dispensadores)",
+      "page": 50,
+      "measured": {
+        "W": 39.011,
+        "D": 39.011,
+        "H": 117.5
+      },
+      "target": {
+        "W": 39,
+        "H": 117.5
+      },
+      "invalid": 0,
+      "invalidOpen": 0,
+      "triangles": 347187,
+      "dimensionsWithin01": true
+    },
+    {
+      "name": "Incom Dispensing Elíptico (dispensadores)",
+      "page": 51,
+      "measured": {
+        "W": 42.8,
+        "D": 30,
+        "H": 116.5
+      },
+      "target": {
+        "W": 42.8,
+        "D": 30,
+        "H": 116.5
+      },
+      "invalid": 0,
+      "invalidOpen": 0,
+      "triangles": 334990,
+      "dimensionsWithin01": true
+    },
+    {
+      "name": "Incom Dispensing On-Off 100 (dispensadores)",
+      "page": 52,
+      "measured": {
+        "W": 44,
+        "D": 44,
+        "H": 126.8
+      },
+      "target": {
+        "W": 44,
+        "H": 126.8
+      },
+      "invalid": 0,
+      "invalidOpen": 0,
+      "triangles": 452784,
+      "dimensionsWithin01": true
+    },
+    {
+      "name": "Incom Dispensing On-Off 120 (dispensadores)",
+      "page": 53,
+      "measured": {
+        "W": 44.3,
+        "D": 44.3,
+        "H": 140
+      },
+      "target": {
+        "W": 44.3,
+        "H": 140
+      },
+      "invalid": 0,
+      "invalidOpen": 0,
+      "triangles": 487584,
+      "dimensionsWithin01": true
+    },
+    {
+      "name": "Incom Dispensing Quadrado (dispensadores)",
+      "page": 54,
+      "measured": {
+        "W": 34.628,
+        "D": 34.628,
+        "H": 143.39
+      },
+      "target": {
+        "W": 34.6,
+        "H": 143.4
+      },
+      "invalid": 0,
+      "invalidOpen": 0,
+      "triangles": 512897,
+      "dimensionsWithin01": true
+    },
+    {
+      "name": "Incom Dispensing Twist (dispensadores)",
+      "page": 55,
+      "measured": {
+        "W": 37.988,
+        "D": 37.988,
+        "H": 123
+      },
+      "target": {
+        "W": 38,
+        "H": 123
+      },
+      "invalid": 0,
+      "invalidOpen": 0,
+      "triangles": 406464,
+      "dimensionsWithin01": true
+    },
+    {
+      "name": "Incom Amsterdam Deluxe 100 (deluxes)",
+      "page": 57,
+      "measured": {
+        "W": 42,
+        "D": 42,
+        "H": 134.8
+      },
+      "target": {
+        "W": 42,
+        "H": 134.8
+      },
+      "invalid": 0,
+      "invalidOpen": 0,
+      "triangles": 566279,
+      "dimensionsWithin01": true
+    },
+    {
+      "name": "Incom Amsterdam Deluxe 200 (deluxes)",
+      "page": 58,
+      "measured": {
+        "W": 50,
+        "D": 50,
+        "H": 169.3
+      },
+      "target": {
+        "W": 50,
+        "H": 169.3
+      },
+      "invalid": 0,
+      "invalidOpen": 0,
+      "triangles": 635620,
+      "dimensionsWithin01": true
+    },
+    {
+      "name": "Incom New York Deluxe 100 (deluxes)",
+      "page": 59,
+      "measured": {
+        "W": 45,
+        "D": 45,
+        "H": 139
+      },
+      "target": {
+        "W": 45,
+        "H": 139
+      },
+      "invalid": 0,
+      "invalidOpen": 0,
+      "triangles": 577071,
+      "dimensionsWithin01": true
+    },
+    {
+      "name": "Incom New York Deluxe 200 (deluxes)",
+      "page": 60,
+      "measured": {
+        "W": 54.2,
+        "D": 54.2,
+        "H": 160.2
+      },
+      "target": {
+        "W": 54.2,
+        "H": 160.2
+      },
+      "invalid": 0,
+      "invalidOpen": 0,
+      "triangles": 634388,
+      "dimensionsWithin01": true
+    },
+    {
+      "name": "Incom Sydney Deluxe 100 (deluxes)",
+      "page": 61,
+      "measured": {
+        "W": 42,
+        "D": 42,
+        "H": 138
+      },
+      "target": {
+        "W": 42,
+        "H": 138
+      },
+      "invalid": 0,
+      "invalidOpen": 0,
+      "triangles": 575114,
+      "dimensionsWithin01": true
+    },
+    {
+      "name": "Incom Sydney Deluxe 200 (deluxes)",
+      "page": 62,
+      "measured": {
+        "W": 50,
+        "D": 50,
+        "H": 171.3
+      },
+      "target": {
+        "W": 50,
+        "H": 171.3
+      },
+      "invalid": 0,
+      "invalidOpen": 0,
+      "triangles": 640772,
+      "dimensionsWithin01": true
+    },
+    {
+      "name": "Incom Tube (frasnagas)",
+      "page": 84,
+      "measured": {
+        "W": 29,
+        "D": 29,
+        "H": 109
+      },
+      "target": {
+        "W": 29,
+        "H": 109
+      },
+      "invalid": 0,
+      "invalidOpen": 0,
+      "triangles": 731299,
+      "dimensionsWithin01": true
+    },
+    {
+      "name": "Incom Ella (batons)",
+      "page": 88,
+      "measured": {
+        "W": 21.4,
+        "D": 21.4,
+        "H": 71.893
+      },
+      "target": {
+        "W": 21.4,
+        "H": 71.9
+      },
+      "invalid": 0,
+      "invalidOpen": 0,
+      "triangles": 361403,
+      "dimensionsWithin01": true
+    },
+    {
+      "name": "Incom Long (batons)",
+      "page": 89,
+      "measured": {
+        "W": 23.3,
+        "D": 23.3,
+        "H": 74.02
+      },
+      "target": {
+        "W": 23.3,
+        "H": 74
+      },
+      "invalid": 0,
+      "invalidOpen": 0,
+      "triangles": 441423,
+      "dimensionsWithin01": true
+    },
+    {
+      "name": "Incom Long Lipview (batons)",
+      "page": 90,
+      "measured": {
+        "W": 23.3,
+        "D": 23.3,
+        "H": 74
+      },
+      "target": {
+        "W": 23.3,
+        "H": 74
+      },
+      "invalid": 0,
+      "invalidOpen": 0,
+      "triangles": 471423,
+      "dimensionsWithin01": true
+    },
+    {
+      "name": "Incom Spy (batons)",
+      "page": 91,
+      "measured": {
+        "W": 23.28,
+        "D": 23.28,
+        "H": 70
+      },
+      "target": {
+        "W": 23.28,
+        "H": 70
+      },
+      "invalid": 0,
+      "invalidOpen": 0,
+      "triangles": 774832,
+      "dimensionsWithin01": true
+    },
+    {
+      "name": "Incom Squared (batons)",
+      "page": 92,
+      "measured": {
+        "W": 21.74,
+        "D": 21.74,
+        "H": 72
+      },
+      "target": {
+        "W": 21.76,
+        "H": 72
+      },
+      "invalid": 0,
+      "invalidOpen": 0,
+      "triangles": 443458,
+      "dimensionsWithin01": true
+    },
+    {
+      "name": "Incom Berlim (líquidos labiais)",
+      "page": 94,
+      "measured": {
+        "W": 18.994,
+        "D": 18.994,
+        "H": 101.6
+      },
+      "target": {
+        "W": 19,
+        "H": 101.6
+      },
+      "invalid": 0,
+      "invalidOpen": 0,
+      "triangles": 417885,
+      "dimensionsWithin01": true
+    },
+    {
+      "name": "Incom Berlim Plus (líquidos labiais)",
+      "page": 95,
+      "measured": {
+        "W": 21.405,
+        "D": 21.405,
+        "H": 125.3
+      },
+      "target": {
+        "W": 21.4,
+        "H": 125.3
+      },
+      "invalid": 0,
+      "invalidOpen": 0,
+      "triangles": 496732,
+      "dimensionsWithin01": true
+    },
+    {
+      "name": "Incom Guggen Plus (líquidos labiais)",
+      "page": 97,
+      "measured": {
+        "W": 18.6,
+        "D": 18.6,
+        "H": 122
+      },
+      "target": {
+        "W": 18.6,
+        "H": 122
+      },
+      "invalid": 0,
+      "invalidOpen": 0,
+      "triangles": 483400,
+      "dimensionsWithin01": true
+    },
+    {
+      "name": "Incom Moma (líquidos labiais)",
+      "page": 99,
+      "measured": {
+        "W": 22.7,
+        "D": 22.7,
+        "H": 74
+      },
+      "target": {
+        "W": 22.7,
+        "H": 74
+      },
+      "invalid": 0,
+      "invalidOpen": 0,
+      "triangles": 313809,
+      "dimensionsWithin01": true
+    },
+    {
+      "name": "Incom Moma Charm (líquidos labiais)",
+      "page": 100,
+      "measured": {
+        "W": 22.6,
+        "D": 22.6,
+        "H": 87.1
+      },
+      "target": {
+        "W": 22.6,
+        "H": 87.1
+      },
+      "invalid": 0,
+      "invalidOpen": 0,
+      "triangles": 337091,
+      "dimensionsWithin01": true
+    },
+    {
+      "name": "Incom Moma 2.0 (líquidos labiais)",
+      "page": 101,
+      "measured": {
+        "W": 22.698,
+        "D": 22.698,
+        "H": 85
+      },
+      "target": {
+        "W": 22.7,
+        "H": 85
+      },
+      "invalid": 0,
+      "invalidOpen": 0,
+      "triangles": 369904,
+      "dimensionsWithin01": true
+    },
+    {
+      "name": "Incom Oscar All Crystal (líquidos labiais)",
+      "page": 103,
+      "measured": {
+        "W": 18.6,
+        "D": 18.6,
+        "H": 94.8
+      },
+      "target": {
+        "W": 18.6,
+        "H": 94.8
+      },
+      "invalid": 0,
+      "invalidOpen": 0,
+      "triangles": 396896,
+      "dimensionsWithin01": true
+    },
+    {
+      "name": "Incom Oscar Charm (líquidos labiais)",
+      "page": 104,
+      "measured": {
+        "W": 18.6,
+        "D": 18.6,
+        "H": 112.3
+      },
+      "target": {
+        "W": 18.6,
+        "H": 112.3
+      },
+      "invalid": 0,
+      "invalidOpen": 0,
+      "triangles": 460406,
+      "dimensionsWithin01": true
+    },
+    {
+      "name": "Incom Tate (líquidos labiais)",
+      "page": 106,
+      "measured": {
+        "W": 27,
+        "D": 27,
+        "H": 91.3
+      },
+      "target": {
+        "W": 27,
+        "H": 91.3
+      },
+      "invalid": 0,
+      "invalidOpen": 0,
+      "triangles": 352025,
+      "dimensionsWithin01": true
+    },
+    {
+      "name": "Incom Mini Jubilee (potes)",
+      "page": 114,
+      "measured": {
+        "W": 35.6,
+        "D": 35.6,
+        "H": 24.6
+      },
+      "target": {
+        "W": 35.6,
+        "H": 24.6
+      },
+      "invalid": 0,
+      "invalidOpen": 0,
+      "triangles": 195737,
+      "dimensionsWithin01": true
+    },
+    {
+      "name": "Incom Berlim Plus (máscaras)",
+      "page": 122,
+      "measured": {
+        "W": 21.405,
+        "D": 21.405,
+        "H": 125.3
+      },
+      "target": {
+        "W": 21.4,
+        "H": 125.3
+      },
+      "invalid": 0,
+      "invalidOpen": 0,
+      "triangles": 505257,
+      "dimensionsWithin01": true
+    },
+    {
+      "name": "Incom Guggen (máscaras)",
+      "page": 123,
+      "measured": {
+        "W": 18.5,
+        "D": 18.5,
+        "H": 104.3
+      },
+      "target": {
+        "W": 18.5,
+        "H": 104.3
+      },
+      "invalid": 0,
+      "invalidOpen": 0,
+      "triangles": 445948,
+      "dimensionsWithin01": true
+    },
+    {
+      "name": "Incom Guggen Plus (máscaras)",
+      "page": 124,
+      "measured": {
+        "W": 18.6,
+        "D": 18.6,
+        "H": 122
+      },
+      "target": {
+        "W": 18.6,
+        "H": 122
+      },
+      "invalid": 0,
+      "invalidOpen": 0,
+      "triangles": 488760,
+      "dimensionsWithin01": true
+    },
+    {
+      "name": "Incom Oscar (máscaras)",
+      "page": 125,
+      "measured": {
+        "W": 18.6,
+        "D": 18.6,
+        "H": 109.89
+      },
+      "target": {
+        "W": 18.6,
+        "H": 109.9
+      },
+      "invalid": 0,
+      "invalidOpen": 0,
+      "triangles": 440793,
+      "dimensionsWithin01": true
+    },
+    {
+      "name": "Incom Timeless Plus (máscaras)",
+      "page": 126,
+      "measured": {
+        "W": 23.012,
+        "D": 23.012,
+        "H": 125.6
+      },
+      "target": {
+        "W": 23,
+        "H": 125.6
+      },
+      "invalid": 0,
+      "invalidOpen": 0,
+      "triangles": 499276,
+      "dimensionsWithin01": true
+    },
+    {
+      "name": "Incom Chubby Stick M (sticks)",
+      "page": 130,
+      "measured": {
+        "W": 30.998,
+        "D": 30.998,
+        "H": 85.5
+      },
+      "target": {
+        "W": 31,
+        "H": 85.5
+      },
+      "invalid": 0,
+      "invalidOpen": 0,
+      "triangles": 399035,
+      "dimensionsWithin01": true
+    },
+    {
+      "name": "Incom Chubby Stick G (sticks)",
+      "page": 131,
+      "measured": {
+        "W": 31,
+        "D": 31,
+        "H": 114
+      },
+      "target": {
+        "W": 31,
+        "H": 114
+      },
+      "invalid": 0,
+      "invalidOpen": 0,
+      "triangles": 552269,
+      "dimensionsWithin01": true
+    },
+    {
+      "name": "Incom Long Abaulada (batons)",
+      "page": 89,
+      "measured": {
+        "W": 23.3,
+        "D": 23.3,
+        "H": 74.02
+      },
+      "target": {
+        "W": 23.3,
+        "H": 74
+      },
+      "invalid": 0,
+      "invalidOpen": 0,
+      "triangles": 397423,
+      "dimensionsWithin01": true
+    },
+    {
+      "name": "Incom Long Lipview Abaulada (batons)",
+      "page": 90,
+      "measured": {
+        "W": 23.3,
+        "D": 23.3,
+        "H": 74
+      },
+      "target": {
+        "W": 23.3,
+        "H": 74
+      },
+      "invalid": 0,
+      "invalidOpen": 0,
+      "triangles": 427823,
+      "dimensionsWithin01": true
+    },
+    {
+      "name": "Incom Chess Deluxe (tampa de perfume)",
+      "page": 146,
+      "measured": {
+        "W": 39.692,
+        "D": 39.692,
+        "H": 31.3
+      },
+      "target": {
+        "W": 39.7,
+        "H": 31.3
+      },
+      "invalid": 0,
+      "invalidOpen": 0,
+      "triangles": 297379,
+      "dimensionsWithin01": true
+    },
+    {
+      "name": "Incom Drop (tampa de perfume)",
+      "page": 155,
+      "measured": {
+        "W": 32.2,
+        "D": 24.406,
+        "H": 38.7
+      },
+      "target": {
+        "W": 32.2,
+        "H": 38.7
+      },
+      "invalid": 0,
+      "invalidOpen": 0,
+      "triangles": 294452,
+      "dimensionsWithin01": true
+    },
+    {
+      "name": "Incom Malika (tampa de perfume)",
+      "page": 171,
+      "measured": {
+        "W": 30,
+        "D": 30,
+        "H": 38
+      },
+      "target": {
+        "W": 30,
+        "H": 38
+      },
+      "invalid": 0,
+      "invalidOpen": 0,
+      "triangles": 296677,
+      "dimensionsWithin01": true
+    },
+    {
+      "name": "Incom Tahaa (tampa de perfume)",
+      "page": 193,
+      "measured": {
+        "W": 29,
+        "D": 29,
+        "H": 35.2
+      },
+      "target": {
+        "W": 29,
+        "H": 35.2
+      },
+      "invalid": 0,
+      "invalidOpen": 0,
+      "triangles": 289471,
+      "dimensionsWithin01": true
+    }
+  ]
+}

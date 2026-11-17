@@ -165,9 +165,11 @@ Pendências conhecidas (precisam de dado ou de decisão; não invente):
 
 **Em andamento** (quem está mexendo em quê agora; apague quando terminar):
 
-- (vazio)
+- Codex: segunda etapa de integração em `js/app.js`: fechamentos dos frascos e cavidades dos potes. Patches isolados já revisados; falta render final. Não editar esses trechos em paralelo.
 
 **Registro** (o mais novo em cima):
+
+- 2026-11-17, Codex, `2026-11-17.cdx4`: correções estruturais da auditoria: Tube rígido/rosca/inserto Ø1,6; visor Mini Jubilee; refis Dispensing e acionador/manga Twist; escovas/abertura solidária da haste; rosca helicoidal All Crystal; proporções Ella/Long/Lipview, colar circular Squared, mangas dos sticks; colares lisos Deluxes; ápices Drop/Malika/Tahaa; olhais Charm Ø4,5; alturas Oscar/Tate; fundos dos glosses confirmados e encaixes estreitos das Flat. Renders novos de 58 montagens, sem vértices inválidos; cotas e limites em `tools/conferencia/validacao-cdx4.json` e `INCOM_AUDITORIA.md`. Flat teve compensação adicional de profundidade após medição. Renders em `_ref/incom/validacao-cdx4/` (ignorados pelo git). Quinteto/Moon Quarteto já tinham losango/X corretos: achado antigo retificado. Proporções internas e mecanismos sem vistas suficientes continuam estimados/pendentes, não aprovados como peças industriais exatas.
 
 - 2026-11-17, Codex, `2026-11-17.cdx3`: pente-fino de 186 renders documentado em `INCOM_AUDITORIA.md`, comparando fotos/desenhos do catálogo aos renders salvos. Inclui desvios por família, pendências de evidência, limitações dimensionais e ordem de correção. Não representa aprovação dos mecanismos ocultos nem render novo das correções. Próximo refino: Tube, Mini Jubilee, Dispensing Twist, escovas das máscaras, mangas dos sticks e fechamentos próprios.
 

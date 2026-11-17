@@ -6,6 +6,30 @@ Cobertura: **186 renders comparados** — 116 produtos, duas variantes Abaulada 
 
 ## Método e limites
 
+### Correções da revisão `2026-11-17.cdx4`
+
+Os achados abaixo descrevem os renders antigos. Esta atualização registra o que foi efetivamente alterado depois da auditoria; não equivale à aprovação industrial de toda a biblioteca.
+
+| Escopo / fonte | Correção implementada | Limite que permanece |
+|---|---|---|
+| Tube, p.84 | Frasco rígido com rosca 20-410 exposta, inserto de saída Ø1,6 e tampa removível; eliminada a bisnaga com solda. | Proporção do inserto e espessuras sem cotas próprias; profundidade provisória. |
+| Ella/Long/Lipview/Squared, p.88–92 | Proporções base/colar/tubo e visor Lipview revistas pelas fotos; colar circular do Squared; compensação da altura Lipview. | Afilamento da bala, janela Spy e mecanismos internos ainda precisam de refino. |
+| Máscaras, p.122–126 | Escovas com cerdas e envelopes diferenciados, transportadas pela tampa junto com a haste ao abrir. | Contagem e seção das cerdas são aproximações visuais; não são especificação do fornecedor. |
+| Sticks M/G, p.130–131 | Colar e manga separados; porção visível do produto; tampa oca removível e alturas fechadas preservadas. | Construção oculta do mecanismo não certificada. |
+| Líquidos labiais, p.94–108 | Tampa e haste saem juntas; gargalo permanece no corpo; boca aberta. Fundos planos com cantos arredondados nos cinco modelos confirmados (Berlim/Plus, Guggen Plus, Moma/2.0). | Ponteiras comerciais ainda compartilham uma aproximação; não aprovar todas as alternativas de aplicador. |
+| Oscar All Crystal, p.103 | Rosca helicoidal contínua, em vez de anéis independentes; haste transparente solidária à tampa. | Passo/diâmetro internos sem cota de fabricação; pé externo ainda pendente. |
+| Charm, p.100/104 | Vão do olhal corrigido para Ø4,5; altura da tampa compensada. | Seção de 1 mm estimada e apoios alargados ainda pendentes. |
+| Oscar/Tate, p.125/107 | Ápice deixa de retirar altura do conjunto. | Oscar líquido continua com conflito entre foto/desenho na p.102. |
+| Mini Jubilee, p.114 | Janela circular transparente na tampa. | Rosca e vedação industrial não aprovadas. |
+| Dispensing, p.47–51/54–55 | Refis PET independentes; cascas externas vazias; Twist com manga, refil e acionador separados e rebaixo frontal. Cube/Elíptico com sobretampa arredondada sem aba superior. | Proporções internas estimadas pelas fotos; não certificam capacidade. Cinemática do Twist e canal de fluido não simulados. |
+| Deluxes, p.57–62 | Saias lisas, eliminando os frisos genéricos incompatíveis com a foto. | Opções de dosadora e encaixes internos continuam pendentes. |
+| Drop/Malika/Tahaa, p.155/171/193 | Fechamento contínuo dos ápices; hemisfério superior esférico da Tahaa e ponta contínua da Malika. | Profundidades não cotadas e interior não certificados. |
+| Flat, p.28–33 | Encaixes estreitos na faixa sem espelho, por proporção da foto; faixa e degrau aprovados preservados. | Espessuras, trava e articulação completas não certificadas. |
+
+**Retificação da triagem:** renders novos de cima confirmam losango no Frame G Quinteto e divisórias em X no Moon G Quarteto, já presentes no código. As duas primeiras linhas da tabela histórica de compactos foram superadas por essa evidência; não foi necessário girar os godês.
+
+Os parâmetros derivados das fotos estão comentados como estimados no código. A revisão não resolve as tampas escultóricas com lapidação faltante (Bouquet, Laura, Joya/Joya Mini, Quartz, Brilhante, Victoria), nem as interpretações ambíguas de Wheel/Rock/Thenue. Estas continuam no backlog, exigindo vistas adicionais para as partes não determinadas pelo catálogo.
+
 - Fonte: `_ref/incom/catalogo-incom-2026.pdf`; fotos, desenhos e cotas da página indicada.
 - Comparação visual com os renders existentes em `_ref/incom/renders`, datados de 17/11 às 09:15. São evidência da modelagem anterior; não constituem validação das alterações posteriores.
 - Bege fosco é a apresentação de leitura de forma. Diferença de cor do catálogo não é defeito de geometria.
