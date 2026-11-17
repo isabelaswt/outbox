@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-17.sens8';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-17.sens12';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -578,7 +578,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-17.sens8';
+const BUILD = '2026-11-17.sens12';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -2211,7 +2211,7 @@ function mergeLoose(list) {
 }
 // Tampa Sens (Incom), como nas fotos: embaixo uma parte estreita que abre numa curva suave até o corpo cilíndrico; em
 // cima a borda forma um copo raso com o disco (o tampo que se aperta) por dentro, e na frente a borda desce num U largo
-// e raso (onde o dedo encaixa). O disco tem a fenda de saída do produto.
+// e raso (onde o dedo encaixa). A saída do produto é só o furo do disco, que aparece ao abrir.
 function sensCapGeo(m0, y0, opts) {
   if (opts.inset) return moduleGeo({ ...m0, sens: false }, y0, opts);
   const W = m0.W, R = W / 2, H = m0.h, hN = H * 0.24, hF = H * 0.22;
@@ -2225,12 +2225,17 @@ function sensCapGeo(m0, y0, opts) {
     const uw = W * 0.58, ud = dep * 0.95, sh = new THREE.Shape(); // U largo e raso na frente da borda
     sh.moveTo(-uw / 2, yT + 2); sh.lineTo(-uw / 2, yT); sh.absellipse(0, yT, uw / 2, ud, Math.PI, 2 * Math.PI, false); sh.lineTo(uw / 2, yT + 2); sh.closePath();
     const u = new THREE.ExtrudeGeometry(sh, { depth: R + 2, bevelEnabled: false, curveSegments: 32 });
-    const slot = new THREE.BoxGeometry(W * 0.16, 6, W * 0.07); slot.translate(0, yT - dep, R * 0.42); // fenda de saída no disco, perto do U
-    for (const c of [pocket, u, slot]) { const [o, inn] = cutHole(cap, c); if (o !== cap) cap = mergeLoose([o, inn]); } // um corte por vez (cortadores sobrepostos numa peça só deixavam uma aleta solta)
+    for (const c of [pocket, u]) { const [o, inn] = cutHole(cap, c); if (o !== cap) cap = mergeLoose([o, inn]); } // um corte por vez (cortadores sobrepostos numa peça só deixavam uma aleta solta)
     // dentro do copo, o disc-top: disco que se aperta, com folga fina em volta e a fenda de saída do lado do U
-    let disc = moduleGeo({ ...BASE, kind: 'giro', W: 2 * (R - wall - 0.35), D: 2 * (R - wall - 0.35), h: Math.min(1.8, dep * 0.6), rBot: 0.2, rTop: 0.5 }, yT - dep, opts);
-    const slot2 = new THREE.BoxGeometry(W * 0.16, 6, W * 0.07); slot2.translate(0, yT - dep, R * 0.42);
-    { const [o, inn] = cutHole(disc, slot2); if (o !== disc) disc = mergeLoose([o, inn]); }
+    // Fechado o disco fica liso (o pino de baixo veda a saída). Aberto (botão Abrir): aperta-se atrás, a frente (lado do U)
+    // sobe e aparece o furo redondo por onde o produto sai
+    const hd = Math.min(1.8, dep * 0.6), aberto = !!(S?.aberto);
+    let disc = moduleGeo({ ...BASE, kind: 'giro', W: 2 * (R - wall - 0.35), D: 2 * (R - wall - 0.35), h: hd, rBot: 0.2, rTop: 0.5 }, yT - dep, opts);
+    if (aberto && disc) {
+      const hole = new THREE.CylinderGeometry(Math.max(1.1, W * 0.045), Math.max(1.1, W * 0.045), hd + 4, 32); hole.translate(0, yT - dep + hd / 2, R * 0.55);
+      { const [o, inn] = cutHole(disc, hole); if (o !== disc) disc = mergeLoose([o, inn]); }
+      const py = yT - dep + hd / 2, pz = -R * 0.15; disc.translate(0, -py, -pz); disc.rotateX(-0.27); disc.translate(0, py, pz); // ~15°: a frente (lado do U) levanta ~3 mm
+    }
     cap = mergeLoose([cap, disc]);
   }
   return cap;
@@ -6537,7 +6542,7 @@ $('#explodeBtn').onclick = () => { explode = !explode; $('#explodeBtn').classLis
 // slider e botão: a tampa de cima (no Moon Deck o andar do meio tem o seu próprio controle em Peças)
 const hingeTop = () => S.modules.filter(x => x.hinge).at(-1);
 const hingeAng = () => { const m = hingeTop(); return !m ? 0 : m.abre > 0 ? m.abre : S.aberto ? (m.abreAberto ?? 105) : 0; };
-function syncOpenBtn() { const b = $('#openBtn'), r = $('#openAng'); if (!b) return; const ok = S.modules.some(m => m.hinge || m.capa), hinge = S.modules.some(m => m.hinge);
+function syncOpenBtn() { const b = $('#openBtn'), r = $('#openAng'); if (!b) return; const ok = S.modules.some(m => m.hinge || m.capa || m.sens), hinge = S.modules.some(m => m.hinge);
   const open = !!S.aberto || hingeAng() > 0;
   b.classList.toggle('hidden', !ok); b.classList.toggle('on', ok && open); b.textContent = ok && open ? 'Fechar' : 'Abrir';
   if (r) { r.classList.toggle('hidden', !hinge); if (document.activeElement !== r) r.value = hingeAng(); } }
