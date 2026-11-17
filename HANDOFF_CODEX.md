@@ -8,6 +8,18 @@ Refinar todos os modelos conforme catálogo Incom 2026 e fotos oficiais, com os 
 
 ## Últimos pedidos da dona — prioridade
 
+**ÚLTIMO PEDIDO, após os itens abaixo:** criar válvulas NOVAS e próprias da Incom, e incluir **TODAS as válvulas documentadas da Incom** na biblioteca `Incom · Válvula`, separadas de `Outbox / genérico`. Não resolver apenas mudando nomes/categorias ou reutilizando o desenho genérico sem conferir. Esse trabalho AINDA NÃO foi implementado.
+
+- Começar pelo bico de pato do Bulb Blow 300. O modelo atual usa três `P('...')`/corpos (saia, haste, cabeça) em `incomProduct`, ramo `patoIncom`; é uma aproximação rejeitada, não uma válvula final.
+- Foto real mostra saia cilíndrica, haste estreita e cabeça com lâmina fina/alongada, curvada para baixo na ponta. O render atual parece uma placa alta/grossa e não reproduz a saída. Conferir frente, lado, 3/4 e abertura no site oficial; não presumir os mecanismos internos sem imagem.
+- Criar peça de válvula própria com identidade Incom no `LIB`/gerador (por exemplo um tipo próprio de spray), geometria real de cabeça/bico/saída conforme foto, e componentes internos só quando documentados. A montagem pode ter componentes editáveis, mas NÃO classificar pump/haste/cabeça como corpo do frasco nem somá-los à capacidade.
+- Auditar a biblioteca inteira de válvulas Incom: sprays, dosadoras, espumadoras, bico de pato, conta-gotas bulbo/botão e demais opções que efetivamente constarem nas páginas. Incluir também os acabamentos de válvulas de perfume documentados. Esta é uma lista de investigação, não inventário final: completar a partir do catálogo e do site, sem presumir que cada item já existe/é distinto.
+- Cada válvula precisa de fonte/página/URL, dimensões cotadas ou proporções explicitamente estimadas, rosca correta quando listada, material bege como padrão e detalhes observáveis. Preservar genéricas Outbox separadas.
+- Substituir os três corpos improvisados no Bulb Blow 300 pela nova válvula. Revisar classificação e cálculo de capacidade em todas as montagens e no menu intercambiável; verificar modelos salvos sem apagar edições da dona.
+- Referências preservadas: `_ref/incom/retomada-cdx28/pump-bulb300-atual.png` e `pump-bico-pato-referencia.png`. Screenshot da dona mostra cdx24; confirmar também preset novo antes/depois, sem usar versão antiga como justificativa para deixar a geometria ruim.
+- Publicar por etapas pequenas, com comparação foto × render e testes geométricos. Só fazer PDF depois das válvulas e demais correções.
+
+
 1. **Fecho do Case ainda diferente — NÃO corrigido nesta etapa.** Foto nova mostra recorte/painel frontal central alto e largo na parede da tampa, chegando perto da altura total da parede, com fina borda embaixo. No render atual ele virou uma abertura pequena e baixa. Conferir forma/largura/altura no site e fotos, com o produto fechado e aberto. Não confundir esse recorte da tampa com a pequena lingueta receptora da base: a base continua com lingueta simples, sem caixa. Não generalizar entre famílias sem referência.
    - Referência: `_ref/incom/retomada-cdx28/case-fecho-referencia.png`.
    - Render recusado: `_ref/incom/retomada-cdx28/case-fecho-atual.png`.

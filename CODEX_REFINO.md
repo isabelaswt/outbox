@@ -169,6 +169,8 @@ Pendências conhecidas (precisam de dado ou de decisão; não invente):
 
 **Em andamento** (quem está mexendo em quê agora; apague quando terminar):
 
+- **Último pedido da dona:** criar válvulas próprias NOVAS de todas as opções Incom documentadas, separadas das genéricas Outbox. Começar pelo bico de pato do Bulb Blow 300: os três corpos atuais são aproximação rejeitada e estão classificados incorretamente. Ver fotos preservadas e requisitos completos no início de `HANDOFF_CODEX.md`. Ainda não implementado; não chamar válvulas de concluídas.
+
 - **Novo achado da dona para a retomada:** recorte frontal fechado do Case ainda não corresponde à foto: referência alta/larga na parede da tampa; render atual com pequeno recorte baixo. Corrigir caso a caso, preservando lingueta simples na base e espelho do Case M. Duas imagens preservadas em `_ref/incom/retomada-cdx28/`; ver prioridade 1 do `HANDOFF_CODEX.md`.
 
 - Codex: RETOMADA — `cdx28` local, ainda sem commit. Seis frasnagas de tampa superior e refino do Tube; último pedido: tampa do Tube também roscada, com borda mais fina. O ajuste final da entrada de 1 mm ainda precisa ser renderizado/validado. Ver `HANDOFF_CODEX.md`; continuar roscas inferiores/variantes antes do PDF.
