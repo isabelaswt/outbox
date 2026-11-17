@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-17.cmp6';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-17.cmp7';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -346,6 +346,9 @@ const LIB = {
              actW: 24, headH: 12, nozzleL: 26, armW: 10.5, armT: 4.6, droop: 1.2, outletD: 2.8 },
   pump:    { name: 'Válvula pump', kind: 'spray', sprayType: 'pato', W: 26.3, D: 26.3, h: 14.5, collarR: 1, ridges: 44, ridgeD: 0.3,
              stemD: 9, stemH: 12, actW: 20, headH: 11, armT: 4, armW: 9, nozzleL: 22, droop: 1 },
+  // Espumadora da lista Incom (ícone): estreita como a dosadora, cabeça cilíndrica com o bico reto e curto no alto
+  espumadora: { name: 'Válvula espumadora', kind: 'spray', sprayType: 'dosadora', W: 24, D: 24, h: 12, collarR: 1.2, ridges: 0,
+             stemD: 9, stemH: 0, guideW: 17, guideH: 6.2, actW: 10.5, headH: 13, armT: 2.4, armW: 6, nozzleL: 2, droop: 0 },
   pumpDosadora: { name: 'Válvula pump dosadora', kind: 'spray', sprayType: 'dosadora', W: 24, D: 24, h: 12, collarR: 1.2, ridges: 0,
              stemD: 9, stemH: 0, guideW: 17, guideH: 6.2, actW: 12.7, headH: 10.5, armT: 3, armW: 8, nozzleL: 3.2, droop: 0.8 },
   locao:   { name: 'Pump loção (bico curvo)', kind: 'spray', sprayType: 'locao', W: 24.5, D: 24.5, h: 10.8, collarR: 0.8, stemD: 15.5, stemH: 7.3,
@@ -587,7 +590,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-17.cmp6';
+const BUILD = '2026-11-17.cmp7';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -8080,7 +8083,7 @@ function renderAll() { renderStack(); renderEditor(); renderGlobal(); renderPres
 const CATS = [
   ['Corpo', ['reto', 'boston', 'quadrado', 'capsula', 'perfumeOval', 'plano', 'arco', 'cone', 'placa', 'bisnaga', ...DRAFT_KEYS.corpo]],
   ['Tampa', ['esfera', 'esferaBisnaga', 'nuvem', 'taca', 'domo', 'seixo', 'flip', 'flipRedondo', 'flipAba', 'disctop', 'tampaSens', 'tampaTambor', 'sobretampa', 'sobretampaFineMist', 'sobretampaFineMistBig', 'tampaBisnaga', 'tampaSextavada', 'disco']],
-  ['Válvula', ['pump', 'pumpFrisos', 'locao', 'espuma', 'spray', 'sprayClassico', 'contaGotas', 'tampaGloss', 'pushPull', 'pushSport', 'bicoDosador', 'bicoAplicador', 'bicoConico', 'lamina', 'pumpOnda', 'gatilho', 'pumpBisnaga']],
+  ['Válvula', ['pump', 'pumpFrisos', 'locao', 'espuma', 'espumadora', 'pumpDosadora', 'spray', 'sprayClassico', 'contaGotas', 'tampaGloss', 'pushPull', 'pushSport', 'bicoDosador', 'bicoAplicador', 'bicoConico', 'lamina', 'pumpOnda', 'gatilho', 'pumpBisnaga']],
   ['Peça de encaixe', ['gargalo', 'colar', 'barril', 'flare', 'anel', 'tigela', 'bola', 'sextavado', 'canelado']],
 ];
 CATS.forEach(([label, keys]) => {
@@ -8760,11 +8763,12 @@ function incomProduct(r) {
       // gargalo e a saia desce até o corpo; descer à força a enterrava no frasco e a rosca aparecia por cima)
       const fc = fe === 'tampa' ? M('tampaTambor', { W: r1(W * 0.98), D: r1(W * 0.98), h: r2((H - nh) * 0.31 - 1.6) })
         : fe === 'sens' ? M('tampaSens', { W: r1(W * 0.81), D: r1(W * 0.81), h: r1(W * 0.81 * 0.53) }) // foto do New York: larga (81% do frasco)
-        : fe === 'bola' ? M('bola', { name: 'Tampa bola', W: r1(Math.min(W * 0.62, 36)), D: r1(Math.min(W * 0.62, 36)), h: r1(Math.min(W * 0.62, 36)) })
+        : fe === 'bola' ? (bl => [M('reto', { name: 'Colar da tampa bola', W: r1(Math.max(bl * 0.62, 27.5)), D: r1(Math.max(bl * 0.62, 27.5)), h: r1(nh + 0.8), rTop: 0.6, rBot: 0.3 }), // ícone Incom: a bola fica sobre um colar que veste o gargalo
+          M('bola', { name: 'Tampa bola', W: bl, D: bl, h: bl })])(r1(Math.min(W * 0.62, 36)))
         : fe === 'flip' ? M('flipRedondo', { W: 30, D: 30, h: 30, own: true, finish: 'pet', color: '#ffffff' }) // foto do Wall: flip-top transparente
         : fe === 'disctop' ? M('disctop', { name: 'Tampa disc-top', W: r1(Math.min(D, 38)), D: r1(Math.min(D, 38)) })
         : M(fe === 'pump' ? 'pump' : 'spray');
-      ms = [P('Frasco', W, D, H - nh, { vol: true, ...o, _t: [0, (H - nh) / H] }), NECK('24/410', { h: nh }), fc]; break; }
+      ms = [P('Frasco', W, D, H - nh, { vol: true, ...o, _t: [0, (H - nh) / H] }), NECK('24/410', { h: nh }), ...[].concat(fc)]; break; }
     case 'frn': case 'frnt': case 'frnr': case 'frnflat': {
       const o = r.t === 'frnt' ? { taper: 88 } : {}, [f] = /Charlotte/.test(r.n) ? [0.32] : r.n === 'Olympea' ? [0.27] : incomFrac(pr, [0.66]); // Charlotte e Olympea: em pé sobre a tampa (fotos)
       // Charlotte (divisão abaixo da metade no desenho): fica em pé sobre a tampa, corpo em cima. Na foto é uma
