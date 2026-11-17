@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-17.cl19';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-17.cl20';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -677,7 +677,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-17.cl19';
+const BUILD = '2026-11-17.cl20';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -9959,8 +9959,8 @@ function incomProduct(r) {
     ms.forEach(m => { if (m.kind === 'spray') Object.assign(m, { pesc: false, mola: false }); });
   }
   // frascos transparentes nas fotos (os brancos opacos — Apple Blow, Bulb Blow, Wall — ficam como estão)
-  // Gaia p113: PP opaco mate; os demais potes transparentes preservam o acabamento.
-  if (r.c === 'Potes' && !/Apple Blow|Bold/.test(r.n)) { const pt = ms.find(m => m.name === 'Pote'); if (pt) Object.assign(pt, { own: true, color: /Gaia/.test(r.n) ? BEIGE : '#ffffff', finish: /Gaia/.test(r.n) ? 'fosco' : 'pet' }); }
+  // Gaia (fotos do site): PP natural jateado e translúcido — o creme aparece por dentro; os demais potes transparentes preservam o acabamento.
+  if (r.c === 'Potes' && !/Apple Blow|Bold/.test(r.n)) { const pt = ms.find(m => m.name === 'Pote'); if (pt) Object.assign(pt, { own: true, color: '#ffffff', finish: /Gaia/.test(r.n) ? 'petFosco' : 'pet' }); }
   if (r.c === 'Potes') {
     // P111/115–120: frações estimadas pelas fotos e silhueta interna do desenho.
     // Jubilee15/Squared fotografados vazios: refil opcional oculto; Jubilee40 não lista refil.
