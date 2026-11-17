@@ -2,7 +2,7 @@
 
 ## ATUALIZAÇÃO MAIS RECENTE — 17/11/2026, fim da sessão Claude (ler primeiro)
 
-Versão no ar: **`2026-11-17.cl17`** (`main`). Duas sessões Claude trabalharam em paralelo na mesma pasta (a "fork" fez os aplicadores do Petit, cl5–cl17). Antes de commitar: `git fetch` + `git log HEAD..origin/main`; push por SSH `git@github.com:isabelaswt/outbox.git`; carimbo em 3 lugares (BUILD e import `incom.js?v=` em `js/app.js`, `?v=` de css/js em `index.html`). Próximo carimbo: **cl18**. Registro de cada envio na seção 8 do CODEX_REFINO.md.
+Versão no ar: **`2026-11-17.cl20`** (`main`). Duas sessões Claude trabalharam em paralelo na mesma pasta (a "fork" fez os aplicadores do Petit, cl5–cl17). Antes de commitar: `git fetch` + `git log HEAD..origin/main`; push por SSH `git@github.com:isabelaswt/outbox.git`; carimbo em 3 lugares (BUILD e import `incom.js?v=` em `js/app.js`, `?v=` de css/js em `index.html`). Próximo carimbo: **cl21**. Registro de cada envio na seção 8 do CODEX_REFINO.md.
 
 ### Regras da dona reforçadas nesta sessão
 - Forma e detalhes vêm das FOTOS (site Incom); desenho técnico só para medidas.
@@ -24,8 +24,9 @@ Versão no ar: **`2026-11-17.cl17`** (`main`). Duas sessões Claude trabalharam 
 
 ### Conferência foto × render — onde parou
 Esteira: preview "shape" (porta 8765, aba "seed"), `window.__rcat(categoria, prefixo, vistaAberta)` renderiza fechado 3/4 + aberto e manda para um receptor local (Claude usou `scratchpad/recv97.py` na porta 8797; 8798 é de outra sessão, 8799 é do Codex). `scratchpad/cmpsheet.py <prefixo>` monta folhas fotos do site × render (tem ALIAS para páginas com título errado: Amsterdam→amsterdam-200, NY Deluxe 100→amsterdam).
-- **Conferidos:** compactos, paletas, frascos, conta-gotas, dispensadores (exceto detalhes do Cube/Elíptico), deluxes, frasnagas.
-- **Faltam:** batons, líquidos labiais, máscaras, sticks, potes (renders estavam sendo gerados quando a sessão parou) e as 68 tampas de perfume.
+- **Conferidos:** compactos, paletas, frascos, conta-gotas, dispensadores (exceto detalhes do Cube/Elíptico), deluxes, frasnagas; e em cl18–cl20 batons, líquidos labiais, máscaras, sticks e potes (correções: Timeless piso plano, Oscar All Crystal inserto incolor, parede grossa no gloss PET G, Gaia translúcido).
+- **Faltam:** as 68 tampas de perfume. Pendentes: Tate sem foto no site (seção quadrada não confirmada); Pote Apple Blow sem página própria; Avante com peneira (opção).
+- Esteira usada em cl18–cl20 (sessão principal): preview `outbox` porta 8766, receptor `scratchpad/recv96.py` na porta **8796**, `scratchpad/cmp.py <prefixo_render> <slug_site> <saida>` monta a folha site × render (fechado frente, 3/4, aberto).
 - Pendentes vistos e não feitos: Julie — opções do site (bico aplicador, conta-gotas, válvula) como sugestões de troca; Dispensing Elíptico sem página casada no site; fundo grosso SAN ainda renderiza branco (deveria parecer cristal).
 
 ### Continua aberto da lista anterior
