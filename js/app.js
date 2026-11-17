@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-17.cdx24';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-17.cdx25';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -677,7 +677,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-17.cdx24';
+const BUILD = '2026-11-17.cdx25';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -1649,14 +1649,14 @@ function neckThreadField(m) {
 }
 // Cavidade fêmea na própria tampa, com fase/passo iguais aos do gargalo.
 function femaleThreadCutter(cap, y0, height) {
-  const n = cap.femaleThread, field = neckThreadField(n), root = n.W / 2 - n.threadD,
-    seg = 128, step = 0.08, ys = [-1, 0], fineTop = Math.min(height, n.h + 0.6);
+  const n = cap.femaleThread, phase = cap.threadPhase || 0, field = neckThreadField(n), root = n.W / 2 - n.threadD,
+    seg = 128, step = 0.08, ys = [-1, 0], fineTop = Math.min(height, n.h - phase + 0.6);
   for (let y = step; y < fineTop; y += step) ys.push(y); ys.push(fineTop);
   for (let y = fineTop + 0.4; y < height; y += 0.4) ys.push(y); if (height > fineTop) ys.push(height);
   const rings = ys.map(y => Array.from({ length: seg }, (_, j) => {
-    const th = TAU * j / seg, threadR = root + 0.16 + field(y, th),
+    const th = TAU * j / seg, threadR = root + 0.16 + field(y + phase, th),
       upperR = Math.max(0.2, capHalfAt(cap, Math.max(0, y)) - (cap.ocoWall ?? OCO.wall)),
-      blend = smooth(0, 0.6, y - n.h), r = threadR * (1 - blend) + upperR * blend;
+      blend = cap.threadReceiver ? 0 : smooth(0, 0.6, y + phase - n.h), r = threadR * (1 - blend) + upperR * blend;
     return [r * Math.cos(th), y0 + y, r * Math.sin(th)];
   }));
   return loftPts(rings);
@@ -2394,7 +2394,7 @@ function sensCapGeo(m0, y0, opts) {
     // disco alto (foto): ele mesmo preenche o U da borda — pelo U só se vê a lateral do disco, sem buraco
     const wall = Math.max(0.9, W * 0.03), hd = Math.min(5, H * 0.22), dep = hd, yT = y0 + H;
     // por baixo do disco a tampa é oca (não há apoio onde ele bateria)
-    const cav = Math.min(H * 0.32, 7), pocket = new THREE.CylinderGeometry(R - wall, R - wall, dep + cav + 2, 96); pocket.translate(0, yT - dep - cav + (dep + cav + 2) / 2, 0);
+    const cav = Math.min(H * 0.32, 7, m0.threadReceiver ? Math.max(2.8, H - dep - (m0.threadReceiver.h - (m0.threadPhase || 0) - 0.4)) : Infinity), pocket = new THREE.CylinderGeometry(R - wall, R - wall, dep + cav + 2, 96); pocket.translate(0, yT - dep - cav + (dep + cav + 2) / 2, 0);
     const uw = W * 0.58, ud = dep - 0.15, sh = new THREE.Shape(); // U largo na frente da borda, até perto do pé do disco
     sh.moveTo(-uw / 2, yT + 2); sh.lineTo(-uw / 2, yT); sh.absellipse(0, yT, uw / 2, ud, Math.PI, 2 * Math.PI, false); sh.lineTo(uw / 2, yT + 2); sh.closePath();
     const u = new THREE.ExtrudeGeometry(sh, { depth: R + 2, bevelEnabled: false, curveSegments: 32 });
@@ -6640,10 +6640,18 @@ function buildInto(product, S, explodeAmt = 0) {
     const under = m0.kind === 'gargalo' && L[i - 1]?.m.vol && L[i - 1].m.kind === 'giro' ? { m: L[i - 1].m, y0: L[i - 1].y0 } : null;
     // gargalo sobre corpo de vidro de outro tipo (perfil, placa): entra só 1 mm (senão aparecia dentro)
     if (m0.kind === 'gargalo' && !under && L[i - 1]?.m.vol && isGlass(L[i - 1].m.own ? L[i - 1].m.finish : S.finish)) m = { ...m, embed: Math.min(m.embed ?? 8, 1) };
+    // Rosca do fechamento na fase axial real: a saia pode descer sobre o ombro.
+    if (m0.threadReceiver && dn?.kind === 'gargalo') m = { ...m, threadPhase: y0 - L[i - 1].y0 };
     let g = moduleGeo(m, y0, { logoQuality: hasLogo, body: under, ...(THUMB_LITE ? { lo: true } : {}) }); if (!g) return; // miniatura: malha leve
     if (!THUMB_LITE && (m0.incomRefillCavity || m0.incomTwistOutlet)) g = cutCached('incomDispensing', [m, y0], g, () => incomDispensingGeo(g, m, y0));
     if (!THUMB_LITE && m0.incomPoteCavity) g = cutCached('incomPote', [m, y0], g, () => incomPoteGeo(g, m, y0));
-    if (m0.oco && !THUMB_LITE) g = cutCached('oco', [m, y0, hasLogo], g, () => ocoGeo(g, m, y0));
+    if (m0.oco && !m0.threadReceiver && !THUMB_LITE) g = cutCached('oco', [m, y0, hasLogo], g, () => ocoGeo(g, m, y0));
+    if (m0.threadReceiver && !THUMB_LITE) g = cutCached('threadReceiver', [m, y0], g, () => {
+      const height = Math.min(m.h - 0.8, m.threadReceiver.h - m.threadPhase + 0.3);
+      const cut = femaleThreadCutter({ ...m, femaleThread: m.threadReceiver }, y0, height);
+      const [outer, inner] = cutHole(g, cut); cut.dispose();
+      return outer !== g ? mergeLoose([outer, inner]) : g;
+    });
     if (m0.ocoTopo && !THUMB_LITE && L[i + 1]?.m.kind === 'gargalo') g = ocoTopoGeo(g, m, y0, L[i + 1].m, thickBase(m.own ? m.finish : S.finish, m0) ? Math.max(S.wall, m0.fundo ?? 6) : S.wall);
     if (m0.wandMouth && !THUMB_LITE) g = cutCached('wandMouth', [m, y0, S.wall], g, () => {
       const cut = cyl(m0.wandMouth, y0 + m.h - S.wall - 0.5, S.wall + 1.5);
@@ -9475,7 +9483,11 @@ function incomProduct(r) {
         : fe === 'flip' ? M('flipRedondo', { W: 30, D: 30, h: 30, own: true, finish: 'pet', color: '#ffffff' }) // foto do Wall: flip-top transparente
         : fe === 'disctop' ? M('disctop', { name: 'Tampa disc-top', W: r1(Math.min(D, 38)), D: r1(Math.min(D, 38)) })
         : M(fe === 'pump' ? 'pump' : 'spray');
-      ms = [P('Frasco', W, D, H - nh, { vol: true, ...o, _t: [0, (H - nh) / H] }), NECK('24/410', { h: nh }), ...[].concat(fc)]; break; }
+      ms = [P('Frasco', W, D, H - nh, { vol: true, ...o, _t: [0, (H - nh) / H] }), NECK('24/410', { h: nh }), ...[].concat(fc)];
+      // P64–74: fechamento 24-410; mesmo passo/fase no gargalo e na saia receptora.
+      // Folga radial 0,16 mm de representação, sem desenho industrial do alojamento.
+      { const n = ms[1]; ms[2].threadReceiver = { W: n.W, h: n.h, pitch: n.pitch, turns: n.turns, threadD: n.threadD, ringH: n.ringH }; }
+      break; }
     case 'frn': case 'frnt': case 'frnr': case 'frnflat': {
       const o = r.t === 'frnt' ? { taper: 88 } : {}, [f] = /Charlotte/.test(r.n) ? [0.32] : r.n === 'Olympea' ? [0.27] : incomFrac(pr, [0.66]); // Charlotte e Olympea: em pé sobre a tampa (fotos)
       // Charlotte (divisão abaixo da metade no desenho): fica em pé sobre a tampa, corpo em cima. Na foto é uma
