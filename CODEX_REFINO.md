@@ -166,9 +166,13 @@ Pendências conhecidas (precisam de dado ou de decisão; não invente):
 
 **Em andamento** (quem está mexendo em quê agora; apague quando terminar):
 
+- Codex: continuar inserto roscado independente da tampa externa/haste em líquidos labiais e máscaras; depois demais fechamentos roscados, variantes, Guggen e PDF.
+
 - Codex: PDF suspenso por novos achados da dona. Corrigir fecho frontal/espelho das paletas em `compactParts`; roscas externas e internas em todos os fechamentos documentados; variantes de tampas; conferir fundo externo plano/cavidade U do Guggen. Inventários extraídos do catálogo em andamento. Não alterar largura estimada nem mecanismos ocultos como se fossem cotados.
 
 **Registro** (o mais novo em cima):
+
+- 2026-11-17, Codex, `2026-11-17.cdx19`: aba frontal das paletas desce mais (rebaixo de 3,2 mm em vez de 1,6), mantendo d=1 mm; cantos inferiores desenhados com curvas no contorno frontal, substituindo o microchanfro que ainda parecia quadrado. Lingueta receptora com 1/3 da largura anterior e seção mais espessa (0,7 × 1,1 mm), por pedido da dona. Oito montagens abertas/fechadas sem posições/normais inválidas, espelhos contidos e amostras do dente livres em 0/15/45/90 graus; folgas/raios internos estimados, não cotas de fabricação. `tools/conferencia/validacao-cdx19.json`, evidências `_ref/incom/validacao-cdx19/`. Seguem roscas/inserto/variantes/Guggen e PDF.
 
 - 2026-11-17, Codex, `2026-11-17.cdx18`: Big 4/9 com cantos e curvatura dos lados ajustados separadamente ao desenho da dona (n=20, planBow=0,035); comparação sobreposta com erro RMS aproximado 0,14 mm no raster, não tolerância industrial. W/D/H fechados preservados. Paletas com aba plana/vertical, cantos arredondados, cavidade frontal baixa (1,6 mm) da largura da aba; largura proporcional às fotos (Flat 42%/Big 29%), lingueta receptora maior e perto do alto. Espelho das Flat até a parte inferior, retirando faixa sem espelho por pedido explícito da dona. Flat Trio Retangular com dobradiça em 94% da largura, pela nova foto; demais eixos preservados. Oito paletas conferidas abertas/fechadas: posições/normais finitas, espelhos contidos, amostras do dente livres em 0/15/45/90 graus, cotas dentro de 0,1 mm; 12.960 seções sem planBow iguais à fórmula anterior. `tools/conferencia/validacao-cdx18.json`, imagens `_ref/incom/validacao-cdx18/`. Site da dona ainda mostrava modelo salvo antigo, com aviso Atualizar, apesar de app cdx17. Demais roscas/variantes/Guggen/PDF pendentes.
 

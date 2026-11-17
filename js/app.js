@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-17.cdx18';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-17.cdx19';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -677,7 +677,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-17.cdx18';
+const BUILD = '2026-11-17.cdx19';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -6358,20 +6358,25 @@ function compactParts(product, L, S0) {
           socket = arcSlab(inner - 0.6, inner + 0.23, (tw + 0.3) / R, 0.65); socket.translate(cx, yB + 0.05, cz);
         } else {
           // Aba das paletas plana; demais fechos mantêm a ligação inclinada à parede.
-          const top = y0 + Math.min(2.2, m.h * 0.25), sh = new THREE.Shape(), points = m.snapFlat ? [
-            [inner, top], [inner + 0.65, top], [inner + 0.65, yB], [inner, yB]] : [
-            [R - 0.25, top], [R - OCO.wall - 0.7, top], [inner, yB], [inner + 0.65, yB], [R - 0.25, y0 + 0.15]];
-          points.forEach(([z, y], j) => j ? sh.lineTo(-z, y) : sh.moveTo(-z, y)); sh.closePath();
-          const edge = m.snapRound || 0, stemDepth = tw - 2 * edge;
-          const stem = new THREE.ExtrudeGeometry(sh, { depth: stemDepth, bevelEnabled: edge > 0, bevelSize: edge, bevelThickness: edge, bevelSegments: 4 }); stem.deleteAttribute('uv');
-          stem.translate(0, 0, -stemDepth / 2); stem.rotateY(Math.PI / 2);
-          add(stem, objs[0].material, idx, 'lingua_fecho', cx, 0, cz);
+          const top = y0 + Math.min(2.2, m.h * 0.25);
           if (m.snapFlat) {
-            // Foto frontal/lateral: lâmina plana, sem curvar ou inclinar; ligação superior à moldura.
+            // Foto ampliada: contorno frontal com dois cantos inferiores arredondados, não só chanfro na espessura.
+            const sh = new THREE.Shape(), half = tw / 2, rc = Math.min(1.2, (top - yB) * 0.4, tw * 0.07);
+            sh.moveTo(-half, top); sh.lineTo(half, top); sh.lineTo(half, yB + rc);
+            sh.quadraticCurveTo(half, yB, half - rc, yB); sh.lineTo(-half + rc, yB);
+            sh.quadraticCurveTo(-half, yB, -half, yB + rc); sh.closePath();
+            const stem = new THREE.ExtrudeGeometry(sh, { depth: 0.65, bevelEnabled: false, curveSegments: 16 }); stem.deleteAttribute('uv');
+            add(stem, objs[0].material, idx, 'lingua_fecho', cx, 0, cz + inner);
             const reach = R - 0.25 - inner;
             add(new THREE.BoxGeometry(tw, 0.65, reach), objs[0].material, idx, 'raiz_fecho', cx, top - 0.325, cz + inner + reach / 2);
+          } else {
+            const sh = new THREE.Shape(), points = [[R - 0.25, top], [R - OCO.wall - 0.7, top], [inner, yB], [inner + 0.65, yB], [R - 0.25, y0 + 0.15]];
+            points.forEach(([z, y], j) => j ? sh.lineTo(-z, y) : sh.moveTo(-z, y)); sh.closePath();
+            const stem = new THREE.ExtrudeGeometry(sh, { depth: tw, bevelEnabled: false }); stem.deleteAttribute('uv');
+            stem.translate(0, 0, -tw / 2); stem.rotateY(Math.PI / 2);
+            add(stem, objs[0].material, idx, 'lingua_fecho', cx, 0, cz);
           }
-          tooth = new THREE.BoxGeometry(tw, 0.35, 0.53).translate(cx, yB + 0.375, cz + inner - 0.185);
+          tooth = new THREE.BoxGeometry(m.snapFlat ? tw * 0.65 : tw, 0.35, 0.53).translate(cx, yB + 0.375, cz + inner - 0.185);
           socket = new THREE.BoxGeometry(tw + 0.3, 0.65, 0.83).translate(cx, yB + 0.375, cz + inner - 0.185);
           const pal = !!base.m.fechoRebaixo, rear = inner - (pal ? 0.6 : 0.15), depth = R + 1 - rear,
             bottom = pal ? base.y0 + base.m.h - a.h : yB - 0.05,
@@ -6392,8 +6397,8 @@ function compactParts(product, L, S0) {
         if (!curve && base.m.fechoRebaixo) {
           // Ampliação enviada pela dona: lingueta horizontal na parte superior do rebaixo frontal de todas as paletas.
           // Altura/projeção estimadas na foto; permanece abaixo da borda, ligada à parede interna.
-          const h = 0.5, depth = 0.9, z = inner - 0.6;
-          add(new RoundedBoxGeometry(tw * 0.65, h, depth, 2, 0.1), bObjs[0].material,
+          const h = 0.7, depth = 1.1, z = inner - 0.6;
+          add(new RoundedBoxGeometry(tw * (0.65 / 3), h, depth, 2, 0.1), bObjs[0].material,
             base.idx, 'lingueta_rebaixo', cx, base.y0 + base.m.h - 0.4, cz + z + 0.15);
         }
       }
@@ -9552,8 +9557,8 @@ function incomProduct(r) {
       if (t && b) { b.rebaixo = { inset: /^Flat/.test(r.n) ? 4 : 3.2, h: 0.6 }; b.fechoRebaixo = true;
         // Pedido da dona: abertura frontal acompanha a aba, sem sobra lateral visível.
         // Fotos da dona: aba larga e reta; abertura baixa da mesma largura. Dimensões internas estimadas.
-        t.snapRound = 0.3; t.snapFlat = true; t.snapWidth = r1(W * (/^Flat/.test(r.n) ? 0.42 : 0.29));
-        Object.assign(b.dedo, { w: r1(t.snapWidth + 0.2), h: 1.6, d: 1 });
+        t.snapFlat = true; t.snapWidth = r1(W * (/^Flat/.test(r.n) ? 0.42 : 0.29));
+        Object.assign(b.dedo, { w: r1(t.snapWidth + 0.2), h: 3.2, d: 1 });
         if (/^Big (4|9)$/.test(r.n)) { delete b.rebaixo; b.canal = { inset: 3.2, w: 0.6, h: 0.6 }; }
         // Págs.28–33: encaixes estreitos junto ao eixo; proporções estimadas na foto
         // (largura ~2,3% do estojo), preservando a faixa sem espelho.
