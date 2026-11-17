@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-17.cap1';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-17.sens3';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -578,7 +578,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-17.cap1';
+const BUILD = '2026-11-17.sens3';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -2209,16 +2209,25 @@ function slabGeo(m0, y0, { inset = 0, lift = 0, lo = false } = {}) {
 function mergeLoose(list) {
   return mergeGeometries(list.filter(Boolean).map(g => { const y = g.index ? g.toNonIndexed() : g; for (const k in y.attributes) if (k !== 'position' && k !== 'normal') y.deleteAttribute(k); if (!y.attributes.normal) y.computeVertexNormals(); return y; }));
 }
-// Tampa Sens (Incom): saia estreita embaixo que abre em degrau até o corpo cilíndrico; o topo é um disco inclinado
-// (abre apertando a borda alta) com a aba de apoio na borda baixa — como na foto do catálogo
+// Tampa Sens (Incom): saia estreita embaixo que abre em degrau até o corpo cilíndrico; em cima um disco inclinado
+// (baixo de um lado) dentro da borda. No lado baixo a borda sobe numa "volta" (parede curva) que deixa o espaço para
+// o dedo apertar; no lado alto do disco fica o furo de saída do produto — como nas fotos
 function sensCapGeo(m0, y0, opts) {
   if (opts.inset) return moduleGeo({ ...m0, sens: false }, y0, opts);
-  const W = m0.W, D = m0.D ?? W, hb = m0.h * 0.78, hs = hb * 0.36, hf = hb * 0.14;
+  const W = m0.W, D = m0.D ?? W, hb = m0.h * 0.78, hs = hb * 0.36, hf = hb * 0.14, R = W / 2, ht = m0.h - hb;
   const body = moduleGeo({ ...m0, sens: false, h: hb, rTop: 0.4, rBot: 0.6, W0: W, smoothProf: false,
     prof: [[0, 0.74, 0.74, 2, 0, 0], [hs / hb, 0.78, 0.78, 2, 0, 0], [(hs + hf) / hb, 1, 1, 2, 0, 0], [1, 1, 1, 2, 0, 0]] }, y0, opts); // foto: saia ~75% do corpo, abrindo um pouco, e degrau em cone
-  const lid = moduleGeo({ ...BASE, kind: 'giro', W: W * 0.96, D: D * 0.96, h: m0.h - hb + 0.4, rBot: 0, rTop: 0.7, tilt: [0.5, 1] }, y0 + hb - 0.4, opts);
-  const tab = new THREE.BoxGeometry(2.2, 1.6, W * 0.3); tab.translate(-W * 0.48 + 1.1, y0 + hb + (m0.h - hb) * 0.5 + 0.5, 0); // aba onde o dedo aperta
-  return mergeLoose([body, lid, tab]);
+  let lid = moduleGeo({ ...BASE, kind: 'giro', W: W * 0.9, D: D * 0.9, h: ht * 0.75 + 0.4, rBot: 0, rTop: 0.6, tilt: [0.45, 1] }, y0 + hb - 0.4, opts);
+  // furo de saída (fenda) no lado alto do disco
+  if (!opts.lo && lid) { const slot = new THREE.BoxGeometry(W * 0.17, ht * 3, W * 0.09); slot.translate(R * 0.55, y0 + hb + ht * 0.6, 0);
+    const [o, inn] = cutHole(lid, slot); if (o !== lid) lid = mergeLoose([o, inn]); }
+  // a volta: trecho de parede curva da borda (~100°) no lado baixo, subindo até o alto da tampa
+  const t = Math.max(0.9, W * 0.035), a0 = Math.PI - 0.87, a1 = Math.PI + 0.87, sh = new THREE.Shape();
+  sh.absarc(0, 0, R, a0, a1, false); sh.absarc(0, 0, R - t, a1, a0, true); sh.closePath();
+  const volta = new THREE.ExtrudeGeometry(sh, { depth: ht + 0.4, bevelEnabled: false, curveSegments: opts.lo ? 8 : 32 });
+  volta.rotateX(-Math.PI / 2); volta.translate(0, y0 + hb - 0.4, 0);
+  { const p = volta.attributes.position; for (let i = 0; i < p.count; i++) { const y = p.getY(i); if (y > y0 + hb) { const ang = Math.abs(Math.atan2(p.getZ(i), -p.getX(i))); p.setY(i, y - (ht + 0.4) * 0.35 * (ang / 0.87) ** 2); } } volta.computeVertexNormals(); } // desce nas pontas (curva)
+  return mergeLoose([body, lid, volta]);
 }
 function moduleGeo(m0, y0, opts = {}) {
   if (m0.kind === 'mesh') return opts.inset ? null : importedMeshGeo(m0, y0);
