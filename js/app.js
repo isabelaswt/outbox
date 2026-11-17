@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-17.cmp8';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-17.cmp9';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -590,7 +590,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-17.cmp8';
+const BUILD = '2026-11-17.cmp9';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -2248,8 +2248,9 @@ function sensCapGeo(m0, y0, opts) {
     const aberto = !!(S?.aberto);
     let disc = moduleGeo({ ...BASE, kind: 'giro', W: 2 * (R - wall - 0.25), D: 2 * (R - wall - 0.25), h: hd, rBot: 0.2, rTop: 0.5 }, yT - dep, opts);
     if (aberto && disc) {
-      const hole = new THREE.CylinderGeometry(Math.max(1.1, W * 0.045), Math.max(1.1, W * 0.045), hd + 4, 32); hole.translate(0, yT - dep + hd / 2, -R * 0.55); // furo no lado que levanta (oposto ao U)
-      { const [o, inn] = cutHole(disc, hole); if (o !== disc) disc = mergeLoose([o, inn]); }
+      // o disco é liso (sem furo em cima): a saída é um furinho no fundo do encaixe, embaixo do lado que levanta
+      const hole = new THREE.CylinderGeometry(Math.max(1.1, W * 0.045), Math.max(1.1, W * 0.045), 4, 32); hole.translate(0, yT - dep - 2 + 0.05, -R * 0.55);
+      { const [o, inn] = cutHole(cap, hole); if (o !== cap) cap = mergeLoose([o, inn]); }
       const py = yT - dep + hd / 2, pz = R * 0.15; disc.translate(0, -py, -pz); disc.rotateX(0.27); disc.translate(0, py, pz); // ~15°: o dedo aperta no U e o lado oposto levanta
     }
     cap = mergeLoose([cap, disc]);
@@ -8766,7 +8767,7 @@ function incomProduct(r) {
       // tampa reta (foto do Amsterdam): alta, ~31% da altura do frasco, na largura dele, assentada no ombro (o app já a apoia no
       // gargalo e a saia desce até o corpo; descer à força a enterrava no frasco e a rosca aparecia por cima)
       const fc = fe === 'tampa' ? M('tampaTambor', { W: r1(W * 0.98), D: r1(W * 0.98), h: r2((H - nh) * 0.31 - 1.6) })
-        : fe === 'sens' ? M('tampaSens', { W: r1(W * 0.81), D: r1(W * 0.81), h: r1(W * 0.81 * 0.58) }) // foto do New York: larga (81% do frasco)
+        : fe === 'sens' ? M('tampaSens', { W: r1(W * 0.727), D: r1(W * 0.727), h: r1(W * 0.424) }) // foto do New York 250 de frente: 72,7% da largura do frasco e altura de 42,4% dela
         : fe === 'bola' ? (bl => [M('reto', { name: 'Colar da tampa bola', W: r1(Math.max(bl * 0.62, 27.5)), D: r1(Math.max(bl * 0.62, 27.5)), h: r1(nh + 0.8), rTop: 0.6, rBot: 0.3 }), // ícone Incom: a bola fica sobre um colar que veste o gargalo
           M('bola', { name: 'Tampa bola', W: bl, D: bl, h: bl })])(r1(Math.min(W * 0.62, 36)))
         : fe === 'flip' ? M('flipRedondo', { W: 30, D: 30, h: 30, own: true, finish: 'pet', color: '#ffffff' }) // foto do Wall: flip-top transparente
