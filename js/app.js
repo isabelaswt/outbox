@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-17.cmp12';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-17.cdx1';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -590,7 +590,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-17.cmp12';
+const BUILD = '2026-11-17.cdx1';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -7733,7 +7733,7 @@ function renderBodyLiquid(ed, m) {
   }
 }
 // Trocar o módulo selecionado por outro da mesma categoria, vendo as opções.
-const typeOf = m => m.type || Object.keys(LIB).find(k => LIB[k].name === m.name);
+const typeOf = m => m.partKey || m.type || Object.keys(LIB).find(k => LIB[k].name === m.name);
 function categoryOf(m) {
   const t = typeOf(m), c = CATS.find(([, keys]) => keys.includes(t));
   if (c) return c;
@@ -7802,8 +7802,8 @@ function renderSwap(ed, m) {
   const [label, keys] = categoryOf(m), cur = typeOf(m);
   // Tampa e válvula ocupam o mesmo lugar: a troca mostra as duas famílias.
   const closure = label === 'Tampa' || label === 'Válvula', skey = sel + ':' + (closure ? 'fecho' : label);
-  const groups = closure ? CATS.filter(([l]) => l === 'Tampa' || l === 'Válvula').map(([l, ks]) => [l === 'Tampa' ? 'Tampas' : 'Válvulas', ks]) : [[null, keys]];
-  if (closure) groups.splice(1, 0, ['Incom · tampas de perfume (medidas reais)', INCOM_CAPS.map(r => r.k)]); // fornecedor: tamanho do catálogo, sem reescalar
+  const groups = (closure ? CATS.filter(([l]) => l === 'Tampa' || l === 'Válvula') : [[label, keys]])
+    .flatMap(([l, ks]) => partOriginGroups(l, ks));
   if (closure && label === 'Válvula') groups.reverse(); // a família da peça clicada vem primeiro
   const box = document.createElement('details'); box.open = store.get('shape.swapOpen2', true) !== false; // aberto: clicou na peça, já pode trocar a forma (fecha se a pessoa fechar)
   box.addEventListener('toggle', () => store.set('shape.swapOpen2', box.open));
@@ -8093,9 +8093,16 @@ const CATS = [
   ['Válvula', ['pump', 'pumpFrisos', 'locao', 'espuma', 'espumadora', 'pumpDosadora', 'spray', 'sprayClassico', 'contaGotas', 'tampaGloss', 'pushPull', 'pushSport', 'bicoDosador', 'bicoAplicador', 'bicoConico', 'lamina', 'pumpOnda', 'gatilho', 'pumpBisnaga']],
   ['Peça de encaixe', ['gargalo', 'colar', 'barril', 'flare', 'anel', 'tigela', 'bola', 'sextavado', 'canelado']],
 ];
+function partOriginGroups(label, keys) {
+  return ['Incom', 'Outbox / genérico'].map(origin => [
+    `${origin} · ${label}`, keys.filter(k => (LIB[k].forn === 'Incom' ? 'Incom' : 'Outbox / genérico') === origin)
+  ]).filter(([, ks]) => ks.length);
+}
+function renderAddParts() {
+$('#addRows').replaceChildren();
 CATS.forEach(([label, keys]) => {
   const row = document.createElement('div'); row.className = 'row';
-  row.innerHTML = `<select>${keys.filter(k => k !== 'gargalo').map(k => `<option value="${k}">${LIB[k].name}</option>`).join('')}</select>
+  row.innerHTML = `<select>${partOriginGroups(label, keys.filter(k => k !== 'gargalo')).map(([title, ks]) => `<optgroup label="${title}">${ks.map(k => `<option value="${k}">${LIB[k].name}</option>`).join('')}</optgroup>`).join('')}</select>
     <button class="btn pri sm" style="flex:0;min-width:118px">+ ${label}</button>`;
   row.querySelector('button').onclick = () => {
     const at = sel + unitLen(sel);
@@ -8104,6 +8111,8 @@ CATS.forEach(([label, keys]) => {
   };
   $('#addRows').appendChild(row);
 });
+}
+renderAddParts();
 $('#stlGalBtn').onclick = () => $('#importStl').click(); // único botão de subir STL (ao lado de Salvar)
 // Põe um STL no produto como peça (logo acima da selecionada). Low-poly já entra com a
 // malha melhorada (dá para desligar em "Melhorar malha").
@@ -8995,6 +9004,21 @@ INCOM_CAPS.forEach(r => { const c = LIB[r.k]; if (!c || /W/.test(r.est || '')) r
     if (!ch) return;
   } catch (e) { console.warn('medida da tampa', r.n, e); return; } });
 INCOM_CAPS.forEach(r => { PRESETS[`Incom ${r.n} (tampa de perfume)`] = incomPerfume(r); });
+// Peças das montagens do catálogo: preservam a geometria atual, ainda sujeita ao refino por foto.
+INCOM_PRODUCTS.forEach(r => {
+  const p = PRESETS[`Incom ${r.n} (${r.c.toLowerCase()})`];
+  p.modules.forEach((m, i) => {
+    const label = m.kind === 'spray' ? 'Válvula' : m.vol ? 'Corpo'
+      : /^(Tampa|Sobretampa)/.test(m.name) ? 'Tampa' : null;
+    if (!label) return;
+    const k = `${r.k}_peca_${i}`, piece = structuredClone(m);
+    ['uid', 'fW', 'fD', 'fH', 'liq', 'liqLevel', 'liqColor'].forEach(key => delete piece[key]);
+    LIB[k] = { ...piece, partKey: k, name: `Incom ${r.n} · ${m.name}`, forn: 'Incom', ref: r.n.toUpperCase(), fpg: r.pg, liq: false };
+    CATS.find(([l]) => l === label)[1].push(k);
+  });
+});
+CATS.find(([l]) => l === 'Tampa')[1].push(...INCOM_CAPS.map(r => r.k));
+renderAddParts();
 // Modelo do catálogo aberto (ou restaurado do autosave) de uma versão anterior guarda as peças antigas:
 // carimba os modelos Incom e, ao abrir um antigo, oferece trocar pelo atual
 Object.values(PRESETS).forEach(p => { if (p.forn === 'Incom') p.catVer = BUILD; });
