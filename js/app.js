@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-17.cl3';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-17.cl4';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -677,7 +677,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-17.cl3';
+const BUILD = '2026-11-17.cl4';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -2005,7 +2005,7 @@ function sprayGeo(m, y0, { lo = false } = {}) {
   } else if (m.sprayType === 'gotas') {
     // Conta-gotas: bulbo de borracha com topo em domo. De botão (Flacon Botão, Julie): colar alto e liso e um
     // botão cilíndrico de topo reto saindo dele, como na foto do catálogo
-    if (m.botao) head.push(ring(m.actW, m.actH, top - 0.5, { rBot: 0.4, rTop: Math.min(1.4, m.actW * 0.14), groove: m.actH * 0.3, grooveD: 0.2 }));
+    if (m.botao) head.push(ring(m.actW, m.actH, top - 0.5, { rBot: 0.4, rTop: Math.min(2, m.actW * 0.16) }));
     else head.push(ring(m.actW, m.actH, top - 0.5, { rBot: 1.5, rTop: m.actW / 2, bulge: -6, bulgePos: 30 }));
   } else if (m.sprayType === 'bico') {
     // Bico dosador alto: virola frisada, ombro cônico, corpo superior frisado e ponteira longa.
@@ -9520,9 +9520,14 @@ function incomProduct(r) {
       // frasco, colar e bulbo/botão medidos no desenho: o frasco acaba onde a largura cai abaixo de 90%; o colar
       // vai até a próxima queda forte; o resto é o bulbo (proporção fixa deixava frasco curto e bulbo enorme)
       const Pp = (pr?.p || []).map(q => [q[0], (q[1] + q[2]) / 2 / gmax]), wAt = (a, z) => { const v = Pp.filter(q => q[0] >= a && q[0] <= z).map(q => q[1]).sort((x, y) => x - y); return v.length ? v[v.length >> 1] : 0; };
-      const wB = wAt(0.15, 0.45) || 1, f = (Pp.find(q => q[0] > 0.3 && q[1] < wB - 0.012) || [0.56])[0], cw = wAt(f + 0.03, f + 0.12) || 0.62; // fim do frasco: 1ª mudança de largura (o colar dos Flacon 15 tem quase a largura do frasco)
-      const tb = (Pp.find(q => q[0] > f + 0.05 && q[1] < cw * 0.85) || [f + (1 - f) * 0.45])[0], bw = wAt(tb + 0.02, 0.95) || 0.42;
-      ms = [P('Frasco', W, D, H * f, { vol: true, rBot: 2, rTop: W * 0.18, _t: [0, f] }),
+      const wB = wAt(0.15, 0.45) || 1; let f = (Pp.find(q => q[0] > 0.3 && q[1] < wB - 0.012) || [0.56])[0], cw = wAt(f + 0.03, f + 0.12) || 0.62; // fim do frasco: 1ª mudança de largura (o colar dos Flacon 15 tem quase a largura do frasco)
+      let tb = (Pp.find(q => q[0] > f + 0.05 && q[1] < cw * 0.85) || [f + (1 - f) * 0.45])[0], bw = wAt(tb + 0.02, 0.95) || 0.42;
+      // Fotos do site (fundo cinza), px: [frasco, tampa, botão] de altura e larguras tampa/botão ÷ frasco.
+      // O desenho dava tampa estreita e frasco curto; a foto manda nas proporções (medidas totais seguem W/H).
+      const fb = { 'Flacon 15 Botão': [300, 205, 42, 1, 0.72, 1.5], 'Flacon 30 Botão': [305, 195, 42, 0.76, 0.54, W * 0.18] }[r.n];
+      let rT = W * 0.18;
+      if (fb) { const t = fb[0] + fb[1] + fb[2]; f = fb[0] / t; tb = (fb[0] + fb[1]) / t; cw = fb[3]; bw = fb[4]; rT = fb[5]; }
+      ms = [P('Frasco', W, D, H * f, { vol: true, rBot: 2, rTop: rT, _t: [0, f] }),
         M('contaGotas', { ...(b ? { botao: true, ridges: 0 } : {}), name: b ? 'Conta-gotas de botão' : 'Conta-gotas', W: r1(W * cw), D: r1(W * cw), h: r2(H * (tb - f)), actW: r1(W * bw), actH: r2(H * (1 - tb) + 0.5) })]; break; } // +0,5: o conta-gotas encaixa 0,5 mm no gargalo
     case 'fr': case 'frr': case 'frsq': case 'frsqr': case 'frt': case 'frsh': case 'frap': case 'frflat': {
       const o = { fr: { rBot: 3, rTop: W * 0.15 }, frr: { rBot: W * 0.3, rTop: W * 0.15 }, frsq: { ...sq(0.06), rTop: 3 }, frsqr: { ...sq(0.2), rTop: 4 },
@@ -9620,8 +9625,8 @@ function incomProduct(r) {
           ? M('tampaGloss', { name: 'Inserto roscado com haste e aplicador', W: insertW, D: insertW, h: r1(nh + 1.2),
               wandInsert: { W: nw, h: nh, pitch: 1.1, turns: 2.5, threadD: 0.45, ringH: 0 }, pescD: 2.4, tipL: 11, tipW: 5.5, tipColor: '#f4f1ec' })
           // Foto aberta: ponteira branca estreita de ponta arredondada saindo da boca do gargalo.
-          : P('Ponteira aplicadora', r1(nw * 0.7), null, 9, { rBot: 0, rTop: r1(nw * 0.33), gap: -2, own: true, color: '#f4f1ec' }),
-          cap]; break; }
+          : P('Ponteira aplicadora', r1(nw * 0.66), null, 13, { rBot: 0, rTop: r1(nw * 0.33), gap: -3, own: true, color: '#f4f1ec' }),
+          haste ? cap : { ...cap, gap: -10, capa: true }]; break; } // a tampa veste gargalo e ponteira e assenta no ombro
       const s0 = r.t === 'glosssq' ? sq(0.08) : {}, [f] = SPLIT_FIX[r.pg] ? [SPLIT_FIX[r.pg]] : incomFrac(pr, [0.52]), capH = H * (1 - f), masc = r.c === 'Máscaras';
       // gloss: frasco transparente (PET G/SAN, como no catálogo) com o gloss colorido dentro; máscara: frasco opaco
       const gl = masc ? {} : { own: true, finish: 'pet', color: '#ffffff', fundoGrosso: true, fundo: r1(Math.max(3, H * 0.05)), fundoR: r1(Math.min(W, D) / 2), // por dentro o fundo é uma concha (meio redondo)
