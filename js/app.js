@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-17.cl30';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-17.cl31';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -428,7 +428,7 @@ const INCOM_VALV = {
   // lisa, topo plano com o disco e a fenda de saída atrás; flip top transparente com a linha da aba a ~1/3 do topo.
   // Larguras como as demais tampas 24/410 da lista (sem cota própria); alturas pela proporção do ícone.
   incomDiscTop: { ...LIB.disctop, name: 'Incom · Disc top', W: 28, D: 28, h: 33, taper: 100, rBot: 0.5, rTop: 1.2, discD: 24, discDip: 1.2, groove: 0, notch: false, aba: false },
-  incomFlipTop: { ...LIB.flipRedondo, name: 'Incom · Flip top', W: 30, D: 30, h: 30, own: true, finish: 'pet', color: '#ffffff', notch: false, groove: 4 }, // foto: sem dente na frente; linha da aba perto do topo
+  incomFlipTop: { ...LIB.flipRedondo, name: 'Incom · Flip top', W: 30, D: 30, h: 30, own: true, finish: 'pet', color: '#ffffff', groove: 4 }, // dente de abrir na frente (dona); linha da aba perto do topo
   incomCapaMist: { ...LIB.sobretampaFineMist, name: 'Incom · Sobretampa fine mist / dosadora / espumadora', h: 43, gap: 0 }, // desce até o ombro e cobre a saia (dona: a base passava da tampa); 43 mm cobre o atuador do Incom · Spray
   incomCapaMistBig: { ...LIB.sobretampaFineMistBig, name: 'Incom · Sobretampa fine mist big' },
 };
@@ -707,7 +707,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-17.cl30';
+const BUILD = '2026-11-17.cl31';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
