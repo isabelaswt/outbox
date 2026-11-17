@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-17.cl8';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-17.cl9';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -677,7 +677,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-17.cl8';
+const BUILD = '2026-11-17.cl9';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -2548,23 +2548,23 @@ const BRISTLE = (() => { const r = [[0, 0.85], [0.1, 0.85], [0.18, 0.6], [0.4, 0
   for (let i = 0; i < 9; i++) { const u = i / 8; r.push([0.48 + u * 0.44, (i % 2 ? 0.58 : 0.74) * (1 - 0.45 * u), 0.3 - 0.08 * u, 0.25 * u, 0]); }
   r.push([0.96, 0.32, 0.2, 0.3, 30], [1, 0.12, 0.1, 0.32, 38]); return r; })();
 const APLIC = {
-  cerdas: { nome: 'Cerdas', color: '#eef2f3', finish: 'pet', c2: '#f6f4f0', f2: 'fosco', s: 5,
+  cerdas: { nome: 'Cerdas', color: '#eef2f3', finish: 'pet', c2: '#f6f4f0', f2: 'fosco', s: 5, base: [[0, 1.25], [0.05, 1.25], [0.055, 1.05], [0.1, 1.05]],
     r: [[0, 1], [0.12, 1], [0.2, 0.85], [0.5, 0.6], [0.72, 0.38], [0.76, 0.34], [0.86, 0.27], [0.94, 0.17], [1, 0.04]] },
-  silicone: { nome: 'Silicone', color: '#eeeae4', finish: 'pet',
+  silicone: { nome: 'Silicone', color: '#eeeae4', finish: 'pet', c3: '#1a1a1a', f3: 'brilho', base: [[0, 1.12], [0.08, 1.12], [0.085, 0.95]],
     r: [[0, 0.95], [0.12, 0.95], [0.2, 0.8], [0.7, 0.76], [0.82, 0.7], [0.9, 0.58], [0.96, 0.38], [1, 0.08]] },
-  chanfrada: { nome: 'Flocada Chanfrada', color: '#1a1a1a', finish: 'brilho', c2: '#f4f1ec', f2: 'fosco', s: 4,
+  chanfrada: { nome: 'Flocada Chanfrada', color: '#1a1a1a', finish: 'brilho', c2: '#f4f1ec', f2: 'fosco', s: 4, base: [[0, 1.15], [0.06, 1.15], [0.065, 0.95]],
     r: [[0, 0.95], [0.1, 0.95], [0.16, 0.72], [0.74, 0.72], [0.78, 0.8, 0.8, 0, 12], [0.9, 0.8, 0.8, 0, 28], [0.96, 0.7, 0.72, 0, 28], [1, 0.4, 0.42, 0, 28]] },
-  cushion: { nome: 'Flocada Cushion', color: '#e6edf0', finish: 'pet', c2: '#f4f1ec', f2: 'fosco', s: 3,
+  cushion: { nome: 'Flocada Cushion', color: '#e6edf0', finish: 'pet', c2: '#f4f1ec', f2: 'fosco', s: 3, base: [[0, 1.05], [0.05, 1.05], [0.055, 0.62]],
     r: [[0, 0.62], [0.3, 0.62], [0.36, 0.62], [0.4, 0.9], [0.52, 1.08], [0.66, 1.12], [0.8, 1.06], [0.9, 0.86], [0.96, 0.55], [1, 0.15]] },
-  pinpoint: { nome: 'Pin Point', color: '#eef2f3', finish: 'pet', c2: '#f6f4f0', f2: 'fosco', s: 4,
+  pinpoint: { nome: 'Pin Point', color: '#eef2f3', finish: 'pet', c2: '#f6f4f0', f2: 'fosco', s: 4, base: [[0, 1.3], [0.05, 1.3], [0.055, 1.05], [0.1, 1.05], [0.105, 0.85]],
     r: [[0, 0.85], [0.1, 0.85], [0.18, 0.6], [0.5, 0.5], [0.54, 0.5], [0.74, 0.43], [0.86, 0.32], [0.95, 0.16], [1, 0.03]] },
-  flatpad: { nome: 'Flat Pad', color: '#1a1a1a', finish: 'brilho', c2: '#f4f1ec', f2: 'fosco', s: 7,
+  flatpad: { nome: 'Flat Pad', color: '#1a1a1a', finish: 'brilho', c2: '#f4f1ec', f2: 'fosco', s: 7, c3: '#f4f1ec', f3: 'fosco', base: [[0, 1.22], [0.05, 1.22], [0.055, 0.85]],
     r: [[0, 0.8], [0.1, 0.8], [0.18, 0.55], [0.42, 0.5, 0.5, 0.05], [0.55, 0.48, 0.48, 0.25, -14], [0.64, 0.48, 0.48, 0.5, -28],
       [0.68, 0.55, 0.55, 0.62, -38], [0.7, 1.4, 1.36, 0.7, -38], [0.75, 1.6, 1.56, 0.74, -38], [0.81, 1.6, 1.56, 0.78, -38], [0.85, 1.35, 1.32, 0.8, -38]] }, // pad ~13 mm (foto de uso)
-  metal: { nome: 'Metal Effect', color: '#dfe2e5', finish: 'metal',
+  metal: { nome: 'Metal Effect', color: '#dfe2e5', finish: 'metal', c3: '#f4f1ec', f3: 'fosco', base: [[0, 1.22], [0.05, 1.22], [0.055, 0.85]],
     r: [[0, 0.85], [0.1, 0.85], [0.18, 0.62], [0.5, 0.55, 0.55, 0.05], [0.68, 0.62, 0.6, 0.18, -12], [0.82, 0.74, 0.62, 0.38, -28],
       [0.92, 0.72, 0.56, 0.54, -38], [0.97, 0.52, 0.42, 0.62, -42], [1, 0.16, 0.14, 0.66, -44]] },
-  bristles: { nome: 'Bristles', color: '#1a1a1a', finish: 'fosco', sharp: true, r: BRISTLE }, // dentes: interpolação reta
+  bristles: { nome: 'Bristles', color: '#1a1a1a', finish: 'fosco', sharp: true, c3: '#f4f1ec', f3: 'fosco', base: [[0, 1.22], [0.05, 1.22], [0.055, 0.85]], r: BRISTLE }, // dentes: interpolação reta
 };
 function aplicRings(m, y0, lo) {
   const t = APLIC[m.aplic] || APLIC.chanfrada, N = lo ? 32 : 128, R = m.W / 2, ox = m.ox || 0, sub = lo ? 2 : t.sharp ? 3 : 8;
@@ -2575,16 +2575,22 @@ function aplicRings(m, y0, lo) {
     rs.push(p1.map((_, c) => t.sharp ? p1[c] + (p2[c] - p1[c]) * v
       : 0.5 * (2 * p1[c] + (p2[c] - p0[c]) * v + (2 * p0[c] - 5 * p1[c] + 4 * p2[c] - p3[c]) * v * v + (3 * p1[c] - p0[c] - 3 * p2[c] + p3[c]) * v ** 3))); }
   rs.push(K.at(-1));
-  const raw = rs.map(([u, rx, rz, cx, tl]) => { rx = Math.max(0, rx); rz = Math.max(0, rz); const c = Math.cos(tl * Math.PI / 180), sn = Math.sin(tl * Math.PI / 180);
+  // Base (fotos do catálogo: degrau/anel/colarinho embaixo de cada aplicador): anéis de quina viva, sem curva;
+  // o aplicador começa onde ela termina. Em c3 quando a base tem outra cor (anel branco, anel preto).
+  const B = (t.base || []).map(([u, r]) => [u, r, r, 0, 0]), ub = B.length ? B.at(-1)[0] : 0;
+  const all = [...B, ...rs.map(([u, ...q]) => [ub + u * (1 - ub), ...q])];
+  const raw = all.map(([u, rx, rz, cx, tl]) => { rx = Math.max(0, rx); rz = Math.max(0, rz); const c = Math.cos(tl * Math.PI / 180), sn = Math.sin(tl * Math.PI / 180);
     return Array.from({ length: N }, (_, i) => { const a = TAU * i / N, px = rx * R * Math.cos(a);
       return [ox + cx * R + px * c, u * m.h + px * sn, rz * R * Math.sin(a)]; }); });
   // a inclinação (pad, chanfro) pode passar da altura: encaixa tudo entre a base e a altura da peça
   let lo0 = Infinity, hi = -Infinity; raw.flat().forEach(q => { lo0 = Math.min(lo0, q[1]); hi = Math.max(hi, q[1]); });
   const k = m.h / ((hi - lo0) || 1); raw.forEach(rg => rg.forEach(q => { q[1] = y0 + (q[1] - lo0) * k; }));
-  return [raw, (t.s || 0) * sub];
+  return [raw, (t.s || 0) * sub + B.length, B.length];
 }
 const aplicGeo = (m, y0, { lo = false } = {}) => loftPts(aplicRings(m, y0, lo)[0]);
-function aplicSplit(m, y0) { const [r, s] = aplicRings(m, y0, false); return [loftPts(r.slice(0, s + 1)), loftPts(r.slice(s))]; }
+function aplicSplit(m, y0) { // [corpo, ponta (2º material), base (3º material)]
+  const t = APLIC[m.aplic] || APLIC.chanfrada, [r, s, nb] = aplicRings(m, y0, false), a = t.c3 ? nb - 1 : 0, e = t.s ? s + 1 : r.length;
+  return [loftPts(r.slice(a, e)), t.s ? loftPts(r.slice(s)) : null, t.c3 ? loftPts(r.slice(0, nb)) : null]; }
 function lipstickPointGeo(m, y0, { lo = false } = {}) {
   // Ella/Squared p88/92: corpo cilíndrico e ponta afilada convexa, sem plano oblíquo.
   // Início/curvatura do afilamento por proporção fotográfica; porção enterrada não é cotada.
@@ -6789,7 +6795,7 @@ function buildInto(product, S, explodeAmt = 0) {
     }
 
     // Gargalo é parte do frasco: sempre a cor e o acabamento do corpo de baixo.
-    const ms = m0.kind === 'gargalo' && L[i - 1]?.m.vol ? L[i - 1].m : m;
+    const ms = m0.kind === 'gargalo' && L[i - 1]?.m.vol && !m0.own ? L[i - 1].m : m; // gargalo com cor própria (Petit: translúcido) não herda o frasco
     const finM = ms.own ? ms.finish : S.finish, colM = ms.own ? ms.color : S.color;
     const firstBody = m0.vol && Math.abs(yl - floor) < 0.01, fundo = Math.max(S.wall, m0.fundo ?? 6);
     // Peça maciça de vidro/acrílico (tampa): espessura de verdade na refração — a
@@ -6857,8 +6863,9 @@ function buildInto(product, S, explodeAmt = 0) {
       let secondGeo = g, m2 = material(m0.mat2Color || '#cfd2d4', m0.mat2Finish || 'metal');
       if (m0.malikaFace && side === 'face') {
         const [border, face] = splitMalikaGeo(g, m, y0); mesh.geometry = border; secondGeo = face; g.dispose();
-      } else if (m0.aplic && APLIC[m0.aplic]?.s) { // aplicador: divisa no anel exato (acompanha a inclinação da ponta)
-        const [base, tip] = aplicSplit(m, y0); mesh.geometry = base; secondGeo = tip; g.dispose();
+      } else if (m0.aplic && APLIC[m0.aplic]) { // aplicador: divisa no anel exato (acompanha a inclinação da ponta)
+        const t = APLIC[m0.aplic], [body, tip, base] = aplicSplit(m, y0); mesh.geometry = body; secondGeo = tip; g.dispose();
+        if (base) { const bm = new THREE.Mesh(base, material(t.c3, t.f3 || 'fosco')); bm.castShadow = bm.receiveShadow = true; bm.userData.idx = idx; bm.name = mesh.name + '_base'; product.add(bm); }
       } else if (side === 'v') {
         const [border, face] = splitGeoV(g, m.ox || 0, y0, m.W, m.h, clamp(m0.mat2Y ?? 8, 1, 40) / 100);
         mesh.geometry = border; secondGeo = face; g.dispose();
@@ -6873,7 +6880,7 @@ function buildInto(product, S, explodeAmt = 0) {
         m2 = splitMat(m2, yc, !!disc || !low, disc);
         mesh.material = splitMat(mesh.material, yc, !disc && low, disc);
       }
-      const sm = new THREE.Mesh(secondGeo, m2); sm.castShadow = true; sm.receiveShadow = true; sm.userData.idx = idx; sm.name = mesh.name + '_mat2'; product.add(sm);
+      if (secondGeo) { const sm = new THREE.Mesh(secondGeo, m2); sm.castShadow = true; sm.receiveShadow = true; sm.userData.idx = idx; sm.name = mesh.name + '_mat2'; product.add(sm); }
     }
     // Apoio: peça de fundo redondo (tigela, bola, esfera) sobre outra encostava só num
     // ponto e parecia solta no ar; um pé cilíndrico na mesma cor assenta no topo plano de baixo.
@@ -9404,7 +9411,7 @@ const QUINTETO = (() => { const c = 0.26, /* bandeja do meio 20,4 mm (Jorba 226A
     [PB, [-e + k, -e], [-e, -e + k], PL, L, B], [PL, [-e, e - k], [-e + k, e], PT, T, L]]; })();
 // Godês dos compactos e paletas: fileiras (quantos em cada) e formato, pelo nome do modelo
 // Tampa com janela (visor) nas fotos do catálogo: Frame M/P, Moon Eco, Moon G Quarteto e os "com Visor"/Quinteto
-const VISOR_RE = /com Visor|Quinteto|^Frame [MP]$|^Moon Eco$|^Moon G Quarteto$/i;
+const VISOR_RE = /com Visor|Quinteto|^Frame [MP]$|^Moon Eco$|^Moon G Quarteto$|^Moon P$/i; // Moon P: visor nas 3 fotos do site
 function godesOf(r) {
   const n = r.n, rect = /Flat|Big|Retangular|^Classic/.test(n) && !/Redondo/.test(n); // Classic: godês retangulares (foto)
   const rows = /Dez/.test(n) ? [5, 5] : /6 \+ 1/.test(n) ? [4, 3] : /Sexteto/.test(n) ? [3, 3] : /Quinteto/.test(n) ? [3, 2]
@@ -9417,6 +9424,9 @@ function godesOf(r) {
   // Classic Quarteto: entre as duas colunas de godês, o espaço do aplicador (cavidade funda, desenho da bandeja)
   // Flat Duo (foto, medida no catálogo): bandeja 1 de 60,4 × 44,4 à esquerda e bandeja 2 menor (~38 × 42) à direita
   if (/^Flat Duo/.test(n)) tr = { ar: 104 / 44.4, mmTw: 104, c: [[[-0.5, 0.5], [-0.5, -0.5], [0.0808, -0.5], [0.0808, 0.5]], [[0.1317, 0.473], [0.1317, -0.473], [0.5, -0.473], [0.5, 0.473]]] };
+  // Classic Duo (foto de cima do site, CLASSIC-DUO-1): godê da esquerda ~53% e o da direita ~38% da bandeja, vão de ~9%,
+  // quase a profundidade toda; bandeja ~58 × 54 mm medida na foto pela largura de 69,1 mm do catálogo.
+  if (/^Classic Duo/.test(n)) tr = { ar: 1.07, mmTw: 58, c: [[[-0.5, 0.5], [-0.5, -0.5], [0.032, -0.5], [0.032, 0.5]], [[0.123, 0.5], [0.123, -0.5], [0.5, -0.5], [0.5, 0.5]]] };
   if (tr && /Classic Quarteto/.test(n)) tr = { ...tr, slot: [[-0.1, 0.5], [-0.1, -0.5], [0.1, -0.5], [0.1, 0.5]] };
   if (tr && /6 \+ 1/.test(n)) tr = { ...tr, c: tr.c.map(c => c.map(([x, y]) => [-x, y])) }; // foto: o godê grande fica à direita
   return tr ? { rows, rect, cells: tr.c, ar: tr.ar, slot: tr.slot, mm: tr.mmTw ? tr.mmTw - 1 : mm, n: frameN(n) || undefined } : { rows, rect, mm };
@@ -9492,7 +9502,7 @@ const corDe = (L, n) => L[[...n].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>>
 const PROD_FIX = { incomp_liquidos_labiais_oscar: { W: 18.6, H: 109.9, prof: 'incomp_mascaras_oscar' } };
 // Aplicador do Petit (todas as 8 opções do catálogo): mesmo nome de peça para a troca sugerir as outras.
 const aplicPart = (P, k, W) => { const t = APLIC[k]; return P('Ponteira aplicadora', W, null, 21, { aplic: k, rBot: 0, rTop: 0, gap: -1, own: true, color: t.color, finish: t.finish,
-  ...(t.c2 ? { mat2: true, mat2Side: 'cima', mat2Color: t.c2, mat2Finish: t.f2 } : {}) }); };
+  ...(t.c2 || t.c3 ? { mat2: true, mat2Side: 'cima', mat2Color: t.c2 || t.color, mat2Finish: t.f2 || t.finish } : {}) }); };
 function incomProduct(r) {
   const fx = PROD_FIX[r.k]; if (fx) r = { ...r, ...fx };
   const W = r.W, D = r.D ?? r.W, H = r.H, B = { pesc: false, bpesc: false, liq: false, vol: false, rTop: 1, rBot: 1 };
@@ -9682,16 +9692,17 @@ function incomProduct(r) {
       if (/^Petit/.test(r.n)) { const haste = /Haste/.test(r.n), capH = r1(H * 0.36), nw = r1(W * 0.6), nh = 5.5;
         const body = P('Frasco', W, D, r1(H - capH), { ...sq(0.14), vol: true, rBot: r1(W * 0.3), rTop: 1 });
         const neck = M('gargalo', { name: 'Gargalo roscado', neckStd: 'livre', W: nw, D: nw, h: nh, pitch: 1.1, turns: 2.5, threadD: 0.45,
-          ringH: 0, ringW: 0, embed: 0, neckFillet: 0, exposedNeck: true, tuboAberto: true });
+          ringH: 0, ringW: 0, embed: 0, neckFillet: 0, exposedNeck: true, tuboAberto: true, own: true, finish: 'pet', color: '#f1f2f0' }); // fotos do site: gargalo translúcido
         const cap = P('Tampa', W, D, capH, { ...sq(0.14), rBot: 0.6, rTop: 0.6, oco: true, capa: 'vira', capaCarry: haste, viraFechado: true, color: '#1a1a1a', own: true });
         const insertW = r1(2 * (capHalfAt(cap, 0) - OCO.wall - 0.05));
         ms = [body, neck, haste
           ? M('tampaGloss', { name: 'Inserto roscado com haste e aplicador', W: insertW, D: insertW, h: r1(nh + 1.2),
               wandInsert: { W: nw, h: nh, pitch: 1.1, turns: 2.5, threadD: 0.45, ringH: 0 }, pescD: 2.4, tipL: 11, tipW: 5.5, tipColor: '#f4f1ec' })
           // Foto aberta: ponteira branca estreita de ponta arredondada saindo da boca do gargalo.
-          : P('Inserto do aplicador', r1(nw * 0.9), null, 4, { rBot: 0, rTop: 0.4, gap: -1.5, own: true, color: '#1a1a1a', finish: 'brilho' }),
+          : P('Inserto do aplicador', r1(nw * 0.9), null, 4, { rBot: 0, rTop: 0.4, gap: r1(nh - 3), // o gargalo não ocupa altura na pilha: o inserto sobe até ~1 mm acima da boca
+            own: true, color: '#f1f2f0', finish: 'pet' }),
           ...(haste ? [] : [aplicPart(P, r.aplic || 'chanfrada', r1(nw * 0.75))]), // foto de uso: ~22 mm para fora do gargalo (1,2× a largura do frasco)
-          haste ? cap : { ...cap, gap: -22.5, capa: true }]; break; } // a tampa veste gargalo, inserto e aplicador e assenta no ombro // a tampa veste gargalo e ponteira e assenta no ombro
+          haste ? cap : { ...cap, gap: r1(-(22.5 + nh - 1.5)), capa: true }]; break; } // a tampa veste gargalo, inserto e aplicador e assenta no ombro // a tampa veste gargalo e ponteira e assenta no ombro
       const s0 = r.t === 'glosssq' ? sq(0.08) : {}, [f] = SPLIT_FIX[r.pg] ? [SPLIT_FIX[r.pg]] : incomFrac(pr, [0.52]), capH = H * (1 - f), masc = r.c === 'Máscaras';
       // gloss: frasco transparente (PET G/SAN, como no catálogo) com o gloss colorido dentro; máscara: frasco opaco
       const gl = masc ? {} : { own: true, finish: 'pet', color: '#ffffff', fundoGrosso: true, fundo: r1(Math.max(3, H * 0.05)), fundoR: r1(Math.min(W, D) / 2), // por dentro o fundo é uma concha (meio redondo)
