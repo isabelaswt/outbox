@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-17.sens13';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-17.cat3';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -534,6 +534,8 @@ function incomShape(r) {
   if (fx.quadFrom != null) { const f4 = o.sides === 4 ? Math.SQRT1_2 + (1 - Math.SQRT1_2) * (o.sideR || 0) : 1; o.W = r1(o.W * f4); o.D = r1(o.D * f4); o.W0 = o.W; o.sides = 0; // superelipse: largura cheia é a do catálogo (sem a correção de polígono)
     o.prof.forEach(q => { q[3] = q[0] >= fx.quadFrom ? (fx.quadN || 7) : 2; }); }
   o.prof = smoothProfile(o.prof, o.h, o.W, fx.smooth);
+  // o alisamento corta o ponto mais largo (0,1–1,3 mm a menos que o catálogo): a parte mais larga volta à largura cheia
+  { const mx = Math.max(...o.prof.map(q => q[1])); if (mx > 0.85 && mx < 0.9995) o.prof.forEach(q => { q[1] /= mx; q[2] /= mx; }); }
   return o;
 }
 function incomShape0(r) {
@@ -578,7 +580,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-17.sens13';
+const BUILD = '2026-11-17.cat3';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -8855,6 +8857,17 @@ function incomPerfume(r) {
     M('reto', { name: 'Frasco (genérico, não é Incom)', W: bw, D: r1(bw * 0.62), n: 3.4, h: r1(bw * 1.05), rTop: 3, rBot: 3, vol: true, liq: false, pesc: false, bpesc: false }),
     ...(v => [v.valve, M(r.k, v.gap > 0 ? { seatV: true, gap: 0 } : { gap: v.show || 0 })])(incomValve(cap, r.term, mm))] };
 }
+// Medida final: a tampa pronta é medida e ajustada para a largura (e profundidade, quando o catálogo dá) exatas do
+// catálogo — facetadas e assimétricas saíam 0,3–1 mm fora. Não vale onde a largura do catálogo é estimada.
+INCOM_CAPS.forEach(r => { const c = LIB[r.k]; if (!c || /W/.test(r.est || '')) return;
+  const round = !r.D && !(c.sides > 0) && !c.disco && !c.deitada; // redonda: profundidade = largura
+  for (let it = 0; it < 3; it++) try { const g = moduleGeo({ ...BASE, ...c, type: r.k }, 0, { lo: false }); if (!g) return; g.computeBoundingBox(); const b = g.boundingBox; g.dispose();
+    const kx = r.W / (b.max.x - b.min.x), kz = (r.D && !/D/.test(r.est || '') ? r.D : round ? r.W : 0) / (b.max.z - b.min.z) || 1;
+    let ch = false;
+    if (kx > 0.95 && kx < 1.05 && Math.abs(kx - 1) > 0.002) { c.W = Math.round(c.W * kx * 1000) / 1000; ch = true; }
+    if (kz > 0.95 && kz < 1.05 && Math.abs(kz - 1) > 0.002) { c.D = Math.round((c.D ?? c.W) * kz * 1000) / 1000; ch = true; }
+    if (!ch) return;
+  } catch (e) { console.warn('medida da tampa', r.n, e); return; } });
 INCOM_CAPS.forEach(r => { PRESETS[`Incom ${r.n} (tampa de perfume)`] = incomPerfume(r); });
 // Modelo do catálogo aberto (ou restaurado do autosave) de uma versão anterior guarda as peças antigas:
 // carimba os modelos Incom e, ao abrir um antigo, oferece trocar pelo atual
