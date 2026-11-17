@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-17.cl29';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-17.cl30';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -424,6 +424,11 @@ const INCOM_VALV = {
   incomTambor: { ...LIB.tampaTambor, name: 'Incom · Tampa tambor' },
   incomBola: { ...LIB.bola, name: 'Incom · Tampa bola', W: 42, D: 42, h: 42, rBot: 21, rTop: 21, gap: -12.3 }, // foto Bulb Blow 250: bola ~1,5× o colar, que fica ~8 mm à mostra
   incomColarBola: { name: 'Incom · Colar da tampa bola', W: 27.5, D: 27.5, h: 17.4, rTop: 0.6, rBot: 0.3 }, // ícone: a bola fica sobre um colar que veste o gargalo
+  // Pág. 74 (Wall), ícones "Disc top" e "Flip top" (rosca 24/410): disc top branca, cilindro alto (~1,2× a largura), lateral
+  // lisa, topo plano com o disco e a fenda de saída atrás; flip top transparente com a linha da aba a ~1/3 do topo.
+  // Larguras como as demais tampas 24/410 da lista (sem cota própria); alturas pela proporção do ícone.
+  incomDiscTop: { ...LIB.disctop, name: 'Incom · Disc top', W: 28, D: 28, h: 33, taper: 100, rBot: 0.5, rTop: 1.2, discD: 24, discDip: 1.2, groove: 0, notch: false, aba: false },
+  incomFlipTop: { ...LIB.flipRedondo, name: 'Incom · Flip top', W: 30, D: 30, h: 30, own: true, finish: 'pet', color: '#ffffff', notch: false, groove: 4 }, // foto: sem dente na frente; linha da aba perto do topo
   incomCapaMist: { ...LIB.sobretampaFineMist, name: 'Incom · Sobretampa fine mist / dosadora / espumadora', h: 43, gap: 0 }, // desce até o ombro e cobre a saia (dona: a base passava da tampa); 43 mm cobre o atuador do Incom · Spray
   incomCapaMistBig: { ...LIB.sobretampaFineMistBig, name: 'Incom · Sobretampa fine mist big' },
 };
@@ -702,7 +707,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-17.cl29';
+const BUILD = '2026-11-17.cl30';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -6869,6 +6874,17 @@ function buildInto(product, S, explodeAmt = 0) {
       const [outer, inner] = cutHole(g, cut); cut.dispose();
       const result = outer !== g ? mergeLoose([outer, inner]) : g;
       if (extras) result.userData.extras = extras; // preserva paredes escuras das saídas da válvula.
+      // Tampa de plástico transparente (dona: "tem que aparecer a rosca da tampa"): a rosca fêmea cortada na parede some
+      // no material claro; na peça real as cristas refletem e aparecem como anéis cinza. Filete translúcido na hélice da
+      // crista da tampa (meio passo entre as cristas do gargalo, mesma fase).
+      if (/^pet/.test(m.own ? m.finish : S.finish)) {
+        const n = m.threadReceiver, ph = m.threadPhase || 0, pitch = Math.max(n.pitch, 0.5), yT1 = n.h - (n.threadTop ?? 1.2) - pitch * 0.25,
+          turns = Math.min(n.turns, Math.max(0, (yT1 - (n.ringH + (n.threadBottom ?? 1.2))) / pitch)), yT0 = yT1 - turns * pitch, rr = n.W / 2 - n.threadD * 0.35, pts = [];
+        for (let k = 0; k <= 96 * Math.max(1, turns); k++) { const phi = TAU * turns * k / (96 * Math.max(1, turns)), ly = yT0 + pitch * phi / TAU + pitch / 2 - ph;
+          if (ly < 0.3 || ly > height - 0.3) continue; pts.push(new THREE.Vector3(rr * Math.cos(phi), y0 + ly, rr * Math.sin(phi))); }
+        if (pts.length > 4) { const hx = new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), pts.length, Math.max(0.18, n.threadD * 0.32), 8, false);
+          hx.deleteAttribute('uv'); hx.userData.mat = 'clear'; result.userData.extras = [...(result.userData.extras || []), hx]; }
+      }
       return result;
     });
     if (m0.ocoTopo && !THUMB_LITE && L[i + 1]?.m.kind === 'gargalo') g = ocoTopoGeo(g, m, y0, L[i + 1].m, thickBase(m.own ? m.finish : S.finish, m0) ? Math.max(S.wall, m0.fundo ?? 6) : S.wall);
@@ -6917,7 +6933,11 @@ function buildInto(product, S, explodeAmt = 0) {
     // tampa que veste a válvula tem o oco dela por dentro: lente bem mais fina (com a espessura de
     // peça maciça a válvula aparecia ampliada, abrindo em sino, como se fosse enorme)
     const ocaV = !m0.vol && vestsValve(S, idx);
-    const thick = !isGlass(finM) || overcap || m0.oco || m0.casca ? undefined : r1(!m0.vol ? (ocaV ? clamp(Math.min(m.W, m.D) * 0.12, 3, 6) : clamp(Math.min(m.W, m.D) * 0.35, 4, 18)) : clamp(Math.min(m.W, m.D) * 0.3, 4, 30));
+    // Tampa de PLÁSTICO transparente (PET/PET G, injetada) tem parede fina: com a espessura de bloco a refração
+    // ficava de vidro, ampliando o gargalo por dentro (flip top do Wall — dona: "refração muito grande para plástico").
+    // Vidro/cristal maciço (tampas de perfume) continuam grossos.
+    const petCap = !m0.vol && /^pet/.test(finM);
+    const thick = !isGlass(finM) || overcap || m0.oco || m0.casca ? undefined : petCap ? 1.5 : r1(!m0.vol ? (ocaV ? clamp(Math.min(m.W, m.D) * 0.12, 3, 6) : clamp(Math.min(m.W, m.D) * 0.35, 4, 18)) : clamp(Math.min(m.W, m.D) * 0.3, 4, 30));
     const own = ms.own ? ms : S, cheio = m0.vol && m0.liq && isFrost(finM) ? (m0.liqColor || '#ffffff') : false; // cor do conteúdo: tinge de leve a base jateada
     const inteira = !!m0.furo && isGlass(finM);
     const look = own.difus != null || own.ior != null || cheio || inteira ? { dif: own.difus, ior: own.ior, cheio, inteira } : null;
@@ -8998,7 +9018,7 @@ function renderAll() { renderStack(); renderEditor(); renderGlobal(); renderPres
 // Corpo, tampa e peça de encaixe ficam em listas separadas.
 const CATS = [
   ['Corpo', ['reto', 'boston', 'quadrado', 'capsula', 'perfumeOval', 'plano', 'arco', 'cone', 'placa', 'bisnaga', ...DRAFT_KEYS.corpo]],
-  ['Tampa', ['incomSens', 'incomTambor', 'incomBola', 'incomColarBola', 'incomCapaMist', 'incomCapaMistBig', 'esfera', 'esferaBisnaga', 'nuvem', 'taca', 'domo', 'seixo', 'flip', 'flipRedondo', 'flipAba', 'disctop', 'sobretampa', 'tampaBisnaga', 'tampaSextavada', 'disco']],
+  ['Tampa', ['incomSens', 'incomTambor', 'incomBola', 'incomColarBola', 'incomDiscTop', 'incomFlipTop', 'incomCapaMist', 'incomCapaMistBig', 'esfera', 'esferaBisnaga', 'nuvem', 'taca', 'domo', 'seixo', 'flip', 'flipRedondo', 'flipAba', 'disctop', 'sobretampa', 'tampaBisnaga', 'tampaSextavada', 'disco']],
   ['Válvula', ['patoIncom', 'incomSpray', 'incomDosadora', 'incomEspumadora', 'incomTrigger', 'incomBicoAplicador', 'pump', 'pumpFrisos', 'locao', 'espuma', 'pumpDosadora', 'spray', 'sprayClassico', 'contaGotas', 'tampaGloss', 'pushPull', 'pushSport', 'bicoDosador', 'bicoConico', 'lamina', 'pumpOnda', 'gatilho', 'pumpBisnaga']],
   ['Peça de encaixe', ['gargalo', 'colar', 'barril', 'flare', 'anel', 'tigela', 'bola', 'sextavado', 'canelado']],
 ];
@@ -9763,7 +9783,7 @@ function incomProduct(r) {
             const foot = 2.8 + vis - (R - Math.sqrt(Math.max(0, R * R - cr * cr)));
             return [M('incomColarBola', { W: cw, D: cw, h: ch, gap: 2.4 }),
               M('incomBola', { W: bl, D: bl, h: bl, rBot: r1(R), rTop: r1(R), gap: r1(foot - (2.8 + ch)) })]; })(r1(Math.min(W * 0.76, 44)))
-        : fe === 'flip' ? M('flipRedondo', { W: 30, D: 30, h: 30, own: true, finish: 'pet', color: '#ffffff' }) // foto do Wall: flip-top transparente
+        : fe === 'flip' ? M('incomFlipTop') // foto do Wall: flip-top transparente (peça Incom da p.74)
         : fe === 'disctop' ? M('disctop', { name: 'Tampa disc-top', W: r1(Math.min(D, 38)), D: r1(Math.min(D, 38)) })
         : M(fe === 'pump' ? 'pump' : 'incomSpray');
       ms = [P('Frasco', W, D, H - nh, { vol: true, ...o, _t: [0, (H - nh) / H] }), NECK('24/410', { h: nh }), ...[].concat(fc)];
