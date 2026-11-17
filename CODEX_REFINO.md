@@ -165,9 +165,11 @@ Pendências conhecidas (precisam de dado ou de decisão; não invente):
 
 **Em andamento** (quem está mexendo em quê agora; apague quando terminar):
 
-- Nenhuma edição ativa. Continuam as pendências registradas na auditoria; não gerar o PDF final antes de concluir as correções, por pedido da dona.
+- Codex: godês sem fresta até a parede interna (foto ampliada da dona); em seguida encaixes/dobradiças das makes e chanfro da Malika. Thenue, painel fosco contínuo/borda polida (p194), segue em andamento no ramo `mat2`/helper de divisão de superfície. PDF final adiado.
 
 **Registro** (o mais novo em cima):
+
+- 2026-11-17, Codex, `2026-11-17.cdx10`: removida a fresta entre produto e parede interna do godê saltado (Case e Moon M All Crystal), conforme foto ampliada enviada pela dona. Produto agora alcança a parede interna, preservando borda metálica fina e rebaixo de 0,3 mm; espessuras internas continuam estimadas pela foto. Preenchimento ampliado também nos godês redondos, retangulares e de contorno próprio. Trinta compactos/paletas renderizados abertos/fechados, sem vértices inválidos; cotas fechadas dentro de 0,1 mm do catálogo. Relatório `tools/conferencia/validacao-cdx10.json`, evidências locais `_ref/incom/validacao-cdx10/`. Chanfro da Malika, dobradiças/recebedores dos fechos e Thenue ainda em andamento; PDF não gerado.
 
 - 2026-11-17, Codex, `2026-11-17.cdx9`: Laura p169 com recortes laterais e painéis abrindo em leque, em vez de preenchimento torneado que criava faixas horizontais. Arco superior contínuo pela leitura do desenho; contorno rasterizado confundia linhas internas com degraus externos. Mantidos 33,7 × 35 mm (L/A); D=26 anterior segue estimado, distribuição/profundidade dos planos por foto, sem certificação industrial. Conferida frente/3/4; superfície base sem bordas abertas e vértices finitos. Quatro controles (Joya, Mini, Malika, Quartz) preservados na rodada; relatório `tools/conferencia/validacao-cdx9.json`, renders locais `_ref/incom/validacao-cdx9/`. Restam outros itens da auditoria; PDF não gerado.
 

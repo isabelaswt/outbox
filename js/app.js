@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-17.cdx9';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-17.cdx10';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -664,7 +664,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-17.cdx9';
+const BUILD = '2026-11-17.cdx10';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -6074,7 +6074,9 @@ function compactParts(product, L, S0) {
         const lm = m.godes.lata ? godeLata : godeRim, rs = new THREE.Shape(); rs.absarc(0, 0, R, 0, Math.PI * 2, false); const rh = new THREE.Path(); rh.absarc(0, 0, R - 0.35, 0, Math.PI * 2, true); rs.holes.push(rh);
         const wall = new THREE.ExtrudeGeometry(rs, { depth: hg - 0.3, bevelEnabled: false, curveSegments: 96 }); wall.deleteAttribute('uv'); wall.rotateX(-Math.PI / 2);
         add(wall, lm, idx, 'bandeja', cx, top, cz); add(new THREE.CylinderGeometry(R - 0.3, R - 0.3, 1, 96), lm, idx, 'bandeja', cx, top + 0.5, cz);
-        add(new THREE.CylinderGeometry(R - 1.1, R - 1.1, hg - 1.6, 96), godeCor(0, 1), idx, 'gode', cx, top + 1 + (hg - 1.6) / 2, cz);
+        // Foto ampliada enviada pela dona: produto encosta na parede interna da latinha.
+        // Sobreposição de 0,01 mm evita uma fresta numérica; preserva a borda metálica de 0,35 mm.
+        add(new THREE.CylinderGeometry(R - 0.34, R - 0.34, hg - 1.6, 96), godeCor(0, 1), idx, 'gode', cx, top + 1 + (hg - 1.6) / 2, cz);
       } else if (m.godes.cells) { // contorno de cada godê do desenho da bandeja (Quinteto em cata-vento, 6 + 1…)
         // fundo: rebaixo mais fundo que o godê (Moon Eco: o pó fica afundado, com a parede da base aparecendo em volta)
         const ar = m.godes.ar || 1, sc = m.godes.mm ? (m.godes.mm + 1) / Math.max(ar, 1) : Math.min((w - 2 * mg) / ar, d - 2 * mg); const TW = sc * ar, TD = sc, WD = godeFundo(m), GH = 1.8;
@@ -6098,7 +6100,7 @@ function compactParts(product, L, S0) {
           wells.push(ext(c, 0.05, top + 2 - rimBot, rimBot));
           // foto (Flat Dez): o pó enche a bandeja quase até a borda; aro de metal fino em volta
           add(ext(c, 0.12, rimTop - rimBot, rimBot), m.godes.lata ? godeLata : godeRim, idx, 'bandeja', 0, 0, 0);
-          add(ext(c, 0.7, GH - 0.1, top - WD), godeCor(j, m.godes.cells.length), idx, 'gode', 0, 0, 0);
+          add(ext(c, 0.35, GH - 0.1, top - WD), godeCor(j, m.godes.cells.length), idx, 'gode', 0, 0, 0);
         });
         if (m.godes.slot) { const SD = r1(Math.min(m.h - 1.6, 5)); wells.push(ext(m.godes.slot, 0.2, SD + 2, top - SD)); } // espaço do aplicador: só a cavidade
       } else {
@@ -6111,12 +6113,12 @@ function compactParts(product, L, S0) {
         if (rect) { // Classic Uno: o godê único também é quadrado (bandeja Jorba 110F)
           wells.push(new RoundedBoxGeometry(cw - 0.4, top + 2 - rimBot, ch - 0.4, 4, 2).translate(x, (top + 2 + rimBot) / 2, z));
           add(new RoundedBoxGeometry(cw - 0.6, rimTop - rimBot, ch - 0.6, 4, Math.min(1.7, (rimTop - rimBot) / 2)), rimM, idx, 'bandeja', x, (rimTop + rimBot) / 2, z);
-          add(new RoundedBoxGeometry(cw - 1.6, GH - 0.1, ch - 1.6, 4, 0.7), godeCor(k0 + j, nG), idx, 'gode', x, top - WD + (GH - 0.1) / 2, z);
+          add(new RoundedBoxGeometry(cw - 1.3, GH - 0.1, ch - 1.3, 4, 0.7), godeCor(k0 + j, nG), idx, 'gode', x, top - WD + (GH - 0.1) / 2, z);
         } else {
           const r = one && m.godes.mm ? m.godes.mm / 2 : (one ? Math.min(aw, ad) : Math.min(cw, ch)) / 2 - 0.5;
           wells.push(new THREE.CylinderGeometry(r + 0.3, r + 0.3, top + 2 - rimBot, 72).translate(x, (top + 2 + rimBot) / 2, z));
           add(new THREE.CylinderGeometry(r, r, rimTop - rimBot, 72), rimM, idx, 'bandeja', x, (rimTop + rimBot) / 2, z);
-          add(new THREE.CylinderGeometry(r - 1.1, r - 1.1, GH - 0.1, 72), godeCor(k0 + j, nG), idx, 'gode', x, top - WD + (GH - 0.1) / 2, z);
+          add(new THREE.CylinderGeometry(r - 0.34, r - 0.34, GH - 0.1, 72), godeCor(k0 + j, nG), idx, 'gode', x, top - WD + (GH - 0.1) / 2, z);
         }
       } }); }
       // rebaixos cortados na base (só nas malhas da peça, não nos godês recém-postos)
