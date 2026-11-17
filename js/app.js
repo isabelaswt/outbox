@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-17.cmp3';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-17.cmp4';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -580,7 +580,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-17.cmp3';
+const BUILD = '2026-11-17.cmp4';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -5891,6 +5891,13 @@ function compactParts(product, L, S0) {
       const v = visorBox(m, w, d), pw = Math.min(v.w + 3, w - 2 * OCO.wall - 0.2), pd = Math.min(v.d + 3, d - 2 * OCO.wall - 0.2);
       const g = se ? seSlab(pw / 2, pd / 2, m.n, 1) : m.sides ? new RoundedBoxGeometry(pw, 1, pd, 2, Math.min(4, Math.min(pw, pd) * 0.12)) : new THREE.CylinderGeometry(pw / 2, pw / 2, 1, 96);
       add(g, clearMat, idx, 'visor', cx, y0 + m.h - OCO.top - 0.5, cz);
+    }
+    if (m.oco && m.hinge && m.finish === 'cristal' && !m.sides && !(m.n > 2)) { // tampa redonda de cristal (foto): anel de encaixe por
+      // dentro da borda, do teto até perto da boca — aparece como a segunda linha concêntrica
+      const Rz = bb.max.z - cz, ro = Rz - OCO.wall - 1.2, hh = m.h - OCO.top - 0.6, sh = new THREE.Shape(); sh.absarc(0, 0, ro, 0, Math.PI * 2, false);
+      const hp = new THREE.Path(); hp.absarc(0, 0, ro - 0.8, 0, Math.PI * 2, true); sh.holes.push(hp);
+      const g = new THREE.ExtrudeGeometry(sh, { depth: hh, bevelEnabled: false, curveSegments: 96 }); g.deleteAttribute('uv'); g.rotateX(-Math.PI / 2);
+      add(g, objs[0].material, idx, 'anel', cx, y0 + 0.6, cz);
     }
     if (m.aba && m.aba.down > 0) { // aba de fechamento (clique): a parede da tampa desce em língua no rebaixo da peça de baixo,
       // rente à superfície e na mesma curva (desenho do Moon Deck/Moon Eco), não um bloco saltado
