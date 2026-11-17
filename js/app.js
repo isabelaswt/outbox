@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-17.cl26';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-17.cl27';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -422,7 +422,7 @@ const INCOM_VALV = {
   incomBicoAplicador: { ...LIB.bicoAplicador, name: 'Incom · Bico aplicador', sprayType: 'aplicadorIncom', W: 26, D: 26, h: 16.8, ridges: 0, actW: 15, spoutD: 7.2, tipH: 7.6, nozzleL: 31.2 }, // ícone ampliado: saia lisa, degrau, cone côncavo e ponteira
   incomSens: { ...LIB.tampaSens, name: 'Incom · Tampa Sens' },
   incomTambor: { ...LIB.tampaTambor, name: 'Incom · Tampa tambor' },
-  incomBola: { ...LIB.bola, name: 'Incom · Tampa bola', W: 36, D: 36, h: 36, rBot: 18, rTop: 18, gap: -6.4 }, // sem colar (dona): assenta no ombro com Ø ~27 rente a ele e esconde o gargalo
+  incomBola: { ...LIB.bola, name: 'Incom · Tampa bola', W: 42, D: 42, h: 42, rBot: 21, rTop: 21, gap: -12.3 }, // foto Bulb Blow 250: bola ~1,5× o colar, que fica ~8 mm à mostra
   incomColarBola: { name: 'Incom · Colar da tampa bola', W: 27.5, D: 27.5, h: 17.4, rTop: 0.6, rBot: 0.3 }, // ícone: a bola fica sobre um colar que veste o gargalo
   incomCapaMist: { ...LIB.sobretampaFineMist, name: 'Incom · Sobretampa fine mist / dosadora / espumadora', h: 43, gap: 0 }, // desce até o ombro e cobre a saia (dona: a base passava da tampa); 43 mm cobre o atuador do Incom · Spray
   incomCapaMistBig: { ...LIB.sobretampaFineMistBig, name: 'Incom · Sobretampa fine mist big' },
@@ -702,7 +702,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-17.cl26';
+const BUILD = '2026-11-17.cl27';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -2038,8 +2038,11 @@ function sprayGeo(m, y0, { lo = false } = {}) {
     blade.deleteAttribute('uv'); blade.translate(0, top + m.stemH, -(m.armW - 2 * bev) / 2);
     // Vista de cima (pedido da dona, ícone/foto): o bico AFINA ao longo do comprimento — largura cheia na haste e
     // ~metade na ponta (tipW, estimado pela foto); a saída é uma fenda RETANGULAR na face da ponta.
-    const tr = m.tipW ?? 0.5, pz = blade.attributes.position;
-    for (let i = 0; i < pz.count; i++) { const x = pz.getX(i), u = clamp((x - xs) / (L - xs), 0, 1); pz.setZ(i, pz.getZ(i) * (1 - (1 - tr) * u)); }
+    // Sem quina (dona: "sem chanfro, tá duro visto de cima"): a largura afina numa curva contínua desde a traseira
+    // (inclinação zero atrás, u^1,7) e a traseira é arredondada na vista de cima.
+    const tr = m.tipW ?? 0.5, pz = blade.attributes.position, rr = Math.min(m.armW * 0.45, B * 0.9);
+    for (let i = 0; i < pz.count; i++) { const x = pz.getX(i), u = clamp((x + B) / (L + B), 0, 1), k = clamp((-B + rr - x) / rr, 0, 1);
+      pz.setZ(i, pz.getZ(i) * (1 - (1 - tr) * u ** 1.7) * Math.sqrt(Math.max(0.12, 1 - k * k))); }
     blade.computeVertexNormals();
     const oh = new THREE.BoxGeometry(5, Math.max(0.5, tT * 0.28), Math.max(1.2, m.armW * tr * 0.55)); oh.deleteAttribute('uv'); oh.rotateZ(-Math.atan(sl));
     oh.translate((L + xb) / 2 - 2.5 / n, top + m.stemH + (yT(L) + yb) / 2 + 2.5 * sl / n, 0);
@@ -9745,10 +9748,12 @@ function incomProduct(r) {
         : fe === 'patoIncom' ? M('patoIncom', { W: r1(W * 88 / 196), D: r1(W * 88 / 196) }) // P68: válvula própria (saia 88 px de 196 do corpo)
         : fe === 'tampa' ? M('incomTambor', { W: r1(W * 0.98), D: r1(W * 0.98), h: r2((H - nh) * 0.31 - 1.6) })
         : fe === 'sens' ? M('incomSens', { W: r1(W * 0.727), D: r1(W * 0.727), h: r1(W * 0.424) }) // foto do New York 250 de frente: 72,7% da largura do frasco e altura de 42,4% dela
-        // Tampa bola sem colar (pedido da dona: "não precisa da estrutura de baixo"): a bola assenta direto no ombro, afundada
-        // até ficar com Ø ~27 rente a ele, e esconde o gargalo inteiro (frasco opaco de PE)
-        : fe === 'bola' ? (bl => M('incomBola', { W: bl, D: bl, h: bl, rBot: r1(bl / 2), rTop: r1(bl / 2),
-            gap: -r1(bl / 2 - Math.sqrt(Math.max(0, (bl / 2) ** 2 - 13.75 ** 2))) }))(r1(Math.min(W * 0.62, 36)))
+        // Tampa bola (foto do Bulb Blow 250 e ícone; a dona confirmou o colar): bola ~76% da largura do frasco, colar ~66%
+        // da bola com ~8 mm à mostra e ~3 mm de gargalo aparecendo entre o colar e o ombro. Proporções medidas na foto.
+        : fe === 'bola' ? (bl => { const cw = r1(Math.max(bl * 0.66, 27.5)), ch = r1(nh + 0.8), R = bl / 2, cr = cw / 2, vis = r1(7.8 * bl / 41.7);
+            const foot = 2.8 + vis - (R - Math.sqrt(Math.max(0, R * R - cr * cr)));
+            return [M('incomColarBola', { W: cw, D: cw, h: ch, gap: 2.4 }),
+              M('incomBola', { W: bl, D: bl, h: bl, rBot: r1(R), rTop: r1(R), gap: r1(foot - (2.8 + ch)) })]; })(r1(Math.min(W * 0.76, 44)))
         : fe === 'flip' ? M('flipRedondo', { W: 30, D: 30, h: 30, own: true, finish: 'pet', color: '#ffffff' }) // foto do Wall: flip-top transparente
         : fe === 'disctop' ? M('disctop', { name: 'Tampa disc-top', W: r1(Math.min(D, 38)), D: r1(Math.min(D, 38)) })
         : M(fe === 'pump' ? 'pump' : 'incomSpray');
