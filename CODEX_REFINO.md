@@ -112,7 +112,7 @@ Ferramentas internas úteis:
 - **Frame:** corpo e godê em superelipse (quadrado de lados curvos, n = 4). O visor tem borda fina. O losango do Quinteto tem 20,4 mm.
 - **Redondos (Moon, Macaroon, Moon Deck):** o fechamento é uma língua curva da parede da tampa, rente à superfície, encaixada no rebaixo da base. Não é um bloco saltado.
 - **Cristal:** acabamento `cristal`, com borda azul-lilás, reflexo e camadas sobrepostas. As tampas redondas de cristal têm anel interno.
-- **Paletas Big e Flat:** degrau (patamar dos godês mais alto que a borda; a tampa desce até ela). As Flat têm na tampa uma faixa sem espelho com dois encaixes. O Flat Duo tem bandejas de tamanhos diferentes.
+- **Paletas — conferir caso a caso:** Big 4/9 têm canal fino ao redor da bandeja, conforme foto inteira da dona, e contorno com quatro lados levemente convexos (desenho 90 × 90 × 14,3). Desnível reduzido para 0,6 mm por pedido da dona. Não generalizar esse canal para outras famílias. Flat: rebaixo interno leve; faixa sem espelho com dois encaixes na tampa; Duo tem bandejas de tamanhos diferentes. Abertura frontal única, da largura da aba superior, com lingueta receptora perto do alto; aba de cantos arredondados.
 - **Tampa Sens:**
   - Topo reto, com o disco rente.
   - Disco alto, que preenche o U (pelo U não pode aparecer buraco nem o interior).
@@ -166,9 +166,11 @@ Pendências conhecidas (precisam de dado ou de decisão; não invente):
 
 **Em andamento** (quem está mexendo em quê agora; apague quando terminar):
 
-- Codex: consolidar conferência de 186 modelos com correções cdx15/16 e montar PDF comparativo atualizado. Wheel/Rock sem evidência suficiente de passagem frente-verso: preservados; medidas internas sem cotas continuam pendências de fonte, não aprovação industrial.
+- Codex: PDF suspenso por novos achados da dona. Corrigir fecho frontal/espelho das paletas em `compactParts`; roscas externas e internas em todos os fechamentos documentados; variantes de tampas; conferir fundo externo plano/cavidade U do Guggen. Inventários extraídos do catálogo em andamento. Não alterar largura estimada nem mecanismos ocultos como se fossem cotados.
 
 **Registro** (o mais novo em cima):
+
+- 2026-11-17, Codex, `2026-11-17.cdx17`: Big 4/9 com lados levemente convexos pelo desenho cotado 90 × 90 × 14,3 e canal fino ao redor da bandeja pela foto inteira da dona; superelipse n=10 estimada no traço. Desnível de 0,6 mm por pedido da dona. Flat com rebaixo interno de 0,6 mm; não generalizar canal para todas as famílias. Cavidade frontal única da largura da aba, folga lateral total de representação 0,2 mm, lingueta receptora perto do alto e aba arredondada. Espelhos acompanham contorno/cantos da tampa, com espessura de 0,3 mm; Macaroon assenta no lábio inferior da cúpula. Trinta compactos/paletas sem posições/normais inválidas, espelhos contidos e amostras do dente livres em 0/15/45/90 graus. Oito paletas novamente conferidas após últimas fotos; cotas fechadas dentro de 0,1 mm. Espessuras/folgas internas estimadas, sem certificar flexão ou fabricação. `tools/conferencia/validacao-cdx17.json`, evidências `_ref/incom/validacao-cdx17/`. Roscas/inserto da haste, variantes e fundo Guggen continuam pendentes; PDF suspenso até concluir.
 
 - 2026-11-17, Codex, `2026-11-17.cdx16`: Julie conta-gotas p43 em bege fosco opaco, conforme frasco PE da foto/lista de materiais; demais PET/SAN preservados. Olympea p80: inclinação/raio do topo deixam de subtrair 0,48 mm da altura; 90,9 mm medidos. Dora p154: largura estimada deixa de impedir calibração da altura cotada, agora 32,2 mm; largura/profundidade estimadas preservadas. Dez montagens/controles conferidos, sem vértices/normais inválidos; Sydney continua transparente. `tools/conferencia/validacao-cdx16.json`, evidências locais `_ref/incom/validacao-cdx16/`. Consolidar renders e limitações de referência no PDF, sem apresentar mecanismos ocultos como certificados.
 
