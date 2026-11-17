@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-17.cdx17';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-17.cdx18';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -677,7 +677,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-17.cdx17';
+const BUILD = '2026-11-17.cdx18';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -1285,9 +1285,11 @@ function normalize(s) {
 
 // ───────────────────────── geometria ─────────────────────────
 // Seção superelipse: n=2 é oval; n alto tende ao retângulo arredondado.
-function sp(a, b, n, th) {
-  const c = Math.cos(th), s = Math.sin(th), e = 2 / n;
-  return [a * Math.sign(c) * Math.pow(Math.abs(c), e), b * Math.sign(s) * Math.pow(Math.abs(s), e)];
+function sp(a, b, n, th, bow = 0) {
+  const c = Math.cos(th), s = Math.sin(th), e = 2 / n,
+    x = Math.sign(c) * Math.pow(Math.abs(c), e), z = Math.sign(s) * Math.pow(Math.abs(s), e);
+  // Planta Big: lados convexos contínuos, independentes do raio dos cantos. Demais peças preservadas.
+  return [a * x * (1 - bow * z * z), b * z * (1 - bow * x * x)];
 }
 
 function radii(m) {
@@ -1589,7 +1591,7 @@ function loft(rings, seg, disp, uniform = false) {
     const out = new Array(seg);
     for (let j = 0; j < seg; j++) {
       const th = uniform ? invArc(r, j / seg * TAU) : j / seg * TAU + off;
-      let [x, z] = r.sides >= 3 ? polyPt(r.a, r.b, r.sides, r.round, th) : sp(r.a, r.b, r.n, th);
+      let [x, z] = r.sides >= 3 ? polyPt(r.a, r.b, r.sides, r.round, th) : sp(r.a, r.b, r.n, th, r.planBow);
       if (r.sides >= 3 && r.ptw) { const f = r.ptw * r.ly * Math.PI / 180, [px, pz] = polyPt(r.a, r.b, r.sides, r.round, th - f), c = Math.cos(f), s = Math.sin(f), fm = Math.abs(f) % (TAU / r.sides), gk = 1 / (1 + (Math.cos(fm) + Math.sin(fm) * (r.sides === 4 ? 1 : 0.4) - 1) * (1 - (r.round || 0))); x = (px * c - pz * s) * gk; z = (px * s + pz * c) * gk; } // prisma torcido (Twist)
       const pm = r.pan ? panelMask(r.pan, r.ly, th, r.b) : 0;
       if (r.lobes >= 3 && r.lobeK > 0) { const f = lobeF(r.lobes, r.lobeK)(th - (r.twist || 0) * r.ly * Math.PI / 180) * (1 - pm) + pm; x *= f; z *= f; } // gomos torcidos: giram com a altura // área lisa: na crista dos gomos
@@ -2579,7 +2581,7 @@ function moduleGeo(m0, y0, opts = {}) {
   const ms = flipOpen ? { ...m, grooveD: 0 } : m; // aberta, a linha vira o corte
   let kmax = 0;
   const rings = (isProf ? profSamples(m, lo) : ySamples(m, rB, rT, lo)).map(ly => {
-    if (!isProf) { const [a, b] = sectionAt(ms, ly, rB, rT); return { y: y0 + lift + ly, ly, a, b, n: m.n, sides: m.sides | 0, round: m.sideR,
+    if (!isProf) { const [a, b] = sectionAt(ms, ly, rB, rT); return { y: y0 + lift + ly, ly, a, b, n: m.n, planBow: m.planBow, sides: m.sides | 0, round: m.sideR,
       ptw: m.polyTwist || 0, lobes: m.lobeFrom > 0 && ly < m.lobeFrom * m.h ? 0 : m.lobes | 0, lobeK: m.lobes >= 3 ? clamp(m.lobeD / (Math.min(m.W, m.D) / 2), 0, 0.9) : 0, twist: m.lobeTwist || 0 }; }
     const q = profAt(m, ly), g = ms.groove > 0 ? ms.grooveD * Math.max(0, 1 - Math.abs(ly - (m.h - ms.groove)) / 0.5) : 0;
     // Raios de baixo/de cima aplicados por cima do perfil medido.
@@ -6192,7 +6194,7 @@ function ocoTopoGeo(g, m, y0, neck, lift) {
   return g;
 }
 // Superelipse vista de cima (Frame): contorno plano e placa centrada na altura
-function seShape(a, b, n, seg = 128) { const sh = new THREE.Shape(); for (let i = 0; i <= seg; i++) { const [x, y] = sp(a, b, n, i / seg * Math.PI * 2); i ? sh.lineTo(x, y) : sh.moveTo(x, y); } return sh; }
+function seShape(a, b, n, seg = 128, bow = 0) { const sh = new THREE.Shape(); for (let i = 0; i <= seg; i++) { const [x, y] = sp(a, b, n, i / seg * Math.PI * 2, bow); i ? sh.lineTo(x, y) : sh.moveTo(x, y); } return sh; }
 function seSlab(a, b, n, h) { const g = new THREE.ExtrudeGeometry(seShape(a, b, n), { depth: h, bevelEnabled: false, curveSegments: 4 }); g.deleteAttribute('uv'); g.rotateX(-Math.PI / 2); g.translate(0, -h / 2, 0); return g; }
 // Frame (foto da tampa aberta): a janela vai quase de parede a parede, moldura fina (~3 mm); o preto largo visto
 // de fora é a base por baixo do visor
@@ -6313,7 +6315,7 @@ function compactParts(product, L, S0) {
         // Big, foto completa da dona: bandeja central, canal fino e borda externa discretamente mais baixa.
         // Desnível de 0,6 mm por pedido da dona; largura do canal estimada na foto.
         const c = m.canal, shapeRing = (outerW, outerD, innerW, innerD, depth, bottom) => {
-          const sh = seShape(outerW / 2, outerD / 2, m.n), inside = seShape(innerW / 2, innerD / 2, m.n);
+          const sh = seShape(outerW / 2, outerD / 2, m.n, 256, m.planBow), inside = seShape(innerW / 2, innerD / 2, m.n, 256, m.planBow);
           sh.holes.push(new THREE.Path(inside.getPoints(128).reverse()));
           const g = new THREE.ExtrudeGeometry(sh, { depth, bevelEnabled: false, curveSegments: 32 });
           g.deleteAttribute('uv'); g.rotateX(-Math.PI / 2); g.translate(cx, bottom, cz); return g;
@@ -6355,14 +6357,20 @@ function compactParts(product, L, S0) {
           tooth = arcSlab(inner - 0.45, inner + 0.08, tw / R, 0.35); tooth.translate(cx, yB + 0.2, cz);
           socket = arcSlab(inner - 0.6, inner + 0.23, (tw + 0.3) / R, 0.65); socket.translate(cx, yB + 0.05, cz);
         } else {
-          // Língua inclinada nasce na parede e avança para dentro do oco; não fica enterrada na moldura.
-          const top = y0 + Math.min(2.2, m.h * 0.25), sh = new THREE.Shape(), points = [
+          // Aba das paletas plana; demais fechos mantêm a ligação inclinada à parede.
+          const top = y0 + Math.min(2.2, m.h * 0.25), sh = new THREE.Shape(), points = m.snapFlat ? [
+            [inner, top], [inner + 0.65, top], [inner + 0.65, yB], [inner, yB]] : [
             [R - 0.25, top], [R - OCO.wall - 0.7, top], [inner, yB], [inner + 0.65, yB], [R - 0.25, y0 + 0.15]];
           points.forEach(([z, y], j) => j ? sh.lineTo(-z, y) : sh.moveTo(-z, y)); sh.closePath();
           const edge = m.snapRound || 0, stemDepth = tw - 2 * edge;
           const stem = new THREE.ExtrudeGeometry(sh, { depth: stemDepth, bevelEnabled: edge > 0, bevelSize: edge, bevelThickness: edge, bevelSegments: 4 }); stem.deleteAttribute('uv');
           stem.translate(0, 0, -stemDepth / 2); stem.rotateY(Math.PI / 2);
           add(stem, objs[0].material, idx, 'lingua_fecho', cx, 0, cz);
+          if (m.snapFlat) {
+            // Foto frontal/lateral: lâmina plana, sem curvar ou inclinar; ligação superior à moldura.
+            const reach = R - 0.25 - inner;
+            add(new THREE.BoxGeometry(tw, 0.65, reach), objs[0].material, idx, 'raiz_fecho', cx, top - 0.325, cz + inner + reach / 2);
+          }
           tooth = new THREE.BoxGeometry(tw, 0.35, 0.53).translate(cx, yB + 0.375, cz + inner - 0.185);
           socket = new THREE.BoxGeometry(tw + 0.3, 0.65, 0.83).translate(cx, yB + 0.375, cz + inner - 0.185);
           const pal = !!base.m.fechoRebaixo, rear = inner - (pal ? 0.6 : 0.15), depth = R + 1 - rear,
@@ -6384,9 +6392,9 @@ function compactParts(product, L, S0) {
         if (!curve && base.m.fechoRebaixo) {
           // Ampliação enviada pela dona: lingueta horizontal na parte superior do rebaixo frontal de todas as paletas.
           // Altura/projeção estimadas na foto; permanece abaixo da borda, ligada à parede interna.
-          const h = 0.35, depth = 0.7, z = inner - 0.6;
-          add(new RoundedBoxGeometry(tw * 0.55, h, depth, 2, 0.1), bObjs[0].material,
-            base.idx, 'lingueta_rebaixo', cx, base.y0 + base.m.h - 0.9, cz + z + 0.15);
+          const h = 0.5, depth = 0.9, z = inner - 0.6;
+          add(new RoundedBoxGeometry(tw * 0.65, h, depth, 2, 0.1), bObjs[0].material,
+            base.idx, 'lingueta_rebaixo', cx, base.y0 + base.m.h - 0.4, cz + z + 0.15);
         }
       }
     }
@@ -6419,7 +6427,7 @@ function compactParts(product, L, S0) {
       const db = m.espBand && !se && !round ? (d - 2 * ins) * m.espBand : 0;
       // Mesmo contorno da tampa, inclusive os cantos. O retângulo plano antigo vazava pela moldura.
       let sh;
-      if (se) sh = seShape(w / 2 - ins, d / 2 - ins, m.n);
+      if (se) sh = seShape(w / 2 - ins, d / 2 - ins, m.n, 256, m.planBow);
       else if (round) { sh = new THREE.Shape(); sh.absarc(0, 0, Math.min(w, d) / 2 - ins, 0, TAU, false); }
       else { sh = new THREE.Shape(); const A = m.W / 2 * (w - 2 * ins) / w, B = m.D / 2 * (d - 2 * ins - db) / d;
         for (let j = 0; j <= 256; j++) { const [x, z] = polyPt(A, B, m.sides, m.sideR, TAU * j / 256); j ? sh.lineTo(x, z) : sh.moveTo(x, z); } sh.closePath(); }
@@ -6442,13 +6450,13 @@ function compactParts(product, L, S0) {
     const base = L.find(e => e.idx === idx - 1), bObjs = base ? mine(base.idx) : [];
     if (bObjs.length) {
       // Case p3–5 e foto ampliada: duas articulações curtas a ~30% do centro, não um eixo longo central.
-      const r = clamp(Math.min(base.m.h, m.h) * 0.22, 1.1, 2.2), Lh = m.hingePair ? W * (m.hingePair.w ?? 0.11) : Math.min(W * (m.hingeWidth ?? (m.sides ? 0.4 : 0.32)), m.sides ? 44 : 24), g3 = Lh / 3, gap = m.hingePair ? 0.15 : 0.35;
+      const r = clamp(Math.min(base.m.h, m.h) * 0.22, 1.1, 2.2), Lh = m.hingeFull ? W * 0.94 : m.hingePair ? W * (m.hingePair.w ?? 0.11) : Math.min(W * (m.hingeWidth ?? (m.sides ? 0.4 : 0.32)), m.sides ? 44 : 24), g3 = Lh / 3, gap = m.hingePair ? 0.15 : 0.35;
       const kn = (c, x0, x1) => { const g = new THREE.CylinderGeometry(r, r, x1 - x0, 40); g.rotateZ(Math.PI / 2); g.translate(cx + c + (x0 + x1) / 2, y0, z + r * 0.7); return g; };
       const mB = bObjs[0].material, mT = objs[0].material;
       (m.hingePair ? [-W * (m.hingePair.x ?? 0.30), W * (m.hingePair.x ?? 0.30)] : [0]).forEach(c => {
         const pin = new THREE.CylinderGeometry(r * 0.38, r * 0.38, Lh - 0.6, 24); pin.rotateZ(Math.PI / 2); pin.translate(cx + c, y0, z + r * 0.7);
         add(kn(c, -Lh / 2, -g3 / 2 - gap), mB, base.idx, 'dobradica', 0, 0, 0); add(kn(c, g3 / 2 + gap, Lh / 2), mB, base.idx, 'dobradica', 0, 0, 0);
-        add(pin, mirrorMat, base.idx, 'pino', 0, 0, 0);
+        add(pin, m.hingeFull ? mT : mirrorMat, base.idx, 'pino', 0, 0, 0);
         add(kn(c, -g3 / 2, g3 / 2), mT, idx, 'dobradica', 0, 0, 0); objs.push(product.children.at(-1));
       });
     }
@@ -9290,8 +9298,8 @@ function incomProduct(r) {
     case 'cq': case 'cqr': case 'cr': {
       // tampa oca (casca) e base com rebaixo do godê; abertura para o dedo na frente, metade na borda
       // de cima da base e metade na de baixo da tampa
-      // Desenho cotado Big 4/9: quatro lados convexos; n estimado no traço, preservando W/D oficiais.
-      const s0 = /^Big (4|9)$/.test(r.n) ? { n: 10 } : r.t === 'cr' ? {} : frameN(r.n) ? { n: frameN(r.n) } : sq(r.t === 'cqr' ? 0.22 : 0.04), hb = H * 0.55, ht = H * 0.45, nw = r1(Math.min(22, Math.min(W, D) * 0.32));
+      // Desenho cotado Big 4/9 da dona: n=20 e curvatura=0,035 ajustados ao traço; W/D oficiais preservados.
+      const s0 = /^Big (4|9)$/.test(r.n) ? { n: 20, planBow: 0.035 } : r.t === 'cr' ? {} : frameN(r.n) ? { n: frameN(r.n) } : sq(r.t === 'cqr' ? 0.22 : 0.04), hb = H * 0.55, ht = H * 0.45, nw = r1(Math.min(22, Math.min(W, D) * 0.32));
       // paleta: abertura retangular larga (~42% da frente) só na base, logo abaixo da tampa, como no desenho
       // a dobradiça sai 0,3 do raio para trás: a caixa perde isso na profundidade e o total bate com o catálogo
       const Dc = r2(D - 0.3 * clamp(Math.min(hb, ht) * 0.22, 1.1, 2.2)), pal = r.c === 'Paletas' && r.t !== 'cr', dB = pal ? { rect: true, top: true, w: r1(W * 0.42), h: r1(Math.min(4.5, hb * 0.58)), d: 2.4 } : { rect: true, top: true, arc: r.t === 'cr', w: nw, h: r1(Math.min(3.2, hb * 0.42)), d: 1.6 }; // desenho: entalhe retangular só na base (redondo: acompanha a curva)
@@ -9524,7 +9532,11 @@ function incomProduct(r) {
     if (/^Case/.test(r.n)) { const t = ms.find(m => m.name === 'Tampa'); if (t) Object.assign(t, { hingePair: { x: 0.30, w: 0.11 }, caseLatch: true }); }
     // Fotos p9–25: Frame e redondos usam um eixo central curto. P28–33: Flat tem dois apoios.
     if (/^Frame|^Moon|^Macaroon/.test(r.n)) ms.filter(m => m.hinge).forEach(m => { m.hingeWidth = 0.18; });
-    if (/^Flat/.test(r.n)) { const t = ms.find(m => m.name === 'Tampa'); if (t) t.hingePair = { x: 0.26, w: 0.07 }; }
+    if (/^Flat/.test(r.n)) { const t = ms.find(m => m.name === 'Tampa'); if (t) {
+      // Foto da dona: Trio Retangular com eixo contínuo quase de fora a fora; não generalizar.
+      if (r.n === 'Flat Trio Retangular') t.hingeFull = true;
+      else t.hingePair = { x: 0.26, w: 0.07 };
+    } }
     ms.forEach((m, i) => { if (m.hinge && !m.caseLatch && ms[i - 1]?.dedo) m.snapFront = true; });
     ms.forEach(m => { if ((/Crystal/i.test(r.n) && /Base|Tampa/.test(m.name)) || (/^Case/.test(r.n) && m.name === 'Tampa')) Object.assign(m, clear, m.name === 'Tampa' ? { espelho: false } : {}); });
     // cristal (foto): a latinha de alumínio do godê aparece inteira pela base transparente
@@ -9539,11 +9551,13 @@ function incomProduct(r) {
     if (r.c === 'Paletas') { const t = ms.find(m => m.name === 'Tampa'), b = ms.find(m => m.name === 'Base');
       if (t && b) { b.rebaixo = { inset: /^Flat/.test(r.n) ? 4 : 3.2, h: 0.6 }; b.fechoRebaixo = true;
         // Pedido da dona: abertura frontal acompanha a aba, sem sobra lateral visível.
-        t.snapRound = 0.3; t.snapWidth = r1(Math.min(b.dedo.w * 0.7, W * 0.18)); b.dedo.w = r1(t.snapWidth + 0.2);
+        // Fotos da dona: aba larga e reta; abertura baixa da mesma largura. Dimensões internas estimadas.
+        t.snapRound = 0.3; t.snapFlat = true; t.snapWidth = r1(W * (/^Flat/.test(r.n) ? 0.42 : 0.29));
+        Object.assign(b.dedo, { w: r1(t.snapWidth + 0.2), h: 1.6, d: 1 });
         if (/^Big (4|9)$/.test(r.n)) { delete b.rebaixo; b.canal = { inset: 3.2, w: 0.6, h: 0.6 }; }
         // Págs.28–33: encaixes estreitos junto ao eixo; proporções estimadas na foto
         // (largura ~2,3% do estojo), preservando a faixa sem espelho.
-        if (/^Flat/.test(r.n)) { t.espBand = 0.2; t.espLatches = { w: r1(W * 0.023), h: 1.2, x: 0.26, depth: 0.5 };
+        if (/^Flat/.test(r.n)) { t.espBand = 0; t.espLatches = { w: r1(W * 0.023), h: 1.2, x: 0.26, depth: 0.5 };
           // Compensa a projeção do eixo: malha fechada media 63,104 mm, cota 63.
           // D é canto-a-canto (polyFit); 0,14 nessa medida reduz ~0,103 face-a-face.
           for (const m of [b, t]) m.D = r2(m.D - 0.14);
