@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-17.cdx13';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-17.cdx14';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -418,6 +418,8 @@ const CAP_FIX = { incom_slim_quadric: { sideR: 0.55 } /* foto de cima: quadrado 
 for (const key of ['incom_drop', 'incom_malika', 'incom_tahaa']) CAP_FIX[key] = { ...CAP_FIX[key], capTip: true };
 CAP_FIX.incom_tahaa.capTip = 'sphere'; // Pág.193: esfera Ø29, colar preservado.
 CAP_FIX.incom_malika.capTip = 'teardrop'; // Pág.171: ponta contínua, sem botão.
+CAP_FIX.incom_brilhante.facetBud = true; // P144: diamantes laterais e encontro das faces no ápice.
+CAP_FIX.incom_bouquet = { roseTop: true }; // P141: volutas/pétalas, não anéis concêntricos.
 // P167/168: tigela lisa até ~74% da altura, coroa lapidada até a mesa superior.
 // Distribuição radial de 12 setores estimada nas fotos; não é desenho industrial da lapidação.
 for (const key of ['incom_joya', 'incom_joya_mini']) CAP_FIX[key].facetCrown = { from: 0.74, rim: 0.76, sectors: 12 };
@@ -626,6 +628,11 @@ function incomShape(r) {
       const u = i / 96, w = Math.sqrt(Math.max(0, 1 - u * u)); return [0.48 + 0.52 * u, w, w, 2, 0, 0];
     })];
   }
+  if (fx.facetBud) o.facetBud = true;
+  if (fx.roseTop) o.roseTop = true;
+  // Victoria p197: o catálogo atribui o V à combinação polido/fosco, sem cota de sulco.
+  if (r.k === 'incom_victoria') Object.assign(o, { own: true, color: '#ffffff', finish: 'pet',
+    mat2: true, mat2Side: 'v', mat2Y: 8, mat2Color: '#e8dcc6', mat2Finish: 'fosco' });
   return o;
 }
 function incomShape0(r) {
@@ -670,7 +677,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-17.cdx13';
+const BUILD = '2026-11-17.cdx14';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -2451,6 +2458,47 @@ function fanCapGeo(m, y0, opts) {
   });
   return loftPts(rings);
 }
+function budCapGeo(m, y0, { lo = false } = {}) {
+  // P144: níveis/larguras proporcionais ao desenho cotado; profundidade sem vista lateral.
+  const A = m.W / 2, B = m.D / 2, col = 0.257, mid = 0.476, shoulder = 0.72,
+    N = lo ? 32 : 64, rings = [], baseR = 0.66, topR = 0.776,
+    diagonal = (baseR + (topR - baseR) * (mid - col) / (shoulder - col)) * Math.SQRT2;
+  for (let j = 0; j <= 24; j++) { const t = col * j / 24, q = profAt(m, t * m.h);
+    rings.push(Array.from({ length: N }, (_, i) => { const th = TAU * i / N; return [(m.ox || 0) + q.a * Math.cos(th), y0 + t * m.h, q.b * Math.sin(th)]; })); }
+  rings.push(Array.from({ length: N }, (_, i) => [(m.ox || 0) + A * Math.cos(TAU * i / N), y0 + col * m.h, B * Math.sin(TAU * i / N)]));
+  const octagon = mode => Array.from({ length: 8 }, (_, j) => {
+    const odd = j % 2, t = mode === 'base' ? col : odd ? mid : mode === 'lower' ? col : shoulder,
+      r = mode === 'base' ? baseR : odd ? diagonal : mode === 'lower' ? baseR : topR, th = TAU * j / 8;
+    return [(m.ox || 0) + A * r * Math.cos(th), y0 + t * m.h, B * r * Math.sin(th)];
+  });
+  for (const mode of ['base', 'lower', 'upper']) { const nodes = octagon(mode);
+    rings.push(Array.from({ length: N }, (_, i) => { const f = i / N * 8, j = Math.floor(f), t = f - j, a = nodes[j], b = nodes[(j + 1) % 8]; return a.map((v, k) => v + (b[k] - v) * t); })); }
+  rings.push(Array.from({ length: N }, () => [(m.ox || 0), y0 + m.h, 0]));
+  const raw = loftPts(rings), g = toCreasedNormals(raw, 0.15); if (g !== raw) raw.dispose(); return g;
+}
+function roseCapGeo(m, y0, { lo = false } = {}) {
+  // P141: tigela lisa sob volutas espiraladas. Curvas do topo estimadas nas duas fotos.
+  // Superfície contínua, sem pétalas soltas nem cascas sobrepostas.
+  const N = lo ? 64 : 160, R = lo ? 24 : 72, edge = 0.82, rings = [], q0 = profAt(m, edge * m.h);
+  for (let j = 0; j <= 64; j++) { const t = edge * j / 64, q = profAt(m, t * m.h);
+    rings.push(Array.from({ length: N }, (_, i) => { const th = TAU * i / N; return [(m.ox || 0) + q.a * Math.cos(th), y0 + t * m.h, q.b * Math.sin(th)]; })); }
+  const top = []; let highest = edge;
+  for (let j = 1; j <= R; j++) { const r = 1 - j / R;
+    top.push(Array.from({ length: N }, (_, i) => { const th = TAU * i / N; let ridge = 0;
+      // Arcos interrompidos e desencontrados formam as bordas das pétalas; não uma espiral contínua.
+      // Distribuição das volutas estimada nas fotos, sem planta superior cotada.
+      for (const [count, radius, bow, width, phase] of [[4, 0.64, 0.20, 1.25, 0], [3, 0.31, 0.18, 1.7, 0.7], [2, 0.11, 0.10, 1.8, 1.2]]) {
+        for (let k = 0; k < count; k++) { const delta = Math.atan2(Math.sin(th - phase - TAU * k / count), Math.cos(th - phase - TAU * k / count));
+          if (Math.abs(delta) >= width) continue;
+          const gate = Math.cos(delta / width * Math.PI / 2), center = radius + bow * gate;
+          ridge = Math.max(ridge, Math.exp(-(((r - center) / 0.065) ** 2)) * Math.pow(gate, 0.6));
+        }
+      }
+      const t = edge + 0.035 * (1 - r * r) + 0.11 * ridge * smooth(0, 0.08, r) * smooth(0, 0.08, 1 - r);
+      highest = Math.max(highest, t); return [(m.ox || 0) + q0.a * r * Math.cos(th), t, q0.b * r * Math.sin(th)]; })); }
+  top.forEach(ring => rings.push(ring.map(([x, t, z]) => [x, y0 + m.h * (edge + (t - edge) * (1 - edge) / (highest - edge)), z])));
+  return loftPts(rings);
+}
 function malikaCapGeo(m, y0, { lo = false } = {}) {
   const H = m.h, start = clamp((m.mat2Y ?? 18) / 100, 0.12, 0.4), foot = 0.078,
     footR = 11.1 * m.W / 30, footD = 11.1 * m.D / 30, S = lo ? 8 : 24, F = lo ? 8 : 32,
@@ -2492,6 +2540,8 @@ function splitMalikaGeo(g, m, y0) {
   });
 }
 function moduleGeo(m0, y0, opts = {}) {
+  if (m0.facetBud && !opts.inset) return budCapGeo(m0, y0, opts);
+  if (m0.roseTop && !opts.inset) return roseCapGeo(m0, y0, opts);
   if (m0.malikaFace && !opts.inset) return malikaCapGeo(m0, y0, opts);
   if (m0.facetCrown && !opts.inset) return facetCrownGeo(m0, y0, opts);
   if (m0.facetGem && !opts.inset) return facetGemGeo(m0, y0);
@@ -4070,6 +4120,15 @@ function splitGeoOval(g, cx, cy, rx, ry) {
     const welded = mergeVertices(out, 1e-6); out.dispose(); return welded; });
 }
 
+function splitGeoV(g, cx, y0, W, H, tip) {
+  let remaining = g; const outside = [], slope = (1 - tip) * 2 / W;
+  for (const sign of [-1, 1]) {
+    const [out, inside] = splitGeoField(remaining, p => (p[1] - y0) / H - tip - sign * slope * (p[0] - cx));
+    outside.push(out); if (remaining !== g) remaining.dispose(); remaining = inside;
+  }
+  const border = mergeGeometries(outside); outside.forEach(x => x.dispose());
+  return [border, remaining].map(g => { const out = mergeVertices(g, 1e-6); g.dispose(); return out; });
+}
 const splitCache = new Map();
 // disc = { r, cx }: em vez de uma faixa, um disco no topo (inserto) — dentro do raio e acima da altura.
 function splitMat(base, yCut, above, disc = null) {
@@ -6533,6 +6592,9 @@ function buildInto(product, S, explodeAmt = 0) {
       let secondGeo = g, m2 = material(m0.mat2Color || '#cfd2d4', m0.mat2Finish || 'metal');
       if (m0.malikaFace && side === 'face') {
         const [border, face] = splitMalikaGeo(g, m, y0); mesh.geometry = border; secondGeo = face; g.dispose();
+      } else if (side === 'v') {
+        const [border, face] = splitGeoV(g, m.ox || 0, y0, m.W, m.h, clamp(m0.mat2Y ?? 8, 1, 40) / 100);
+        mesh.geometry = border; secondGeo = face; g.dispose();
       } else if (side === 'oval') {
         const rx = m.W / 2 * clamp(m0.mat2R ?? 72, 5, 98) / 100, ry = m.h / 2 * clamp(m0.mat2OvalH ?? 78, 5, 98) / 100;
         const [outside, inside] = splitGeoOval(g, m.ox || 0, yc, rx, ry);
@@ -8120,11 +8182,11 @@ function renderColorBox(m) {
     if (m.mat2) {
       field(box, m, ['mat2Side', 'Onde fica o segundo material', 'select', [
         ['baixo', 'Faixa embaixo (aro, inserto, base)'], ['cima', 'Faixa em cima (capa)'], ['topo', 'Disco no topo (inserto no centro)'],
-        ['oval', 'Painel oval (frente e verso)'], ...(m.malikaFace ? [['face', 'Face em gota com borda chanfrada']] : [])]], () => {
+        ['oval', 'Painel oval (frente e verso)'], ['v', 'Painel em V (frente e verso)'], ...(m.malikaFace ? [['face', 'Face em gota com borda chanfrada']] : [])]], () => {
         if (m.mat2Side === 'topo' && (m.mat2Y ?? 20) < 70) m.mat2Y = 90;
         if (m.mat2Side === 'oval') Object.assign(m, { mat2Y: 55, mat2R: 72, mat2OvalH: 78 }); re();
       });
-      field(box, m, ['mat2Y', m.mat2Side === 'face' ? 'Início da face jateada (da base)' : m.mat2Side === 'oval' ? 'Altura do centro do painel' : m.mat2Side === 'topo' ? 'Altura onde o disco começa (da base)' : 'Altura da divisa (da base da peça)', m.mat2Side === 'face' ? 12 : 1, m.mat2Side === 'face' ? 40 : 99, 0.5, '%'], queueBuild);
+      field(box, m, ['mat2Y', m.mat2Side === 'face' ? 'Início da face jateada (da base)' : m.mat2Side === 'v' ? 'Altura da ponta do V (da base)' : m.mat2Side === 'oval' ? 'Altura do centro do painel' : m.mat2Side === 'topo' ? 'Altura onde o disco começa (da base)' : 'Altura da divisa (da base da peça)', m.mat2Side === 'face' ? 12 : 1, ['face', 'v'].includes(m.mat2Side) ? 40 : 99, 0.5, '%'], queueBuild);
       if (m.mat2Side === 'topo' || m.mat2Side === 'oval') field(box, m, ['mat2R', m.mat2Side === 'oval' ? 'Largura do painel' : 'Tamanho do disco (largura do topo)', 5, 100, 1, '%'], queueBuild);
       if (m.mat2Side === 'oval') field(box, m, ['mat2OvalH', 'Altura do painel', 5, 98, 1, '%'], queueBuild);
       field(box, m, ['mat2Color', 'Cor do segundo material', 'color'], queueBuild);

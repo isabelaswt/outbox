@@ -166,9 +166,11 @@ Pendências conhecidas (precisam de dado ou de decisão; não invente):
 
 **Em andamento** (quem está mexendo em quê agora; apague quando terminar):
 
-- Codex: seguem Bouquet, Brilhante e Victoria, com fontes p141/144/197. Fechos das makes, Malika e Thenue publicados; conferir demais pendências na auditoria. Wheel/Rock sem evidência suficiente de passagem frente-verso: não preencher por suposição. PDF final adiado.
+- Codex: conferência geral após cdx14; registrar desvios atuais antes do PDF. Wheel/Rock sem evidência suficiente de passagem frente-verso: não preencher por suposição.
 
 **Registro** (o mais novo em cima):
+
+- 2026-11-17, Codex, `2026-11-17.cdx14`: Bouquet p141 com arcos de pétalas desencontrados em superfície contínua no topo, substituindo anéis torneados; disposição/profundidade estimadas nas duas fotos, sem planta superior cotada. Brilhante p144 com faces laterais em losango e planos convergindo ao ápice, níveis/larguras proporcionais ao desenho; preservado colar aberto oferecido pelo catálogo, profundidade/ângulos estimados. Victoria p197 com região fosca em V e contorno polido, conforme texto do catálogo; não acrescentado sulco sem cota. Três modelos vistos em frente/topo/3/4; W/H preservados, Bouquet/Brilhante sem bordas abertas na superfície base, materiais da Victoria presentes no export. Controles Malika/Thenue preservados. `tools/conferencia/validacao-cdx14.json`, imagens locais `_ref/incom/validacao-cdx14/`. Inicia-se conferência geral; PDF ainda não gerado.
 
 - 2026-11-17, Codex, `2026-11-17.cdx13`: Malika ganha face plana jateada em gota e borda chanfrada polida, substituindo a faixa horizontal; cotas 30 × 38 mm e pé Ø22,2 do desenho da dona preservados. Início/ângulo/profundidade do corte estimados nas fotos; D máximo resultante ~25,92 mm continua sem cota lateral oficial. Thenue p194: removida interpretação do oval como furo passante, painel fosco contínuo recortado na superfície, com borda polida. W32,1/H36,2 preservados; D anterior estimado. Materiais em duas superfícies reais no export, sem casca externa duplicada. Recorte convexo do oval cobre também triângulos grandes; cinco planos de corte e teste de área com oval inteiramente dentro de um triângulo passaram. Seis tampas conferidas em frente/3/4; Malika e controles com superfície base sem bordas abertas, ambos os materiais presentes no export. `tools/conferencia/validacao-cdx13.json`, imagens locais `_ref/incom/validacao-cdx13/`. Restam outras tampas e pendências sem fonte; PDF não gerado.
 
