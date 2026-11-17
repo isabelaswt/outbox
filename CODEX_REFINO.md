@@ -165,9 +165,11 @@ Pendências conhecidas (precisam de dado ou de decisão; não invente):
 
 **Em andamento** (quem está mexendo em quê agora; apague quando terminar):
 
-- Codex: auditoria visual do catálogo e dos renders por família. Revisores em modo somente leitura; correções centralizadas no Codex.
+- (vazio)
 
 **Registro** (o mais novo em cima):
+
+- 2026-11-17, Codex, `2026-11-17.cdx3`: pente-fino de 186 renders documentado em `INCOM_AUDITORIA.md`, comparando fotos/desenhos do catálogo aos renders salvos. Inclui desvios por família, pendências de evidência, limitações dimensionais e ordem de correção. Não representa aprovação dos mecanismos ocultos nem render novo das correções. Próximo refino: Tube, Mini Jubilee, Dispensing Twist, escovas das máscaras, mangas dos sticks e fechamentos próprios.
 
 - 2026-11-17, Codex, `2026-11-17.cdx2`: abas Outbox/Incom e miniaturas bege fosco no seletor, conferidas no navegador. Tampa Sens: saída circular no fundo substituída por retângulo lateral no disco, conforme pedido da dona; cota exata da saída ainda pendente. Geometria da Sens validada apenas por sintaxe nesta etapa.
 
