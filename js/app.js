@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-17.cdx15';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-17.cdx16';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -677,7 +677,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-17.cdx15';
+const BUILD = '2026-11-17.cdx16';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -2635,7 +2635,13 @@ function moduleGeo(m0, y0, opts = {}) {
   let g, extras = [];
   if (flipOpen) [g, extras] = flipOpenGeo(m, y0, rings, seg, disp, ang);
   else g = loft(rings, seg, disp, !!(disp && (kmax || m.ridges > 0)));
-  if (m.tilt && g) tiltTop(g, y0, m.tilt);
+  if (m.tilt && g) {
+    tiltTop(g, y0, m.tilt);
+    if (m.keepTiltHeight) { // Olympea p80: raio no topo inclinado não pode retirar a altura cotada.
+      g.computeBoundingBox(); const h = g.boundingBox.max.y - y0;
+      if (h > 0.1) { g.translate(0, -y0, 0); g.scale(1, m.h / h, 1); g.translate(0, y0, 0); g.computeVertexNormals(); }
+    }
+  }
   if (m.quadDish && g && !inset) quadDish(g, y0, m);
   if (m.calha && g) calhaTop(g, y0, m);
   if (m.curvaTopo > 0 && g) curvaTopo(g, y0, m);
@@ -9339,7 +9345,7 @@ function incomProduct(r) {
       // Charlotte (divisão abaixo da metade no desenho): fica em pé sobre a tampa, corpo em cima. Na foto é uma
       // bisnaga achatada (frente larga, seção de retângulo arredondado), não um cilindro
       if (r.n === 'Olympea') { const sc = sq(0.4); // foto: em pé sobre a tampa preta, corpo achatado com o topo inclinado
-        ms = [P('Tampa', W, D, H * f, { ...sc, rBot: 2, rTop: 0.5 }), P('Frasco', W, D, H * (1 - f), { ...sc, vol: true, rBot: 0.5, rTop: 2.5, taperB: 94, tilt: [1, 0.86] })]; break; }
+        ms = [P('Tampa', W, D, H * f, { ...sc, rBot: 2, rTop: 0.5 }), P('Frasco', W, D, H * (1 - f), { ...sc, vol: true, rBot: 0.5, rTop: 2.5, taperB: 94, tilt: [1, 0.86], keepTiltHeight: true })]; break; }
       if (f < 0.5) { const sc = { ...sq(0.12) }, Dc = r1(W * 0.58); // foto: retângulo de arestas vivas (raio pequeno), não oval
         ms = [P('Tampa', W, Dc, H * f, { ...sc, rBot: 2, rTop: 0.5, _t: [0, f] }), P('Frasco', W, Dc, H * (1 - f), { ...sc, vol: true, rBot: 0.5, rTop: r.t === 'frnr' ? W * 0.4 : 2, _t: [f, 1] })]; break; }
       const sb = r.n === 'Beatrice' ? sq(0.2) : {}; // Beatrice: frasco quadrado de cantos arredondados (foto)
@@ -9505,6 +9511,8 @@ function incomProduct(r) {
     if (fr) Object.assign(fr, { own: true, finish: 'pet', color: '#ffffff', liq: true, liqLevel: disp ? 82 : 78,
       liqType: disp ? 'cremoso' : 'transparente', liqColor: disp ? '#d9b49a' : '#e4edf0' });
     ms.forEach(m => { if (m.type === 'contaGotas') m.ridges = 0; });
+    // Julie p43: frasco PE opaco na foto e na lista de materiais; demais PET/SAN preservados.
+    if (r.c === 'Conta-gotas' && r.n === 'Julie' && fr) Object.assign(fr, { own: true, color: BEIGE, finish: 'fosco' });
     // Deluxes, págs. 57–62: saia lisa na foto principal e nos detalhes spray/dosadora.
     if (r.c === 'Deluxes') ms.forEach(m => { if (m.kind === 'spray') Object.assign(m, { ridges: 0, skirtPct: 100, bandInset: 0 }); });
     const c = ms.find(m => m.name === 'Sobretampa');
@@ -9670,12 +9678,13 @@ function incomPerfume(r) {
 }
 // Medida final: a tampa pronta é medida e ajustada para a largura (e profundidade, quando o catálogo dá) exatas do
 // catálogo — facetadas e assimétricas saíam 0,3–1 mm fora. Não vale onde a largura do catálogo é estimada.
-INCOM_CAPS.forEach(r => { const c = LIB[r.k]; if (!c || /W/.test(r.est || '')) return;
-  const round = !r.D && !(c.sides > 0) && !c.disco && !c.deitada; // redonda: profundidade = largura
+INCOM_CAPS.forEach(r => { const c = LIB[r.k]; if (!c) return;
+  // Dora/Crown/Domini: largura estimada não impede conferir a altura cotada.
+  const estW = /W/.test(r.est || ''), round = !estW && !r.D && !(c.sides > 0) && !c.disco && !c.deitada; // redonda: profundidade = largura
   for (let it = 0; it < 3; it++) try { const g = moduleGeo({ ...BASE, ...c, type: r.k }, 0, { lo: false }); if (!g) return; g.computeBoundingBox(); const b = g.boundingBox; g.dispose();
     const kx = r.W / (b.max.x - b.min.x), kz = (r.D && !/D/.test(r.est || '') ? r.D : round ? r.W : 0) / (b.max.z - b.min.z) || 1;
     let ch = false;
-    if (kx > 0.95 && kx < 1.05 && Math.abs(kx - 1) > 0.002) { c.W = Math.round(c.W * kx * 1000) / 1000; ch = true; }
+    if (!estW && kx > 0.95 && kx < 1.05 && Math.abs(kx - 1) > 0.002) { c.W = Math.round(c.W * kx * 1000) / 1000; ch = true; }
     if (kz > 0.95 && kz < 1.05 && Math.abs(kz - 1) > 0.002) { c.D = Math.round((c.D ?? c.W) * kz * 1000) / 1000; ch = true; }
     const ky = c.valveShow ? 1 : r.H / (b.max.y - b.min.y); // altura (sem a válvula aparente das Chelsea/Soho/Manhattan)
     if (ky > 0.97 && ky < 1.03 && Math.abs(ky - 1) > 0.002) { c.h = Math.round(c.h * ky * 1000) / 1000; ch = true; }

@@ -166,9 +166,11 @@ Pendências conhecidas (precisam de dado ou de decisão; não invente):
 
 **Em andamento** (quem está mexendo em quê agora; apague quando terminar):
 
-- Codex: conferência geral após cdx14; ponta da bala Ella/Squared e afilamento Spy em `moduleGeo`/`incomProduct`. Checar altura Olympea e material PE do Julie conta-gotas após essa rodada. Wheel/Rock sem evidência suficiente de passagem frente-verso: não preencher por suposição. PDF adiado até fechar correções verificáveis.
+- Codex: consolidar conferência de 186 modelos com correções cdx15/16 e montar PDF comparativo atualizado. Wheel/Rock sem evidência suficiente de passagem frente-verso: preservados; medidas internas sem cotas continuam pendências de fonte, não aprovação industrial.
 
 **Registro** (o mais novo em cima):
+
+- 2026-11-17, Codex, `2026-11-17.cdx16`: Julie conta-gotas p43 em bege fosco opaco, conforme frasco PE da foto/lista de materiais; demais PET/SAN preservados. Olympea p80: inclinação/raio do topo deixam de subtrair 0,48 mm da altura; 90,9 mm medidos. Dora p154: largura estimada deixa de impedir calibração da altura cotada, agora 32,2 mm; largura/profundidade estimadas preservadas. Dez montagens/controles conferidos, sem vértices/normais inválidos; Sydney continua transparente. `tools/conferencia/validacao-cdx16.json`, evidências locais `_ref/incom/validacao-cdx16/`. Consolidar renders e limitações de referência no PDF, sem apresentar mecanismos ocultos como certificados.
 
 - 2026-11-17, Codex, `2026-11-17.cdx15`: pontas das balas Ella/Squared afiladas e convexas, conforme fotos p88/92, em lugar do chanfro plano; Spy p91 com afilamento moderado preservando o corte inclinado. Curvaturas estimadas pela foto, sem cota da bala/parte enterrada. Sete batons e variantes renderizados abertos/fechados, cotas dentro de 0,1 mm dos alvos existentes, sem posições/normais inválidas; superfícies novas sem bordas abertas. `tools/conferencia/validacao-cdx15.json`, evidências locais `_ref/incom/validacao-cdx15/`. Conferência geral anterior cdx14 cobre 186 modelos; identificados também material do Julie conta-gotas e altura da Olympea para corrigir antes do PDF.
 
