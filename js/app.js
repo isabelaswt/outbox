@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-17.cl4';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-17.cl5';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -677,7 +677,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-17.cl4';
+const BUILD = '2026-11-17.cl5';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -1885,6 +1885,18 @@ function hexCapGeo(m, y0, lo) {
 }
 
 function sprayGeo(m, y0, { lo = false } = {}) {
+  if (m.incomBico) {
+    // Bico dosador Incom em PP, orifício Ø1,6 mm (fichas Olive, Julie e Vênus; perfil pelo detalhe "bico dosador"
+    // da ficha Olive, em rosca 20-410): colar Ø16,5 assentado na boca, garganta côncava até Ø6,4 e tubo levemente
+    // cônico até Ø4,8 na ponta. Altura nominal 18,3 mm; se a tampa fechada não comporta, achata só na altura.
+    // Medidas tiradas da foto do detalhe, sem desenho técnico próprio do bico.
+    const k = m.W / 16.5, sy = Math.min(1, (m.h - 3) / 18.3), Y = y => -3 + 3 + y * sy, bore = 0.8, pts = [[bore, -3], [6.4 * k, -3], [6.4 * k, 0], [8.25 * k, 0], [8.25 * k, 0.6]];
+    pts[0][1] = pts[1][1] = 0; pts[2][1] = 3; // trecho dentro da boca (3 mm), depois o colar sobre ela
+    pts.splice(0, pts.length, [bore, 0], [6.4 * k, 0], [6.4 * k, 3], [8.25 * k, 3], [8.25 * k, 3 + 0.6 * sy]);
+    for (let i = 1; i <= 16; i++) { const t = i / 16; pts.push([(3.2 + 5.05 * (1 - t) ** 2.5) * k, 3 + (0.6 + 8.2 * t) * sy]); }
+    pts.push([2.4 * k, 3 + 18.0 * sy], [2.1 * k, 3 + 18.3 * sy], [bore, 3 + 18.3 * sy], [bore, 0]);
+    const g = new THREE.LatheGeometry(pts.map(([r, y]) => new THREE.Vector2(r, y0 + y)), lo ? 48 : 128); g.deleteAttribute('uv'); return g;
+  }
   if (m.bocaBaixo) {
     // Frasnaga em pé sobre a tampa (fotos do site Incom, Charlotte/Olympea): na ponta de baixo do corpo, gargalo
     // com rosca e bico cônico dosador apontando para baixo; passagem central aberta. Medidas proporcionais à foto.
@@ -2530,6 +2542,43 @@ function lipstickBulletGeo(m, y0, { lo = false } = {}) {
   for (let j = 1; j <= nf; j++) { const k = k0 * (1 - j / nf); rings.push(ring(k, x => plane(x) + bulge * (1 - (k / k0) ** 2))); }
   return loftPts(rings);
 }
+// Petit Aplicador (foto do catálogo/site): 8 aplicadores intercambiáveis sobre o mesmo inserto preto.
+// Cada um é uma sequência de anéis [altura 0–1, raio x, raio z, desvio x, inclinação°] em raios da peça;
+// s = anel onde começa o 2º material (flocado/cerdas brancas). Formas e proporções estimadas pelas fotos.
+const BRISTLE = (() => { const r = [[0, 0.85], [0.1, 0.85], [0.18, 0.6], [0.4, 0.55], [0.44, 0.72, 0.3]];
+  for (let i = 0; i < 9; i++) { const u = i / 8; r.push([0.48 + u * 0.44, (i % 2 ? 0.58 : 0.74) * (1 - 0.45 * u), 0.3 - 0.08 * u, 0.25 * u, 0]); }
+  r.push([0.96, 0.32, 0.2, 0.3, 30], [1, 0.12, 0.1, 0.32, 38]); return r; })();
+const APLIC = {
+  cerdas: { nome: 'Cerdas', color: '#eef2f3', finish: 'pet', c2: '#f6f4f0', f2: 'fosco', s: 5,
+    r: [[0, 1], [0.12, 1], [0.2, 0.85], [0.5, 0.6], [0.72, 0.38], [0.76, 0.34], [0.86, 0.27], [0.94, 0.17], [1, 0.04]] },
+  silicone: { nome: 'Silicone', color: '#eeeae4', finish: 'pet',
+    r: [[0, 0.95], [0.12, 0.95], [0.2, 0.8], [0.7, 0.76], [0.82, 0.7], [0.9, 0.58], [0.96, 0.38], [1, 0.08]] },
+  chanfrada: { nome: 'Flocada Chanfrada', color: '#1a1a1a', finish: 'brilho', c2: '#f4f1ec', f2: 'fosco', s: 4,
+    r: [[0, 0.95], [0.1, 0.95], [0.16, 0.72], [0.74, 0.72], [0.78, 0.8, 0.8, 0, 12], [0.9, 0.8, 0.8, 0, 28], [0.96, 0.7, 0.72, 0, 28], [1, 0.4, 0.42, 0, 28]] },
+  cushion: { nome: 'Flocada Cushion', color: '#e6edf0', finish: 'pet', c2: '#f4f1ec', f2: 'fosco', s: 3,
+    r: [[0, 0.62], [0.3, 0.62], [0.36, 0.62], [0.4, 0.9], [0.52, 1.08], [0.66, 1.12], [0.8, 1.06], [0.9, 0.86], [0.96, 0.55], [1, 0.15]] },
+  pinpoint: { nome: 'Pin Point', color: '#eef2f3', finish: 'pet', c2: '#f6f4f0', f2: 'fosco', s: 4,
+    r: [[0, 0.85], [0.1, 0.85], [0.18, 0.6], [0.5, 0.5], [0.54, 0.5], [0.74, 0.43], [0.86, 0.32], [0.95, 0.16], [1, 0.03]] },
+  flatpad: { nome: 'Flat Pad', color: '#1a1a1a', finish: 'brilho', c2: '#f4f1ec', f2: 'fosco', s: 7,
+    r: [[0, 0.8], [0.1, 0.8], [0.18, 0.55], [0.42, 0.5, 0.5, 0.05], [0.55, 0.48, 0.48, 0.25, -14], [0.64, 0.48, 0.48, 0.5, -28],
+      [0.68, 0.55, 0.55, 0.62, -38], [0.7, 0.95, 0.92, 0.7, -38], [0.75, 1.08, 1.05, 0.74, -38], [0.81, 1.08, 1.05, 0.78, -38], [0.85, 0.9, 0.88, 0.8, -38]] },
+  metal: { nome: 'Metal Effect', color: '#dfe2e5', finish: 'metal',
+    r: [[0, 0.85], [0.1, 0.85], [0.18, 0.62], [0.5, 0.55, 0.55, 0.05], [0.68, 0.62, 0.6, 0.18, -12], [0.82, 0.74, 0.62, 0.38, -28],
+      [0.92, 0.72, 0.56, 0.54, -38], [0.97, 0.52, 0.42, 0.62, -42], [1, 0.16, 0.14, 0.66, -44]] },
+  bristles: { nome: 'Bristles', color: '#1a1a1a', finish: 'fosco', r: BRISTLE },
+};
+function aplicRings(m, y0, lo) {
+  const t = APLIC[m.aplic] || APLIC.chanfrada, N = lo ? 24 : 64, R = m.W / 2, ox = m.ox || 0;
+  const raw = t.r.map(([u, rx, rz = rx, cx = 0, tl = 0]) => { const c = Math.cos(tl * Math.PI / 180), sn = Math.sin(tl * Math.PI / 180);
+    return Array.from({ length: N }, (_, i) => { const a = TAU * i / N, px = rx * R * Math.cos(a);
+      return [ox + cx * R + px * c, u * m.h + px * sn, rz * R * Math.sin(a)]; }); });
+  // a inclinação (pad, chanfro) pode passar da altura: encaixa tudo entre a base e a altura da peça
+  let lo0 = Infinity, hi = -Infinity; raw.flat().forEach(q => { lo0 = Math.min(lo0, q[1]); hi = Math.max(hi, q[1]); });
+  const k = m.h / ((hi - lo0) || 1); raw.forEach(rg => rg.forEach(q => { q[1] = y0 + (q[1] - lo0) * k; }));
+  return [raw, t.s || 0];
+}
+const aplicGeo = (m, y0, { lo = false } = {}) => loftPts(aplicRings(m, y0, lo)[0]);
+function aplicSplit(m, y0) { const [r, s] = aplicRings(m, y0, false); return [loftPts(r.slice(0, s + 1)), loftPts(r.slice(s))]; }
 function lipstickPointGeo(m, y0, { lo = false } = {}) {
   // Ella/Squared p88/92: corpo cilíndrico e ponta afilada convexa, sem plano oblíquo.
   // Início/curvatura do afilamento por proporção fotográfica; porção enterrada não é cotada.
@@ -2625,6 +2674,7 @@ function splitMalikaGeo(g, m, y0) {
 function moduleGeo(m0, y0, opts = {}) {
   if (m0.lipPoint && !opts.inset) return lipstickPointGeo(m0, y0, opts);
   if (m0.lipBullet && !opts.inset) return lipstickBulletGeo(m0, y0, opts);
+  if (m0.aplic && !opts.inset) return aplicGeo(m0, y0, opts);
   if (m0.facetBud && !opts.inset) return budCapGeo(m0, y0, opts);
   if (m0.roseTop && !opts.inset) return roseCapGeo(m0, y0, opts);
   if (m0.malikaFace && !opts.inset) return malikaCapGeo(m0, y0, opts);
@@ -6799,6 +6849,8 @@ function buildInto(product, S, explodeAmt = 0) {
       let secondGeo = g, m2 = material(m0.mat2Color || '#cfd2d4', m0.mat2Finish || 'metal');
       if (m0.malikaFace && side === 'face') {
         const [border, face] = splitMalikaGeo(g, m, y0); mesh.geometry = border; secondGeo = face; g.dispose();
+      } else if (m0.aplic && APLIC[m0.aplic]?.s) { // aplicador: divisa no anel exato (acompanha a inclinação da ponta)
+        const [base, tip] = aplicSplit(m, y0); mesh.geometry = base; secondGeo = tip; g.dispose();
       } else if (side === 'v') {
         const [border, face] = splitGeoV(g, m.ox || 0, y0, m.W, m.h, clamp(m0.mat2Y ?? 8, 1, 40) / 100);
         mesh.geometry = border; secondGeo = face; g.dispose();
@@ -8505,11 +8557,11 @@ let swapOrigin = store.get('shape.swapOrigin', 'outbox') === 'incom' ? 'incom' :
 const swapMemo = new Map(); // uid|tipo → peça como estava antes de ser trocada
 // Sugestões da Incom para a peça do produto aberto: a mesma peça nas variantes oferecidas pelo catálogo
 // (tampa reta/abaulada, cristal, alta, colar abaulado…). Só para produto Incom; genérico não tem.
-const incomFamily = n => (n || '').replace(/^Incom /, '').replace(/\s*\([^)]*\)\s*$/, '').replace(/\s*\([^)]*\)\s*$/, '').replace(/\s+(Abaulada|Tampa Cristal|Tampa Alta)$/i, '').trim();
+const incomFamily = n => (n || '').replace(/^Incom /, '').replace(/\s*\([^)]*\)\s*$/, '').replace(/\s*\([^)]*\)\s*$/, '').replace(/\s+(Abaulada|Tampa Cristal|Tampa Alta)$/i, '').replace(/\s+·\s+.*$/, '').trim();
 function incomSuggestions(m) {
   const nm = S.file || S.name, me = PRESETS[nm]; if (!me?.forn && !S.modules.some(x => x.forn === 'Incom')) return [];
   const fam = incomFamily(nm), line = (nm.match(/\(([^)]*)\)\s*$/) || [])[1], out = [];
-  const sig = x => JSON.stringify([x.W, x.D, x.h, x.rTop, x.domeTop, x.own, x.finish, x.color, x._t, x.espelho, x.visor]);
+  const sig = x => JSON.stringify([x.aplic, x.W, x.D, x.h, x.rTop, x.domeTop, x.own, x.finish, x.color, x._t, x.espelho, x.visor]);
   for (const [k, p] of Object.entries(PRESETS)) {
     if (!p.forn || incomFamily(k) !== fam || (line && !k.endsWith(`(${line})`))) continue;
     const mod = p.modules.find(x => x.name === m.name); if (!mod || out.some(o => sig(o.mod) === sig(mod))) continue;
@@ -9430,6 +9482,9 @@ const corDe = (L, n) => L[[...n].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>>
 // Erros do próprio catálogo: a página do Oscar (líquido) repete o desenho do Moma Charm (Ø22,6 × 87,1 com argola);
 // a foto é o frasco do Oscar All Crystal/Oscar máscara (Ø18,6) com a tampa abaulada — vale o desenho da máscara
 const PROD_FIX = { incomp_liquidos_labiais_oscar: { W: 18.6, H: 109.9, prof: 'incomp_mascaras_oscar' } };
+// Aplicador do Petit (todas as 8 opções do catálogo): mesmo nome de peça para a troca sugerir as outras.
+const aplicPart = (P, k, W) => { const t = APLIC[k]; return P('Ponteira aplicadora', W, null, 13, { aplic: k, rBot: 0, rTop: 0, gap: -1, own: true, color: t.color, finish: t.finish,
+  ...(t.c2 ? { mat2: true, mat2Side: 'cima', mat2Color: t.c2, mat2Finish: t.f2 } : {}) }); };
 function incomProduct(r) {
   const fx = PROD_FIX[r.k]; if (fx) r = { ...r, ...fx };
   const W = r.W, D = r.D ?? r.W, H = r.H, B = { pesc: false, bpesc: false, liq: false, vol: false, rTop: 1, rBot: 1 };
@@ -9575,7 +9630,8 @@ function incomProduct(r) {
       { const n = ms[1]; ms[2].threadReceiver = { W: n.W, h: n.h, pitch: n.pitch, turns: n.turns, threadD: n.threadD, ringH: n.ringH }; }
       break; }
     case 'frn': case 'frnt': case 'frnr': case 'frnflat': {
-      const o = r.t === 'frnt' ? { taper: 88 } : {}, [f] = /Charlotte/.test(r.n) ? [0.32] : r.n === 'Olympea' ? [0.27] : incomFrac(pr, [0.66]); // Charlotte e Olympea: em pé sobre a tampa (fotos)
+      const o = r.t === 'frnt' ? { taper: 88 } : {}, [f0] = /Charlotte/.test(r.n) ? [0.32] : r.n === 'Olympea' ? [0.27] : incomFrac(pr, [0.66]),
+        f = r.n === 'Julie' ? f0 + 5.5 / H : f0; // Julie (fotos): o anel do ombro é do frasco; a tampa é um cilindro simples, sem aba // Charlotte e Olympea: em pé sobre a tampa (fotos)
       // Charlotte (divisão abaixo da metade no desenho): fica em pé sobre a tampa, corpo em cima. Na foto é uma
       // bisnaga achatada (frente larga, seção de retângulo arredondado), não um cilindro
       if (r.n === 'Olympea') { const sc = sq(0.4); // foto: em pé sobre a tampa preta, corpo achatado com o topo inclinado
@@ -9625,8 +9681,9 @@ function incomProduct(r) {
           ? M('tampaGloss', { name: 'Inserto roscado com haste e aplicador', W: insertW, D: insertW, h: r1(nh + 1.2),
               wandInsert: { W: nw, h: nh, pitch: 1.1, turns: 2.5, threadD: 0.45, ringH: 0 }, pescD: 2.4, tipL: 11, tipW: 5.5, tipColor: '#f4f1ec' })
           // Foto aberta: ponteira branca estreita de ponta arredondada saindo da boca do gargalo.
-          : P('Ponteira aplicadora', r1(nw * 0.66), null, 13, { rBot: 0, rTop: r1(nw * 0.33), gap: -3, own: true, color: '#f4f1ec' }),
-          haste ? cap : { ...cap, gap: -10, capa: true }]; break; } // a tampa veste gargalo e ponteira e assenta no ombro
+          : P('Inserto do aplicador', r1(nw * 0.9), null, 4, { rBot: 0, rTop: 0.4, gap: -1.5, own: true, color: '#1a1a1a', finish: 'brilho' }),
+          ...(haste ? [] : [aplicPart(P, r.aplic || 'chanfrada', r1(nw * 0.62))]),
+          haste ? cap : { ...cap, gap: -14.5, capa: true }]; break; } // a tampa veste gargalo, inserto e aplicador e assenta no ombro // a tampa veste gargalo e ponteira e assenta no ombro
       const s0 = r.t === 'glosssq' ? sq(0.08) : {}, [f] = SPLIT_FIX[r.pg] ? [SPLIT_FIX[r.pg]] : incomFrac(pr, [0.52]), capH = H * (1 - f), masc = r.c === 'Máscaras';
       // gloss: frasco transparente (PET G/SAN, como no catálogo) com o gloss colorido dentro; máscara: frasco opaco
       const gl = masc ? {} : { own: true, finish: 'pet', color: '#ffffff', fundoGrosso: true, fundo: r1(Math.max(3, H * 0.05)), fundoR: r1(Math.min(W, D) / 2), // por dentro o fundo é uma concha (meio redondo)
@@ -9933,6 +9990,8 @@ const MOMA_HIGH = 'Incom Moma Tampa Alta (líquidos labiais)';
   PRESETS[MOMA_HIGH] = p;
 }
 // Long e Long Lipview: o catálogo tem tampa reta (a da foto, modelo principal) ou abaulada (o desenho da direita)
+// Petit Aplicador: uma variante por aplicador do catálogo (a padrão é a da foto, flocada chanfrada)
+INCOM_PRODUCTS.filter(r => r.n === 'Petit Aplicador').forEach(r => Object.entries(APLIC).forEach(([k, t]) => { if (k !== 'chanfrada') PRESETS[`Incom Petit Aplicador · ${t.nome} (${r.c.toLowerCase()})`] = incomProduct({ ...r, aplic: k }); }));
 INCOM_PRODUCTS.filter(r => r.c === 'Batons' && /^Long/.test(r.n)).forEach(r => { PRESETS[`Incom ${r.n} Abaulada (batons)`] = incomProduct({ ...r, n: `${r.n} Abaulada`, abaulada: true }); });
 // Tampas de perfume da Incom montadas: frasco genérico (a Incom não faz o vidro) + válvula spray
 // do acabamento da tampa (15, 18 ou 20 mm) + a tampa, que desce e veste a válvula.
