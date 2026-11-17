@@ -2,7 +2,7 @@
 
 ## ATUALIZAÇÃO MAIS RECENTE — 17/11/2026, fim da sessão Claude (ler primeiro)
 
-Versão no ar: **`2026-11-17.cl23`** (`main`). Duas sessões Claude trabalharam em paralelo na mesma pasta (a "fork" fez os aplicadores do Petit, cl5–cl17). Antes de commitar: `git fetch` + `git log HEAD..origin/main`; push por SSH `git@github.com:isabelaswt/outbox.git`; carimbo em 3 lugares (BUILD e import `incom.js?v=` em `js/app.js`, `?v=` de css/js em `index.html`). Próximo carimbo: **cl24**. Registro de cada envio na seção 8 do CODEX_REFINO.md.
+Versão no ar: **`2026-11-17.cl24`** (`main`). Duas sessões Claude trabalharam em paralelo na mesma pasta (a "fork" fez os aplicadores do Petit, cl5–cl17). Antes de commitar: `git fetch` + `git log HEAD..origin/main`; push por SSH `git@github.com:isabelaswt/outbox.git`; carimbo em 3 lugares (BUILD e import `incom.js?v=` em `js/app.js`, `?v=` de css/js em `index.html`). Próximo carimbo: **cl25**. Registro de cada envio na seção 8 do CODEX_REFINO.md.
 
 ### Regras da dona reforçadas nesta sessão
 - Forma e detalhes vêm das FOTOS (site Incom); desenho técnico só para medidas.
@@ -25,7 +25,7 @@ Versão no ar: **`2026-11-17.cl23`** (`main`). Duas sessões Claude trabalharam 
 ### Conferência foto × render — onde parou
 Esteira: preview "shape" (porta 8765, aba "seed"), `window.__rcat(categoria, prefixo, vistaAberta)` renderiza fechado 3/4 + aberto e manda para um receptor local (Claude usou `scratchpad/recv97.py` na porta 8797; 8798 é de outra sessão, 8799 é do Codex). `scratchpad/cmpsheet.py <prefixo>` monta folhas fotos do site × render (tem ALIAS para páginas com título errado: Amsterdam→amsterdam-200, NY Deluxe 100→amsterdam).
 - **Conferidos:** compactos, paletas, frascos, conta-gotas, dispensadores (exceto detalhes do Cube/Elíptico), deluxes, frasnagas; e em cl18–cl20 batons, líquidos labiais, máscaras, sticks e potes (correções: Timeless piso plano, Oscar All Crystal inserto incolor, parede grossa no gloss PET G, Gaia translúcido).
-- **Tampas de perfume (68) conferidas em cl22** (Crown Mini corrigida). Timeless refeito em cl21 pelas fotos (quadrado de quinas arredondadas). **A conferência foto × render está completa.** Válvulas próprias Incom feitas em cl23 (grupo Incom em Tampa/Válvula; bico de pato `patoIncom` no Bulb Blow 300). Próximo: roscas dos conta-gotas, variantes; por último captura final e PDF. Pendentes: Tate sem foto no site (seção quadrada não confirmada); Pote Apple Blow sem página própria; Avante com peneira (opção).
+- **Tampas de perfume (68) conferidas em cl22** (Crown Mini corrigida). Timeless refeito em cl21 pelas fotos (quadrado de quinas arredondadas). **A conferência foto × render está completa.** Válvulas próprias Incom feitas em cl23 (grupo Incom em Tampa/Válvula; bico de pato `patoIncom` no Bulb Blow 300). Roscas dos conta-gotas feitas em cl24 (Julie e Flacons). Próximo: variantes; por último captura final e PDF. Pendentes: Tate sem foto no site (seção quadrada não confirmada); Pote Apple Blow sem página própria; Avante com peneira (opção).
 - Esteira usada em cl18–cl20 (sessão principal): preview `outbox` porta 8766, receptor `scratchpad/recv96.py` na porta **8796**, `scratchpad/cmp.py <prefixo_render> <slug_site> <saida>` monta a folha site × render (fechado frente, 3/4, aberto).
 - Pendentes vistos e não feitos: Julie — opções do site (bico aplicador, conta-gotas, válvula) como sugestões de troca; Dispensing Elíptico sem página casada no site; fundo grosso SAN ainda renderiza branco (deveria parecer cristal).
 

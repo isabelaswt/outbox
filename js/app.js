@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-17.cl23';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-17.cl24';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -415,7 +415,7 @@ const LIB = {
 // Fine mist, Fine mist big, Espumadora, Tampa tambor), todos para rosca 24/410. Peças próprias com o nome Incom, separadas
 // das genéricas do OUTBOX; as que levam sobretampa transparente são montadas com duas peças (válvula + sobretampa)
 const INCOM_VALV = {
-  incomSpray: { ...LIB.spray, name: 'Incom · Spray' },
+  incomSpray: { ...LIB.spray, name: 'Incom · Spray', ridges: 0 }, // ícone: saia lisa, sem frisos
   incomDosadora: { ...LIB.pumpDosadora, name: 'Incom · Dosadora' },
   incomTrigger: { ...LIB.gatilho, name: 'Incom · Trigger' },
   incomEspumadora: { ...LIB.espumadora, name: 'Incom · Espumadora' },
@@ -702,7 +702,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-17.cl23';
+const BUILD = '2026-11-17.cl24';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -9672,7 +9672,18 @@ function incomProduct(r) {
       let rT = W * 0.18;
       if (fb) { const t = fb[0] + fb[1] + fb[2]; f = fb[0] / t; tb = (fb[0] + fb[1]) / t; cw = fb[3]; bw = fb[4]; rT = fb[5]; }
       ms = [P('Frasco', W, D, H * f, { vol: true, rBot: 2, rTop: rT, _t: [0, f] }),
-        M('contaGotas', { ...(b ? { botao: true, ridges: 0 } : {}), name: b ? 'Conta-gotas de botão' : 'Conta-gotas', W: r1(W * cw), D: r1(W * cw), h: r2(H * (tb - f)), actW: r1(W * bw), actH: r2(H * (1 - tb) + 0.5) })]; break; } // +0,5: o conta-gotas encaixa 0,5 mm no gargalo
+        M('contaGotas', { ...(b ? { botao: true, ridges: 0 } : {}), name: b ? 'Conta-gotas de botão' : 'Conta-gotas', W: r1(W * cw), D: r1(W * cw), h: r2(H * (tb - f)), actW: r1(W * bw), actH: r2(H * (1 - tb) + 0.5) })]; // +0,5: o conta-gotas encaixa 0,5 mm no gargalo
+      // Rosca: Julie 20-410 (ficha da frasnaga Julie, mesmo frasco); Flacon 15/30 — as fotos abertas do site mostram o
+      // gargalo com rosca externa, mas a norma não é informada: rosca representativa no diâmetro que a saia comporta.
+      // Sydney 60, Dispensing e Bulb só têm foto fechada: sem rosca presumida.
+      if (/^Flacon|^Julie$/.test(r.n)) { const v = ms[1], nw = r1(Math.min(v.W - 2.6, 20));
+        const neck = r.n === 'Julie' ? NECK('20/410', { exposedNeck: true, embed: 0, neckFillet: 0, ringH: 0, ringW: 0 })
+          : M('gargalo', { name: 'Gargalo roscado', neckStd: 'livre', W: nw, D: nw, h: r1(Math.min(9, v.h * 0.8)), pitch: 2.4, turns: 1.5, threadD: 0.7,
+            ringH: 0, ringW: 0, embed: 0, neckFillet: 0, exposedNeck: true, tuboAberto: true });
+        const descriptor = { W: neck.W, h: neck.h, pitch: neck.pitch, turns: neck.turns, threadD: neck.threadD, ringH: neck.ringH };
+        Object.assign(v, { threadReceiver: descriptor, threadNeckUid: neck.uid, threadThrough: true, W: Math.max(v.W, r1(neck.W + 2.6)), D: Math.max(v.D, r1(neck.W + 2.6)) });
+        ms.splice(1, 0, neck); }
+      break; }
     case 'fr': case 'frr': case 'frsq': case 'frsqr': case 'frt': case 'frsh': case 'frap': case 'frflat': {
       const o = { fr: { rBot: 3, rTop: W * 0.15 }, frr: { rBot: W * 0.3, rTop: W * 0.15 }, frsq: { ...sq(0.06), rTop: 3, rBot: 3 }, // Chicago (foto): quinas de baixo arredondadas frsqr: { ...sq(0.2), rTop: 4 },
         frt: { taperB: 82, rBot: W * 0.25, rTop: 4 }, frsh: { rTop: W * 0.35, rBot: 3 }, frap: { taper: 70, rTop: 6, rBot: 6 }, frflat: { ...sq(0.1), rTop: 6 },
