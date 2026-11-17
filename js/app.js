@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-17.cl27';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-17.cl28';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -349,7 +349,7 @@ const LIB = {
   // baixo na ponta. Medidas pela foto (saia Ø26,9 × 18,7; haste Ø14,1 × 15,3; cabeça 41,6 × 8, 8,6 mm para a frente);
   // largura da cabeça sem vista lateral: estimada igual à haste
   patoIncom: { name: 'Incom · Válvula bico de pato', kind: 'spray', sprayType: 'patoIncom', W: 26.9, D: 26.9, h: 18.7, collarR: 1, ridges: 0,
-             stemD: 14.1, stemH: 15.3, headH: 3.4, headBack: 9.5, nozzleL: 29.4, armT: 2.8, armW: 14, droop: 4 },
+             stemD: 14.1, stemH: 15.3, headH: 5.2, headBack: 9.5, nozzleL: 29.4, armT: 3.8, armW: 14, droop: 4 }, // foto de perto (Apple, dona): bico encorpado ~5 mm atrás e ~3,7 na ponta
   pump:    { name: 'Válvula pump', kind: 'spray', sprayType: 'pato', W: 26.3, D: 26.3, h: 14.5, collarR: 1, ridges: 44, ridgeD: 0.3,
              stemD: 9, stemH: 12, actW: 20, headH: 11, armT: 4, armW: 9, nozzleL: 22, droop: 1 },
   // Espumadora da lista Incom (ícone): estreita como a dosadora, cabeça cilíndrica com o bico reto e curto no alto
@@ -702,7 +702,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-17.cl27';
+const BUILD = '2026-11-17.cl28';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -2021,6 +2021,8 @@ function sprayGeo(m, y0, { lo = false } = {}) {
     // Bico de pato Incom: haste lisa saindo da saia (sem torre aparente na foto) e cabeça em lâmina desenhada pelo
     // perfil de lado (x para a frente, y para cima), extrudada na largura com quinas arredondadas
     head.push(cyl(m.stemD / 2, top - sink, m.stemH + sink + 0.6, 0, 0, lo));
+    // foto de perto (Apple Blow, enviada pela dona): aro um pouco mais estreito no topo da saia, onde a haste entra
+    head.push(ring(m.W * 0.9, 1.3, top - 0.05, { rBot: 0, rTop: 0.35 }));
     // ícone p.64 ampliado: lâmina FINA (≈3,4 mm) de espessura quase constante, topo reto até ~30% do comprimento e daí
     // curvando para baixo cada vez mais até a ponta, cortada de esquina (face da saída perpendicular à curva)
     const T = m.headH, L = m.nozzleL, B = m.headBack ?? m.stemD / 2 + 3, tT = Math.min(m.armT, T), d = m.droop ?? T, rb = Math.min(T * 0.45, 1.6);
