@@ -165,9 +165,11 @@ Pendências conhecidas (precisam de dado ou de decisão; não invente):
 
 **Em andamento** (quem está mexendo em quê agora; apague quando terminar):
 
-- Codex: continuação das pendências dos líquidos labiais, suporte roscado do Guggen Roll On e apoios dos olhais Charm. Não editar esses construtores em paralelo.
+- Nenhuma edição ativa. Restam as pendências discriminadas em `INCOM_AUDITORIA.md`; PDF completo adiado até concluir as correções, por pedido da dona.
 
 **Registro** (o mais novo em cima):
+
+- 2026-11-17, Codex, `2026-11-17.cdx7`: Guggen Roll On com suporte aberto roscado e esfera assentada, pela p.98; passo/relevo estimados pela foto e comentados, sem norma industrial presumida. Moma/Oscar Charm com apoios alargados sob o olhal (p100/104), preservando o vão Ø4,5 mm e alturas totais; espessuras dos apoios estimadas. Três montagens conferidas fechadas e abertas, sem vértices inválidos e cotas comparáveis dentro de 0,1 mm. Medições em `tools/conferencia/validacao-cdx7.json`, renders locais em `_ref/incom/validacao-cdx7/`. Persistem formatos específicos das ponteiras e a reprodução industrial dos retentores/encaixes.
 
 - 2026-11-17, Codex, `2026-11-17.cdx6`: Malika com gota fosca bege e faixa inferior lisa/transparente, conforme confirmação da dona. Tampa preservada em 30 × 38 mm. Frasco de demonstração passa de 42 × 44,1 mm (L/A) para ~73 × 83 mm, por proporção da foto enviada; profundidade anterior de 26 mm preservada por falta de vista lateral. Corpo continua genérico, sem cota comercial/capacidade certificada. Bordas redondas, sem chanfro. Dois materiais recortados na superfície (`mat2Mesh`) preservam o acabamento no export, sem duplicar a tampa inteira. Conferidos frente/lado, envelope da tampa e faixas do export (fosco acima de 18%, PET abaixo); teste geométrico de cinco planos preserva volume/atributos. Malika/Drop/Tahaa sem vértices inválidos. Evidência local em `_ref/incom/validacao-cdx6/`. PDF completo adiado por pedido da dona até concluir as correções.
 

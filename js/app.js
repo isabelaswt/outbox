@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-17.cdx6';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-17.cdx7';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -651,7 +651,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-17.cdx6';
+const BUILD = '2026-11-17.cdx7';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -2474,9 +2474,22 @@ function moduleGeo(m0, y0, opts = {}) {
   // argola para gancho/corrente no topo (Moma Charm, Oscar Charm): anel em pé, levemente achatado, com o pé embutido na tampa
   if (!inset && m.argola && g) { const a = m.argola, tor = new THREE.TorusGeometry(a.R, a.r, lo ? 10 : 20, lo ? 24 : 56);
     tor.scale(1, 1, 0.8); tor.translate(m.ox || 0, y0 + m.h + a.R + a.r - 0.6, 0);
-    for (const k in tor.attributes) if (!g.attributes[k]) tor.deleteAttribute(k);
+    const parts = [tor];
+    if (a.feet) { // P100/104: apoios alargados sob o olhal; perfil proporcional à foto/desenho.
+      // O vão Ø4,5 permanece livre. Seção e espessura seguem estimadas, sem cota própria.
+      for (const sign of [-1, 1]) {
+        const sh = new THREE.Shape(), x = v => sign * v * a.r;
+        sh.moveTo(x(1.6), -0.3 * a.r); sh.lineTo(x(4.8), -0.3 * a.r);
+        sh.quadraticCurveTo(x(3.8), 0.3 * a.r, x(2.8), 1.2 * a.r);
+        sh.lineTo(x(1.7), 1.3 * a.r); sh.closePath();
+        const foot = new THREE.ExtrudeGeometry(sh, { depth: 1.6 * a.r, bevelEnabled: false, curveSegments: lo ? 5 : 16 });
+        foot.translate(m.ox || 0, y0 + m.h, -0.8 * a.r); parts.push(foot);
+      }
+    }
+    for (const p of parts) for (const k in p.attributes) if (!g.attributes[k]) p.deleteAttribute(k);
     for (const k in g.attributes) if (!tor.attributes[k]) g.deleteAttribute(k);
-    const t2 = g.index ? tor : tor.toNonIndexed(); g = mergeGeometries([g, t2]) || g; }
+    if (a.feet) { const ud = g.userData; g = mergeLoose([g, ...parts]) || g; g.userData = ud; }
+    else g = mergeGeometries([g, g.index ? tor : tor.toNonIndexed()]) || g; }
   if (m.ox) { g.translate(m.ox, 0, 0); extras.forEach(e => e.translate(m.ox, 0, 0)); if (g.userData.lid) g.userData.lid.ox = m.ox; }
   g.userData.extras = extras; // peças em material escuro (furos)
   return g;
@@ -9030,7 +9043,7 @@ function incomProduct(r) {
       const tl = pr ? (pr.p.find(q => q[0] > f + 0.1 && (q[1] + q[2]) / 2 < 0.6 * Math.max(...pr.p.map(z => (z[1] + z[2]) / 2))) || [1])[0] : 1;
       // Págs.100/104: vão circular Ø4,5 mm. Seção do aro 1 mm continua estimada;
       // a altura reservada ao olhal é compensada na tampa para manter a cota total.
-      const charm = /Charm/.test(r.n), arg = tl < 1 && charm ? { R: 3.25, r: 1 } : null;
+      const charm = /Charm/.test(r.n), arg = tl < 1 && charm ? { R: 3.25, r: 1, feet: true } : null;
       const cap = P('Tampa', W, D, H * (tl - f), { ...s0, ...(/All Crystal/.test(r.n) ? { own: true, finish: 'pet', color: '#ffffff', topDip: 0.5, roscaInt: { r: r1((Math.min(W, D) - 3) / 2 + 0.35), y0: r1(H * (tl - f) * 0.12), y1: r1(H * (tl - f) * 0.5), n: 5 } } : {}), rTop: arg ? 1.2 : r.t === 'gloss' ? W * 0.2 : 1.2, ...(tl < 1 && !arg ? { domeTop: r1(W * 0.42) } : {}), ...(arg ? { argola: arg } : {}), _t: [f, tl] });
       // Fotos p.94-108 e 122-126: tampa, haste e aplicador saem juntos para conferência aberta.
       Object.assign(cap, { capa: true, capaCarry: true, oco: true });
@@ -9040,9 +9053,13 @@ function incomProduct(r) {
       const wv = r1(Math.max(5, Math.min(Math.min(W, D) * 0.55, 2 * (capHalfAt(cap, 0) - 1.6))));
       // Guggen Roll On (foto): no gargalo um suporte transparente com a bolinha de aço; a tampa veste os dois
       if (/Roll On/.test(r.n)) { const hs = 6, db = r1(Math.min(8, Math.min(W, D) * 0.42)), wsup = r1(Math.min(W, D) * 0.62);
-        ms = [P('Frasco', W, D, H * f, { ...s0, vol: true, rBot: 2.4, ...gl, liqType: 'transparente', liqColor: '#cfe9f2', _t: [0, f] }),
-          P('Suporte do roll-on', wsup, null, hs, { rTop: 1.2, rBot: 0.3, own: true, finish: 'pet', color: '#ffffff' }),
-          P('Esfera de aço', db, null, db, { rTop: db / 2, rBot: db / 2, gap: r1(-db * 0.4), own: true, color: '#d6d8da', finish: 'metal' }),
+        // P98, detalhe ampliado: suporte PE aberto com filetes externos, não cilindro liso.
+        // Passo ~12% do diâmetro e relevo ~4% estimados na foto; sem norma industrial presumida.
+        ms = [P('Frasco', W, D, H * f, { ...s0, vol: true, rBot: 2.4, ...gl, ocoTopo: true, liqType: 'transparente', liqColor: '#cfe9f2', _t: [0, f] }),
+          M('gargalo', { name: 'Suporte roscado do roll-on', neckStd: 'livre', W: wsup, D: wsup, h: hs,
+            pitch: r1(wsup * 0.12), turns: 2.5, threadD: r1(wsup * 0.04), ringH: 0, ringW: 0, embed: 0,
+            neckFillet: 0, exposedNeck: true, tuboAberto: true, own: true, finish: 'pet', color: '#ffffff' }),
+          P('Esfera de aço', db, null, db, { rTop: db / 2, rBot: db / 2, gap: r1(hs - db * 0.4), own: true, color: '#d6d8da', finish: 'metal' }),
           { ...cap, gap: r1(-(hs + db * 0.6)) }]; break; } // tampa assenta no ombro do frasco: altura total = catálogo
       ms = [P('Frasco', W, D, H * f, { ...s0, vol: true, rBot: masc ? 1.5 : 2.4, ...gl, wandMouth: Math.max(1, (wv - 0.8) / 2 - 1.2), _t: [0, f] }),
         M('tampaGloss', { name: masc ? 'Haste com escova' : 'Haste com aplicador', W: wv, D: wv, h: r1(cap.h - 2.5), pescD: r1(Math.min(3, wv * 0.3)),

@@ -1,0 +1,54 @@
+{
+  "version": "2026-11-17.cdx7",
+  "method": "Malhas fechadas medidas; abertas verificadas visualmente. Diâmetro do vão Charm preservado em 4,5 mm. Passo de rosca e espessura de apoios estimados pela foto; mecanismos não certificados.",
+  "results": [
+    {
+      "name": "Incom Guggen Roll On (líquidos labiais)",
+      "page": 98,
+      "measured": {
+        "W": 18.599998474121094,
+        "D": 18.599998474121094,
+        "H": 103.9000015258789
+      },
+      "target": {
+        "W": 18.6,
+        "H": 103.9
+      },
+      "invalid": 0,
+      "invalidOpen": 0,
+      "dimensionsWithin01": true
+    },
+    {
+      "name": "Incom Moma Charm (líquidos labiais)",
+      "page": 100,
+      "measured": {
+        "W": 22.600000381469727,
+        "D": 22.600000381469727,
+        "H": 87.0999984741211
+      },
+      "target": {
+        "W": 22.6,
+        "H": 87.1
+      },
+      "invalid": 0,
+      "invalidOpen": 0,
+      "dimensionsWithin01": true
+    },
+    {
+      "name": "Incom Oscar Charm (líquidos labiais)",
+      "page": 104,
+      "measured": {
+        "W": 18.600000381469727,
+        "D": 18.600000381469727,
+        "H": 112.30000305175781
+      },
+      "target": {
+        "W": 18.6,
+        "H": 112.3
+      },
+      "invalid": 0,
+      "invalidOpen": 0,
+      "dimensionsWithin01": true
+    }
+  ]
+}
