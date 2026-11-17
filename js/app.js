@@ -397,7 +397,7 @@ const LIB = {
 const newUid = () => Math.random().toString(36).slice(2, 10);
 // Peça de lados (4, 8): o parâmetro W é de canto a canto; a medida do catálogo é de face a face.
 // Converte para a medida externa sair igual à do fornecedor (medido na geometria: c + (1 − c)·arredondamento).
-function polyFit(o) { const n = o.sides || 0; if (n === 4 || n === 8) { const c = Math.cos(Math.PI / n), f = c + (1 - c) * (o.sideR || 0); o.W = r1(o.W / f); o.D = r1(o.D / f); } return o; }
+function polyFit(o) { const n = o.sides || 0; if (n === 4 || n === 8 || n === 12) { const c = Math.cos(Math.PI / n), f = c + (1 - c) * (o.sideR || 0); o.W = r1(o.W / f); o.D = r1(o.D / f); } return o; }
 // Tampas reais da Incom (catálogo 2026): medidas do fornecedor, forma aproximada com as peças do OUTBOX
 const hasStep = () => false; // contorno denso (0,1 mm): sem suavizar, os degraus ficam com quina
 // Forma vista de cima, conferida nas fotos do catálogo (o desenho técnico só mostra a frente):
@@ -509,7 +509,7 @@ function incomShape(r) {
     if (t1 >= 0.1 && t1 < 0.8 && reto && aC < 0.8 && (o.sides >= 3 || o.D < o.W * 0.95)) col = t1 - 0.0005;
   }
   if (col) {
-    const n0 = o.sides | 0, c = n0 ? Math.cos(Math.PI / n0) : 1, fp = n0 === 4 || n0 === 8 ? c + (1 - c) * (o.sideR || 0) : 1;
+    const n0 = o.sides | 0, c = n0 ? Math.cos(Math.PI / n0) : 1, fp = n0 === 4 || n0 === 8 || n0 === 12 ? c + (1 - c) * (o.sideR || 0) : 1;
     // disco em pé com pé redondo (Drop): a seção passa de redonda a disco aos poucos (~7% da altura
     // para cada lado); a troca seca marcava uma linha em volta da base
     const bw = fx.disco ? 0.07 : 0;
@@ -526,9 +526,11 @@ function incomShape(r) {
   if (fx.calha) o.calha = fx.calha;
   if (fx.polyTwist) o.polyTwist = fx.polyTwist;
   if (fx.chanfro) o.chanfro = r1(W * (1 - fx.chanfro)); // x+z do plano do corte (mm, medida do catálogo) // uma quina cortada a 45° (Prisma, vista de cima)
-  if (fx.dobra) { o.dobra = fx.dobra; o.topDip = 0; } // topo dobrado (Matrix): duas metades inclinadas ao contrário, com o degrau no meio
+  if (fx.dobra) { o.dobra = fx.dobra; o.topDip = 0; // o traço da dobra no desenho virava ombro torto e saía para o lado: o topo é o bloco reto, e a dobra entra no dobraTop
+    const top = o.prof.filter(q => q[0] <= 0.9).at(-1); o.prof.forEach(q => { q[4] = 0; if (q[0] > 0.9) { q[1] = top[1]; q[2] = top[2]; } }); } // topo dobrado (Matrix): duas metades inclinadas ao contrário, com o degrau no meio
   if (fx.lobes) Object.assign(o, { lobes: fx.lobes, lobeD: fx.lobeD, lobeTwist: fx.lobeTwist || 0, lobeFrom: fx.lobeFrom || 0 });
-  if (fx.quadFrom != null) { o.sides = 0; o.prof.forEach(q => { q[3] = q[0] >= fx.quadFrom ? (fx.quadN || 7) : 2; }); }
+  if (fx.quadFrom != null) { const f4 = o.sides === 4 ? Math.SQRT1_2 + (1 - Math.SQRT1_2) * (o.sideR || 0) : 1; o.W = r1(o.W * f4); o.D = r1(o.D * f4); o.W0 = o.W; o.sides = 0; // superelipse: largura cheia é a do catálogo (sem a correção de polígono)
+    o.prof.forEach(q => { q[3] = q[0] >= fx.quadFrom ? (fx.quadN || 7) : 2; }); }
   o.prof = smoothProfile(o.prof, o.h, o.W, fx.smooth);
   return o;
 }
@@ -574,7 +576,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-16.dosadora-furo2';
+const BUILD = '2026-11-16.pente-medidas2';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -1480,7 +1482,7 @@ function loft(rings, seg, disp, uniform = false) {
     for (let j = 0; j < seg; j++) {
       const th = uniform ? invArc(r, j / seg * TAU) : j / seg * TAU + off;
       let [x, z] = r.sides >= 3 ? polyPt(r.a, r.b, r.sides, r.round, th) : sp(r.a, r.b, r.n, th);
-      if (r.sides >= 3 && r.ptw) { const f = r.ptw * r.ly * Math.PI / 180, [px, pz] = polyPt(r.a, r.b, r.sides, r.round, th - f), c = Math.cos(f), s = Math.sin(f); x = px * c - pz * s; z = px * s + pz * c; } // prisma torcido (Twist)
+      if (r.sides >= 3 && r.ptw) { const f = r.ptw * r.ly * Math.PI / 180, [px, pz] = polyPt(r.a, r.b, r.sides, r.round, th - f), c = Math.cos(f), s = Math.sin(f), fm = Math.abs(f) % (TAU / r.sides), gk = 1 / (1 + (Math.cos(fm) + Math.sin(fm) * (r.sides === 4 ? 1 : 0.4) - 1) * (1 - (r.round || 0))); x = (px * c - pz * s) * gk; z = (px * s + pz * c) * gk; } // prisma torcido (Twist)
       const pm = r.pan ? panelMask(r.pan, r.ly, th, r.b) : 0;
       if (r.lobes >= 3 && r.lobeK > 0) { const f = lobeF(r.lobes, r.lobeK)(th - (r.twist || 0) * r.ly * Math.PI / 180) * (1 - pm) + pm; x *= f; z *= f; } // gomos torcidos: giram com a altura // área lisa: na crista dos gomos
       let dy = 0;
@@ -1828,8 +1830,10 @@ function sprayGeo(m, y0, { lo = false } = {}) {
     // Gloss: a tampa alta é tudo; por dentro, o encaixe da haste (escondido).
     head.push(cyl(Math.max(1, m.W / 2 - 1.2), top - 2, 1.2, 0, 0, lo));
   } else if (m.sprayType === 'gotas') {
-    // Conta-gotas: bulbo de borracha com topo em domo.
-    head.push(ring(m.actW, m.actH, top - 0.5, { rBot: 1.5, rTop: m.actW / 2, bulge: -6, bulgePos: 30 }));
+    // Conta-gotas: bulbo de borracha com topo em domo. De botão (Flacon Botão, Julie): colar alto e liso e um
+    // botão cilíndrico de topo reto saindo dele, como na foto do catálogo
+    if (m.botao) head.push(ring(m.actW, m.actH, top - 0.5, { rBot: 0.4, rTop: Math.min(1.4, m.actW * 0.14), groove: m.actH * 0.3, grooveD: 0.2 }));
+    else head.push(ring(m.actW, m.actH, top - 0.5, { rBot: 1.5, rTop: m.actW / 2, bulge: -6, bulgePos: 30 }));
   } else if (m.sprayType === 'bico') {
     // Bico dosador alto: virola frisada, ombro cônico, corpo superior frisado e ponteira longa.
     const yS = top - 0.05, shoulderH = Math.max(5.2, m.W * 0.2), baseW = m.W * 0.92;
@@ -2224,7 +2228,7 @@ function moduleGeo(m0, y0, opts = {}) {
       const nr = Math.max(0, m.neckR - (inset ? S.wall : 0));
       if (a > nr) a -= (a - nr) * k; if (b > nr) b -= (b - nr) * k; n = n + (2 - n) * k;
     }
-    return { y: y0 + lift + ly, ly, sides: m.polyFrom > 0 && ly < m.polyFrom * m.h ? 0 : m.sides | 0, round: m.sideR, a: Math.max(a - g, 0.05), b: Math.max(b - g, 0.05), n, cx: q.cx * (1 - (sh && ly > sh.y0 ? clamp((ly - sh.y0) / sh.L, 0, 1) : 0)), cz: q.cz * (1 - (sh && ly > sh.y0 ? clamp((ly - sh.y0) / sh.L, 0, 1) : 0)), ptw: m.polyTwist || 0, lobes: m.lobeFrom > 0 && ly < m.lobeFrom * m.h ? 0 : m.lobes | 0, lobeK: m.lobes >= 3 ? clamp(m.lobeD / (Math.min(m.W, m.D) / 2), 0, 0.9) : 0, twist: m.lobeTwist || 0 }; // gomos também nas peças de perfil (STL convertido, corpos medidos)
+    return { y: y0 + lift + ly, ly, sides: m.polyFrom > 0 && ly < m.polyFrom * m.h - 0.35 ? 0 : m.sides | 0, /* o anel do degrau já é do bloco: redondo ele saía como uma aba */ round: m.sideR, a: Math.max(a - g, 0.05), b: Math.max(b - g, 0.05), n, cx: q.cx * (1 - (sh && ly > sh.y0 ? clamp((ly - sh.y0) / sh.L, 0, 1) : 0)), cz: q.cz * (1 - (sh && ly > sh.y0 ? clamp((ly - sh.y0) / sh.L, 0, 1) : 0)), ptw: m.polyTwist || 0, lobes: m.lobeFrom > 0 && ly < m.lobeFrom * m.h ? 0 : m.lobes | 0, lobeK: m.lobes >= 3 ? clamp(m.lobeD / (Math.min(m.W, m.D) / 2), 0, 0.9) : 0, twist: m.lobeTwist || 0 }; // gomos também nas peças de perfil (STL convertido, corpos medidos)
   });
   if (!lo && !inset) for (const b of m.ribs || []) kmax = Math.max(kmax, b.k || 0);
   if (rings.length < 2) return null;
@@ -8483,14 +8487,18 @@ function fitValveIn(t, cap, wv0) {
 // godês) entra montado: aparece pela tampa transparente, ao abrir ou no Explodir. Compactos e
 // paletas têm o desenho em perspectiva no catálogo: ficam com a forma básica.
 // Divisão tampa × frasco lida a olho no desenho técnico (a extração automática não achou a linha)
-const SPLIT_FIX = { 96: 0.58, 98: 0.58, 100: 0.52, 102: 0.52, 103: 0.63, 104: 0.5, 107: 0.57, 108: 0.65, 123: 0.58, 124: 0.65, 125: 0.56, 126: 0.66, 130: 0.66, 131: 0.5 };
+const SPLIT_FIX = { 102: 0.56, 96: 0.58, 98: 0.58, 100: 0.52, 102: 0.52, 103: 0.63, 104: 0.5, 107: 0.57, 108: 0.65, 123: 0.58, 124: 0.65, 125: 0.56, 126: 0.66, 130: 0.66, 131: 0.5 };
 // Cor de exemplo do conteúdo (maquiagem): sempre a mesma para o mesmo modelo
 const BATOM_CORES = ['#9b1b30', '#e0604e', '#c43a3a', '#d9667f', '#7a2846', '#b5525a'];
 const GLOSS_CORES = ['#b8323f', '#d77a7a', '#a3473a', '#c9707e', '#8c2f45', '#e09a8a', '#b85c4f', '#d45f74'];
 const corDe = (L, n) => L[[...n].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7) % L.length];
+// Erros do próprio catálogo: a página do Oscar (líquido) repete o desenho do Moma Charm (Ø22,6 × 87,1 com argola);
+// a foto é o frasco do Oscar All Crystal/Oscar máscara (Ø18,6) com a tampa abaulada — vale o desenho da máscara
+const PROD_FIX = { incomp_liquidos_labiais_oscar: { W: 18.6, H: 109.9, prof: 'incomp_mascaras_oscar' } };
 function incomProduct(r) {
+  const fx = PROD_FIX[r.k]; if (fx) r = { ...r, ...fx };
   const W = r.W, D = r.D ?? r.W, H = r.H, B = { pesc: false, bpesc: false, liq: false, vol: false, rTop: 1, rBot: 1 };
-  const pr = INCOM_PROD_PROF[r.k], r2 = v => Math.round(v * 100) / 100;
+  const pr = INCOM_PROD_PROF[fx?.prof || r.k], r2 = v => Math.round(v * 100) / 100;
   // medidas exatas do catálogo: a parte mais larga do desenho vale a largura cheia (a média dos dois lados
   // dava 0,998 → 37,9 em vez de 38) e as alturas das peças não são arredondadas a 0,1 (somavam 111,6 em vez de 111,7)
   const gmax = pr ? Math.max(...pr.p.map(q => (q[1] + q[2]) / 2)) : 1;
@@ -8501,7 +8509,10 @@ function incomProduct(r) {
       // marcava cada degrau como uma listra em volta do corpo; degraus de verdade (anel, ombro) ficam
       const sp = smoothProfile(sl.prof, x.h, W * sl.amax, 3.2), mx = Math.max(...sp.map(q => q[1])) || 1; sp.forEach(q => { q[1] /= mx; q[2] /= mx; q[4] = 0; }); // alisar não pode afinar a largura; produto é simétrico (o desenho deslocava o centro em décimos e somava largura)
       x = { ...x, W: r2(Math.min(W, W * sl.amax)), D: r2(Math.min(D, D * sl.amax)), prof: sp, smoothProf: false, taper: 100, taperB: 100, bulge: 0, rTop: Math.min(x.rTop ?? 1, 0.6), rBot: Math.min(x.rBot ?? 1, 0.5) };
-      if (pr.d && tt[1] >= 1) x.topDip = r1(pr.d * H); }
+      if (pr.d && tt[1] >= 1) x.topDip = r1(pr.d * H);
+      // tampa abaulada (Oscar): o raio de cima do perfil é limitado a 0,6 mm; a cúpula entra no próprio perfil
+      if (o.domeTop > 0) { const d = Math.min(0.9, o.domeTop / x.h), base = x.prof.filter(q => q[0] <= 1 - d), q0 = base.at(-1);
+        x.prof = [...base, ...Array.from({ length: 16 }, (_, i) => { const u = (i + 1) / 16, k = Math.sqrt(Math.max(0.0025, 1 - u * u)); return [1 - d + d * u, q0[1] * k, q0[2] * k, 2, q0[4] || 0, 0]; })]; } }
     const m = M('reto', polyFit(x)); if (m.prof) m.W0 = m.W; return m;
   };
   const sq = (k = 0.05) => ({ sides: 4, sideR: k }), clear = { own: true, finish: 'pet', color: '#ffffff' };
@@ -8514,9 +8525,9 @@ function incomProduct(r) {
       const s0 = r.t === 'cr' ? {} : sq(/Quinteto/.test(r.n) ? 0.34 : r.t === 'cqr' ? 0.22 : 0.04), hb = H * 0.55, ht = H * 0.45, nw = r1(Math.min(22, Math.min(W, D) * 0.32));
       // paleta: abertura retangular larga (~42% da frente) só na base, logo abaixo da tampa, como no desenho
       // a dobradiça sai 0,3 do raio para trás: a caixa perde isso na profundidade e o total bate com o catálogo
-      const Dc = r2(D - 0.3 * clamp(Math.min(hb, ht) * 0.22, 1.1, 2.2)), pal = r.c === 'Paletas' && r.t !== 'cr', dB = pal ? { rect: true, top: true, w: r1(W * 0.42), h: r1(Math.min(4.5, hb * 0.58)), d: 2.4 } : { top: true, w: nw, h: r1(Math.min(3.5, hb * 0.45)), d: 1.6 };
+      const Dc = r2(D - 0.3 * clamp(Math.min(hb, ht) * 0.22, 1.1, 2.2)), pal = r.c === 'Paletas' && r.t !== 'cr', dB = pal ? { rect: true, top: true, w: r1(W * 0.42), h: r1(Math.min(4.5, hb * 0.58)), d: 2.4 } : { rect: true, top: true, w: nw, h: r1(Math.min(3.2, hb * 0.42)), d: 1.6 }; // desenho: entalhe retangular só na base
       ms = [P('Base', W, Dc, hb, { ...s0, rBot: r.t === 'cr' ? 1.5 : 1, rTop: 0.6, godes: godesOf(r), dedo: dB }),
-        P('Tampa', W, Dc, ht, { ...s0, rBot: 0.6, rTop: r.t === 'cr' ? 2 : 1.2, hinge: true, abre: 0, oco: true, visor: /com Visor|Quinteto/i.test(r.n), espelho: !/com Visor|Crystal|Quinteto/i.test(r.n), ...(pal ? {} : { dedo: { top: false, w: nw, h: r1(Math.min(2.6, ht * 0.4)), d: 1.1 } }) })]; break; }
+        P('Tampa', W, Dc, ht, { ...s0, rBot: 0.6, rTop: r.t === 'cr' ? 2 : 1.2, hinge: true, abre: 0, oco: true, visor: /com Visor|Quinteto/i.test(r.n), espelho: !/com Visor|Crystal|Quinteto/i.test(r.n), })]; break; }
     case 'dsq': if (/Twist/.test(r.n)) {
       // Twist: base branca e corpo giratório (girando, o acionador aparece); refil com pump por dentro
       const [fs] = incomFrac(pr, [0.23]);
@@ -8538,9 +8549,9 @@ function incomProduct(r) {
       ms = [P('Frasco', W, D, H * f, { vol: true, rBot: 2, bpesc: true, bpescMola: true, _t: [0, f] }),
         P('Acionador e capa', W, D, hc, { rTop: 3, _t: [f, 1], spout: { t: r1(1 - (dn / 2 + 1.6) / hc) , L: 4.2, droop: 0, D: dn, dir: 0 } })];
       { const c = ms[1], sp0 = c.spout; sp0.L = r2(1 + c.W / 2 - capHalfAt(c, sp0.t * c.h) - 0.35); } break; } // ponta do bico rente ao corpo (a medida do catálogo é o diâmetro)
-    case 'flacon': case 'flaconb': { const b = r.t === 'flaconb', [f] = incomFrac(pr, [0.56]), rem = 1 - f;
+    case 'flacon': case 'flaconb': { const b = r.t === 'flaconb' || r.n === 'Julie', [f] = incomFrac(pr, [0.56]), rem = 1 - f;
       ms = [P('Frasco', W, D, H * f, { vol: true, rBot: 2, rTop: W * 0.18, _t: [0, f] }),
-        M('contaGotas', { name: b ? 'Conta-gotas de botão' : 'Conta-gotas', W: r1(W * 0.62), D: r1(W * 0.62), h: r2(H * rem * (b ? 0.68 : 0.36)), actW: r1(W * (b ? 0.5 : 0.42)), actH: r2(H * rem * (b ? 0.32 : 0.64) + 0.5) })]; break; } // +0,5: o conta-gotas encaixa 0,5 mm no gargalo
+        M('contaGotas', { ...(b ? { botao: true, ridges: 0 } : {}), name: b ? 'Conta-gotas de botão' : 'Conta-gotas', W: r1(W * 0.62), D: r1(W * 0.62), h: r2(H * rem * (b ? 0.68 : 0.36)), actW: r1(W * (b ? 0.5 : 0.42)), actH: r2(H * rem * (b ? 0.32 : 0.64) + 0.5) })]; break; } // +0,5: o conta-gotas encaixa 0,5 mm no gargalo
     case 'fr': case 'frr': case 'frsq': case 'frsqr': case 'frt': case 'frsh': case 'frap': case 'frflat': {
       const o = { fr: { rBot: 3, rTop: W * 0.15 }, frr: { rBot: W * 0.3, rTop: W * 0.15 }, frsq: { ...sq(0.06), rTop: 3 }, frsqr: { ...sq(0.2), rTop: 4 },
         frt: { taperB: 82, rBot: W * 0.25, rTop: 4 }, frsh: { rTop: W * 0.35, rBot: 3 }, frap: { taper: 70, rTop: 6, rBot: 6 }, frflat: { ...sq(0.1), rTop: 6 } }[r.t];
@@ -8553,22 +8564,29 @@ function incomProduct(r) {
         : M(fe === 'pump' ? 'pump' : 'spray');
       ms = [P('Frasco', W, D, H - nh, { vol: true, ...o, _t: [0, (H - nh) / H] }), NECK('24/410', { h: nh }), fc]; break; }
     case 'frn': case 'frnt': case 'frnr': case 'frnflat': {
-      const o = r.t === 'frnt' ? { taper: 88 } : {}, [f] = incomFrac(pr, [0.66]);
-      // Charlotte (divisão abaixo da metade no desenho): fica em pé sobre a tampa, corpo em cima
-      if (f < 0.5) { ms = [P('Tampa', W, D, H * f, { rBot: 2, rTop: 0.5, _t: [0, f] }), P('Frasco', W, D, H * (1 - f), { vol: true, rBot: 0.5, rTop: r.t === 'frnr' ? W * 0.4 : 2, _t: [f, 1] })]; break; }
-      ms = [P('Frasco', W, D, H * f, { vol: true, rBot: 3, rTop: 1, ...o, _t: [0, f] }), P('Tampa', W * (r.t === 'frnt' ? 0.88 : 1), D, H * (1 - f), { rTop: r.t === 'frnr' ? W * 0.4 : 2, _t: [f, 1] })]; break; }
+      const o = r.t === 'frnt' ? { taper: 88 } : {}, [f] = /Charlotte/.test(r.n) ? [0.32] : incomFrac(pr, [0.66]); // Charlotte: tampa embaixo, 32% (desenho)
+      // Charlotte (divisão abaixo da metade no desenho): fica em pé sobre a tampa, corpo em cima. Na foto é uma
+      // bisnaga achatada (frente larga, seção de retângulo arredondado), não um cilindro
+      if (f < 0.5) { const sc = { ...sq(0.42) }, Dc = r1(W * 0.58);
+        ms = [P('Tampa', W, Dc, H * f, { ...sc, rBot: 2, rTop: 0.5, _t: [0, f] }), P('Frasco', W, Dc, H * (1 - f), { ...sc, vol: true, rBot: 0.5, rTop: r.t === 'frnr' ? W * 0.4 : 2, _t: [f, 1] })]; break; }
+      const sb = r.n === 'Beatrice' ? sq(0.2) : {}; // Beatrice: frasco quadrado de cantos arredondados (foto)
+      ms = [P('Frasco', W, D, H * f, { ...sb, vol: true, rBot: 3, rTop: 1, ...o, _t: [0, f] }), P('Tampa', W * (r.t === 'frnt' ? 0.88 : 1), D, H * (1 - f), { ...sb, rTop: r.t === 'frnr' ? W * 0.4 : 2, _t: [f, 1] })]; break; }
     case 'tube': ms = [P('Frasco', W, D, H - 14, { vol: true, taper: 70, rTop: 3, rBot: 2, _t: [0, (H - 14) / H] }), P('Gargalo', W * 0.45, null, 14, { rTop: 1, _t: [(H - 14) / H, 1] })]; break;
     case 'gloss': case 'glosssq': { // a tampa veste a haste com o aplicador (ou a escova, na máscara), que desce até o fundo
+      // Petit (frasnaga): na foto fica em pé sobre a tampa quadrada preta (36% de baixo, como no desenho) e o
+      // frasco longo e afunilado de topo arredondado em cima
+      if (/^Petit/.test(r.n)) { const fp = 0.36; ms = [P('Tampa', W, D, H * fp, { ...sq(0.14), rBot: 1, rTop: 0.4, _t: [0, fp] }), P('Frasco', W, D, H * (1 - fp), { vol: true, rBot: 0.4, rTop: W * 0.3, _t: [fp, 1] })]; break; }
       const s0 = r.t === 'glosssq' ? sq(0.08) : {}, [f] = SPLIT_FIX[r.pg] ? [SPLIT_FIX[r.pg]] : incomFrac(pr, [0.52]), capH = H * (1 - f), masc = r.c === 'Máscaras';
       // gloss: frasco transparente (PET G/SAN, como no catálogo) com o gloss colorido dentro; máscara: frasco opaco
-      const gl = masc ? {} : { own: true, finish: 'pet', color: '#ffffff', liq: true, liqType: 'cremoso', liqLevel: 88, liqColor: corDe(GLOSS_CORES, r.n) };
-      // Charm: a argola do topo não é parte do giro (virava um botão torneado); a tampa termina reta onde ela começa
-      const tl = /Charm/.test(r.n) && pr ? (pr.p.find(q => q[0] > f + 0.1 && (q[1] + q[2]) / 2 < 0.6 * Math.max(...pr.p.map(z => (z[1] + z[2]) / 2))) || [1])[0] : 1;
-      const arg = tl < 1 ? (() => { const hl = H * (1 - tl), rr = 1.0; return { R: Math.round(Math.max(1.6, (hl + 0.6 - 2 * rr) / 2) * 1000) / 1000, r: rr }; })() : null;
-      const cap = P('Tampa', W, D, H * (tl - f), { ...s0, rTop: arg ? 1.2 : r.t === 'gloss' ? W * 0.2 : 1.2, ...(arg ? { argola: arg } : {}), _t: [f, tl] });
+      const gl = masc ? {} : { own: true, finish: 'pet', color: '#ffffff', liq: true, liqType: 'cremoso', liqLevel: 100, liqColor: corDe(GLOSS_CORES, r.n) };
+      // Charm: a argola do topo não é parte do giro (virava um botão torneado); a tampa termina reta onde ela começa.
+      // Oscar sem Charm: o desenho do catálogo traz a argola, mas a foto é a tampa abaulada lisa — corta ali e arredonda
+      const tl = pr ? (pr.p.find(q => q[0] > f + 0.1 && (q[1] + q[2]) / 2 < 0.6 * Math.max(...pr.p.map(z => (z[1] + z[2]) / 2))) || [1])[0] : 1;
+      const charm = /Charm/.test(r.n), arg = tl < 1 && charm ? (() => { const hl = H * (1 - tl), rr = 1.0; return { R: Math.round(Math.max(1.6, (hl + 0.6 - 2 * rr) / 2) * 1000) / 1000, r: rr }; })() : null;
+      const cap = P('Tampa', W, D, H * (tl - f), { ...s0, ...(/All Crystal/.test(r.n) ? { own: true, finish: 'pet', color: '#ffffff' } : {}), rTop: arg ? 1.2 : r.t === 'gloss' ? W * 0.2 : 1.2, ...(tl < 1 && !arg ? { domeTop: r1(W * 0.42) } : {}), ...(arg ? { argola: arg } : {}), _t: [f, tl] });
       const wv = r1(Math.max(5, Math.min(Math.min(W, D) * 0.55, 2 * (capHalfAt(cap, 0) - 1.6))));
       ms = [P('Frasco', W, D, H * f, { ...s0, vol: true, rBot: 1.5, ...gl, _t: [0, f] }),
-        M('tampaGloss', { name: masc ? 'Haste com escova' : 'Haste com aplicador', W: wv, D: wv, h: r1(cap.h - 2.5), pescD: r1(Math.min(3, wv * 0.3)),
+        M('tampaGloss', { ...(/All Crystal/.test(r.n) ? { own: true, finish: 'pet', color: '#ffffff' } : {}), name: masc ? 'Haste com escova' : 'Haste com aplicador', W: wv, D: wv, h: r1(cap.h - 2.5), pescD: r1(Math.min(3, wv * 0.3)),
           tipL: masc ? r1(Math.min(24, H * 0.2)) : 13, tipW: r1(Math.min(masc ? 7.5 : 6.5, Math.min(W, D) - 6)), tipColor: masc ? '#2b2b2b' : '#e2cdb8' }), cap]; break; }
     case 'baton': case 'batonsq': {
       // Batom como no catálogo: base, tubo de metal (mecanismo) saindo dela, bala de 12,1 mm com a ponta
@@ -8611,7 +8629,7 @@ INCOM_PRODUCTS.forEach(r => { PRESETS[`Incom ${r.n} (${r.c.toLowerCase()})`] = i
 // (taper em cima, taperB embaixo), cintura (bulge) e arredondado do topo. O fundo arredondado
 // não conta: a cavidade abre por baixo, como na tampa de verdade.
 function capHalfAt(c, y) {
-  const t = clamp(y / c.h, 0, 1), n = c.polyFrom > 0 && y < c.polyFrom * c.h ? 0 : c.sides || 0, cs = Math.cos(Math.PI / (n || 1)), face = n ? cs + (1 - cs) * clamp(c.sideR || 0, 0, 0.95) : 1;
+  const t = clamp(y / c.h, 0, 1), n = c.polyFrom > 0 && y < c.polyFrom * c.h - 0.35 ? 0 : c.sides || 0, cs = Math.cos(Math.PI / (n || 1)), face = n ? cs + (1 - cs) * clamp(c.sideR || 0, 0, 0.95) : 1;
   if (c.prof?.length) { const q = profAt(c, clamp(y, 0, c.h)); return Math.min(q.a, q.b) * face - Math.abs(q.cx); }
   let w = Math.min(c.W, c.D ?? c.W) / 2 * face * ((c.taperB ?? 100) + ((c.taper ?? 100) - (c.taperB ?? 100)) * t) / 100;
   if (c.bulge) w *= 1 + c.bulge / 100 * Math.sin(Math.PI * t);
