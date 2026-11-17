@@ -577,7 +577,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-16.gloss-fundo-redondo';
+const BUILD = '2026-11-16.gloss-concha4';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -5432,9 +5432,11 @@ function roundInnerFloor(p, yb, R0, seg0 = 0) {
     const Dw = Dt && vi < ringN * seg ? Dt[vi % seg] : Dt ? d : D[ang(p[i], p[i + 2])]; // ponto do tampo (centro): fica no piso
     const R = Math.min(Dt && Dmax > 0 && vi < ringN * seg ? R0 * Dw / Dmax : R0, Dw * 0.97), yT = yb + R; // bola: o canto vira a curva inteira
     if (!(Dw > 0.5 && R > 0.3)) { if (y < yb) { p[i + 1] = yb; fn.push([i, 0, -1, 0]); } continue; }
-    const Lo = Dw + (yT0 - ymin), Lt = Dw - R + Math.PI * R / 2;
+    // concha (raio ≈ o do fundo): os anéis da parede se espalham pelo fundo inteiro a partir do centro — com o
+    // caminho pelo raio, o piso ficava só com o leque do centro e a concha saía em ponta (um V)
+    const bowl = R >= Dw * 0.9, Lo = bowl ? Math.max(1e-6, yT0 - ymin) : Dw + (yT0 - ymin), Lt = Dw - R + Math.PI * R / 2;
     // caminho sempre crescente pelo perfil (centro → canto → parede): sem dobras na malha
-    const path = d + Math.max(0, y - ymin), q = clamp(path / Lo, 0, 1) * Lt;
+    const path = bowl ? (d < Dw * 0.5 ? 0 : Math.max(0, y - ymin)) : d + Math.max(0, y - ymin), q = clamp(path / Lo, 0, 1) * Lt;
     let r, yy;
     let fa = 0;
     if (q <= Dw - R) { r = q; yy = yb; } else { fa = (q - (Dw - R)) / R; r = Dw - R + R * Math.sin(fa); yy = yb + R - R * Math.cos(fa); }
@@ -8590,7 +8592,7 @@ function incomProduct(r) {
       if (/^Petit/.test(r.n)) { const fp = 0.36; ms = [P('Tampa', W, D, H * fp, { ...sq(0.14), rBot: 1, rTop: 0.4, _t: [0, fp] }), P('Frasco', W, D, H * (1 - fp), { vol: true, rBot: 0.4, rTop: W * 0.3, _t: [fp, 1] })]; break; }
       const s0 = r.t === 'glosssq' ? sq(0.08) : {}, [f] = SPLIT_FIX[r.pg] ? [SPLIT_FIX[r.pg]] : incomFrac(pr, [0.52]), capH = H * (1 - f), masc = r.c === 'Máscaras';
       // gloss: frasco transparente (PET G/SAN, como no catálogo) com o gloss colorido dentro; máscara: frasco opaco
-      const gl = masc ? {} : { own: true, finish: 'pet', color: '#ffffff', fundoGrosso: true, fundo: r1(Math.max(3, H * 0.05)), fundoR: r1(Math.min(W, D) / 2 * 0.6), // por dentro o fundo é uma concha (meio redondo), com um miolo plano pequeno
+      const gl = masc ? {} : { own: true, finish: 'pet', color: '#ffffff', fundoGrosso: true, fundo: r1(Math.max(3, H * 0.05)), fundoR: r1(Math.min(W, D) / 2), // por dentro o fundo é uma concha (meio redondo)
          liq: true, liqType: 'cremoso', liqLevel: 100, liqColor: corDe(GLOSS_CORES, r.n) };
       // Charm: a argola do topo não é parte do giro (virava um botão torneado); a tampa termina reta onde ela começa.
       // Oscar sem Charm: o desenho do catálogo traz a argola, mas a foto é a tampa abaulada lisa — corta ali e arredonda
