@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-17.sens3';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-17.sens4';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -578,7 +578,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-17.sens3';
+const BUILD = '2026-11-17.sens4';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -2210,8 +2210,8 @@ function mergeLoose(list) {
   return mergeGeometries(list.filter(Boolean).map(g => { const y = g.index ? g.toNonIndexed() : g; for (const k in y.attributes) if (k !== 'position' && k !== 'normal') y.deleteAttribute(k); if (!y.attributes.normal) y.computeVertexNormals(); return y; }));
 }
 // Tampa Sens (Incom): saia estreita embaixo que abre em degrau até o corpo cilíndrico; em cima um disco inclinado
-// (baixo de um lado) dentro da borda. No lado baixo a borda sobe numa "volta" (parede curva) que deixa o espaço para
-// o dedo apertar; no lado alto do disco fica o furo de saída do produto — como nas fotos
+// (baixo de um lado) dentro da borda. No lado baixo um rebaixo em U entra pela borda (espaço para o dedo); no lado
+// alto do disco fica o furo de saída do produto — como nas fotos
 function sensCapGeo(m0, y0, opts) {
   if (opts.inset) return moduleGeo({ ...m0, sens: false }, y0, opts);
   const W = m0.W, D = m0.D ?? W, hb = m0.h * 0.78, hs = hb * 0.36, hf = hb * 0.14, R = W / 2, ht = m0.h - hb;
@@ -2221,13 +2221,13 @@ function sensCapGeo(m0, y0, opts) {
   // furo de saída (fenda) no lado alto do disco
   if (!opts.lo && lid) { const slot = new THREE.BoxGeometry(W * 0.17, ht * 3, W * 0.09); slot.translate(R * 0.55, y0 + hb + ht * 0.6, 0);
     const [o, inn] = cutHole(lid, slot); if (o !== lid) lid = mergeLoose([o, inn]); }
-  // a volta: trecho de parede curva da borda (~100°) no lado baixo, subindo até o alto da tampa
-  const t = Math.max(0.9, W * 0.035), a0 = Math.PI - 0.87, a1 = Math.PI + 0.87, sh = new THREE.Shape();
-  sh.absarc(0, 0, R, a0, a1, false); sh.absarc(0, 0, R - t, a1, a0, true); sh.closePath();
-  const volta = new THREE.ExtrudeGeometry(sh, { depth: ht + 0.4, bevelEnabled: false, curveSegments: opts.lo ? 8 : 32 });
-  volta.rotateX(-Math.PI / 2); volta.translate(0, y0 + hb - 0.4, 0);
-  { const p = volta.attributes.position; for (let i = 0; i < p.count; i++) { const y = p.getY(i); if (y > y0 + hb) { const ang = Math.abs(Math.atan2(p.getZ(i), -p.getX(i))); p.setY(i, y - (ht + 0.4) * 0.35 * (ang / 0.87) ** 2); } } volta.computeVertexNormals(); } // desce nas pontas (curva)
-  return mergeLoose([body, lid, volta]);
+  // a volta: rebaixo em U entrando pela borda no lado baixo (onde o dedo encaixa), cortando o disco e o alto do corpo
+  let cap = mergeLoose([body, lid]);
+  if (!opts.lo && cap) { const w = W * 0.34, d = W * 0.22, sh = new THREE.Shape(), yb0 = y0 + hb - Math.min(3, hb * 0.2);
+    sh.moveTo(-R - 2, -w / 2); sh.lineTo(-R + d - w / 2, -w / 2); sh.absarc(-R + d - w / 2, 0, w / 2, -Math.PI / 2, Math.PI / 2, false); sh.lineTo(-R - 2, w / 2); sh.closePath();
+    const u = new THREE.ExtrudeGeometry(sh, { depth: y0 + m0.h + 2 - yb0, bevelEnabled: false, curveSegments: 24 }); u.rotateX(-Math.PI / 2); u.translate(0, yb0, 0);
+    const [o, inn] = cutHole(cap, u); if (o !== cap) cap = mergeLoose([o, inn]); }
+  return cap;
 }
 function moduleGeo(m0, y0, opts = {}) {
   if (m0.kind === 'mesh') return opts.inset ? null : importedMeshGeo(m0, y0);
