@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-17.cat3';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-17.cat4';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -580,7 +580,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-17.cat3';
+const BUILD = '2026-11-17.cat4';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -8866,6 +8866,8 @@ INCOM_CAPS.forEach(r => { const c = LIB[r.k]; if (!c || /W/.test(r.est || '')) r
     let ch = false;
     if (kx > 0.95 && kx < 1.05 && Math.abs(kx - 1) > 0.002) { c.W = Math.round(c.W * kx * 1000) / 1000; ch = true; }
     if (kz > 0.95 && kz < 1.05 && Math.abs(kz - 1) > 0.002) { c.D = Math.round((c.D ?? c.W) * kz * 1000) / 1000; ch = true; }
+    const ky = c.valveShow ? 1 : r.H / (b.max.y - b.min.y); // altura (sem a válvula aparente das Chelsea/Soho/Manhattan)
+    if (ky > 0.97 && ky < 1.03 && Math.abs(ky - 1) > 0.002) { c.h = Math.round(c.h * ky * 1000) / 1000; ch = true; }
     if (!ch) return;
   } catch (e) { console.warn('medida da tampa', r.n, e); return; } });
 INCOM_CAPS.forEach(r => { PRESETS[`Incom ${r.n} (tampa de perfume)`] = incomPerfume(r); });
