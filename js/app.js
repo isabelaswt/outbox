@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-17.cl7';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-17.cl8';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -677,7 +677,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-17.cl7';
+const BUILD = '2026-11-17.cl8';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -2560,7 +2560,7 @@ const APLIC = {
     r: [[0, 0.85], [0.1, 0.85], [0.18, 0.6], [0.5, 0.5], [0.54, 0.5], [0.74, 0.43], [0.86, 0.32], [0.95, 0.16], [1, 0.03]] },
   flatpad: { nome: 'Flat Pad', color: '#1a1a1a', finish: 'brilho', c2: '#f4f1ec', f2: 'fosco', s: 7,
     r: [[0, 0.8], [0.1, 0.8], [0.18, 0.55], [0.42, 0.5, 0.5, 0.05], [0.55, 0.48, 0.48, 0.25, -14], [0.64, 0.48, 0.48, 0.5, -28],
-      [0.68, 0.55, 0.55, 0.62, -38], [0.7, 0.95, 0.92, 0.7, -38], [0.75, 1.08, 1.05, 0.74, -38], [0.81, 1.08, 1.05, 0.78, -38], [0.85, 0.9, 0.88, 0.8, -38]] },
+      [0.68, 0.55, 0.55, 0.62, -38], [0.7, 1.4, 1.36, 0.7, -38], [0.75, 1.6, 1.56, 0.74, -38], [0.81, 1.6, 1.56, 0.78, -38], [0.85, 1.35, 1.32, 0.8, -38]] }, // pad ~13 mm (foto de uso)
   metal: { nome: 'Metal Effect', color: '#dfe2e5', finish: 'metal',
     r: [[0, 0.85], [0.1, 0.85], [0.18, 0.62], [0.5, 0.55, 0.55, 0.05], [0.68, 0.62, 0.6, 0.18, -12], [0.82, 0.74, 0.62, 0.38, -28],
       [0.92, 0.72, 0.56, 0.54, -38], [0.97, 0.52, 0.42, 0.62, -42], [1, 0.16, 0.14, 0.66, -44]] },
@@ -6360,6 +6360,8 @@ function dedoGeo(g, o, y0, h) {
   let cut;
   if (o.rect && o.arc) { // compacto redondo: rebaixo de profundidade igual seguindo a curva da parede
     const cz = (b.max.z + b.min.z) / 2, R = b.max.z - cz; cut = arcSlab(R - o.d, R + 1, o.w / R, o.h * 2 + 2); cut.translate(cx, o.bottom ? y0 - o.h - 2 : y0 + h - o.h, cz);
+  } else if (o.rect && o.panel) { // Case (foto fechada do site): painel central rebaixado na parede da tampa, da bordinha fina de baixo até perto do topo
+    const hh = o.h - o.lip; cut = new RoundedBoxGeometry(o.w, hh, o.d * 2, 4, Math.min(0.4, o.d * 0.8)); cut.translate(cx, y0 + o.lip + hh / 2, zf);
   } else if (o.rect) { // paleta: rebaixo retangular largo na borda de cima da base, cantos arredondados (desenho do catálogo)
     cut = new RoundedBoxGeometry(o.w, o.h * 2 + 2, o.d * 2, 4, Math.min(1.2, o.d * 0.45)); cut.translate(cx, o.bottom ? y0 - 1 : y0 + h + 1, zf); // bottom: na borda de baixo (tampa do Case)
   } else { cut = new THREE.SphereGeometry(1, 64, 32); cut.scale(o.w / 2, o.h, o.d * 1.6); cut.translate(cx, y0 + (o.top ? h : 0), zf + o.d * 0.6); }
@@ -6569,7 +6571,7 @@ function compactParts(product, L, S0) {
         const b = base.m, top = base.y0 + b.h, lip = top + b.godes.relevo - 0.3,
           tw = w * 0.10, side = 0.55, slotW = tw + 0.3, outerW = slotW + 2 * side,
           front = bb.max.z - OCO.wall, back = front - 0.8, bottom = top - 0.02,
-          slotB = lip - 1.4, slotT = lip - 0.5, roof = y0 + m.dedo.h + 0.25;
+          slotB = lip - 1.4, slotT = lip - 0.5, roof = y0 + (m.latchRoof ?? m.dedo.h) + 0.25;
         let catchTop = lip;
         if (m.caseLatchSimple) {
           // Case G da dona e Case M p4/5: lingueta moldada na placa, sem caixa ou apoios.
@@ -9489,7 +9491,7 @@ const corDe = (L, n) => L[[...n].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>>
 // a foto é o frasco do Oscar All Crystal/Oscar máscara (Ø18,6) com a tampa abaulada — vale o desenho da máscara
 const PROD_FIX = { incomp_liquidos_labiais_oscar: { W: 18.6, H: 109.9, prof: 'incomp_mascaras_oscar' } };
 // Aplicador do Petit (todas as 8 opções do catálogo): mesmo nome de peça para a troca sugerir as outras.
-const aplicPart = (P, k, W) => { const t = APLIC[k]; return P('Ponteira aplicadora', W, null, 13, { aplic: k, rBot: 0, rTop: 0, gap: -1, own: true, color: t.color, finish: t.finish,
+const aplicPart = (P, k, W) => { const t = APLIC[k]; return P('Ponteira aplicadora', W, null, 21, { aplic: k, rBot: 0, rTop: 0, gap: -1, own: true, color: t.color, finish: t.finish,
   ...(t.c2 ? { mat2: true, mat2Side: 'cima', mat2Color: t.c2, mat2Finish: t.f2 } : {}) }); };
 function incomProduct(r) {
   const fx = PROD_FIX[r.k]; if (fx) r = { ...r, ...fx };
@@ -9688,8 +9690,8 @@ function incomProduct(r) {
               wandInsert: { W: nw, h: nh, pitch: 1.1, turns: 2.5, threadD: 0.45, ringH: 0 }, pescD: 2.4, tipL: 11, tipW: 5.5, tipColor: '#f4f1ec' })
           // Foto aberta: ponteira branca estreita de ponta arredondada saindo da boca do gargalo.
           : P('Inserto do aplicador', r1(nw * 0.9), null, 4, { rBot: 0, rTop: 0.4, gap: -1.5, own: true, color: '#1a1a1a', finish: 'brilho' }),
-          ...(haste ? [] : [aplicPart(P, r.aplic || 'chanfrada', r1(nw * 0.62))]),
-          haste ? cap : { ...cap, gap: -14.5, capa: true }]; break; } // a tampa veste gargalo, inserto e aplicador e assenta no ombro // a tampa veste gargalo e ponteira e assenta no ombro
+          ...(haste ? [] : [aplicPart(P, r.aplic || 'chanfrada', r1(nw * 0.75))]), // foto de uso: ~22 mm para fora do gargalo (1,2× a largura do frasco)
+          haste ? cap : { ...cap, gap: -22.5, capa: true }]; break; } // a tampa veste gargalo, inserto e aplicador e assenta no ombro // a tampa veste gargalo e ponteira e assenta no ombro
       const s0 = r.t === 'glosssq' ? sq(0.08) : {}, [f] = SPLIT_FIX[r.pg] ? [SPLIT_FIX[r.pg]] : incomFrac(pr, [0.52]), capH = H * (1 - f), masc = r.c === 'Máscaras';
       // gloss: frasco transparente (PET G/SAN, como no catálogo) com o gloss colorido dentro; máscara: frasco opaco
       const gl = masc ? {} : { own: true, finish: 'pet', color: '#ffffff', fundoGrosso: true, fundo: r1(Math.max(3, H * 0.05)), fundoR: r1(Math.min(W, D) / 2), // por dentro o fundo é uma concha (meio redondo)
@@ -9813,7 +9815,11 @@ function incomProduct(r) {
   // Macaroon com a tampa em cúpula (a bola preta da foto)
   if (r.c === 'Compactos' || r.c === 'Paletas') { const clear = { own: true, finish: 'cristal', color: '#ffffff' }; // (paletas: só o degrau abaixo vale para elas)
     if (/^Case/.test(r.n)) { const t = ms.find(m => m.name === 'Tampa'); if (t) { Object.assign(t, { hingePair: { x: 0.30, w: 0.11 }, caseLatch: true });
-      t.caseLatchSimple = true; t.dedo.h = Math.min(2.4, t.h * 0.45); } }
+      // Foto fechada do site (CASE-FECHADO-G-1) e retomada cdx28: painel central ~41% da frente, quase a parede inteira,
+      // com bordinha fina embaixo. Rebaixo de 0,5 mm (não vaza). Proporções medidas na foto, sem cota no catálogo.
+      // A língua interna do fecho mantém a altura do encaixe (latchRoof).
+      t.caseLatchSimple = true; t.latchRoof = Math.min(2.4, t.h * 0.45);
+      t.dedo = { rect: true, panel: true, w: r1(t.W * 0.41), h: r1(t.h - (t.rTop || 1.2) - 0.5), lip: 0.6, d: 0.5 }; } }
     // Fotos p9–25: Frame e redondos usam um eixo central curto. P28–33: Flat tem dois apoios.
     if (/^Frame|^Moon|^Macaroon/.test(r.n)) ms.filter(m => m.hinge).forEach(m => { m.hingeWidth = 0.18; });
     if (/^Flat/.test(r.n)) { const t = ms.find(m => m.name === 'Tampa'); if (t) {
