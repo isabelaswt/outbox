@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-17.cmp2';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-17.cmp3';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -580,7 +580,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-17.cmp2';
+const BUILD = '2026-11-17.cmp3';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -3906,11 +3906,12 @@ function material(color, finish, band = null, thick, look = null) {
   if (finish === 'cristal') { m.color = new THREE.Color(color).lerp(new THREE.Color('#eef0ff'), 0.6); m.roughness = 0.04; m.clearcoat = 1; m.clearcoatRoughness = 0.03;
     m.ior = 1.49; m.specularIntensity = 1; m.envMapIntensity = 1.15; m.transparent = true; m.opacity = 0.07; m.depthWrite = false; m.side = THREE.DoubleSide;
     m.onBeforeCompile = sh => { sh.fragmentShader = sh.fragmentShader.replace('#include <dithering_fragment>',
-      `{ float frC = pow(1.0 - abs(dot(normalize(vViewPosition), normalize(normal))), 2.0);
-        gl_FragColor.rgb = mix(gl_FragColor.rgb, gl_FragColor.rgb * vec3(0.78, 0.80, 1.0), frC);
+      `{ float frC = pow(1.0 - abs(dot(normalize(vViewPosition), normalize(normal))), 1.7);
+        // dobras e quinas (parede vista de lado, reflexão interna): linha cinza-azulada escura, como na foto
+        gl_FragColor.rgb = mix(gl_FragColor.rgb, gl_FragColor.rgb * vec3(0.50, 0.53, 0.68), smoothstep(0.25, 0.9, frC));
         gl_FragColor.a = clamp(gl_FragColor.a + frC * 0.6, 0.0, 0.85); }
       #include <dithering_fragment>`); };
-    m.customProgramCacheKey = () => 'cristal1'; }
+    m.customProgramCacheKey = () => 'cristal2'; }
   if (finish === 'pet') { m.roughness = 0.08; m.transmission = 1; m.thickness = thick ?? 1.2; m.ior = 1.45; m.depthWrite = false;
     const et = new THREE.Color(color).multiply(new THREE.Color(0.72, 0.76, 0.74)), etv = `vec3(${et.r.toFixed(3)}, ${et.g.toFixed(3)}, ${et.b.toFixed(3)})`;
     m.onBeforeCompile = sh => { wallUniform(sh);
