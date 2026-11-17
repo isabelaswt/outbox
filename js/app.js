@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-17.cl12';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-17.cl13';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -677,7 +677,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-17.cl12';
+const BUILD = '2026-11-17.cl13';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -9514,10 +9514,10 @@ const SPLIT_FIX = { 99: 48.3 / 74, 101: 0.55, 102: 0.54, 96: 0.58, 98: 0.58, 100
 const BATOM_CORES = ['#9b1b30', '#e0604e', '#c43a3a', '#d9667f', '#7a2846', '#b5525a'];
 const GLOSS_CORES = ['#b8323f', '#d77a7a', '#a3473a', '#c9707e', '#8c2f45', '#e09a8a', '#b85c4f', '#d45f74'];
 // Cores de conteúdo realistas (pedido da dona: começa cheio, cor de produto de verdade), escolhidas pelo nome
-const SERUM_CORES = ['#e2c99a', '#ecdcb8', '#dfe8ea', '#f0dfd8', '#ebe2cc', '#d4b48a'], // dessaturadas: o líquido transparente realça a cor // óleo dourado, sérum âmbar, tônico, rosado, champagne, óleo escuro
+const SERUM_CORES = ['#d9a64f', '#e6c27a', '#b9d3df', '#eab8ae', '#e1cc9a', '#c88b45'], // tingidas e transparentes (pálidas viravam leite)
   BASE_CORES = ['#b9a08f', '#a88e7c', '#c4ab98', '#9a7f6c', '#cdb6a5', '#b39a87'], // tons de base nude/taupe (fotos Dispensing 30/60/Quadrado)
   CREME_CORES = ['#f3eee6', '#f1e6d6', '#efe0dc', '#ece9df'], // cremes: branco, marfim, rosado, gelo
-  GEL_CORES = ['#e3edf1', '#efe5c9', '#f3e6e2', '#e8eee3', '#efe9dc']; // água micelar, gel âmbar, tônico rosado, gel verde, champagne
+  GEL_CORES = ['#a9cfe0', '#e2be6e', '#ecb4b8', '#c4dcae', '#e4cf9e']; // água micelar, gel âmbar, tônico rosado, gel verde, champagne
 const corDe = (L, n) => L[[...n].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7) % L.length];
 // Erros do próprio catálogo: a página do Oscar (líquido) repete o desenho do Moma Charm (Ø22,6 × 87,1 com argola);
 // a foto é o frasco do Oscar All Crystal/Oscar máscara (Ø18,6) com a tampa abaulada — vale o desenho da máscara
@@ -9608,7 +9608,9 @@ function incomProduct(r) {
       break; }
     case 'onoff': { const [f] = incomFrac(pr, [0.62]), hc = H * (1 - f), dn = 4.4;
       // bico do acionador (lotion) saindo de lado no alto da capa, como na foto do catálogo
-      ms = [P('Frasco', W, D, H * f, { vol: true, rBot: 2, bpesc: true, bpescMola: true, _t: [0, f] }),
+      // Fotos On-Off 100/120: frasco PET transparente com o líquido à vista (azul/rosado), capa branca opaca; base ~3 mm
+      ms = [P('Frasco', W, D, H * f, { vol: true, rBot: 2, bpesc: true, bpescMola: true, _t: [0, f], own: true, finish: 'pet', color: '#ffffff',
+          liq: true, liqType: 'transparente', liqLevel: 92, liqClear: 80, liqColor: corDe(['#cfe3ee', '#f2d4d8', '#e3edf1'], r.n), fundoGrosso: true, fundo: 3, fundoR: 2 }),
         P('Acionador e capa', W, D, hc, { rTop: 3, _t: [f, 1], spout: { t: r1(1 - (dn / 2 + 1.6) / hc) , L: 4.2, droop: 0, D: dn, dir: 0 } })];
       { const c = ms[1], sp0 = c.spout; sp0.L = r2(1 + c.W / 2 - capHalfAt(c, sp0.t * c.h) - 0.35); } break; } // ponta do bico rente ao corpo (a medida do catálogo é o diâmetro)
     case 'flacon': case 'flaconb': { const b = r.t === 'flaconb' || r.n === 'Julie';
@@ -9625,7 +9627,7 @@ function incomProduct(r) {
       ms = [P('Frasco', W, D, H * f, { vol: true, rBot: 2, rTop: rT, _t: [0, f] }),
         M('contaGotas', { ...(b ? { botao: true, ridges: 0 } : {}), name: b ? 'Conta-gotas de botão' : 'Conta-gotas', W: r1(W * cw), D: r1(W * cw), h: r2(H * (tb - f)), actW: r1(W * bw), actH: r2(H * (1 - tb) + 0.5) })]; break; } // +0,5: o conta-gotas encaixa 0,5 mm no gargalo
     case 'fr': case 'frr': case 'frsq': case 'frsqr': case 'frt': case 'frsh': case 'frap': case 'frflat': {
-      const o = { fr: { rBot: 3, rTop: W * 0.15 }, frr: { rBot: W * 0.3, rTop: W * 0.15 }, frsq: { ...sq(0.06), rTop: 3 }, frsqr: { ...sq(0.2), rTop: 4 },
+      const o = { fr: { rBot: 3, rTop: W * 0.15 }, frr: { rBot: W * 0.3, rTop: W * 0.15 }, frsq: { ...sq(0.06), rTop: 3, rBot: 3 }, // Chicago (foto): quinas de baixo arredondadas frsqr: { ...sq(0.2), rTop: 4 },
         frt: { taperB: 82, rBot: W * 0.25, rTop: 4 }, frsh: { rTop: W * 0.35, rBot: 3 }, frap: { taper: 70, rTop: 6, rBot: 6 }, frflat: { ...sq(0.1), rTop: 6 },
         // Miami (fotos do site e volume): cilindro Ø50,5, não quadrado — 220 ml (+10%) em ~120 mm de corpo dão Ø50,8; o
         // quadrado de 50,5 daria ~306 ml. Ombro e fundo de raio pequeno (~3,5 e 3 mm), pela foto de frente.
@@ -9906,10 +9908,11 @@ function incomProduct(r) {
   if (['Conta-gotas', 'Dispensadores', 'Deluxes'].includes(r.c) && r.t !== 'onoff' && !/Twist/.test(r.n)) {
     const fr = ms.find(m => m.name === 'Frasco'), disp = r.c === 'Dispensadores';
     if (fr) Object.assign(fr, { own: true, finish: 'pet', color: '#ffffff', liq: true, liqLevel: disp ? 94 : 92,
-      liqType: disp ? 'cremoso' : 'transparente', liqColor: corDe(disp ? BASE_CORES : SERUM_CORES, r.n), ...(disp ? {} : { liqClear: 50 }) });
+      liqType: disp ? 'cremoso' : 'transparente', liqColor: corDe(disp ? BASE_CORES : SERUM_CORES, r.n), ...(disp ? {} : { liqClear: 85 }) });
     // Frasco em SAN (fotos Dispensing 15/30/60, Bulb, Elíptico, Quadrado): acrílico de fundo grosso (~10% da altura),
     // o conteúdo fica numa coluna acima dele. Medida na foto do Dispensing 15, sem cota de molde.
     if (fr && /Frasco em SAN/.test(r.mat)) Object.assign(fr, { fundoGrosso: true, fundo: r1(H * 0.1), fundoR: 2 });
+    else if (fr && /Frasco em PET/.test(r.mat)) Object.assign(fr, { fundoGrosso: true, fundo: r1(H * 0.04), fundoR: 2 }); // PET (fotos Sydney, Flacon, Deluxes): fundo pesado ~4%
     ms.forEach(m => { if (m.type === 'contaGotas') m.ridges = 0; });
     // Julie p43: frasco PE opaco na foto e na lista de materiais; demais PET/SAN preservados.
     if (r.c === 'Conta-gotas' && r.n === 'Julie' && fr) Object.assign(fr, { own: true, color: BEIGE, finish: 'fosco' });
@@ -9995,7 +9998,7 @@ function incomProduct(r) {
       cap.femaleThread = { W: nw, h: nh, pitch: neck.pitch, turns: neck.turns, threadD: neck.threadD, ringH: 0, threadTop: 0.45, threadBottom: 0.35 };
     }
   }
-  if (r.c === 'Frascos' && /^(Amsterdam|Chicago|Miami|New York|Seoul 250|Sydney 60)$/.test(r.n)) { const fr = ms.find(m => m.name === 'Frasco'); if (fr) Object.assign(fr, { own: true, finish: 'pet', color: '#ffffff', liq: true, liqLevel: 92, liqType: 'transparente', liqClear: 50, liqColor: corDe(GEL_CORES, r.n) }); } // PET transparente: cheio (gel/tônico)
+  if (r.c === 'Frascos' && /^(Amsterdam|Chicago|Miami|New York|Seoul 250|Sydney 60)$/.test(r.n)) { const fr = ms.find(m => m.name === 'Frasco'); if (fr) Object.assign(fr, { own: true, finish: 'pet', color: '#ffffff', liq: true, liqLevel: 92, liqType: 'transparente', liqClear: 85, liqColor: corDe(GEL_CORES, r.n), fundoGrosso: true, fundo: r1(H * 0.04), fundoR: 2 }); } // PET transparente: gel quase incolor (o frasco aparece) sobre o fundo grosso ("plástico pesado", ~4% da altura na foto do Chicago)
   if (r.c === 'Frasnagas' && /^(Beatrice|Julie|Olive|Vênus 35|Vênus 45)$/.test(r.n)) {
     const cap = ms[1], free = r.n === 'Beatrice';
     // P79/81/85/86: 20-410. Beatrice p76: rosca sem norma cotada, dimensões representativas.
