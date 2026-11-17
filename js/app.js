@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-17.cl5';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-17.cl6';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -677,7 +677,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-17.cl5';
+const BUILD = '2026-11-17.cl6';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -2565,17 +2565,24 @@ const APLIC = {
   metal: { nome: 'Metal Effect', color: '#dfe2e5', finish: 'metal',
     r: [[0, 0.85], [0.1, 0.85], [0.18, 0.62], [0.5, 0.55, 0.55, 0.05], [0.68, 0.62, 0.6, 0.18, -12], [0.82, 0.74, 0.62, 0.38, -28],
       [0.92, 0.72, 0.56, 0.54, -38], [0.97, 0.52, 0.42, 0.62, -42], [1, 0.16, 0.14, 0.66, -44]] },
-  bristles: { nome: 'Bristles', color: '#1a1a1a', finish: 'fosco', r: BRISTLE },
+  bristles: { nome: 'Bristles', color: '#1a1a1a', finish: 'fosco', sharp: true, r: BRISTLE }, // dentes: interpolação reta
 };
 function aplicRings(m, y0, lo) {
-  const t = APLIC[m.aplic] || APLIC.chanfrada, N = lo ? 24 : 64, R = m.W / 2, ox = m.ox || 0;
-  const raw = t.r.map(([u, rx, rz = rx, cx = 0, tl = 0]) => { const c = Math.cos(tl * Math.PI / 180), sn = Math.sin(tl * Math.PI / 180);
+  const t = APLIC[m.aplic] || APLIC.chanfrada, N = lo ? 32 : 128, R = m.W / 2, ox = m.ox || 0, sub = lo ? 2 : t.sharp ? 3 : 8;
+  // Malha lisa: entre um anel e outro, curva Catmull-Rom nos parâmetros (raios, desvio, inclinação) em vez de
+  // degraus retos — os anéis do desenho viravam facetas visíveis (metal, pad, cushion).
+  const K = t.r.map(([u, rx, rz = rx, cx = 0, tl = 0]) => [u, rx, rz, cx, tl]), at = i => K[clamp(i, 0, K.length - 1)], rs = [];
+  for (let i = 0; i < K.length - 1; i++) for (let j = 0; j < sub; j++) { const v = j / sub, p0 = at(i - 1), p1 = at(i), p2 = at(i + 1), p3 = at(i + 2);
+    rs.push(p1.map((_, c) => t.sharp ? p1[c] + (p2[c] - p1[c]) * v
+      : 0.5 * (2 * p1[c] + (p2[c] - p0[c]) * v + (2 * p0[c] - 5 * p1[c] + 4 * p2[c] - p3[c]) * v * v + (3 * p1[c] - p0[c] - 3 * p2[c] + p3[c]) * v ** 3))); }
+  rs.push(K.at(-1));
+  const raw = rs.map(([u, rx, rz, cx, tl]) => { rx = Math.max(0, rx); rz = Math.max(0, rz); const c = Math.cos(tl * Math.PI / 180), sn = Math.sin(tl * Math.PI / 180);
     return Array.from({ length: N }, (_, i) => { const a = TAU * i / N, px = rx * R * Math.cos(a);
       return [ox + cx * R + px * c, u * m.h + px * sn, rz * R * Math.sin(a)]; }); });
   // a inclinação (pad, chanfro) pode passar da altura: encaixa tudo entre a base e a altura da peça
   let lo0 = Infinity, hi = -Infinity; raw.flat().forEach(q => { lo0 = Math.min(lo0, q[1]); hi = Math.max(hi, q[1]); });
   const k = m.h / ((hi - lo0) || 1); raw.forEach(rg => rg.forEach(q => { q[1] = y0 + (q[1] - lo0) * k; }));
-  return [raw, t.s || 0];
+  return [raw, (t.s || 0) * sub];
 }
 const aplicGeo = (m, y0, { lo = false } = {}) => loftPts(aplicRings(m, y0, lo)[0]);
 function aplicSplit(m, y0) { const [r, s] = aplicRings(m, y0, false); return [loftPts(r.slice(0, s + 1)), loftPts(r.slice(s))]; }
