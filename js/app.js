@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-17.cdx12';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-17.cdx13';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -413,7 +413,7 @@ function polyFit(o) { const n = o.sides || 0; if (n === 4 || n === 8 || n === 12
 const hasStep = () => false; // contorno denso (0,1 mm): sem suavizar, os degraus ficam com quina
 // Forma vista de cima, conferida nas fotos do catálogo (o desenho técnico só mostra a frente):
 // deitada = cilindro deitado (de lado é um círculo); disco = disco em pé (espessura constante).
-const CAP_FIX = { incom_slim_quadric: { sideR: 0.55 } /* foto de cima: quadrado de cantos bem arredondados, "sem ser totalmente cilíndrico" */, incom_flora: { lobes: 8, lobeD: 1.7, lobeTwist: 6, lobeFrom: 0.16, smooth: 2.2 }, incom_aramis: { quadTop: 0.81, quadN: 5 }, incom_cubic: { quadFrom: 0.19, quadN: 7 }, incom_bamboo: { deitada: true, fitFrom: 0.25 }, incom_golden: { disco: true, D: 22, col: 0.2, furo: { forma: 'circ', yc: 0.6, w: 0.6 } }, incom_wheel: { disco: true, D: 20, furo: { forma: 'circ', yc: 0.47, w: 0.62 } }, incom_thenue: { disco: true, D: 20, col: 0.1, furo: { forma: 'elip', yc: 0.55, w: 0.72, hh: 0.78 } }, incom_rock: { furo: { forma: 'elip', yc: 0.55, w: 0.6, hh: 0.52 } }, incom_chelsea: { cutBelow: 0.17 }, incom_soho: { cutBelow: 0.165 }, incom_hexa: { noCol: true }, incom_crown: { col: 0.58 }, incom_brilhante: { col: 0.257 }, incom_indico: { calha: 0.09 }, incom_matrix: { dobra: 0.085 }, incom_twist: { polyTwist: 1.25 }, incom_prisma: { chanfro: 0.46 }, incom_navette: { sides: 0, lobes: 4, lobeD: 2.6, lobeFrom: 0.33 }, incom_manhattan: { cutBelow: 0.1 }, incom_laura: { D: 26, fanFold: true, smooth: 1.4 }, incom_joya: { sides: 12, sideR: 0, col: 0.65, noFit: true, facetBlend: 2.5 }, incom_joya_mini: { sides: 12, sideR: 0, col: 0.6, noFit: true, facetBlend: 2.5 }, incom_domini: { abaLat: { t0: 0.598, t1: 0.742, w: 7 } }, incom_royal: { noCol: true },
+const CAP_FIX = { incom_slim_quadric: { sideR: 0.55 } /* foto de cima: quadrado de cantos bem arredondados, "sem ser totalmente cilíndrico" */, incom_flora: { lobes: 8, lobeD: 1.7, lobeTwist: 6, lobeFrom: 0.16, smooth: 2.2 }, incom_aramis: { quadTop: 0.81, quadN: 5 }, incom_cubic: { quadFrom: 0.19, quadN: 7 }, incom_bamboo: { deitada: true, fitFrom: 0.25 }, incom_golden: { disco: true, D: 22, col: 0.2, furo: { forma: 'circ', yc: 0.6, w: 0.6 } }, incom_wheel: { disco: true, D: 20, furo: { forma: 'circ', yc: 0.47, w: 0.62 } }, incom_thenue: { disco: true, D: 20, col: 0.1, ovalFrost: { yc: 0.55, w: 0.72, h: 0.78 } }, incom_rock: { furo: { forma: 'elip', yc: 0.55, w: 0.6, hh: 0.52 } }, incom_chelsea: { cutBelow: 0.17 }, incom_soho: { cutBelow: 0.165 }, incom_hexa: { noCol: true }, incom_crown: { col: 0.58 }, incom_brilhante: { col: 0.257 }, incom_indico: { calha: 0.09 }, incom_matrix: { dobra: 0.085 }, incom_twist: { polyTwist: 1.25 }, incom_prisma: { chanfro: 0.46 }, incom_navette: { sides: 0, lobes: 4, lobeD: 2.6, lobeFrom: 0.33 }, incom_manhattan: { cutBelow: 0.1 }, incom_laura: { D: 26, fanFold: true, smooth: 1.4 }, incom_joya: { sides: 12, sideR: 0, col: 0.65, noFit: true, facetBlend: 2.5 }, incom_joya_mini: { sides: 12, sideR: 0, col: 0.6, noFit: true, facetBlend: 2.5 }, incom_domini: { abaLat: { t0: 0.598, t1: 0.742, w: 7 } }, incom_royal: { noCol: true },
   incom_drop: { disco: true, Dk: 0.6, col: 0.14, furo: { y0: 0.4, y1: 0.915, w: 0.47 } }, incom_antonov: { D: 34 }, incom_bilbao: { sides: 4, sideR: 0.35 }, incom_rams: { sides: 0 } };
 for (const key of ['incom_drop', 'incom_malika', 'incom_tahaa']) CAP_FIX[key] = { ...CAP_FIX[key], capTip: true };
 CAP_FIX.incom_tahaa.capTip = 'sphere'; // Pág.193: esfera Ø29, colar preservado.
@@ -606,10 +606,16 @@ function incomShape(r) {
   // o alisamento corta o ponto mais largo (0,1–1,3 mm a menos que o catálogo): a parte mais larga volta à largura cheia
   { const mx = Math.max(...o.prof.map(q => q[1])); if (mx > 0.85 && mx < 0.9995) o.prof.forEach(q => { q[1] /= mx; q[2] /= mx; }); }
   if (typeof capTip === 'string') o.prof = capTipProfile(measuredProfile, o.prof, o.h, fx.smooth, capTip, o.W);
-  // Malika: referência e confirmação da dona, gota fosca e faixa inferior lisa/transparente.
-  // A faixa ocupa ~18% da altura na foto; acabamento local, sem mudar os demais Surlyn.
-  if (r.k === 'incom_malika') Object.assign(o, { own: true, color: '#e8dcc6', finish: 'fosco', smoothProf: true,
-    mat2: true, mat2Mesh: true, mat2Side: 'baixo', mat2Y: 18, mat2Color: '#ffffff', mat2Finish: 'pet' });
+  // Malika p171 e desenho ampliado da dona: face jateada em gota, chanfro polido e pé Ø22,2.
+  // Início da face (~18% da altura), profundidade do corte e chanfro estimados nas fotos.
+  if (r.k === 'incom_malika') Object.assign(o, { own: true, color: '#ffffff', finish: 'pet', smoothProf: true,
+    malikaFace: true, mat2: true, mat2Mesh: true, mat2Side: 'face', mat2Y: 18,
+    mat2Color: '#e8dcc6', mat2Finish: 'fosco' });
+  // Thenue p194: foto e texto descrevem polido/fosco; oval é painel contínuo, não passagem.
+  // Divisa estimada nas fotos; D=20 mm anterior preservado, sem nova cota lateral.
+  if (fx.ovalFrost) Object.assign(o, { own: true, color: '#ffffff', finish: 'pet', mat2: true,
+    mat2Side: 'oval', mat2Y: fx.ovalFrost.yc * 100, mat2R: fx.ovalFrost.w * 100,
+    mat2OvalH: fx.ovalFrost.h * 100, mat2Color: '#e8dcc6', mat2Finish: 'fosco' });
   if (fx.facetCrown) Object.assign(o, { facetCrown: fx.facetCrown, sides: 0, polyFrom: 0, facetBlend: 0 });
   if (fx.facetGem) Object.assign(o, { facetGem: fx.facetGem, sides: 0, polyFrom: 0 });
   if (fx.fanFold) {
@@ -664,7 +670,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-17.cdx12';
+const BUILD = '2026-11-17.cdx13';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -2445,7 +2451,48 @@ function fanCapGeo(m, y0, opts) {
   });
   return loftPts(rings);
 }
+function malikaCapGeo(m, y0, { lo = false } = {}) {
+  const H = m.h, start = clamp((m.mat2Y ?? 18) / 100, 0.12, 0.4), foot = 0.078,
+    footR = 11.1 * m.W / 30, footD = 11.1 * m.D / 30, S = lo ? 8 : 24, F = lo ? 8 : 32,
+    levels = [...new Set([0, foot, 0.14, start, 1, ...Array.from({ length: lo ? 49 : 181 }, (_, i) => i / (lo ? 48 : 180))])].sort((a, b) => a - b),
+    slope = profAt(m, start * H).b / (1 - start), pts = [];
+  for (const t of levels) {
+    const q = profAt(m, t * H), blend = smooth(foot, 0.14, t),
+      a = t <= foot ? footR : footR * (1 - blend) + q.a * blend,
+      b = t <= foot ? footD : footD * (1 - blend) + q.b * blend,
+      plane = Math.min(b, slope * (1 - t)), cut = plane < b - 1e-8,
+      bevel = cut ? Math.min(0.65 * m.W / 30, plane * 0.3) : 0,
+      ze = Math.max(0, plane - bevel), phi = b > 1e-8 ? Math.asin(clamp(ze / b, 0, 1)) : Math.PI / 2,
+      xf = b > 1e-8 ? a * Math.sqrt(Math.max(0, 1 - (plane / b) ** 2)) : 0, front = [];
+    for (let j = 0; j <= S; j++) { const th = phi * j / S; front.push([a * Math.cos(th), b * Math.sin(th)]); }
+    front.push([xf, plane]);
+    for (let j = 1; j <= F; j++) front.push([xf * (1 - 2 * j / F), plane]);
+    front.push([-a * Math.cos(phi), ze]);
+    for (let j = 1; j <= S; j++) { const th = Math.PI - phi + phi * j / S; front.push([a * Math.cos(th), b * Math.sin(th)]); }
+    const ring = [...front, ...front.slice(1, -1).reverse().map(([x, z]) => [x, -z])];
+    pts.push(ring.map(([x, z]) => [x + (m.ox || 0), y0 + t * H, z]));
+  }
+  return loftPts(pts);
+}
+// Separação por faces, com a mesma borda geométrica nos dois materiais do export.
+function splitMalikaGeo(g, m, y0) {
+  const start = clamp((m.mat2Y ?? 18) / 100, 0.12, 0.4), slope = profAt(m, start * m.h).b / (1 - start),
+    p = g.attributes.position, ids = g.index, buckets = [[], []], count = ids ? ids.count : p.count;
+  for (let i = 0; i < count; i += 3) {
+    const tri = [0, 1, 2].map(j => ids ? ids.getX(i + j) : i + j);
+    // O corte do alojamento da válvula reconstrói os triângulos e apaga os grupos.
+    // A face pertence ao plano original; as paredes internas do alojamento ficam polidas.
+    const face = tri.every(k => p.getY(k) >= y0 + start * m.h - 1e-4 &&
+      Math.abs(Math.abs(p.getZ(k)) - slope * (1 - (p.getY(k) - y0) / m.h)) < 1e-4);
+    for (const k of tri) buckets[face ? 1 : 0].push(p.getX(k), p.getY(k), p.getZ(k));
+  }
+  return [0, 1].map(slot => {
+    const raw = new THREE.BufferGeometry(); raw.setAttribute('position', new THREE.Float32BufferAttribute(buckets[slot], 3));
+    const out = mergeVertices(raw, 1e-6); out.computeVertexNormals(); raw.dispose(); return out;
+  });
+}
 function moduleGeo(m0, y0, opts = {}) {
+  if (m0.malikaFace && !opts.inset) return malikaCapGeo(m0, y0, opts);
   if (m0.facetCrown && !opts.inset) return facetCrownGeo(m0, y0, opts);
   if (m0.facetGem && !opts.inset) return facetGemGeo(m0, y0);
   if (m0.fanFold && !opts.inset) return fanCapGeo(m0, y0, opts);
@@ -3955,15 +4002,20 @@ function addGrain(m, amt, cell = 0.13) {
 // Divisa material na malha: conserva o acabamento também no arquivo 3D.
 // Recorta só a superfície existente, sem adicionar discos ou cascas sobrepostas.
 function splitGeoY(g, y) {
+  return splitGeoField(g, p => p[1] - y, (a, b) => (y - a[1]) / (b[1] - a[1]));
+}
+// Separa atributos de uma superfície por campo escalar, sem sobrepor cascas no 3D.
+function splitGeoField(g, field, crossing = null) {
   const src = g.index ? g.toNonIndexed() : g, attrs = Object.entries(src.attributes);
   const sets = [Object.fromEntries(attrs.map(([k]) => [k, []])), Object.fromEntries(attrs.map(([k]) => [k, []]))];
   const vertex = i => Object.fromEntries(attrs.map(([k, a]) => [k, Array.from({ length: a.itemSize }, (_, j) => a.array[i * a.itemSize + j])]));
-  const mix = (a, b) => { const t = (y - a.position[1]) / (b.position[1] - a.position[1]);
+  const mix = (a, b) => { const fa = field(a.position), fb = field(b.position), t = crossing ? crossing(a.position, b.position) : fa / (fa - fb);
     return Object.fromEntries(attrs.map(([k]) => [k, a[k].map((v, j) => v + (b[k][j] - v) * t)])); };
   for (let i = 0; i < src.attributes.position.count; i += 3) {
     const tri = [vertex(i), vertex(i + 1), vertex(i + 2)];
     for (let side = 0; side < 2; side++) {
-      const inside = v => side ? v.position[1] >= y : v.position[1] <= y, poly = [];
+      if (side && tri.every(v => Math.abs(field(v.position)) < 1e-10)) continue; // face coplanar pertence a um material só
+      const inside = v => side ? field(v.position) >= 0 : field(v.position) <= 0, poly = [];
       for (let j = 0; j < 3; j++) {
         const a = tri[j], b = tri[(j + 1) % 3], ia = inside(a), ib = inside(b);
         if (ia) poly.push(a); if (ia !== ib) poly.push(mix(a, b));
@@ -3978,6 +4030,46 @@ function splitGeoY(g, y) {
     return out;
   });
 }
+function splitGeoOval(g, cx, cy, rx, ry) {
+  // Interseção com um polígono convexo de 128 lados: recorta também triângulos
+  // grandes cujo interior atravessa o oval, mesmo com todos os vértices fora dele.
+  const src = g.index ? g.toNonIndexed() : g, attrs = Object.entries(src.attributes), N = 128,
+    limit = Math.cos(Math.PI / N), planes = Array.from({ length: N }, (_, i) => {
+      const a = (i + 0.5) / N * Math.PI * 2; return [Math.cos(a), Math.sin(a)];
+    }), sets = [Object.fromEntries(attrs.map(([k]) => [k, []])), Object.fromEntries(attrs.map(([k]) => [k, []]))];
+  const vertex = i => Object.fromEntries(attrs.map(([k, a]) => [k, Array.from({ length: a.itemSize }, (_, j) => a.array[i * a.itemSize + j])]));
+  const emit = (poly, side) => { for (let j = 1; j < poly.length - 1; j++) for (const v of [poly[0], poly[j], poly[j + 1]]) for (const [k] of attrs) sets[side][k].push(...v[k]); };
+  for (let i = 0; i < src.attributes.position.count; i += 3) {
+    let poly = [vertex(i), vertex(i + 1), vertex(i + 2)];
+    const xy = poly.map(v => [(v.position[0] - cx) / rx, (v.position[1] - cy) / ry]);
+    if (xy.every(([x, y]) => x * x + y * y < limit * limit)) { emit(poly, 1); continue; }
+    // Não retessela triângulos inteiramente fora do oval (inclusive paredes laterais).
+    const cross = (a, b) => a[0] * b[1] - a[1] * b[0], signs = xy.map((a, j) => cross(a, xy[(j + 1) % 3])),
+      area = cross([xy[1][0] - xy[0][0], xy[1][1] - xy[0][1]], [xy[2][0] - xy[0][0], xy[2][1] - xy[0][1]]),
+      surrounds = Math.abs(area) > 1e-14 && (signs.every(x => x >= 0) || signs.every(x => x <= 0));
+    if (!surrounds) {
+      const nearest = Math.min(...xy.map((a, j) => { const b = xy[(j + 1) % 3], dx = b[0] - a[0], dy = b[1] - a[1],
+        t = Math.max(0, Math.min(1, -(a[0] * dx + a[1] * dy) / (dx * dx + dy * dy || 1)));
+        return (a[0] + t * dx) ** 2 + (a[1] + t * dy) ** 2; }));
+      if (nearest > 1) { emit(poly, 0); continue; }
+    }
+    for (const [nx, ny] of planes) {
+      const dist = v => limit - nx * (v.position[0] - cx) / rx - ny * (v.position[1] - cy) / ry,
+        inside = [], outside = [];
+      for (let j = 0; j < poly.length; j++) {
+        const a = poly[j], b = poly[(j + 1) % poly.length], da = dist(a), db = dist(b), ia = da >= 0, ib = db >= 0;
+        (ia ? inside : outside).push(a);
+        if (ia !== ib) { const t = da / (da - db), v = Object.fromEntries(attrs.map(([k]) => [k, a[k].map((x, j) => x + (b[k][j] - x) * t)])); inside.push(v); outside.push(v); }
+      }
+      emit(outside, 0); poly = inside; if (poly.length < 3) break;
+    }
+    if (poly.length >= 3) emit(poly, 1);
+  }
+  if (src !== g) src.dispose();
+  return sets.map(set => { const out = new THREE.BufferGeometry(); for (const [k, a] of attrs) out.setAttribute(k, new THREE.Float32BufferAttribute(set[k], a.itemSize));
+    const welded = mergeVertices(out, 1e-6); out.dispose(); return welded; });
+}
+
 const splitCache = new Map();
 // disc = { r, cx }: em vez de uma faixa, um disco no topo (inserto) — dentro do raio e acima da altura.
 function splitMat(base, yCut, above, disc = null) {
@@ -6439,7 +6531,13 @@ function buildInto(product, S, explodeAmt = 0) {
       const yc = y0 + m.h * clamp(m0.mat2Y ?? (disc ? 85 : 20), 1, 99) / 100, low = side === 'baixo';
       // segundo material: embaixo da divisa, em cima dela, ou no disco do topo
       let secondGeo = g, m2 = material(m0.mat2Color || '#cfd2d4', m0.mat2Finish || 'metal');
-      if (m0.mat2Mesh && !disc) {
+      if (m0.malikaFace && side === 'face') {
+        const [border, face] = splitMalikaGeo(g, m, y0); mesh.geometry = border; secondGeo = face; g.dispose();
+      } else if (side === 'oval') {
+        const rx = m.W / 2 * clamp(m0.mat2R ?? 72, 5, 98) / 100, ry = m.h / 2 * clamp(m0.mat2OvalH ?? 78, 5, 98) / 100;
+        const [outside, inside] = splitGeoOval(g, m.ox || 0, yc, rx, ry);
+        mesh.geometry = outside; secondGeo = inside; g.dispose();
+      } else if (m0.mat2Mesh && !disc) {
         const [lower, upper] = splitGeoY(g, yc);
         mesh.geometry = low ? upper : lower; secondGeo = low ? lower : upper; g.dispose();
       } else {
@@ -8020,9 +8118,15 @@ function renderColorBox(m) {
     const re = () => { renderColorBox(m); queueBuild(); };
     field(box, m, ['mat2', 'Usar dois materiais (ex.: aro metálico embaixo)', 'check'], re);
     if (m.mat2) {
-      field(box, m, ['mat2Side', 'Onde fica o segundo material', 'select', [['baixo', 'Faixa embaixo (aro, inserto, base)'], ['cima', 'Faixa em cima (capa)'], ['topo', 'Disco no topo (inserto no centro)']]], () => { if (m.mat2Side === 'topo' && (m.mat2Y ?? 20) < 70) m.mat2Y = 90; re(); }); // disco: só a parte de cima (não pinta o oco da válvula)
-      field(box, m, ['mat2Y', m.mat2Side === 'topo' ? 'Altura onde o disco começa (da base)' : 'Altura da divisa (da base da peça)', 1, 99, 0.5, '%'], queueBuild);
-      if (m.mat2Side === 'topo') field(box, m, ['mat2R', 'Tamanho do disco (largura do topo)', 5, 100, 1, '%'], queueBuild);
+      field(box, m, ['mat2Side', 'Onde fica o segundo material', 'select', [
+        ['baixo', 'Faixa embaixo (aro, inserto, base)'], ['cima', 'Faixa em cima (capa)'], ['topo', 'Disco no topo (inserto no centro)'],
+        ['oval', 'Painel oval (frente e verso)'], ...(m.malikaFace ? [['face', 'Face em gota com borda chanfrada']] : [])]], () => {
+        if (m.mat2Side === 'topo' && (m.mat2Y ?? 20) < 70) m.mat2Y = 90;
+        if (m.mat2Side === 'oval') Object.assign(m, { mat2Y: 55, mat2R: 72, mat2OvalH: 78 }); re();
+      });
+      field(box, m, ['mat2Y', m.mat2Side === 'face' ? 'Início da face jateada (da base)' : m.mat2Side === 'oval' ? 'Altura do centro do painel' : m.mat2Side === 'topo' ? 'Altura onde o disco começa (da base)' : 'Altura da divisa (da base da peça)', m.mat2Side === 'face' ? 12 : 1, m.mat2Side === 'face' ? 40 : 99, 0.5, '%'], queueBuild);
+      if (m.mat2Side === 'topo' || m.mat2Side === 'oval') field(box, m, ['mat2R', m.mat2Side === 'oval' ? 'Largura do painel' : 'Tamanho do disco (largura do topo)', 5, 100, 1, '%'], queueBuild);
+      if (m.mat2Side === 'oval') field(box, m, ['mat2OvalH', 'Altura do painel', 5, 98, 1, '%'], queueBuild);
       field(box, m, ['mat2Color', 'Cor do segundo material', 'color'], queueBuild);
       field(box, m, ['mat2Finish', 'Acabamento do segundo material', 'finish'], queueBuild);
     }
