@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-17.cdx4';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-17.cdx5';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -647,7 +647,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-17.cdx4';
+const BUILD = '2026-11-17.cdx5';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -6082,6 +6082,15 @@ function incomDispensingGeo(g, m, y0) {
   }
   return g;
 }
+// Cavidade dos potes Incom; interiores estimados pela foto/desenho, sem cota industrial.
+function incomPoteGeo(g, m, y0) {
+  const c = m.incomPoteCavity;
+  const cut = moduleGeo({ ...BASE, kind: 'giro', W: c.W, D: c.D, h: m.h - c.floor + 1,
+    rBot: c.rBot, rTop: 0, apoio: false }, y0 + c.floor, { lo: true });
+  if (!cut) return g;
+  const [outer, inner] = cutHole(g, cut);
+  return outer !== g ? mergeLoose([outer, inner]) : g;
+}
 function buildInto(product, S, explodeAmt = 0) {
   product.children.forEach(o => o.traverse(q => { q.geometry?.dispose(); if (q.userData.liquid) q.material?.dispose(); }));
   product.clear();
@@ -6134,6 +6143,7 @@ function buildInto(product, S, explodeAmt = 0) {
     if (m0.kind === 'gargalo' && !under && L[i - 1]?.m.vol && isGlass(L[i - 1].m.own ? L[i - 1].m.finish : S.finish)) m = { ...m, embed: Math.min(m.embed ?? 8, 1) };
     let g = moduleGeo(m, y0, { logoQuality: hasLogo, body: under, ...(THUMB_LITE ? { lo: true } : {}) }); if (!g) return; // miniatura: malha leve
     if (!THUMB_LITE && (m0.incomRefillCavity || m0.incomTwistOutlet)) g = cutCached('incomDispensing', [m, y0], g, () => incomDispensingGeo(g, m, y0));
+    if (!THUMB_LITE && m0.incomPoteCavity) g = cutCached('incomPote', [m, y0], g, () => incomPoteGeo(g, m, y0));
     if (m0.oco && !THUMB_LITE) g = cutCached('oco', [m, y0, hasLogo], g, () => ocoGeo(g, m, y0));
     if (m0.ocoTopo && !THUMB_LITE && L[i + 1]?.m.kind === 'gargalo') g = ocoTopoGeo(g, m, y0, L[i + 1].m, thickBase(m.own ? m.finish : S.finish, m0) ? Math.max(S.wall, m0.fundo ?? 6) : S.wall);
     if (m0.wandMouth && !THUMB_LITE) g = cutCached('wandMouth', [m, y0, S.wall], g, () => {
@@ -6216,7 +6226,7 @@ function buildInto(product, S, explodeAmt = 0) {
     }
     // Vidro transparente: a cavidade (parede de dentro) aparece nas bordas, como a
     // espessura do vidro vista de lado, e o fundo grosso ganha a sua linha.
-    if (m0.vol && ['vidro', 'pet', 'vidroSemi'].includes(finM) && !m0.hidden && !m0.liq && !m0.incomRefillCavity) { // cartucho já tem parede interna real
+    if (m0.vol && ['vidro', 'pet', 'vidroSemi'].includes(finM) && !m0.hidden && !m0.liq && !m0.incomRefillCavity && !m0.incomPoteCavity) { // peças marcadas já têm parede interna real
       const ig = offsetInner(m, y0, S.wall, firstBody && thickBase(finM, m0) ? fundo : S.wall);
       if (ig) { const cm = new THREE.Mesh(ig, cavityMat(colM)); cm.name = 'cavidade'; cm.userData.idx = idx; cm.renderOrder = 4; product.add(cm); }
     }
@@ -8909,10 +8919,35 @@ function incomProduct(r) {
         frt: { taperB: 82, rBot: W * 0.25, rTop: 4 }, frsh: { rTop: W * 0.35, rBot: 3 }, frap: { taper: 70, rTop: 6, rBot: 6 }, frflat: { ...sq(0.1), rTop: 6 } }[r.t];
       // rosca 24-410 do catálogo e o fechamento que aparece na foto de cada um (pode trocar em Peças)
       // fotos: Amsterdam com a tampa tambor preta, New York com a Tampa Sens, Wall com o flip-top transparente
-      const fe = { 'Amsterdam': 'tampa', 'Bulb Blow 250': 'bola', 'Bulb Blow 300': 'pump', 'New York': 'sens', 'Wall': 'flip' }[r.n] || 'spray', nh = 16.6;
+      const fe = { 'Amsterdam': 'tampa', 'Bulb Blow 250': 'bola', 'Bulb Blow 300': 'patoIncom', 'New York': 'sens', 'Wall': 'flip' }[r.n] || 'spray', nh = 16.6;
+      // Fotos p65/66/69/70/72/73: pixels [corpo, saia L/A, guia L/A, proteção L/A].
+      // Escala pela largura oficial; fechamento estimado pela foto, sem cotas internas.
+      const sprayFoto = { 65: [238, 94, 65, 64, 29, 55, 56], 66: [168, 90, 64, 64, 28, 50, 53],
+        69: [150, 92, 65, 64, 29, 54, 53], 70: [164, 88, 65, 70, 26, 64, 64],
+        72: [184, 90, 67, 61, 28, 52, 51], 73: [122, 94, 64, 64, 27, 54, 51] }[r.pg];
       // tampa reta (foto do Amsterdam): alta, ~31% da altura do frasco, na largura dele, assentada no ombro (o app já a apoia no
       // gargalo e a saia desce até o corpo; descer à força a enterrava no frasco e a rosca aparecia por cima)
-      const fc = fe === 'tampa' ? M('tampaTambor', { W: r1(W * 0.98), D: r1(W * 0.98), h: r2((H - nh) * 0.31 - 1.6) })
+      const fc = fe === 'spray' && sprayFoto ? (() => {
+          const [body, cw, ch, gw, gh, pw, ph] = sprayFoto, mm = px => r1(px * W / body);
+          const valve = M('spray', { name: 'Spray liso', W: mm(cw), D: mm(cw), h: mm(ch),
+            skirtPct: 100, ridges: 0, collarR: 0.6, guideW: mm(gw), guideH: mm(gh), guideLine: 0,
+            stemH: 0, actW: r1(mm(pw) - 1.6), actH: r1(mm(ph) - 1.2), mola: false });
+          // Proteção sobre o atuador. Folgas 0,8/1,2 mm de representação, não cotas industriais.
+          const cap = P('Proteção transparente do spray', mm(pw), null, mm(ph), { ...clear, casca: true,
+            rTop: 0.4, rBot: 0, seatV: true, gap: valve.guideH, capa: true });
+          return [valve, cap]; })()
+        : fe === 'patoIncom' ? (() => {
+          // P68: corpo 196 px; saia 88×61; haste 46×50; cabeça 136×26, deslocada 28 px.
+          // Volumes externos próprios; ponta/saída e mecanismo oculto não cotados.
+          const mm = px => r1(px * W / 196), cw = mm(88), sh = mm(50), hh = mm(26);
+          return [P('Saia lisa do bico pato', cw, null, mm(61), { rTop: 1, rBot: 0.3 }),
+            P('Haste exposta do bico pato', mm(46), null, sh, { rTop: 0, rBot: 0 }),
+            // Sem vista lateral: D=20 mm provisório, herdado da cabeça anterior.
+            P('Cabeça curva do bico pato', mm(136), LIB.pump.actW, hh, { gap: -mm(10), rTop: 0, rBot: 0, smoothProf: false,
+              prof: [[0, 0.94, 0.70, 2, -mm(28), 0], [0.18, 1, 0.90, 2, -mm(28), 0],
+                [0.48, 0.94, 1, 2, -mm(24), 0], [0.78, 0.80, 0.88, 2, -mm(15), 0],
+                [1, 0.48, 0.55, 2, -mm(2), 0]] })]; })()
+        : fe === 'tampa' ? M('tampaTambor', { W: r1(W * 0.98), D: r1(W * 0.98), h: r2((H - nh) * 0.31 - 1.6) })
         : fe === 'sens' ? M('tampaSens', { W: r1(W * 0.727), D: r1(W * 0.727), h: r1(W * 0.424) }) // foto do New York 250 de frente: 72,7% da largura do frasco e altura de 42,4% dela
         : fe === 'bola' ? (bl => [M('reto', { name: 'Colar da tampa bola', W: r1(Math.max(bl * 0.62, 27.5)), D: r1(Math.max(bl * 0.62, 27.5)), h: r1(nh + 0.8), rTop: 0.6, rBot: 0.3 }), // ícone Incom: a bola fica sobre um colar que veste o gargalo
           M('bola', { name: 'Tampa bola', W: bl, D: bl, h: bl })])(r1(Math.min(W * 0.62, 36)))
@@ -9113,8 +9148,37 @@ function incomProduct(r) {
     ms.forEach(m => { if (m.kind === 'spray') Object.assign(m, { pesc: false, mola: false }); });
   }
   // frascos transparentes nas fotos (os brancos opacos — Apple Blow, Bulb Blow, Wall — ficam como estão)
-  // potes de acrílico transparente nas fotos (tampa branca); Gaia fosco; Apple Blow e Bold brancos opacos
-  if (r.c === 'Potes' && !/Apple Blow|Bold/.test(r.n)) { const pt = ms.find(m => m.name === 'Pote'); if (pt) Object.assign(pt, { own: true, color: '#ffffff', finish: /Gaia/.test(r.n) ? 'vidroFosco' : 'pet' }); }
+  // Gaia p113: PP opaco mate; os demais potes transparentes preservam o acabamento.
+  if (r.c === 'Potes' && !/Apple Blow|Bold/.test(r.n)) { const pt = ms.find(m => m.name === 'Pote'); if (pt) Object.assign(pt, { own: true, color: /Gaia/.test(r.n) ? BEIGE : '#ffffff', finish: /Gaia/.test(r.n) ? 'fosco' : 'pet' }); }
+  if (r.c === 'Potes') {
+    // P111/115–120: frações estimadas pelas fotos e silhueta interna do desenho.
+    // Jubilee15/Squared fotografados vazios: refil opcional oculto; Jubilee40 não lista refil.
+    const cup = {
+      incomp_potes_avante: { mouth: 0.84, floor: 0.12, round: 0.35, refill: 0.76, bottom: 0.23, rb: 0.8, show: true },
+      incomp_potes_jubilee_15: { mouth: 0.84, floor: 0.15, round: 0.12, refill: 0.76, bottom: 0.22, rb: 0.8, show: false },
+      incomp_potes_jubilee_40: { mouth: 0.88, floor: 0.12, round: 0.08 },
+      incomp_potes_jubilee_60: { mouth: 0.88, floor: 0.12, round: 0.12, refill: 0.8, bottom: 0.2, rb: 0.22, show: true },
+      incomp_potes_jubilee_85: { mouth: 0.86, floor: 0.1, round: 0.1, refill: 0.78, bottom: 0.18, rb: 0.95, show: true },
+      incomp_potes_oval: { mouth: 0.84, floor: 0.13, round: 0.35, refill: 0.74, bottom: 0.23, rb: 0.8, show: true },
+      incomp_potes_pote_squared: { mouth: 0.76, floor: 0.12, round: 0.16, refill: 0.67, bottom: 0.22, rb: 0.8, show: false }
+    }[r.k];
+    if (cup) {
+      const pot = ms[0], hp = pot.h, floor = r2(H * cup.floor), cw = r1(W * cup.mouth), cd = r1(D * cup.mouth);
+      Object.assign(pot, { liq: false, ocoTopo: false, casca: true, apoio: false,
+        incomPoteCavity: { W: cw, D: cd, floor, rBot: r1(Math.min(hp - floor, cw / 2, cd / 2) * cup.round) } });
+      // Conserva o assentamento da tampa sem exibir filetes genéricos não verificados.
+      const neck = ms.find(m => m.kind === 'gargalo'); if (neck) neck.hidden = true;
+      if (cup.refill) {
+        const rw = r1(W * cup.refill), rd = r1(D * cup.refill), bottom = r2(H * cup.bottom), rh = r2(hp - bottom);
+        // Parede 3% do diâmetro (0,8–1,5 mm), estimada, pendente peça/corte.
+        const wall = r1(clamp(Math.min(rw, rd) * 0.03, 0.8, 1.5)), rb = r1(Math.min(rh, rw / 2, rd / 2) * cup.rb);
+        const refill = P('Refil', rw, rd, rh, { h: rh, gap: r2(bottom - hp),
+          own: true, color: BEIGE, finish: 'fosco', hidden: !cup.show, vol: false, apoio: false, casca: true, veste: false,
+          rBot: rb, rTop: 0.3, incomPoteCavity: { W: r1(rw - 2 * wall), D: r1(rd - 2 * wall), floor: wall, rBot: Math.max(0, rb - wall) } });
+        ms.splice(1, 0, refill);
+      }
+    }
+  }
   if (r.c === 'Frascos' && /^(Amsterdam|Chicago|Miami|New York|Seoul 250|Sydney 60)$/.test(r.n)) { const fr = ms.find(m => m.name === 'Frasco'); if (fr) Object.assign(fr, { own: true, finish: 'pet', color: '#ffffff' }); }
   // Sem vista lateral no catálogo: a profundidade das bisnagas achatadas (Charlotte) sai da capacidade informada
   // (30 ml, +10% de folga até a boca), em vez de chute — as peças achatam por igual até o frasco dar esse volume

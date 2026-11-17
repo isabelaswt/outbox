@@ -165,9 +165,11 @@ Pendências conhecidas (precisam de dado ou de decisão; não invente):
 
 **Em andamento** (quem está mexendo em quê agora; apague quando terminar):
 
-- Codex: segunda etapa de integração em `js/app.js`: fechamentos dos frascos e cavidades dos potes. Patches isolados já revisados; falta render final. Não editar esses trechos em paralelo.
+- Nenhuma edição ativa. Pendências de fidelidade continuam discriminadas em `INCOM_AUDITORIA.md`; os lotes abaixo não representam aprovação industrial de toda a biblioteca.
 
 **Registro** (o mais novo em cima):
+
+- 2026-11-17, Codex, `2026-11-17.cdx5`: sprays dos frascos p65/66/69/70/72/73 com saia lisa e proteção transparente independente; Bulb Blow 300 com volumes externos próprios do bico pato. Avante/Jubilee15/40/60/85/Oval/Squared com cavidade vazia e refil separado quando documentado; Gaia PP opaco fosco. Verificadas 22 montagens abertas/fechadas, sem vértices inválidos; cotas comparáveis dentro de 0,1 mm em `tools/conferencia/validacao-cdx5.json` (frascos: corpo+gargalo separados do fechamento). Renders locais em `_ref/incom/validacao-cdx5/`. Paredes/refis e fechamento sem cota continuam estimados; roscas genéricas dos sete potes ocultas, não substituídas por roscas industriais aprovadas. Persistem lapidações, mecanismos/vedações sem cortes, aplicadores específicos, apoios Charm, visores/afilamento de batons, conta-gotas e detalhes de fechos; consultar auditoria antes de chamar a biblioteca de cópia exata.
 
 - 2026-11-17, Codex, `2026-11-17.cdx4`: correções estruturais da auditoria: Tube rígido/rosca/inserto Ø1,6; visor Mini Jubilee; refis Dispensing e acionador/manga Twist; escovas/abertura solidária da haste; rosca helicoidal All Crystal; proporções Ella/Long/Lipview, colar circular Squared, mangas dos sticks; colares lisos Deluxes; ápices Drop/Malika/Tahaa; olhais Charm Ø4,5; alturas Oscar/Tate; fundos dos glosses confirmados e encaixes estreitos das Flat. Renders novos de 58 montagens, sem vértices inválidos; cotas e limites em `tools/conferencia/validacao-cdx4.json` e `INCOM_AUDITORIA.md`. Flat teve compensação adicional de profundidade após medição. Renders em `_ref/incom/validacao-cdx4/` (ignorados pelo git). Quinteto/Moon Quarteto já tinham losango/X corretos: achado antigo retificado. Proporções internas e mecanismos sem vistas suficientes continuam estimados/pendentes, não aprovados como peças industriais exatas.
 

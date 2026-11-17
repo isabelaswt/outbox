@@ -28,6 +28,16 @@ Os achados abaixo descrevem os renders antigos. Esta atualização registra o qu
 
 **Retificação da triagem:** renders novos de cima confirmam losango no Frame G Quinteto e divisórias em X no Moon G Quarteto, já presentes no código. As duas primeiras linhas da tabela histórica de compactos foram superadas por essa evidência; não foi necessário girar os godês.
 
+### Segunda etapa, `2026-11-17.cdx5`
+
+- Apple Blow (p.65, **250 ml**), Bulb Blow 150, Chicago, Miami, Seoul 250 e Sydney 60: saia lisa, guia e proteção transparente sobre o atuador, proporcionais às fotos. A proteção é uma peça independente removível. Folgas de representação e dimensões do fechamento são estimadas; corpo/gargalo têm conferência própria, sem comparar a altura da montagem à cota do frasco.
+- Bulb Blow 300 (p.68): saia lisa, haste grossa e cabeça curva larga próprias substituem o pump genérico. A profundidade da cabeça continua provisória; saída e mecanismo ocultos não foram inventados. Não se declara cópia exata em três vistas.
+- Avante, Jubilee 15/40/60/85, Oval e Pote Squared (p.111/115–120): cavidade real vazia e refil separado quando documentado. Jubilee 15/Squared deixam o refil opcional oculto para reproduzir a foto vazia. Jubilee 40 não ganha refil que a página não oferece. Proporções, parede, piso e raios são estimados pelas referências; as opções comerciais não tiveram capacidade volumétrica certificada. O envelope cadastrado do Avante é mantido, mas precisa confirmação frente às capacidades comerciais listadas.
+- Gaia (p.113): corpo em bege fosco opaco, representando o PP mate; removida a leitura de vidro jateado transparente.
+- As roscas genéricas dos sete potes com nova cavidade ficam ocultas, conservando o assentamento da tampa; isso **não** significa que a rosca correta foi modelada/aprovada. A geometria da boca, filetes, vedação, inserto SAN, Polexan/cascaseal e interfaces dos refis seguem pendentes de fonte suficiente.
+
+As duas etapas passaram por renderização atualizada aberta/fechada e checagem de vértices. `tools/conferencia/validacao-cdx4.json` registra 58 montagens e cotas comparáveis dentro de 0,1 mm (inclui controles). A segunda etapa tem relatório próprio em `tools/conferencia/validacao-cdx5.json`. Os JPGs locais ficam em `_ref/incom/validacao-cdx4/` e `_ref/incom/validacao-cdx5/`, ignorados pelo git. Os relatórios não convertem medidas estimadas em cotas oficiais.
+
 Os parâmetros derivados das fotos estão comentados como estimados no código. A revisão não resolve as tampas escultóricas com lapidação faltante (Bouquet, Laura, Joya/Joya Mini, Quartz, Brilhante, Victoria), nem as interpretações ambíguas de Wheel/Rock/Thenue. Estas continuam no backlog, exigindo vistas adicionais para as partes não determinadas pelo catálogo.
 
 - Fonte: `_ref/incom/catalogo-incom-2026.pdf`; fotos, desenhos e cotas da página indicada.

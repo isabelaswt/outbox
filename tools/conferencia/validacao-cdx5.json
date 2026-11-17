@@ -1,0 +1,406 @@
+{
+  "version": "2026-11-17.cdx5",
+  "count": 22,
+  "method": "Renders aberto/fechado, vértices finitos; frascos medidos sem fechamento para comparação com cotas. Interiores aproximados pelas fotos; mecanismo, tolerâncias e capacidades não certificados.",
+  "results": [
+    {
+      "name": "Incom Amsterdam (frascos)",
+      "page": 64,
+      "measurementScope": "Corpo + gargalo; fechamento excluído da cota de altura",
+      "measured": {
+        "W": 50.2,
+        "D": 50.2,
+        "H": 135.201
+      },
+      "target": {
+        "W": 50.2,
+        "H": 135.2
+      },
+      "invalid": 0,
+      "invalidOpen": 0,
+      "triangles": 733792,
+      "dimensionsWithin01": true
+    },
+    {
+      "name": "Incom Apple Blow (frascos)",
+      "page": 65,
+      "measurementScope": "Corpo + gargalo; fechamento excluído da cota de altura",
+      "measured": {
+        "W": 68.3,
+        "D": 45,
+        "H": 108.002
+      },
+      "target": {
+        "W": 68.3,
+        "D": 45,
+        "H": 108
+      },
+      "invalid": 0,
+      "invalidOpen": 0,
+      "triangles": 413912,
+      "dimensionsWithin01": true
+    },
+    {
+      "name": "Incom Bulb Blow 150 (frascos)",
+      "page": 66,
+      "measurementScope": "Corpo + gargalo; fechamento excluído da cota de altura",
+      "measured": {
+        "W": 50,
+        "D": 50,
+        "H": 115.502
+      },
+      "target": {
+        "W": 50,
+        "H": 115.5
+      },
+      "invalid": 0,
+      "invalidOpen": 0,
+      "triangles": 433959,
+      "dimensionsWithin01": true
+    },
+    {
+      "name": "Incom Bulb Blow 250 (frascos)",
+      "page": 67,
+      "measurementScope": "Corpo + gargalo; fechamento excluído da cota de altura",
+      "measured": {
+        "W": 55,
+        "D": 55,
+        "H": 144.002
+      },
+      "target": {
+        "W": 55,
+        "H": 144
+      },
+      "invalid": 0,
+      "invalidOpen": 0,
+      "triangles": 464960,
+      "dimensionsWithin01": true
+    },
+    {
+      "name": "Incom Bulb Blow 300 (frascos)",
+      "page": 68,
+      "measurementScope": "Corpo + gargalo; fechamento excluído da cota de altura",
+      "measured": {
+        "W": 60,
+        "D": 60,
+        "H": 151.702
+      },
+      "target": {
+        "W": 60,
+        "H": 151.7
+      },
+      "invalid": 0,
+      "invalidOpen": 0,
+      "triangles": 487760,
+      "dimensionsWithin01": true
+    },
+    {
+      "name": "Incom Chicago (frascos)",
+      "page": 69,
+      "measurementScope": "Corpo + gargalo; fechamento excluído da cota de altura",
+      "measured": {
+        "W": 43.626,
+        "D": 43.626,
+        "H": 141.001
+      },
+      "target": {
+        "W": 43.6,
+        "H": 141
+      },
+      "invalid": 0,
+      "invalidOpen": 0,
+      "triangles": 841147,
+      "dimensionsWithin01": true
+    },
+    {
+      "name": "Incom Miami (frascos)",
+      "page": 70,
+      "measurementScope": "Corpo + gargalo; fechamento excluído da cota de altura",
+      "measured": {
+        "W": 50.535,
+        "D": 50.535,
+        "H": 132.501
+      },
+      "target": {
+        "W": 50.5,
+        "H": 132.5
+      },
+      "invalid": 0,
+      "invalidOpen": 0,
+      "triangles": 797950,
+      "dimensionsWithin01": true
+    },
+    {
+      "name": "Incom New York (frascos)",
+      "page": 71,
+      "measurementScope": "Corpo + gargalo; fechamento excluído da cota de altura",
+      "measured": {
+        "W": 54.4,
+        "D": 54.4,
+        "H": 124.001
+      },
+      "target": {
+        "W": 54.4,
+        "H": 124
+      },
+      "invalid": 0,
+      "invalidOpen": 0,
+      "triangles": 695942,
+      "dimensionsWithin01": true
+    },
+    {
+      "name": "Incom Seoul 250 (frascos)",
+      "page": 72,
+      "measurementScope": "Corpo + gargalo; fechamento excluído da cota de altura",
+      "measured": {
+        "W": 54.4,
+        "D": 54.4,
+        "H": 142.701
+      },
+      "target": {
+        "W": 54.4,
+        "H": 142.7
+      },
+      "invalid": 0,
+      "invalidOpen": 0,
+      "triangles": 850005,
+      "dimensionsWithin01": true
+    },
+    {
+      "name": "Incom Sydney 60 (frascos)",
+      "page": 73,
+      "measurementScope": "Corpo + gargalo; fechamento excluído da cota de altura",
+      "measured": {
+        "W": 36,
+        "D": 36,
+        "H": 96.001
+      },
+      "target": {
+        "W": 36,
+        "H": 96
+      },
+      "invalid": 0,
+      "invalidOpen": 0,
+      "triangles": 601870,
+      "dimensionsWithin01": true
+    },
+    {
+      "name": "Incom Wall (frascos)",
+      "page": 74,
+      "measurementScope": "Corpo + gargalo; fechamento excluído da cota de altura",
+      "measured": {
+        "W": 86.011,
+        "D": 39.986,
+        "H": 147.802
+      },
+      "target": {
+        "W": 86,
+        "D": 40,
+        "H": 147.8
+      },
+      "invalid": 0,
+      "invalidOpen": 0,
+      "triangles": 621120,
+      "dimensionsWithin01": true
+    },
+    {
+      "name": "Incom Pote Apple Blow (potes)",
+      "page": 110,
+      "measurementScope": "Montagem fechada",
+      "measured": {
+        "W": 95.6,
+        "D": 95.6,
+        "H": 57.2
+      },
+      "target": {
+        "W": 95.6,
+        "H": 57.2
+      },
+      "invalid": 0,
+      "invalidOpen": 0,
+      "triangles": 411046,
+      "dimensionsWithin01": true
+    },
+    {
+      "name": "Incom Avante (potes)",
+      "page": 111,
+      "measurementScope": "Montagem fechada",
+      "measured": {
+        "W": 35.393,
+        "D": 35.393,
+        "H": 21.4
+      },
+      "target": {
+        "W": 35.4,
+        "H": 21.4
+      },
+      "invalid": 0,
+      "invalidOpen": 0,
+      "triangles": 142486,
+      "dimensionsWithin01": true
+    },
+    {
+      "name": "Incom Bold (potes)",
+      "page": 112,
+      "measurementScope": "Montagem fechada",
+      "measured": {
+        "W": 105.4,
+        "D": 105.4,
+        "H": 44.1
+      },
+      "target": {
+        "W": 105.4,
+        "H": 44.1
+      },
+      "invalid": 0,
+      "invalidOpen": 0,
+      "triangles": 322370,
+      "dimensionsWithin01": true
+    },
+    {
+      "name": "Incom Gaia (potes)",
+      "page": 113,
+      "measurementScope": "Montagem fechada",
+      "measured": {
+        "W": 64.7,
+        "D": 64.7,
+        "H": 49.6
+      },
+      "target": {
+        "W": 64.7,
+        "H": 49.6
+      },
+      "invalid": 0,
+      "invalidOpen": 0,
+      "triangles": 81184,
+      "dimensionsWithin01": true
+    },
+    {
+      "name": "Incom Mini Jubilee (potes)",
+      "page": 114,
+      "measurementScope": "Montagem fechada",
+      "measured": {
+        "W": 35.6,
+        "D": 35.6,
+        "H": 24.6
+      },
+      "target": {
+        "W": 35.6,
+        "H": 24.6
+      },
+      "invalid": 0,
+      "invalidOpen": 0,
+      "triangles": 195737,
+      "dimensionsWithin01": true
+    },
+    {
+      "name": "Incom Jubilee 15 (potes)",
+      "page": 115,
+      "measurementScope": "Montagem fechada",
+      "measured": {
+        "W": 43,
+        "D": 43,
+        "H": 30.5
+      },
+      "target": {
+        "W": 43,
+        "H": 30.5
+      },
+      "invalid": 0,
+      "invalidOpen": 0,
+      "triangles": 94931,
+      "dimensionsWithin01": true
+    },
+    {
+      "name": "Incom Jubilee 40 (potes)",
+      "page": 116,
+      "measurementScope": "Montagem fechada",
+      "measured": {
+        "W": 63,
+        "D": 63,
+        "H": 32.4
+      },
+      "target": {
+        "W": 63,
+        "H": 32.4
+      },
+      "invalid": 0,
+      "invalidOpen": 0,
+      "triangles": 167779,
+      "dimensionsWithin01": true
+    },
+    {
+      "name": "Incom Jubilee 60 (potes)",
+      "page": 117,
+      "measurementScope": "Montagem fechada",
+      "measured": {
+        "W": 62.5,
+        "D": 62.5,
+        "H": 39.5
+      },
+      "target": {
+        "W": 62.5,
+        "H": 39.5
+      },
+      "invalid": 0,
+      "invalidOpen": 0,
+      "triangles": 208235,
+      "dimensionsWithin01": true
+    },
+    {
+      "name": "Incom Jubilee 85 (potes)",
+      "page": 118,
+      "measurementScope": "Montagem fechada",
+      "measured": {
+        "W": 61.989,
+        "D": 61.989,
+        "H": 51.6
+      },
+      "target": {
+        "W": 62,
+        "H": 51.6
+      },
+      "invalid": 0,
+      "invalidOpen": 0,
+      "triangles": 239562,
+      "dimensionsWithin01": true
+    },
+    {
+      "name": "Incom Oval (potes)",
+      "page": 119,
+      "measurementScope": "Montagem fechada",
+      "measured": {
+        "W": 72.7,
+        "D": 67,
+        "H": 39.7
+      },
+      "target": {
+        "W": 72.7,
+        "D": 67,
+        "H": 39.7
+      },
+      "invalid": 0,
+      "invalidOpen": 0,
+      "triangles": 212434,
+      "dimensionsWithin01": true
+    },
+    {
+      "name": "Incom Pote Squared (potes)",
+      "page": 120,
+      "measurementScope": "Montagem fechada",
+      "measured": {
+        "W": 66.497,
+        "D": 66.497,
+        "H": 41
+      },
+      "target": {
+        "W": 66.5,
+        "H": 41
+      },
+      "invalid": 0,
+      "invalidOpen": 0,
+      "triangles": 196632,
+      "dimensionsWithin01": true
+    }
+  ]
+}
