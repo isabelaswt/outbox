@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-17.cl28';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-17.cl29';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -702,7 +702,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-17.cl28';
+const BUILD = '2026-11-17.cl29';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -2028,24 +2028,31 @@ function sprayGeo(m, y0, { lo = false } = {}) {
     const T = m.headH, L = m.nozzleL, B = m.headBack ?? m.stemD / 2 + 3, tT = Math.min(m.armT, T), d = m.droop ?? T, rb = Math.min(T * 0.45, 1.6);
     const x1 = L * 0.3, xs = m.stemD / 2, yT = x => x <= x1 ? T : T - d * ((x - x1) / (L - x1)) ** 2;
     const th = x => x <= xs ? T : T - (T - tT) * (x - xs) / (L - xs), sl = 2 * d / (L - x1), n = Math.hypot(1, sl);
-    const xb = L - sl * tT / n, yb = yT(L) - tT / n, N = lo ? 10 : 36, sh = new THREE.Shape();
-    sh.moveTo(-B + rb, 0); sh.lineTo(xs, 0);
-    for (let i = 1; i < N; i++) { const x = xs + (xb - xs) * i / N; sh.lineTo(x, Math.min(yT(x) - th(x), yb + (yT(x) - yT(xb)))); }
-    sh.lineTo(xb, yb); sh.lineTo(L, yT(L)); // face da ponta (saída)
-    for (let i = 1; i <= N; i++) { const x = L - (L - x1) * i / N; sh.lineTo(x, yT(x)); }
-    sh.lineTo(-B + rb, T); sh.quadraticCurveTo(-B, T, -B, T - rb); sh.lineTo(-B, rb); sh.quadraticCurveTo(-B, 0, -B + rb, 0);
-    const bev = Math.min(1.1, m.armW * 0.12, tT * 0.35);
-    const blade = new THREE.ExtrudeGeometry(sh, { depth: Math.max(0.5, m.armW - 2 * bev), bevelEnabled: true, bevelThickness: bev, bevelSize: bev * 0.85,
-      bevelOffset: -bev * 0.85, bevelSegments: lo ? 1 : 4, curveSegments: lo ? 8 : 24 });
-    blade.deleteAttribute('uv'); blade.translate(0, top + m.stemH, -(m.armW - 2 * bev) / 2);
-    // Vista de cima (pedido da dona, ícone/foto): o bico AFINA ao longo do comprimento — largura cheia na haste e
-    // ~metade na ponta (tipW, estimado pela foto); a saída é uma fenda RETANGULAR na face da ponta.
-    // Sem quina (dona: "sem chanfro, tá duro visto de cima"): a largura afina numa curva contínua desde a traseira
-    // (inclinação zero atrás, u^1,7) e a traseira é arredondada na vista de cima.
-    const tr = m.tipW ?? 0.5, pz = blade.attributes.position, rr = Math.min(m.armW * 0.45, B * 0.9);
-    for (let i = 0; i < pz.count; i++) { const x = pz.getX(i), u = clamp((x + B) / (L + B), 0, 1), k = clamp((-B + rr - x) / rr, 0, 1);
-      pz.setZ(i, pz.getZ(i) * (1 - (1 - tr) * u ** 1.7) * Math.sqrt(Math.max(0.12, 1 - k * k))); }
-    blade.computeVertexNormals();
+    const xb = L - sl * tT / n, yb = yT(L) - tT / n;
+    // Cabeça montada por seções (retângulo de quinas arredondadas) ao longo do bico, cada uma com o topo/espessura do
+    // perfil de lado e a largura da vista de cima — malha contínua e fechada (a extrusão afinada por vértice dobrava o
+    // chanfro na lateral: "erro de malha", dona). Largura: afina numa curva contínua desde a traseira (u^1,7) até ~metade
+    // na ponta (tipW, foto); traseira arredondada vista de cima; ponta cortada perpendicular à curva (face da saída).
+    const tr = m.tipW ?? 0.5, rr = Math.min(m.armW * 0.45, B * 0.9);
+    const hw = x => { const u = clamp((x + B) / (L + B), 0, 1), k = clamp((-B + rr - x) / rr, 0, 1);
+      return m.armW / 2 * (1 - (1 - tr) * u ** 1.7) * Math.sqrt(Math.max(0.12, 1 - k * k)); };
+    const NS = lo ? 24 : 72, K = lo ? 4 : 8, M = 4 * (K + 1), pos = [], idx = [];
+    for (let i = 0; i <= NS; i++) {
+      const x = -B + (L + B) * (i / NS) ** 0.85, yt = yT(x), ybt = yt - th(x), w = hw(x), rc = Math.min(0.9, (yt - ybt) * 0.35, w * 0.45);
+      [[w - rc, yt - rc, 0], [-w + rc, yt - rc, 1], [-w + rc, ybt + rc, 2], [w - rc, ybt + rc, 3]].forEach(([cz, cy, q]) => {
+        for (let k = 0; k <= K; k++) { const a = (q + k / K) * Math.PI / 2, y = cy + rc * Math.sin(a);
+          pos.push(i === NS ? L - (yt - y) * sl / n : x, y, cz + rc * Math.cos(a)); } });
+    }
+    for (let i = 0; i < NS; i++) for (let j = 0; j < M; j++) { const a = i * M + j, b = i * M + (j + 1) % M, c = a + M, e = b + M; idx.push(a, b, c, b, e, c); }
+    [0, NS].forEach(i => { let cx = 0, cy = 0, cz = 0; for (let j = 0; j < M; j++) { cx += pos[3 * (i * M + j)]; cy += pos[3 * (i * M + j) + 1]; cz += pos[3 * (i * M + j) + 2]; }
+      const c0 = pos.length / 3; pos.push(cx / M, cy / M, cz / M);
+      for (let j = 0; j < M; j++) { pos.push(pos[3 * (i * M + j)], pos[3 * (i * M + j) + 1], pos[3 * (i * M + j) + 2]); }
+      for (let j = 0; j < M; j++) { const a = c0 + 1 + j, b = c0 + 1 + (j + 1) % M; i ? idx.push(c0, a, b) : idx.push(c0, b, a); } });
+    // orientação: volume com sinal positivo = normais para fora
+    let vol = 0; for (let t = 0; t < idx.length; t += 3) { const [a, b, c] = [idx[t], idx[t + 1], idx[t + 2]].map(v => new THREE.Vector3(pos[3 * v], pos[3 * v + 1], pos[3 * v + 2])); vol += a.dot(b.cross(c)); }
+    if (vol < 0) for (let t = 0; t < idx.length; t += 3) { const q = idx[t + 1]; idx[t + 1] = idx[t + 2]; idx[t + 2] = q; }
+    const blade = new THREE.BufferGeometry(); blade.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); blade.setIndex(idx);
+    blade.computeVertexNormals(); blade.translate(0, top + m.stemH, 0); // indexada: lateral lisa; tampas com vértices próprios (quina viva)
     const oh = new THREE.BoxGeometry(5, Math.max(0.5, tT * 0.28), Math.max(1.2, m.armW * tr * 0.55)); oh.deleteAttribute('uv'); oh.rotateZ(-Math.atan(sl));
     oh.translate((L + xb) / 2 - 2.5 / n, top + m.stemH + (yT(L) + yb) / 2 + 2.5 * sl / n, 0);
     const [bladeC, cav] = cutHole(blade, oh); head.push(bladeC); holes.push(cav);
