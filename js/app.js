@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-17.cmp5';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-17.cmp6';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -381,6 +381,9 @@ const LIB = {
              stemD: 9.4, stemH: 3.2, actW: 11.5, actH: 7.5, mola: false, pesc: false },
   bicoDosador: { name: 'Bico dosador', kind: 'spray', sprayType: 'bico', W: 32, D: 32, h: 18, collarR: 0.8, ridges: 76, ridgeD: 0.32,
              actW: 22, actH: 24, nozzleL: 24, spoutD: 2.7, mola: false, pesc: false },
+  // Bico aplicador (lista Incom): virola frisada, degrau e ponteira cônica alta e fina
+  bicoAplicador: { name: 'Bico aplicador', kind: 'spray', sprayType: 'conico', W: 24, D: 24, h: 10, collarR: 0.8, ridges: 60, ridgeD: 0.3,
+             actW: 9, nozzleL: 24, spoutD: 2, mola: false, pesc: false },
   bicoConico: { name: 'Bico cônico (molho)', kind: 'spray', sprayType: 'conico', W: 38, D: 38, h: 14, collarR: 0.8, ridges: 90, ridgeD: 0.35,
              actW: 13, nozzleL: 25, spoutD: 3, mola: false, pesc: false },
   gargalo: { name: 'Gargalo com rosca', kind: 'gargalo', W: 23.9, D: 23.9, h: 16, neckStd: '24/410', pitch: 3.18, turns: 1.5 },
@@ -393,6 +396,10 @@ const LIB = {
   flipRedondo: { name: 'Tampa flip-top redonda', W: 40, D: 40, h: 30, rBot: 1, rTop: 2.5, groove: 10, notch: true, notchUp: false,
     notchW: 17, notchH: 8, notchD: 1.4, notchP: 6, topType: 'flip', lidSide: 'cima' },
   tampaSens: { name: 'Tampa Sens', W: 30, D: 30, h: 21, rBot: 0.6, rTop: 0.4, sens: true },
+  // Fechamentos da lista Incom (catálogo 2026, frascos 24/410): tampa tambor lisa e as sobretampas do fine mist
+  tampaTambor: { name: 'Tampa tambor', W: 30, D: 30, h: 22, rBot: 0.4, rTop: 0.8 },
+  sobretampaFineMist: { name: 'Sobretampa fine mist', W: 27.5, D: 27.5, h: 37, rBot: 0.4, rTop: 1.2, own: true, finish: 'pet', color: '#ffffff', casca: true },
+  sobretampaFineMistBig: { name: 'Sobretampa fine mist big', W: 33, D: 33, h: 46, rBot: 0.4, rTop: 1, own: true, finish: 'pet', color: '#ffffff', casca: true },
   disctop: { name: 'Tampa disc-top', W: 48.3, D: 48.3, h: 32.5, taper: 95, rBot: 1, rTop: 0.8, topType: 'disc', discD: 42.4, discDip: 5 },
 };
 const newUid = () => Math.random().toString(36).slice(2, 10);
@@ -580,7 +587,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-17.cmp5';
+const BUILD = '2026-11-17.cmp6';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -8072,8 +8079,8 @@ function renderAll() { renderStack(); renderEditor(); renderGlobal(); renderPres
 // Corpo, tampa e peça de encaixe ficam em listas separadas.
 const CATS = [
   ['Corpo', ['reto', 'boston', 'quadrado', 'capsula', 'perfumeOval', 'plano', 'arco', 'cone', 'placa', 'bisnaga', ...DRAFT_KEYS.corpo]],
-  ['Tampa', ['esfera', 'esferaBisnaga', 'nuvem', 'taca', 'domo', 'seixo', 'flip', 'flipRedondo', 'flipAba', 'disctop', 'tampaSens', 'sobretampa', 'tampaBisnaga', 'tampaSextavada', 'disco']],
-  ['Válvula', ['pump', 'pumpFrisos', 'locao', 'espuma', 'spray', 'sprayClassico', 'contaGotas', 'tampaGloss', 'pushPull', 'pushSport', 'bicoDosador', 'bicoConico', 'lamina', 'pumpOnda', 'gatilho', 'pumpBisnaga']],
+  ['Tampa', ['esfera', 'esferaBisnaga', 'nuvem', 'taca', 'domo', 'seixo', 'flip', 'flipRedondo', 'flipAba', 'disctop', 'tampaSens', 'tampaTambor', 'sobretampa', 'sobretampaFineMist', 'sobretampaFineMistBig', 'tampaBisnaga', 'tampaSextavada', 'disco']],
+  ['Válvula', ['pump', 'pumpFrisos', 'locao', 'espuma', 'spray', 'sprayClassico', 'contaGotas', 'tampaGloss', 'pushPull', 'pushSport', 'bicoDosador', 'bicoAplicador', 'bicoConico', 'lamina', 'pumpOnda', 'gatilho', 'pumpBisnaga']],
   ['Peça de encaixe', ['gargalo', 'colar', 'barril', 'flare', 'anel', 'tigela', 'bola', 'sextavado', 'canelado']],
 ];
 CATS.forEach(([label, keys]) => {
@@ -8747,12 +8754,14 @@ function incomProduct(r) {
       const o = { fr: { rBot: 3, rTop: W * 0.15 }, frr: { rBot: W * 0.3, rTop: W * 0.15 }, frsq: { ...sq(0.06), rTop: 3 }, frsqr: { ...sq(0.2), rTop: 4 },
         frt: { taperB: 82, rBot: W * 0.25, rTop: 4 }, frsh: { rTop: W * 0.35, rBot: 3 }, frap: { taper: 70, rTop: 6, rBot: 6 }, frflat: { ...sq(0.1), rTop: 6 } }[r.t];
       // rosca 24-410 do catálogo e o fechamento que aparece na foto de cada um (pode trocar em Peças)
-      const fe = { 'Amsterdam': 'tampa', 'Bulb Blow 250': 'bola', 'Bulb Blow 300': 'pump', 'New York': 'flip', 'Wall': 'disctop' }[r.n] || 'spray', nh = 16.6;
+      // fotos: Amsterdam com a tampa tambor preta, New York com a Tampa Sens, Wall com o flip-top transparente
+      const fe = { 'Amsterdam': 'tampa', 'Bulb Blow 250': 'bola', 'Bulb Blow 300': 'pump', 'New York': 'sens', 'Wall': 'flip' }[r.n] || 'spray', nh = 16.6;
       // tampa reta (foto do Amsterdam): alta, ~31% da altura do frasco, na largura dele, assentada no ombro (o app já a apoia no
       // gargalo e a saia desce até o corpo; descer à força a enterrava no frasco e a rosca aparecia por cima)
-      const fc = fe === 'tampa' ? M('reto', { name: 'Tampa de rosca', W: r1(W * 0.98), D: r1(W * 0.98), h: r2((H - nh) * 0.31 - 1.6), rTop: 1.2, rBot: 0.4 })
+      const fc = fe === 'tampa' ? M('tampaTambor', { W: r1(W * 0.98), D: r1(W * 0.98), h: r2((H - nh) * 0.31 - 1.6) })
+        : fe === 'sens' ? M('tampaSens', { W: r1(W * 0.81), D: r1(W * 0.81), h: r1(W * 0.81 * 0.53) }) // foto do New York: larga (81% do frasco)
         : fe === 'bola' ? M('bola', { name: 'Tampa bola', W: r1(Math.min(W * 0.62, 36)), D: r1(Math.min(W * 0.62, 36)), h: r1(Math.min(W * 0.62, 36)) })
-        : fe === 'flip' ? M('flip', { name: 'Tampa flip-top', W: r1(Math.min(W * 0.58, 34)), D: r1(Math.min(W * 0.58, 34)) })
+        : fe === 'flip' ? M('flipRedondo', { W: 30, D: 30, h: 30, own: true, finish: 'pet', color: '#ffffff' }) // foto do Wall: flip-top transparente
         : fe === 'disctop' ? M('disctop', { name: 'Tampa disc-top', W: r1(Math.min(D, 38)), D: r1(Math.min(D, 38)) })
         : M(fe === 'pump' ? 'pump' : 'spray');
       ms = [P('Frasco', W, D, H - nh, { vol: true, ...o, _t: [0, (H - nh) / H] }), NECK('24/410', { h: nh }), fc]; break; }
