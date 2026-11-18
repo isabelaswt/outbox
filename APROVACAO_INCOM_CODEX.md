@@ -4,7 +4,7 @@ Escrito em 18/11/2026 pela sessão Claude, que publicou da cl40 à cl57. É a pa
 
 Situação: a dona acha que **não estamos acertando as dobradiças**. Ela quer que o Codex tente entender o mecanismo melhor. As seções 4 e 5 contam cada tentativa e a resposta dela.
 
-Versão no ar: **`2026-11-18.cl58`**. Próximo carimbo: **cl59**.
+Versão no ar: **`2026-11-18.cl59`**. Próximo carimbo: **cl60**.
 
 ---
 
@@ -116,7 +116,8 @@ Como lemos a foto (a confirmar com a dona antes de modelar):
 ### ⚠️ Foto ampliada da dona do Moon aberto (cl58)
 - A dobradiça é um **bloco preso à BASE**, sentado num entalhe da borda de trás da base e subindo até a tampa, que tem um entalhe por cima dele.
 - O pino passa no alto do bloco. Aberto, o bloco fica à vista ligando base e tampa.
-- **Feito na cl58** (`hingeBloco`): os cortes de altura inteira da cl55 foram desfeitos. Falta a dona conferir.
+- **Feito na cl58** (`hingeBloco`): os cortes de altura inteira da cl55 foram desfeitos.
+- **cl59**, print da dona ("isso não é degrau, é reto"): a tampa não tem entalhe e a borda de trás dela passa reta; o bloco da base fica rente até a divisão. Falta a dona conferir.
 
 ### Moon Deck (dois andares)
 - **Pedido:** "bug ao fechar/abrir".
