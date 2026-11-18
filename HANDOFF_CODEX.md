@@ -1,4 +1,6 @@
-# Atualização Claude — 18/11/2026, cl62–cl71
+# Atualização Claude — 18/11/2026, cl62–cl72
+
+cl72: Case — cilindros fundidos à base (união CSG), furo do pino na ponta, contorno fino na lateral da tampa. Próximo carimbo: cl73.
 
 cl71 (Case, confirmado pela dona "é isso mesmo"): cilindro da base em cada ponta, numa forma só com ela, aflorando na lateral com o pino; engate da tampa = peça quadrada de dentro com nervura até o espelho; vão no centro. Próximo carimbo: cl72.
 

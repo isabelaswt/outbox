@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION, ADDITION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-18.cl71';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-18.cl72';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -707,7 +707,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-18.cl71';
+const BUILD = '2026-11-18.cl72';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -7068,6 +7068,7 @@ function compactParts(product, L, S0) {
         // centro"): entre os dois nós da tampa, um canal vazio ao longo do eixo, cortado na tampa e na base
         { const cc = t0 - 0.4; cutsT.push(cyl(cx - cc, cx + cc, r + 0.3)); /* na base o rebaixo corrido já abre o vão */ }
         const reliefB = cyl(cx - (b0 - gs / 2), cx + (b0 - gs / 2), Math.hypot(HZ - bb.min.z, YA - y0) + 0.25); // cl71 (dona: "o cilindro é junto com a parte de baixo, é uma forma só"): o rebaixo para só entre os cilindros // cl70: com o eixo para dentro, a parede de trás da tampa desce ao abrir — a borda de trás da base tem o rebaixo arredondado
+        const unionB = []; // cl72 (dona: "as peças não estão juntas"): os cilindros entram na malha da base (união), uma forma só
         [-1, 1].forEach(sg => {
           const P = v => cx + sg * v;
           { // cl65 ("base quadrada arredondada que segura o pino"), cl68 (mesma largura do cilindro). cl69 (dona: "esse quadrado parece
@@ -7083,20 +7084,30 @@ function compactParts(product, L, S0) {
             if (yt > yb + 0.5) { add(new RoundedBoxGeometry(len(t0, t1), yt - yb, zf - zb, 2, Math.min(0.5, k)), mT, idx, 'nervura_dobradica', P((t0 + t1) / 2), (yb + yt) / 2, (zb + zf) / 2); objs.push(product.children.at(-1)); } }
           // cl67/cl68: na ponta UM cilindro curto e grosso. cl69 ("tem um vão de abertura atrás do cilindro"; "o cilindro é dentro da
           // tampa"): fica dentro de uma abertura da tampa, com folga em volta (o vão claro em L da foto), preso pela ponta à parede lateral
-          { const L = dE - b0, c = 0.25, pts = [[0, 0], [rc, 0], [rc, L - c]];
-            for (let i = 1; i <= 8; i++) { const a = i / 8 * Math.PI / 2; pts.push([rc - c + c * Math.cos(a), L - c + c * Math.sin(a)]); } pts.push([0, L]);
+          { // cl72 (render da quina enviado pela dona): ponta com borda arredondada e FURO do pino (o pino fica recuado lá dentro),
+            // como na foto da lateral — não um disco de metal rente
+            const L = dE - b0, c = 0.6, hh = r * 0.38 + 0.12, pts = [[hh, 0], [rc, 0], [rc, L - c]];
+            for (let i = 1; i <= 8; i++) { const a = i / 8 * Math.PI / 2; pts.push([rc - c + c * Math.cos(a), L - c + c * Math.sin(a)]); }
+            pts.push([hh + 0.15, L], [hh, L - 0.15], [hh, 0]);
             const g = new THREE.LatheGeometry(pts.map(([a, b]) => new THREE.Vector2(a, b)), 48); g.deleteAttribute('uv');
-            g.rotateZ(-sg * Math.PI / 2); g.translate(P(b0), YA, HZ); add(g, mB, base.idx, 'dobradica', 0, 0, 0); } // cl71: o cilindro é da BASE // cl69 (dona: "o cilindro é dentro da tampa"): peça da tampa, presa pela ponta à parede lateral
-          add(cyl(P(t0 + 0.3), P(dE + 0.04), r * 0.38), mirrorMat, base.idx, 'pino', 0, 0, 0); // eixo interno, só desta ponta; aparece no vão e como ponto na face lateral do cilindro (foto da dona)
+            g.rotateZ(-sg * Math.PI / 2); g.translate(P(b0), YA, HZ); unionB.push(g); } // cl71: o cilindro é da BASE // cl69 (dona: "o cilindro é dentro da tampa"): peça da tampa, presa pela ponta à parede lateral
+          add(cyl(P(t0 + 0.3), P(dE - 0.6), r * 0.38), mirrorMat, base.idx, 'pino', 0, 0, 0); // eixo interno, só desta ponta; aparece no vão e como ponto na face lateral do cilindro (foto da dona)
           // tampa: abertura em volta do cilindro da base (o vão atrás dele), sem atravessar a parede lateral; furo do pino na peça quadrada
-          cutsT.push(cyl(P(b0 - gs / 2 + 0.02), P(W / 2 + 0.3), rc + 0.4)); // abertura da tampa em volta do cilindro da base (o vão atrás dele), até a lateral, onde ele aparece
+          cutsT.push(cyl(P(b0 - gs / 2 + 0.02), P(dE - 1.4), rc + 0.4)); // abertura da tampa em volta do cilindro da base (o vão atrás dele)
+          cutsT.push(cyl(P(dE - 1.4), P(W / 2 + 0.3), rc + 0.12)); // cl72: na parede lateral só um contorno fino em volta da ponta, sem o buraco escuro
           cutsT.push(cyl(P(t0 + 0.05), P(t1 - 0.05), bore));
           // base: cede ao giro da peça quadrada e do cilindro da tampa
           cutsB.push(cyl(P(t0 - 0.2), P(t1 + gs / 2 - 0.02), Math.hypot(rc, rc) + 0.15));
         });
         if (!THUMB_LITE) { const ni = x => { const g = x.index ? x.toNonIndexed() : x; for (const k in g.attributes) if (k !== 'position' && k !== 'normal') g.deleteAttribute(k); return g; };
           [[objs[0], cutsT], [bObjs[0], cutsB], [bObjs[0], [reliefB]]].forEach(([o, cs]) => { const cut = mergeGeometries(cs.map(ni)); const [outer, inner] = cutHole(o.geometry, cut); cut.dispose();
-            if (outer === o.geometry) return; const g = mergeGeometries([ni(outer), ni(inner)]); if (g) { o.geometry.dispose(); o.geometry = g; } }); }
+            if (outer === o.geometry) return; const g = mergeGeometries([ni(outer), ni(inner)]); if (g) { o.geometry.dispose(); o.geometry = g; } });
+          const body = bObjs[0]; body.updateMatrix(); const inv = body.matrix.clone().invert();
+          try { const ev = new Evaluator(); ev.attributes = ['position', 'normal']; ev.useGroups = false; let out = flatPN(body.geometry);
+            unionB.forEach(g => { g.applyMatrix4(inv); const r2 = ev.evaluate(new Brush(out), new Brush(flatPN(g)), ADDITION).geometry; out.dispose(); g.dispose(); out = r2; });
+            const g = toCreasedNormals(out, THREE.MathUtils.degToRad(38)); g.userData = { ...body.geometry.userData }; if (g !== out) out.dispose(); body.geometry.dispose(); body.geometry = g;
+          } catch (e) { console.warn('União da dobradiça do Case:', e); unionB.forEach(g => add(g, mB, base.idx, 'dobradica', 0, 0, 0)); } }
+        else unionB.forEach(g => add(g, mB, base.idx, 'dobradica', 0, 0, 0));
       } else if (m.hingeOculta) { // Big/Flat — cl58, foto ampliada da dona (assets/revisao/ref-dona/flat-dobradica-ampliada.png):
         // nada de rolo/faixa. Na borda de trás a TAMPA é recortada para cima no centro (as pontas descem até a divisão e "abraçam"
         // o eixo) e a BASE sobe no centro num ressalto que entra nesse recorte; a passagem ponta→centro é um degrau com chanfro
