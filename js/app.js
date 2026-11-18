@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-18.cl37';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-18.cl38';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -707,7 +707,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-18.cl37';
+const BUILD = '2026-11-18.cl38';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -6575,6 +6575,12 @@ function compactParts(product, L, S0) {
           add(ext(c, 0.12 - gr + s0, rimTop - rimBot, rimBot), m.godes.lata ? godeLata : godeRim, idx, 'bandeja', 0, 0, 0);
           add(ext(c, 0.35 - gr + s0, GH - 0.1, top - WD), godeCor(j, m.godes.cells.length), idx, 'gode', 0, 0, 0);
         });
+        if (m.godes.concha && cells.length === 1) { // Macaroon: por dentro a base é uma concha — da borda desce em curva até o aro do godê
+          const Rp = TW / 2 + 0.05, Ro = Math.min(w, d) / 2 - 1.6, D = WD - GH + 0.6, P = [new THREE.Vector2(0, top - D)];
+          for (let i = 0; i <= 16; i++) { const u = i / 16, r = Rp + (Ro - Rp) * u; P.push(new THREE.Vector2(r, top - D * (1 - u * u))); }
+          P.push(new THREE.Vector2(Ro, top + 2), new THREE.Vector2(0, top + 2));
+          if (Ro > Rp + 0.5) { stepCut = new THREE.LatheGeometry(P, 96); stepCut.translate(cx, 0, cz); }
+        }
         if (m.godes.slot) { const SD = r1(Math.min(m.h - 1.6, 5)); wells.push(ext(m.godes.slot, 0.2, SD + 2, top - SD)); } // espaço do aplicador: só a cavidade
       } else {
       if (one && m.godes.mm) { aw = ad = Math.min(aw, ad, m.godes.mm + (rect ? 1 : 0)); } // godê do tamanho da bandeja do catálogo
@@ -6602,7 +6608,7 @@ function compactParts(product, L, S0) {
       let recessCut;
       if (m.rebaixo) { // Foto da dona: área interna rebaixada na paleta, com a borda externa mais alta.
         const st = m.rebaixo, iw = w - 2 * st.inset, id = d - 2 * st.inset,
-          rr = Math.min(6, Math.min(iw, id) * (m.sideR ?? 0.1) * 0.5 + 1), sh = new THREE.Shape(),
+          rr = round ? Math.min(iw, id) / 2 - 0.01 : Math.min(6, Math.min(iw, id) * (m.sideR ?? 0.1) * 0.5 + 1), sh = new THREE.Shape(), // redondo (Moon Deck): o próprio círculo
           x0 = -iw / 2, x1 = iw / 2, z0 = -id / 2, z1 = id / 2;
         sh.moveTo(x0 + rr, z0); sh.lineTo(x1 - rr, z0); sh.quadraticCurveTo(x1, z0, x1, z0 + rr);
         sh.lineTo(x1, z1 - rr); sh.quadraticCurveTo(x1, z1, x1 - rr, z1); sh.lineTo(x0 + rr, z1);
@@ -6652,7 +6658,7 @@ function compactParts(product, L, S0) {
         // Fotos abertas p6–33: a língua trava na parede da base, abaixo do rebaixo do dedo.
         // Recorte complementar real na base; largura e folgas estimadas nas fotos, sem simular flexão.
         const a = base.m.dedo, R = bb.max.z - cz, curve = !!m.aba,
-          yB = curve ? y0 - m.aba.down : base.y0 + base.m.h - a.h + 0.3,
+          yB = curve ? y0 - m.aba.down : base.y0 + base.m.h - a.h * (m.snapDown ?? 1) + 0.3, // snapDown: a aba desce só parte do rebaixo (Frame: o fundo da cavidade aparece)
           tw = curve ? m.aba.w * 0.7 : (m.snapWidth ?? Math.min(a.w * 0.7, w * 0.18)), inner = curve ? R - m.aba.d + 0.2 : m.snapFlat ? R - (m.snapInset ?? 0.66) : R - a.d - 0.7;
         let tooth, socket, channel;
         if (curve) {
@@ -6660,10 +6666,10 @@ function compactParts(product, L, S0) {
           socket = arcSlab(inner - 0.6, inner + 0.23, (tw + 0.3) / R, 0.65); socket.translate(cx, yB + 0.05, cz);
         } else {
           // Aba das paletas plana; demais fechos mantêm a ligação inclinada à parede.
-          const top = y0 + Math.min(2.2, m.h * 0.25);
+          const top = y0 + (m.snapTop ?? Math.min(2.2, m.h * 0.25)); // snapTop: a aba sobe só até cobrir o arredondado da borda (sem friso na parede da tampa)
           if (m.snapFlat) {
             // Foto ampliada: contorno frontal com dois cantos inferiores arredondados, não só chanfro na espessura.
-            const sh = new THREE.Shape(), half = tw / 2, rc = Math.min(1.2, (top - yB) * 0.4, tw * 0.07);
+            const sh = new THREE.Shape(), half = tw / 2, rc = Math.min(m.snapRc ?? 1.2, (top - yB) * 0.45, tw * (m.snapRc ? 0.2 : 0.07));
             sh.moveTo(-half, top); sh.lineTo(half, top); sh.lineTo(half, yB + rc);
             sh.quadraticCurveTo(half, yB, half - rc, yB); sh.lineTo(-half + rc, yB);
             sh.quadraticCurveTo(-half, yB, -half, yB + rc); sh.closePath();
@@ -6687,7 +6693,7 @@ function compactParts(product, L, S0) {
           const hookY = base.m.fechoRebaixo ? base.y0 + base.m.h - 1.1 : yB + 0.375;
           tooth = new THREE.BoxGeometry(m.snapFlat ? tw * 0.65 : tw, 0.35, 0.53).translate(cx, hookY, cz + inner - 0.185);
           socket = new THREE.BoxGeometry(tw + 0.3, 0.65, 0.83).translate(cx, yB + 0.375, cz + inner - 0.185);
-          const pal = !!base.m.fechoRebaixo, rear = inner - (pal ? 0.6 : 0.15), depth = R + 1 - rear,
+          const pal = !!base.m.fechoRebaixo, rear = inner - (pal ? 0.6 : 0.15), depth = (m.snapInset ? R - a.d - 0.05 : R + 1) - rear, // Classic: a fenda do clip fica atrás da parede do rebaixo (fechado não aparece)
             bottom = pal ? base.y0 + base.m.h - a.h : yB - 0.05,
             height = base.y0 + base.m.h + 1 - bottom;
           // Paletas: mesma largura e fundo da abertura do dedo, sem segunda cavidade central.
@@ -9715,8 +9721,10 @@ function incomProduct(r) {
       const Dc = r2(D - 0.3 * clamp(Math.min(hb, ht) * 0.22, 1.1, 2.2)), pal = r.c === 'Paletas' && r.t !== 'cr', dB = pal ? { rect: true, top: true, w: r1(W * 0.42), h: r1(Math.min(4.5, hb * 0.58)), d: 2.4 } : { rect: true, top: true, arc: r.t === 'cr', w: nw, h: r1(Math.min(3.2, hb * 0.42)), d: 1.6 }; // desenho: entalhe retangular só na base (redondo: acompanha a curva)
       // Moon Deck (foto): dois andares — base com godê, um andar do meio articulado com outro godê e a tampa com espelho
       if (/Moon Deck/.test(r.n)) { const h1 = r1(H * 0.38), h2 = r1(H * 0.3), h3 = r1(H - h1 - h2), Dc = r2(D - 0.3 * clamp(Math.min(h1, h2, h3) * 0.22, 1.1, 2.2)); // dobradiças pelo andar mais baixo
-        ms = [P('Base', W, Dc, h1, { ...s0, rBot: 1.5, rTop: 0.6, godes: godesOf(r), dedo: { ...dB, h: r1(Math.min(3, h1 * 0.4)) } }),
-          P('Andar do meio', W, Dc, h2, { ...s0, rBot: 0.6, rTop: 0.6, hinge: true, abre: 0, abreAberto: 0, godes: godesOf(r), dedo: { ...dB, h: r1(Math.min(2.6, h2 * 0.4)) } }),
+        // aprovação cl38 (fotos MOON-DECK): o andar do meio fica escondido dentro da base — por fora só aparecem base e tampa; a base
+        // tem duas alturas (a borda de fora e o fundo, onde fica o godê de baixo, embaixo do andar do meio)
+        ms = [P('Base', W, Dc, r1(h1 + h2), { ...s0, rBot: 1.5, rTop: 0.6, rebaixo: { inset: 2.8, h: h2 }, godes: godesOf(r), dedo: { ...dB, h: r1(Math.min(3, h1 * 0.4)) } }),
+          P('Andar do meio', r1(W - 6.2), r2(Dc - 6.2), h2, { ...s0, rBot: 0.4, rTop: 0.6, gap: -h2, hinge: true, abre: 0, abreAberto: 0, godes: godesOf(r) }),
           P('Tampa', W, Dc, h3, { ...s0, rBot: 0.6, rTop: 2, hinge: true, abre: 0, oco: true, espelho: true })]; break; }
       // Case G/M (desenho): base é uma placa fina (~24% da altura) e a tampa funda cobre o godê saltado; o rebaixo
       // do dedo fica na borda de baixo da tampa
@@ -10023,7 +10031,7 @@ function incomProduct(r) {
       // A língua interna do fecho mantém a altura do encaixe (latchRoof).
       t.caseLatchSimple = true; t.latchRoof = Math.min(2.4, t.h * 0.45);
       // t.W é % da largura (o 100 do modelo), a aba é em mm: com t.W saía 41 mm = 57% da frente (a dona: "aba maior que a real").
-      t.dedo = { rect: true, panel: true, w: r1(W * 0.41), h: r1(t.h - (t.rTop || 1.2) - 0.5), lip: 0.6, d: 0.5 }; } }
+      t.dedo = { rect: true, panel: true, w: r1(W * 0.39), h: r1(t.h - (t.rTop || 1.2) - 0.5), lip: 0, d: 0.5 }; } } // aprovação cl38: menos largo e reto até a borda de baixo, sem a bordinha
     // Fotos p9–25: Frame e redondos usam um eixo central curto. P28–33: Flat tem dois apoios.
     if (/^Frame|^Moon|^Macaroon/.test(r.n)) ms.filter(m => m.hinge).forEach(m => { m.hingeWidth = 0.18; });
     if (/^Flat/.test(r.n)) { const t = ms.find(m => m.name === 'Tampa'); if (t) {
@@ -10037,7 +10045,12 @@ function incomProduct(r) {
       const t = ms.find(m => m.name === 'Tampa'), b = ms.find(m => m.name === 'Base');
       if (t && b?.dedo) { t.snapFlat = true; t.snapConform = !t.sides; t.snapWidth = r1(b.dedo.w - 0.2); b.fechoRebaixo = true; }
       // Classic (foto aberta CLASSIC-UNO-2, aprovação cl34): o clip da tampa ocupa ~38% do rebaixo da base, não ele inteiro
-      if (t && b?.dedo && /^Classic/.test(r.n)) { t.snapWidth = r1(b.dedo.w * 0.38); t.snapInset = r2(b.dedo.d + 0.1); } // fechado (CLASSIC-FECHADO): o clip fica no fundo do rebaixo, não rente à frente
+      // Classic (CLASSIC-FECHADO / UNO-2, aprovação cl38): abertura do dedo maior (~36% da frente, ~65% da altura da base) e o clip
+      // estreito todo para dentro, escondido na fenda do fundo do rebaixo
+      if (t && b?.dedo && /^Classic/.test(r.n)) { Object.assign(b.dedo, { w: r1(W * 0.36), h: r1(b.h * 0.65) }); t.snapWidth = r1(b.dedo.w * 0.38); t.snapInset = r2(b.dedo.d + 0.7); }
+      // Frame (FRAME-FECHADO, FRAME-P-fechado, aprovação cl38): cavidade maior (~36% × 72% da base), abinha da largura dela, bem arredondada,
+      // descendo ~60% da cavidade e subindo só até cobrir o arredondado da tampa — sem o friso na parede
+      if (t && b?.dedo && /^Frame/.test(r.n)) { Object.assign(b.dedo, { w: r1(W * 0.36), h: r1(b.h * 0.72) }); Object.assign(t, { snapWidth: r1(b.dedo.w - 0.4), snapDown: 0.6, snapTop: r2((t.rBot || 0.6) + 0.1), snapRc: 2.4 }); }
       // Foto fechada do Quinteto: moldura mais larga; proporção estimada na imagem, não cota.
       if (t && r.n === 'Frame G Quinteto') t.visorBorder = r1(W * 0.14);
       // Fotos de cima, tampa fechada (FRAME-G-2, FRAME-M-FECHADO, Frame P): moldura de 17% (G, M) e 19,5% (P) da largura
@@ -10083,11 +10096,15 @@ function incomProduct(r) {
     // Moon Deck (fotos, aprovação cl35): um fecho só — a aba da tampa desce pela frente do andar do meio (que tem a fenda
     // de cima a baixo e nenhuma aba) até o rebaixo da base; aba grande e de cantos redondos como nos outros Moon
     if (/Moon Deck/.test(r.n)) { const [b, mid, t] = ms;
-      if (b?.dedo && mid && t) { Object.assign(b.dedo, { w: r1(W * 0.58), h: r1(b.h * 0.75), rc: 1.2 });
-        mid.dedo = { ...b.dedo, h: r1(mid.h + 2) }; delete mid.aba; mid.snapFront = false;
-        t.aba = { w: r1(b.dedo.w - 0.3), d: b.dedo.d, down: r1(mid.h + b.dedo.h - 0.3), rc: 1.2 }; } }
+      if (b?.dedo && mid && t) { Object.assign(b.dedo, { w: r1(W * 0.58), h: r1((b.h - mid.h) * 0.75), rc: 1.2 });
+        delete mid.aba; delete mid.dedo; mid.snapFront = false; t.snapFront = false;
+        t.aba = { w: r1(b.dedo.w - 0.3), d: b.dedo.d, down: r1(b.dedo.h - 0.3), rc: 1.2 }; } }
     if (/Macaroon/.test(r.n)) { const t = ms.find(m => m.name === 'Tampa'), b = ms.find(m => m.name === 'Base'); if (t) Object.assign(t, { rTop: r1(t.h * 0.95), espR: 0.62 }); // foto aberta: por dentro a tampa é côncava (casca da cúpula), espelho redondo menor no fundo dela
-      if (b) Object.assign(b, { rBot: r1(b.h * 0.6) }); } } // foto: fundo da base arredondado também (o "macaron" fechado)
+      if (b) Object.assign(b, { rBot: r1(b.h * 0.6) });
+      // aprovação cl38 (foto aberta MACAROON-G-1): por dentro a base é uma concha — desce em curva da borda até o godê; cavidade da
+      // frente maior (~32% × 60% da base) e aba grande de cantos redondos
+      if (b?.godes) b.godes = { ...b.godes, concha: true };
+      if (b?.dedo && t) { Object.assign(b.dedo, { w: r1(W * 0.32), h: r1(b.h * 0.6), rc: 1.5 }); t.aba = { w: r1(b.dedo.w - 0.3), d: b.dedo.d, down: r1(b.dedo.h * 0.6), rc: 1.5 }; } } } // foto: fundo da base arredondado também (o "macaron" fechado)
   // fotos: conta-gotas, dispensadores e deluxes em frasco transparente com o conteúdo aparecendo (pipeta/pescante
   // à vista); colares lisos. Págs. 50/51: Cube opaco e Elíptico transparente, ambos com sobretampa própria.
   if (['Conta-gotas', 'Dispensadores', 'Deluxes'].includes(r.c) && r.t !== 'onoff' && !/Twist/.test(r.n)) {
