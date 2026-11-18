@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-18.cl59';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-18.cdx29';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -707,7 +707,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-18.cl59';
+const BUILD = '2026-11-18.cdx29';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -1252,6 +1252,8 @@ function normalize(s) {
   // Peças em malha (versão antiga da Draft) não existem mais.
   s.modules = (s.modules || []).filter(m => m.kind !== 'malha').map(m => ({ ...m, color: unpink(m.color) })).map(m => ({ ...BASE, uid: newUid(), ...m, ...(m.sprayType === 'pump' ? { sprayType: 'locao' } : m.sprayType === 'foamInc' ? { sprayType: 'foam' } : m.sprayType === 'foam' && m.actW > 20 ? { actW: 15, actH: 24, nozzleL: 2.6 } : {}) }));
   s.modules.forEach(m => {
+    // Case salvo na cl53–59: atualiza só as proporções antigas conhecidas, preservando edições próprias.
+    if (m.hingeCase?.length === 3 && m.hingeCase[0] === 0.18 && m.hingeCase[1] === 0.31 && m.hingeCase[2] === 0.44) m.hingeCase = [0.26, 0.38];
     if (m.type === 'bisnaga') {
       if (m.sealW >= 5.5) m.sealW = 1.5;
       if (m.sealT >= 1.35) m.sealT = 1.2;
@@ -6921,27 +6923,38 @@ function compactParts(product, L, S0) {
           const cutT = ni(new RoundedBoxGeometry(Lb + 2 * gp, hu + gp + 1, t + 2.4, 2, 0.3).translate(cx, y0 - 1 + (hu + gp + 1) / 2, z - 2 + (t + 2.4) / 2));
           cutT.dispose(); [[bObjs[0], cutB]].forEach(([o, cut]) => { const [outer, inner] = cutHole(o.geometry, cut); cut.dispose();
             if (outer !== o.geometry) { const g = mergeGeometries([ni(outer), ni(inner)]); if (g) { o.geometry.dispose(); o.geometry = g; } } }); }
-      } else if (m.hingeCase) { // Case (aprovação cl49, fotos CASE-M-4/8/9): de cada lado, nó da base por dentro (~18–31% do centro), num ressalto
-        // atrás da base, e nó da tampa por fora até perto da borda (~44%); a tampa tem o recorte onde o ressalto da base entra
-        // e a base o recorte onde desce o nó da tampa; pino de metal corrido pelos dois nós
-        // cl50 ("a dobradiça vai até a ponta, não tem esse espaço"): o nó da tampa corre até o canto (só o arredondado do canto fica de fora)
-        const rcK = Math.max(0.5, (m.sideR ?? 0.04) * Math.min(W, bb.max.z - bb.min.z) / 2 + 0.3), [fa, fb] = m.hingeCase, fc = 0.5 - rcK / W, gp = 0.15, cutsT = [], cutsB = [], blk = 2 * r + 0.8;
+      } else if (m.hingeCase) { // Case: CASE-M-4/8/9 e pedido da dona (cl53): alojamento redondo e mais curto nas pontas.
+        // Proporções das duas articulações medidas nas fotos; diâmetro/folga do pino sem cota industrial.
+        const rcK = Math.max(0.5, (m.sideR ?? 0.04) * Math.min(W, bb.max.z - bb.min.z) / 2 + 0.3),
+          [fa, fb] = m.hingeCase, fc = 0.5 - rcK / W, gp = 0.15, bore = r * 0.38 + 0.08, cutsT = [], cutsB = [];
         [-1, 1].forEach(sg => {
-          const xa = cx + sg * W * fa, xb = cx + sg * W * fb, xc = cx + sg * W * fc, mid = (p, q) => (p + q) / 2, len = (p, q) => Math.abs(q - p);
-          const cyl = (p, q, rr) => { const g = new THREE.CylinderGeometry(rr, rr, len(p, q), 40); g.rotateZ(Math.PI / 2); g.translate(mid(p, q), y0, hz); return g; };
-          // cl53 ("o buraco das dobradiças é nas pontas"): nó da tampa por dentro (fa–fb) e o da base, no ressalto, nas pontas (fb–canto);
-          // o recorte da tampa onde o ressalto entra fica então nas pontas, aberto até o canto
+          const xa = cx + sg * W * fa, xb = cx + sg * W * fb, xc = cx + sg * W * fc,
+            mid = (p, q) => (p + q) / 2, len = (p, q) => Math.abs(q - p);
+          const cyl = (p, q, rr) => { const g = new THREE.CylinderGeometry(rr, rr, len(p, q), 48);
+            g.rotateZ(Math.PI / 2); g.translate(mid(p, q), y0, hz); return g; };
+          // Nó anular: o pino atravessa um furo real, em vez de atravessar o cilindro maciço antigo.
+          const tube = (p, q) => { const sh = new THREE.Shape(); sh.absarc(0, 0, r, 0, TAU, false);
+            const hole = new THREE.Path(); hole.absarc(0, 0, bore, 0, TAU, true); sh.holes.push(hole);
+            const g = new THREE.ExtrudeGeometry(sh, { depth: len(p, q), bevelEnabled: false, curveSegments: 24 });
+            g.deleteAttribute('uv'); g.rotateY(Math.PI / 2); g.translate(Math.min(p, q), y0, hz); return g; };
           const xbT = xb - sg * gp / 2, xbB = xb + sg * gp / 2;
-          add(cyl(xa, xbT, r), mT, idx, 'dobradica', 0, 0, 0); objs.push(product.children.at(-1));
-          add(cyl(xbB, xc, r), mB, base.idx, 'dobradica', 0, 0, 0);
-          add(new RoundedBoxGeometry(len(xbB, xc), r + 0.6, blk - 0.7 * r, 2, Math.min(0.5, r * 0.4)), mB, base.idx, 'dobradica', mid(xbB, xc), y0 + r - (r + 0.6) / 2, hz + (blk - 0.7 * r) / 2);
+          add(tube(xa, xbT), mT, idx, 'dobradica', 0, 0, 0); objs.push(product.children.at(-1));
+          add(tube(xbB, xc), mB, base.idx, 'dobradica', 0, 0, 0);
+          // Apoio na própria base, à frente do eixo; não pode tampar o alojamento do pino.
+          const dz = r + 0.8, front = hz + bore + 0.12;
+          add(new RoundedBoxGeometry(len(xbB, xc), r + 0.6, dz, 2, Math.min(0.4, r * 0.3)),
+            mB, base.idx, 'apoio_dobradica', mid(xbB, xc), y0 + (r - 0.6) / 2, front + dz / 2);
           add(cyl(xa + sg * 0.3, xc - sg * 0.3, r * 0.38), mirrorMat, base.idx, 'pino', 0, 0, 0);
-          cutsT.push(new THREE.BoxGeometry(len(xbB, xc) + 2.5, r + 0.9, blk + 1.3).translate(mid(xbB, xc) + sg, y0 + (r + 0.9) / 2 - 0.05, z + (blk + 1.3) / 2 - 1));
-          cutsB.push(new THREE.BoxGeometry(len(xa, xbT) + 0.4, r + 0.3, 2 * r + 1.4).translate(mid(xa, xbT), y0 - (r + 0.3) / 2 + 0.05, z + r - 0.3));
+          // A tampa abraça o nó externo da base com um recorte circular aberto até a ponta.
+          // Cortadores com intervalos separados evitam sobreposição no CSG.
+          cutsT.push(cyl(xbB - sg * 0.06, cx + sg * (W / 2 + 0.3), r + 0.16));
+          cutsT.push(cyl(xa - sg * 0.05, xbT + sg * 0.05, bore));
+          cutsB.push(cyl(xa - sg * 0.12, xbT + sg * 0.06, r + 0.16));
+          cutsB.push(cyl(xbB - sg * 0.04, xc + sg * 0.15, bore));
         });
-        // cl50 (Case M All Crystal: "rebaixo bem no centro da tampa, perto da dobradiça, a casca fica mais fina ali"): entre os dois
-        // nós da base, a parede de trás da tampa é rebaixada por fora (~31% da largura, foto CASE-M-9)
-        { const rw = 2 * W * (fa - 0.025), rd = 0.7, rh = m.h - (m.rTop || 1) - 0.4; cutsT.push(new RoundedBoxGeometry(rw, rh + 1, 2 * rd, 2, 0.3).translate(cx, y0 + (rh - 1) / 2, z)); }
+        // Rebaixo central da casca preservado; a correção é só da família Case.
+        { const rw = 2 * W * (fa - 0.025), rd = 0.7, rh = m.h - (m.rTop || 1) - 0.4;
+          cutsT.push(new RoundedBoxGeometry(rw, rh + 1, 2 * rd, 2, 0.3).translate(cx, y0 + (rh - 1) / 2, z)); }
         if (!THUMB_LITE) { const ni = x => { const g = x.index ? x.toNonIndexed() : x; for (const k in g.attributes) if (k !== 'position' && k !== 'normal') g.deleteAttribute(k); return g; };
           [[objs[0], cutsT], [bObjs[0], cutsB]].forEach(([o, cs]) => { const cut = mergeGeometries(cs.map(ni)); const [outer, inner] = cutHole(o.geometry, cut); cut.dispose();
             if (outer === o.geometry) return; const g = mergeGeometries([ni(outer), ni(inner)]); if (g) { o.geometry.dispose(); o.geometry = g; } }); }
@@ -10261,7 +10274,7 @@ function incomProduct(r) {
     // andar do meio e tampa ganham arredondado de pelo menos ~0,9 mm (limitado a 30% da altura da peça)
     ms.forEach(m => { if (!/^(Base|Tampa|Andar do meio)$/.test(m.name || '')) return; const k = r2(Math.min(1.4, Math.max(0.3, m.h * 0.35))); // cl45: "mais fillet, é arredondado mesmo"
       m.rTop = Math.max(m.rTop || 0, k); m.rBot = Math.max(m.rBot || 0, k); });
-    if (/^Case/.test(r.n)) { const t = ms.find(m => m.name === 'Tampa'); if (t) { Object.assign(t, { hingePair: { x: 0.30, w: 0.11 }, hingeCase: [0.18, 0.31, 0.44], caseLatch: true });
+    if (/^Case/.test(r.n)) { const t = ms.find(m => m.name === 'Tampa'); if (t) { Object.assign(t, { hingePair: { x: 0.30, w: 0.11 }, hingeCase: [0.26, 0.38], caseLatch: true });
       // Foto fechada do site (CASE-FECHADO-G-1) e retomada cdx28: painel central ~41% da frente, quase a parede inteira,
       // com bordinha fina embaixo. Rebaixo de 0,5 mm (não vaza). Proporções medidas na foto, sem cota no catálogo.
       // A língua interna do fecho mantém a altura do encaixe (latchRoof).

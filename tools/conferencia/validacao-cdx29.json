@@ -1,0 +1,3888 @@
+{
+  "build": "2026-11-18.cdx29",
+  "modelsAudited": 32,
+  "approvedUnchanged": [
+    "Incom Classic Duo (compactos)",
+    "Incom Classic Quarteto (compactos)",
+    "Incom Classic Uno (compactos)",
+    "Incom Moon Deck (compactos)",
+    "Incom Moon Eco All Crystal (compactos)",
+    "Incom Moon Eco (compactos)",
+    "Incom Moon G Tampa Fechada (compactos)",
+    "Incom Moon G com Visor (compactos)",
+    "Incom Moon G Quarteto (compactos)",
+    "Incom Moon M All Crystal (compactos)",
+    "Incom Moon M com Visor (compactos)",
+    "Incom Moon M Tampa Fechada (compactos)",
+    "Incom Moon P (compactos)"
+  ],
+  "closedDimensionsUnchanged": true,
+  "angles": [
+    0,
+    15,
+    30,
+    60,
+    90,
+    105,
+    120,
+    135,
+    180
+  ],
+  "uiMaxAngle": 120,
+  "stressAnglesBeyondUI": [
+    135,
+    180
+  ],
+  "note": "Amostras de nós não certificam interferência volumétrica da montagem inteira. Moon Deck repete sinal do controle já aprovado e não foi alterado.",
+  "cases": [
+    {
+      "name": "Incom Case G (compactos)",
+      "build": "versão 2026-11-18.cdx29",
+      "closed": {
+        "W": 71.88224792480469,
+        "H": 13.699999809265137,
+        "D": 70.0557861328125
+      },
+      "modules": [
+        {
+          "idx": 1,
+          "name": "Tampa",
+          "hingeCase": [
+            0.26,
+            0.38
+          ]
+        }
+      ],
+      "parts": [
+        {
+          "name": "02_dobradica",
+          "idx": 1,
+          "W": 8.55086898803711,
+          "H": 2.200000047683716,
+          "D": 2.200000762939453,
+          "axis": {
+            "y": 3.3,
+            "z": -34.0928921508789
+          }
+        },
+        {
+          "name": "01_dobradica",
+          "idx": 0,
+          "W": 6.856353759765625,
+          "H": 2.200000047683716,
+          "D": 2.200000762939453,
+          "axis": null
+        },
+        {
+          "name": "01_apoio_dobradica",
+          "idx": 0,
+          "W": 6.856354236602783,
+          "H": 1.7000000476837158,
+          "D": 1.899999976158142,
+          "axis": null
+        },
+        {
+          "name": "01_pino",
+          "idx": 0,
+          "W": 14.957225799560547,
+          "H": 0.8359999656677246,
+          "D": 0.83599853515625,
+          "axis": null
+        },
+        {
+          "name": "02_dobradica",
+          "idx": 1,
+          "W": 8.55086898803711,
+          "H": 2.200000047683716,
+          "D": 2.200000762939453,
+          "axis": {
+            "y": 3.3,
+            "z": -34.0928921508789
+          }
+        },
+        {
+          "name": "01_dobradica",
+          "idx": 0,
+          "W": 6.856353759765625,
+          "H": 2.200000047683716,
+          "D": 2.200000762939453,
+          "axis": null
+        },
+        {
+          "name": "01_apoio_dobradica",
+          "idx": 0,
+          "W": 6.856354236602783,
+          "H": 1.7000000476837158,
+          "D": 1.899999976158142,
+          "axis": null
+        },
+        {
+          "name": "01_pino",
+          "idx": 0,
+          "W": 14.957225799560547,
+          "H": 0.8359999656677246,
+          "D": 0.83599853515625,
+          "axis": null
+        }
+      ],
+      "pinChecks": [
+        {
+          "name": "01_pino",
+          "tested": 5,
+          "occupied": 0,
+          "blocked": []
+        },
+        {
+          "name": "01_pino",
+          "tested": 5,
+          "occupied": 0,
+          "blocked": []
+        }
+      ],
+      "checks": [
+        {
+          "angle": 0,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        },
+        {
+          "angle": 15,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        },
+        {
+          "angle": 30,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        },
+        {
+          "angle": 60,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        },
+        {
+          "angle": 90,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        },
+        {
+          "angle": 105,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        },
+        {
+          "angle": 120,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        },
+        {
+          "angle": 135,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        },
+        {
+          "angle": 180,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        }
+      ],
+      "returnError": 0,
+      "geometry": [
+        {
+          "name": "01_Base",
+          "idx": 0,
+          "hash": "3d5583bc"
+        },
+        {
+          "name": "02_Tampa",
+          "idx": 1,
+          "hash": "261e5cb9"
+        },
+        {
+          "name": "01_colar",
+          "idx": 0,
+          "hash": "ae8dba0c"
+        },
+        {
+          "name": "01_colar",
+          "idx": 0,
+          "hash": "ef5191"
+        },
+        {
+          "name": "01_bandeja",
+          "idx": 0,
+          "hash": "ff894851"
+        },
+        {
+          "name": "01_bandeja",
+          "idx": 0,
+          "hash": "61d44135"
+        },
+        {
+          "name": "01_gode",
+          "idx": 0,
+          "hash": "beaa73b5"
+        },
+        {
+          "name": "01_lingueta_rebaixo",
+          "idx": 0,
+          "hash": "ad7cae19"
+        },
+        {
+          "name": "02_lingua_fecho",
+          "idx": 1,
+          "hash": "35391595"
+        },
+        {
+          "name": "02_dente_fecho",
+          "idx": 1,
+          "hash": "33b4c4d5"
+        },
+        {
+          "name": "02_espelho",
+          "idx": 1,
+          "hash": "ab4a89af"
+        },
+        {
+          "name": "02_dobradica",
+          "idx": 1,
+          "hash": "7effb837"
+        },
+        {
+          "name": "01_dobradica",
+          "idx": 0,
+          "hash": "362bf15d"
+        },
+        {
+          "name": "01_apoio_dobradica",
+          "idx": 0,
+          "hash": "cfcfd485"
+        },
+        {
+          "name": "01_pino",
+          "idx": 0,
+          "hash": "20f75925"
+        },
+        {
+          "name": "02_dobradica",
+          "idx": 1,
+          "hash": "cadab2b3"
+        },
+        {
+          "name": "01_dobradica",
+          "idx": 0,
+          "hash": "dcd80d99"
+        },
+        {
+          "name": "01_apoio_dobradica",
+          "idx": 0,
+          "hash": "cfcfd485"
+        },
+        {
+          "name": "01_pino",
+          "idx": 0,
+          "hash": "fd65cb1"
+        }
+      ]
+    },
+    {
+      "exportedParts": [
+        {
+          "name": "01_Base",
+          "vertices": 54312
+        },
+        {
+          "name": "02_Tampa",
+          "vertices": 85650
+        },
+        {
+          "name": "01_colar",
+          "vertices": 2037
+        },
+        {
+          "name": "01_colar",
+          "vertices": 1261
+        },
+        {
+          "name": "01_bandeja",
+          "vertices": 4632
+        },
+        {
+          "name": "01_bandeja",
+          "vertices": 580
+        },
+        {
+          "name": "01_gode",
+          "vertices": 580
+        },
+        {
+          "name": "01_lingueta_rebaixo",
+          "vertices": 1764
+        },
+        {
+          "name": "02_lingua_fecho",
+          "vertices": 24
+        },
+        {
+          "name": "02_dente_fecho",
+          "vertices": 24
+        },
+        {
+          "name": "02_espelho",
+          "vertices": 3072
+        },
+        {
+          "name": "02_dobradica",
+          "vertices": 1176
+        },
+        {
+          "name": "01_dobradica",
+          "vertices": 1176
+        },
+        {
+          "name": "01_apoio_dobradica",
+          "vertices": 900
+        },
+        {
+          "name": "01_pino",
+          "vertices": 292
+        },
+        {
+          "name": "02_dobradica",
+          "vertices": 1176
+        },
+        {
+          "name": "01_dobradica",
+          "vertices": 1176
+        },
+        {
+          "name": "01_apoio_dobradica",
+          "vertices": 900
+        },
+        {
+          "name": "01_pino",
+          "vertices": 292
+        }
+      ],
+      "name": "Incom Case M (compactos)",
+      "build": "versão 2026-11-18.cdx29",
+      "closed": {
+        "W": 57.793331146240234,
+        "H": 13.699999809265137,
+        "D": 56.03874397277832
+      },
+      "modules": [
+        {
+          "idx": 1,
+          "name": "Tampa",
+          "hingeCase": [
+            0.26,
+            0.38
+          ]
+        }
+      ],
+      "parts": [
+        {
+          "name": "02_dobradica",
+          "idx": 1,
+          "W": 6.860198974609375,
+          "H": 2.200000047683716,
+          "D": 2.200000762939453,
+          "axis": {
+            "y": 3.3,
+            "z": -27.084372024536133
+          }
+        },
+        {
+          "name": "01_dobradica",
+          "idx": 0,
+          "W": 5.446023941040039,
+          "H": 2.200000047683716,
+          "D": 2.200000762939453,
+          "axis": null
+        },
+        {
+          "name": "01_apoio_dobradica",
+          "idx": 0,
+          "W": 5.4460248947143555,
+          "H": 1.7000000476837158,
+          "D": 1.899999976158142,
+          "axis": null
+        },
+        {
+          "name": "01_pino",
+          "idx": 0,
+          "W": 11.85622501373291,
+          "H": 0.8359999656677246,
+          "D": 0.8360004425048828,
+          "axis": null
+        },
+        {
+          "name": "02_dobradica",
+          "idx": 1,
+          "W": 6.860200881958008,
+          "H": 2.200000047683716,
+          "D": 2.200000762939453,
+          "axis": {
+            "y": 3.3,
+            "z": -27.084372024536133
+          }
+        },
+        {
+          "name": "01_dobradica",
+          "idx": 0,
+          "W": 5.446023941040039,
+          "H": 2.200000047683716,
+          "D": 2.200000762939453,
+          "axis": null
+        },
+        {
+          "name": "01_apoio_dobradica",
+          "idx": 0,
+          "W": 5.4460248947143555,
+          "H": 1.7000000476837158,
+          "D": 1.899999976158142,
+          "axis": null
+        },
+        {
+          "name": "01_pino",
+          "idx": 0,
+          "W": 11.85622501373291,
+          "H": 0.8359999656677246,
+          "D": 0.8360004425048828,
+          "axis": null
+        }
+      ],
+      "pinChecks": [
+        {
+          "name": "01_pino",
+          "tested": 5,
+          "occupied": 0,
+          "blocked": []
+        },
+        {
+          "name": "01_pino",
+          "tested": 5,
+          "occupied": 0,
+          "blocked": []
+        }
+      ],
+      "checks": [
+        {
+          "angle": 0,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        },
+        {
+          "angle": 15,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        },
+        {
+          "angle": 30,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        },
+        {
+          "angle": 60,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        },
+        {
+          "angle": 90,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        },
+        {
+          "angle": 105,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        },
+        {
+          "angle": 120,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        },
+        {
+          "angle": 135,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        },
+        {
+          "angle": 180,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        }
+      ],
+      "returnError": 0,
+      "geometry": [
+        {
+          "name": "01_Base",
+          "idx": 0,
+          "hash": "3ac580d3"
+        },
+        {
+          "name": "02_Tampa",
+          "idx": 1,
+          "hash": "7526f71"
+        },
+        {
+          "name": "01_colar",
+          "idx": 0,
+          "hash": "8ed2a7b8"
+        },
+        {
+          "name": "01_colar",
+          "idx": 0,
+          "hash": "9a84b778"
+        },
+        {
+          "name": "01_bandeja",
+          "idx": 0,
+          "hash": "aef10b49"
+        },
+        {
+          "name": "01_bandeja",
+          "idx": 0,
+          "hash": "20a45135"
+        },
+        {
+          "name": "01_gode",
+          "idx": 0,
+          "hash": "e2df49f5"
+        },
+        {
+          "name": "01_lingueta_rebaixo",
+          "idx": 0,
+          "hash": "5f1dc01"
+        },
+        {
+          "name": "02_lingua_fecho",
+          "idx": 1,
+          "hash": "e1636c05"
+        },
+        {
+          "name": "02_dente_fecho",
+          "idx": 1,
+          "hash": "6fa175f5"
+        },
+        {
+          "name": "02_espelho",
+          "idx": 1,
+          "hash": "53732ddf"
+        },
+        {
+          "name": "02_dobradica",
+          "idx": 1,
+          "hash": "35a07f1"
+        },
+        {
+          "name": "01_dobradica",
+          "idx": 0,
+          "hash": "d666ea69"
+        },
+        {
+          "name": "01_apoio_dobradica",
+          "idx": 0,
+          "hash": "73579c35"
+        },
+        {
+          "name": "01_pino",
+          "idx": 0,
+          "hash": "ffcb9405"
+        },
+        {
+          "name": "02_dobradica",
+          "idx": 1,
+          "hash": "4503ec5"
+        },
+        {
+          "name": "01_dobradica",
+          "idx": 0,
+          "hash": "715635c9"
+        },
+        {
+          "name": "01_apoio_dobradica",
+          "idx": 0,
+          "hash": "73579c35"
+        },
+        {
+          "name": "01_pino",
+          "idx": 0,
+          "hash": "ade39eb5"
+        }
+      ]
+    },
+    {
+      "name": "Incom Case M All Crystal (compactos)",
+      "build": "versão 2026-11-18.cdx29",
+      "closed": {
+        "W": 57.793331146240234,
+        "H": 13.699999809265137,
+        "D": 56.03874397277832
+      },
+      "modules": [
+        {
+          "idx": 1,
+          "name": "Tampa",
+          "hingeCase": [
+            0.26,
+            0.38
+          ]
+        }
+      ],
+      "parts": [
+        {
+          "name": "02_dobradica",
+          "idx": 1,
+          "W": 6.860198974609375,
+          "H": 2.200000047683716,
+          "D": 2.200000762939453,
+          "axis": {
+            "y": 3.3,
+            "z": -27.084372024536133
+          }
+        },
+        {
+          "name": "01_dobradica",
+          "idx": 0,
+          "W": 5.446023941040039,
+          "H": 2.200000047683716,
+          "D": 2.200000762939453,
+          "axis": null
+        },
+        {
+          "name": "01_apoio_dobradica",
+          "idx": 0,
+          "W": 5.4460248947143555,
+          "H": 1.7000000476837158,
+          "D": 1.899999976158142,
+          "axis": null
+        },
+        {
+          "name": "01_pino",
+          "idx": 0,
+          "W": 11.85622501373291,
+          "H": 0.8359999656677246,
+          "D": 0.8360004425048828,
+          "axis": null
+        },
+        {
+          "name": "02_dobradica",
+          "idx": 1,
+          "W": 6.860200881958008,
+          "H": 2.200000047683716,
+          "D": 2.200000762939453,
+          "axis": {
+            "y": 3.3,
+            "z": -27.084372024536133
+          }
+        },
+        {
+          "name": "01_dobradica",
+          "idx": 0,
+          "W": 5.446023941040039,
+          "H": 2.200000047683716,
+          "D": 2.200000762939453,
+          "axis": null
+        },
+        {
+          "name": "01_apoio_dobradica",
+          "idx": 0,
+          "W": 5.4460248947143555,
+          "H": 1.7000000476837158,
+          "D": 1.899999976158142,
+          "axis": null
+        },
+        {
+          "name": "01_pino",
+          "idx": 0,
+          "W": 11.85622501373291,
+          "H": 0.8359999656677246,
+          "D": 0.8360004425048828,
+          "axis": null
+        }
+      ],
+      "pinChecks": [
+        {
+          "name": "01_pino",
+          "tested": 5,
+          "occupied": 0,
+          "blocked": []
+        },
+        {
+          "name": "01_pino",
+          "tested": 5,
+          "occupied": 0,
+          "blocked": []
+        }
+      ],
+      "checks": [
+        {
+          "angle": 0,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        },
+        {
+          "angle": 15,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        },
+        {
+          "angle": 30,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        },
+        {
+          "angle": 60,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        },
+        {
+          "angle": 90,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        },
+        {
+          "angle": 105,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        },
+        {
+          "angle": 120,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        },
+        {
+          "angle": 135,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        },
+        {
+          "angle": 180,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        }
+      ],
+      "returnError": 0,
+      "geometry": [
+        {
+          "name": "01_Base",
+          "idx": 0,
+          "hash": "3ac580d3"
+        },
+        {
+          "name": "02_Tampa",
+          "idx": 1,
+          "hash": "7526f71"
+        },
+        {
+          "name": "01_colar",
+          "idx": 0,
+          "hash": "8ed2a7b8"
+        },
+        {
+          "name": "01_colar",
+          "idx": 0,
+          "hash": "9a84b778"
+        },
+        {
+          "name": "01_bandeja",
+          "idx": 0,
+          "hash": "aef10b49"
+        },
+        {
+          "name": "01_bandeja",
+          "idx": 0,
+          "hash": "20a45135"
+        },
+        {
+          "name": "01_gode",
+          "idx": 0,
+          "hash": "e2df49f5"
+        },
+        {
+          "name": "01_lingueta_rebaixo",
+          "idx": 0,
+          "hash": "5f1dc01"
+        },
+        {
+          "name": "02_lingua_fecho",
+          "idx": 1,
+          "hash": "e1636c05"
+        },
+        {
+          "name": "02_dente_fecho",
+          "idx": 1,
+          "hash": "6fa175f5"
+        },
+        {
+          "name": "02_dobradica",
+          "idx": 1,
+          "hash": "35a07f1"
+        },
+        {
+          "name": "01_dobradica",
+          "idx": 0,
+          "hash": "d666ea69"
+        },
+        {
+          "name": "01_apoio_dobradica",
+          "idx": 0,
+          "hash": "73579c35"
+        },
+        {
+          "name": "01_pino",
+          "idx": 0,
+          "hash": "ffcb9405"
+        },
+        {
+          "name": "02_dobradica",
+          "idx": 1,
+          "hash": "4503ec5"
+        },
+        {
+          "name": "01_dobradica",
+          "idx": 0,
+          "hash": "715635c9"
+        },
+        {
+          "name": "01_apoio_dobradica",
+          "idx": 0,
+          "hash": "73579c35"
+        },
+        {
+          "name": "01_pino",
+          "idx": 0,
+          "hash": "ade39eb5"
+        }
+      ]
+    },
+    {
+      "name": "Incom Case G Tampa Cristal (compactos)",
+      "build": "versão 2026-11-18.cdx29",
+      "closed": {
+        "W": 71.88224792480469,
+        "H": 13.699999809265137,
+        "D": 70.0557861328125
+      },
+      "modules": [
+        {
+          "idx": 1,
+          "name": "Tampa",
+          "hingeCase": [
+            0.26,
+            0.38
+          ]
+        }
+      ],
+      "parts": [
+        {
+          "name": "02_dobradica",
+          "idx": 1,
+          "W": 8.55086898803711,
+          "H": 2.200000047683716,
+          "D": 2.200000762939453,
+          "axis": {
+            "y": 3.3,
+            "z": -34.0928921508789
+          }
+        },
+        {
+          "name": "01_dobradica",
+          "idx": 0,
+          "W": 6.856353759765625,
+          "H": 2.200000047683716,
+          "D": 2.200000762939453,
+          "axis": null
+        },
+        {
+          "name": "01_apoio_dobradica",
+          "idx": 0,
+          "W": 6.856354236602783,
+          "H": 1.7000000476837158,
+          "D": 1.899999976158142,
+          "axis": null
+        },
+        {
+          "name": "01_pino",
+          "idx": 0,
+          "W": 14.957225799560547,
+          "H": 0.8359999656677246,
+          "D": 0.83599853515625,
+          "axis": null
+        },
+        {
+          "name": "02_dobradica",
+          "idx": 1,
+          "W": 8.55086898803711,
+          "H": 2.200000047683716,
+          "D": 2.200000762939453,
+          "axis": {
+            "y": 3.3,
+            "z": -34.0928921508789
+          }
+        },
+        {
+          "name": "01_dobradica",
+          "idx": 0,
+          "W": 6.856353759765625,
+          "H": 2.200000047683716,
+          "D": 2.200000762939453,
+          "axis": null
+        },
+        {
+          "name": "01_apoio_dobradica",
+          "idx": 0,
+          "W": 6.856354236602783,
+          "H": 1.7000000476837158,
+          "D": 1.899999976158142,
+          "axis": null
+        },
+        {
+          "name": "01_pino",
+          "idx": 0,
+          "W": 14.957225799560547,
+          "H": 0.8359999656677246,
+          "D": 0.83599853515625,
+          "axis": null
+        }
+      ],
+      "pinChecks": [
+        {
+          "name": "01_pino",
+          "tested": 5,
+          "occupied": 0,
+          "blocked": []
+        },
+        {
+          "name": "01_pino",
+          "tested": 5,
+          "occupied": 0,
+          "blocked": []
+        }
+      ],
+      "checks": [
+        {
+          "angle": 0,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        },
+        {
+          "angle": 15,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        },
+        {
+          "angle": 30,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        },
+        {
+          "angle": 60,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        },
+        {
+          "angle": 90,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        },
+        {
+          "angle": 105,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        },
+        {
+          "angle": 120,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        },
+        {
+          "angle": 135,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        },
+        {
+          "angle": 180,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        }
+      ],
+      "returnError": 0,
+      "geometry": [
+        {
+          "name": "01_Base",
+          "idx": 0,
+          "hash": "3d5583bc"
+        },
+        {
+          "name": "02_Tampa",
+          "idx": 1,
+          "hash": "261e5cb9"
+        },
+        {
+          "name": "01_colar",
+          "idx": 0,
+          "hash": "ae8dba0c"
+        },
+        {
+          "name": "01_colar",
+          "idx": 0,
+          "hash": "ef5191"
+        },
+        {
+          "name": "01_bandeja",
+          "idx": 0,
+          "hash": "ff894851"
+        },
+        {
+          "name": "01_bandeja",
+          "idx": 0,
+          "hash": "61d44135"
+        },
+        {
+          "name": "01_gode",
+          "idx": 0,
+          "hash": "beaa73b5"
+        },
+        {
+          "name": "01_lingueta_rebaixo",
+          "idx": 0,
+          "hash": "ad7cae19"
+        },
+        {
+          "name": "02_lingua_fecho",
+          "idx": 1,
+          "hash": "35391595"
+        },
+        {
+          "name": "02_dente_fecho",
+          "idx": 1,
+          "hash": "33b4c4d5"
+        },
+        {
+          "name": "02_dobradica",
+          "idx": 1,
+          "hash": "7effb837"
+        },
+        {
+          "name": "01_dobradica",
+          "idx": 0,
+          "hash": "362bf15d"
+        },
+        {
+          "name": "01_apoio_dobradica",
+          "idx": 0,
+          "hash": "cfcfd485"
+        },
+        {
+          "name": "01_pino",
+          "idx": 0,
+          "hash": "20f75925"
+        },
+        {
+          "name": "02_dobradica",
+          "idx": 1,
+          "hash": "cadab2b3"
+        },
+        {
+          "name": "01_dobradica",
+          "idx": 0,
+          "hash": "dcd80d99"
+        },
+        {
+          "name": "01_apoio_dobradica",
+          "idx": 0,
+          "hash": "cfcfd485"
+        },
+        {
+          "name": "01_pino",
+          "idx": 0,
+          "hash": "fd65cb1"
+        }
+      ]
+    },
+    {
+      "name": "Incom Case M Tampa Cristal (compactos)",
+      "build": "versão 2026-11-18.cdx29",
+      "closed": {
+        "W": 57.793331146240234,
+        "H": 13.699999809265137,
+        "D": 56.03874397277832
+      },
+      "modules": [
+        {
+          "idx": 1,
+          "name": "Tampa",
+          "hingeCase": [
+            0.26,
+            0.38
+          ]
+        }
+      ],
+      "parts": [
+        {
+          "name": "02_dobradica",
+          "idx": 1,
+          "W": 6.860198974609375,
+          "H": 2.200000047683716,
+          "D": 2.200000762939453,
+          "axis": {
+            "y": 3.3,
+            "z": -27.084372024536133
+          }
+        },
+        {
+          "name": "01_dobradica",
+          "idx": 0,
+          "W": 5.446023941040039,
+          "H": 2.200000047683716,
+          "D": 2.200000762939453,
+          "axis": null
+        },
+        {
+          "name": "01_apoio_dobradica",
+          "idx": 0,
+          "W": 5.4460248947143555,
+          "H": 1.7000000476837158,
+          "D": 1.899999976158142,
+          "axis": null
+        },
+        {
+          "name": "01_pino",
+          "idx": 0,
+          "W": 11.85622501373291,
+          "H": 0.8359999656677246,
+          "D": 0.8360004425048828,
+          "axis": null
+        },
+        {
+          "name": "02_dobradica",
+          "idx": 1,
+          "W": 6.860200881958008,
+          "H": 2.200000047683716,
+          "D": 2.200000762939453,
+          "axis": {
+            "y": 3.3,
+            "z": -27.084372024536133
+          }
+        },
+        {
+          "name": "01_dobradica",
+          "idx": 0,
+          "W": 5.446023941040039,
+          "H": 2.200000047683716,
+          "D": 2.200000762939453,
+          "axis": null
+        },
+        {
+          "name": "01_apoio_dobradica",
+          "idx": 0,
+          "W": 5.4460248947143555,
+          "H": 1.7000000476837158,
+          "D": 1.899999976158142,
+          "axis": null
+        },
+        {
+          "name": "01_pino",
+          "idx": 0,
+          "W": 11.85622501373291,
+          "H": 0.8359999656677246,
+          "D": 0.8360004425048828,
+          "axis": null
+        }
+      ],
+      "pinChecks": [
+        {
+          "name": "01_pino",
+          "tested": 5,
+          "occupied": 0,
+          "blocked": []
+        },
+        {
+          "name": "01_pino",
+          "tested": 5,
+          "occupied": 0,
+          "blocked": []
+        }
+      ],
+      "checks": [
+        {
+          "angle": 0,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        },
+        {
+          "angle": 15,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        },
+        {
+          "angle": 30,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        },
+        {
+          "angle": 60,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        },
+        {
+          "angle": 90,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        },
+        {
+          "angle": 105,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        },
+        {
+          "angle": 120,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        },
+        {
+          "angle": 135,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        },
+        {
+          "angle": 180,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        }
+      ],
+      "returnError": 0,
+      "geometry": [
+        {
+          "name": "01_Base",
+          "idx": 0,
+          "hash": "3ac580d3"
+        },
+        {
+          "name": "02_Tampa",
+          "idx": 1,
+          "hash": "7526f71"
+        },
+        {
+          "name": "01_colar",
+          "idx": 0,
+          "hash": "8ed2a7b8"
+        },
+        {
+          "name": "01_colar",
+          "idx": 0,
+          "hash": "9a84b778"
+        },
+        {
+          "name": "01_bandeja",
+          "idx": 0,
+          "hash": "aef10b49"
+        },
+        {
+          "name": "01_bandeja",
+          "idx": 0,
+          "hash": "20a45135"
+        },
+        {
+          "name": "01_gode",
+          "idx": 0,
+          "hash": "e2df49f5"
+        },
+        {
+          "name": "01_lingueta_rebaixo",
+          "idx": 0,
+          "hash": "5f1dc01"
+        },
+        {
+          "name": "02_lingua_fecho",
+          "idx": 1,
+          "hash": "e1636c05"
+        },
+        {
+          "name": "02_dente_fecho",
+          "idx": 1,
+          "hash": "6fa175f5"
+        },
+        {
+          "name": "02_dobradica",
+          "idx": 1,
+          "hash": "35a07f1"
+        },
+        {
+          "name": "01_dobradica",
+          "idx": 0,
+          "hash": "d666ea69"
+        },
+        {
+          "name": "01_apoio_dobradica",
+          "idx": 0,
+          "hash": "73579c35"
+        },
+        {
+          "name": "01_pino",
+          "idx": 0,
+          "hash": "ffcb9405"
+        },
+        {
+          "name": "02_dobradica",
+          "idx": 1,
+          "hash": "4503ec5"
+        },
+        {
+          "name": "01_dobradica",
+          "idx": 0,
+          "hash": "715635c9"
+        },
+        {
+          "name": "01_apoio_dobradica",
+          "idx": 0,
+          "hash": "73579c35"
+        },
+        {
+          "name": "01_pino",
+          "idx": 0,
+          "hash": "ade39eb5"
+        }
+      ]
+    }
+  ],
+  "families": [
+    {
+      "name": "Incom Case G (compactos)",
+      "closed": {
+        "W": 71.88224792480469,
+        "H": 13.699999809265137,
+        "D": 70.0557861328125
+      },
+      "returnError": 0,
+      "checks": [
+        {
+          "angle": 0,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        },
+        {
+          "angle": 15,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        },
+        {
+          "angle": 30,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        },
+        {
+          "angle": 60,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        },
+        {
+          "angle": 90,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        },
+        {
+          "angle": 105,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        },
+        {
+          "angle": 120,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        },
+        {
+          "angle": 135,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        },
+        {
+          "angle": 180,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        }
+      ]
+    },
+    {
+      "name": "Incom Case M (compactos)",
+      "closed": {
+        "W": 57.793331146240234,
+        "H": 13.699999809265137,
+        "D": 56.03874397277832
+      },
+      "returnError": 0,
+      "checks": [
+        {
+          "angle": 0,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        },
+        {
+          "angle": 15,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        },
+        {
+          "angle": 30,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        },
+        {
+          "angle": 60,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        },
+        {
+          "angle": 90,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        },
+        {
+          "angle": 105,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        },
+        {
+          "angle": 120,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        },
+        {
+          "angle": 135,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        },
+        {
+          "angle": 180,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        }
+      ]
+    },
+    {
+      "name": "Incom Case M All Crystal (compactos)",
+      "closed": {
+        "W": 57.793331146240234,
+        "H": 13.699999809265137,
+        "D": 56.03874397277832
+      },
+      "returnError": 0,
+      "checks": [
+        {
+          "angle": 0,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        },
+        {
+          "angle": 15,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        },
+        {
+          "angle": 30,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        },
+        {
+          "angle": 60,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        },
+        {
+          "angle": 90,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        },
+        {
+          "angle": 105,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        },
+        {
+          "angle": 120,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        },
+        {
+          "angle": 135,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        },
+        {
+          "angle": 180,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        }
+      ]
+    },
+    {
+      "name": "Incom Classic Duo (compactos)",
+      "closed": {
+        "W": 69.07884216308594,
+        "H": 18,
+        "D": 69.16306686401367
+      },
+      "returnError": 0,
+      "checks": [
+        {
+          "angle": 0,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 3,
+          "collisions": []
+        },
+        {
+          "angle": 15,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 3,
+          "collisions": []
+        },
+        {
+          "angle": 30,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 3,
+          "collisions": []
+        },
+        {
+          "angle": 60,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 3,
+          "collisions": []
+        },
+        {
+          "angle": 90,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 3,
+          "collisions": []
+        },
+        {
+          "angle": 105,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 3,
+          "collisions": []
+        },
+        {
+          "angle": 120,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 3,
+          "collisions": []
+        },
+        {
+          "angle": 135,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 3,
+          "collisions": []
+        },
+        {
+          "angle": 180,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 3,
+          "collisions": []
+        }
+      ]
+    },
+    {
+      "name": "Incom Classic Quarteto (compactos)",
+      "closed": {
+        "W": 69.07884216308594,
+        "H": 18,
+        "D": 69.16306686401367
+      },
+      "returnError": 0,
+      "checks": [
+        {
+          "angle": 0,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 3,
+          "collisions": []
+        },
+        {
+          "angle": 15,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 3,
+          "collisions": []
+        },
+        {
+          "angle": 30,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 3,
+          "collisions": []
+        },
+        {
+          "angle": 60,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 3,
+          "collisions": []
+        },
+        {
+          "angle": 90,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 3,
+          "collisions": []
+        },
+        {
+          "angle": 105,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 3,
+          "collisions": []
+        },
+        {
+          "angle": 120,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 3,
+          "collisions": []
+        },
+        {
+          "angle": 135,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 3,
+          "collisions": []
+        },
+        {
+          "angle": 180,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 3,
+          "collisions": []
+        }
+      ]
+    },
+    {
+      "name": "Incom Classic Uno (compactos)",
+      "closed": {
+        "W": 69.07884216308594,
+        "H": 18,
+        "D": 69.16306686401367
+      },
+      "returnError": 0,
+      "checks": [
+        {
+          "angle": 0,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 3,
+          "collisions": []
+        },
+        {
+          "angle": 15,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 3,
+          "collisions": []
+        },
+        {
+          "angle": 30,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 3,
+          "collisions": []
+        },
+        {
+          "angle": 60,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 3,
+          "collisions": []
+        },
+        {
+          "angle": 90,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 3,
+          "collisions": []
+        },
+        {
+          "angle": 105,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 3,
+          "collisions": []
+        },
+        {
+          "angle": 120,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 3,
+          "collisions": []
+        },
+        {
+          "angle": 135,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 3,
+          "collisions": []
+        },
+        {
+          "angle": 180,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 3,
+          "collisions": []
+        }
+      ]
+    },
+    {
+      "name": "Incom Frame G com Visor (compactos)",
+      "closed": {
+        "W": 69.30000305175781,
+        "H": 17.299999237060547,
+        "D": 68.80000305175781
+      },
+      "returnError": 0,
+      "checks": [
+        {
+          "angle": 0,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 15,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 30,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 60,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 90,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 105,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 120,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 135,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 180,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        }
+      ]
+    },
+    {
+      "name": "Incom Frame G Quinteto (compactos)",
+      "closed": {
+        "W": 69.30000305175781,
+        "H": 17.299999237060547,
+        "D": 68.80000305175781
+      },
+      "returnError": 0,
+      "checks": [
+        {
+          "angle": 0,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 15,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 30,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 60,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 90,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 105,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 120,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 135,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 180,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        }
+      ]
+    },
+    {
+      "name": "Incom Frame G Tampa Fechada (compactos)",
+      "closed": {
+        "W": 69.30000305175781,
+        "H": 17.299999237060547,
+        "D": 68.80000305175781
+      },
+      "returnError": 0,
+      "checks": [
+        {
+          "angle": 0,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 15,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 30,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 60,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 90,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 105,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 120,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 135,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 180,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        }
+      ]
+    },
+    {
+      "name": "Incom Frame M (compactos)",
+      "closed": {
+        "W": 52.29999923706055,
+        "H": 14.899999618530273,
+        "D": 51.900001525878906
+      },
+      "returnError": 0,
+      "checks": [
+        {
+          "angle": 0,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 15,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 30,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 60,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 90,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 105,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 120,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 135,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 180,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        }
+      ]
+    },
+    {
+      "name": "Incom Frame P (compactos)",
+      "closed": {
+        "W": 38.099998474121094,
+        "H": 14.800000190734863,
+        "D": 37.70000076293945
+      },
+      "returnError": 0,
+      "checks": [
+        {
+          "angle": 0,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 15,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 30,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 60,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 90,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 105,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 120,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 135,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 180,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        }
+      ]
+    },
+    {
+      "name": "Incom Macaroon G (compactos)",
+      "closed": {
+        "W": 76,
+        "H": 23.700000762939453,
+        "D": 75.30000305175781
+      },
+      "returnError": 0,
+      "checks": [
+        {
+          "angle": 0,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 15,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 30,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 60,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 90,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 105,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 120,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 135,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 180,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        }
+      ]
+    },
+    {
+      "name": "Incom Moon Deck (compactos)",
+      "closed": {
+        "W": 68.9000015258789,
+        "H": 21.5,
+        "D": 68.5
+      },
+      "returnError": 0,
+      "checks": [
+        {
+          "angle": 0,
+          "invalid": 0,
+          "occupied": 3,
+          "tested": 3,
+          "collisions": [
+            {
+              "part": "02_dobradica",
+              "x": -3.307200050354004,
+              "y": 12.9125,
+              "z": -32.37
+            },
+            {
+              "part": "02_dobradica",
+              "x": 0,
+              "y": 12.9125,
+              "z": -32.37
+            },
+            {
+              "part": "02_dobradica",
+              "x": 3.307200050354004,
+              "y": 12.9125,
+              "z": -32.37
+            }
+          ]
+        },
+        {
+          "angle": 15,
+          "invalid": 0,
+          "occupied": 3,
+          "tested": 3,
+          "collisions": [
+            {
+              "part": "02_dobradica",
+              "x": -3.307200050354004,
+              "y": 12.9125,
+              "z": -32.37
+            },
+            {
+              "part": "02_dobradica",
+              "x": 0,
+              "y": 12.9125,
+              "z": -32.37
+            },
+            {
+              "part": "02_dobradica",
+              "x": 3.307200050354004,
+              "y": 12.9125,
+              "z": -32.37
+            }
+          ]
+        },
+        {
+          "angle": 30,
+          "invalid": 0,
+          "occupied": 3,
+          "tested": 3,
+          "collisions": [
+            {
+              "part": "02_dobradica",
+              "x": -3.307200050354004,
+              "y": 12.9125,
+              "z": -32.37
+            },
+            {
+              "part": "02_dobradica",
+              "x": 0,
+              "y": 12.9125,
+              "z": -32.37
+            },
+            {
+              "part": "02_dobradica",
+              "x": 3.307200050354004,
+              "y": 12.9125,
+              "z": -32.37
+            }
+          ]
+        },
+        {
+          "angle": 60,
+          "invalid": 0,
+          "occupied": 3,
+          "tested": 3,
+          "collisions": [
+            {
+              "part": "02_dobradica",
+              "x": -3.307200050354004,
+              "y": 12.9125,
+              "z": -32.37
+            },
+            {
+              "part": "02_dobradica",
+              "x": 0,
+              "y": 12.9125,
+              "z": -32.37
+            },
+            {
+              "part": "02_dobradica",
+              "x": 3.307200050354004,
+              "y": 12.9125,
+              "z": -32.37
+            }
+          ]
+        },
+        {
+          "angle": 90,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 3,
+          "collisions": []
+        },
+        {
+          "angle": 105,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 3,
+          "collisions": []
+        },
+        {
+          "angle": 120,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 3,
+          "collisions": []
+        },
+        {
+          "angle": 135,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 3,
+          "collisions": []
+        },
+        {
+          "angle": 180,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 3,
+          "collisions": []
+        }
+      ]
+    },
+    {
+      "name": "Incom Moon Eco All Crystal (compactos)",
+      "closed": {
+        "W": 69.5999984741211,
+        "H": 18.100000381469727,
+        "D": 69.0999984741211
+      },
+      "returnError": 0,
+      "checks": [
+        {
+          "angle": 0,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 15,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 30,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 60,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 90,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 105,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 120,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 135,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 180,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        }
+      ]
+    },
+    {
+      "name": "Incom Moon Eco (compactos)",
+      "closed": {
+        "W": 69.5999984741211,
+        "H": 18.100000381469727,
+        "D": 69.0999984741211
+      },
+      "returnError": 0,
+      "checks": [
+        {
+          "angle": 0,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 15,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 30,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 60,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 90,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 105,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 120,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 135,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 180,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        }
+      ]
+    },
+    {
+      "name": "Incom Moon G Tampa Fechada (compactos)",
+      "closed": {
+        "W": 69.4000015258789,
+        "H": 16,
+        "D": 68.9000015258789
+      },
+      "returnError": 0,
+      "checks": [
+        {
+          "angle": 0,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 15,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 30,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 60,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 90,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 105,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 120,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 135,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 180,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        }
+      ]
+    },
+    {
+      "name": "Incom Moon G com Visor (compactos)",
+      "closed": {
+        "W": 69.5999984741211,
+        "H": 18.100000381469727,
+        "D": 69.0999984741211
+      },
+      "returnError": 0,
+      "checks": [
+        {
+          "angle": 0,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 15,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 30,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 60,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 90,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 105,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 120,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 135,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 180,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        }
+      ]
+    },
+    {
+      "name": "Incom Moon G Quarteto (compactos)",
+      "closed": {
+        "W": 69.4000015258789,
+        "H": 16,
+        "D": 68.9000015258789
+      },
+      "returnError": 0,
+      "checks": [
+        {
+          "angle": 0,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 15,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 30,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 60,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 90,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 105,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 120,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 135,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 180,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        }
+      ]
+    },
+    {
+      "name": "Incom Moon M All Crystal (compactos)",
+      "closed": {
+        "W": 69.5999984741211,
+        "H": 18.100000381469727,
+        "D": 69.30000305175781
+      },
+      "returnError": 0,
+      "checks": [
+        {
+          "angle": 0,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 15,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 30,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 60,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 90,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 105,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 120,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 135,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 180,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        }
+      ]
+    },
+    {
+      "name": "Incom Moon M com Visor (compactos)",
+      "closed": {
+        "W": 52.599998474121094,
+        "H": 17.299999237060547,
+        "D": 52.099998474121094
+      },
+      "returnError": 0,
+      "checks": [
+        {
+          "angle": 0,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 15,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 30,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 60,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 90,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 105,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 120,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 135,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 180,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        }
+      ]
+    },
+    {
+      "name": "Incom Moon M Tampa Fechada (compactos)",
+      "closed": {
+        "W": 69.5999984741211,
+        "H": 18.100000381469727,
+        "D": 69.0999984741211
+      },
+      "returnError": 0,
+      "checks": [
+        {
+          "angle": 0,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 15,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 30,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 60,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 90,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 105,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 120,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 135,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 180,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        }
+      ]
+    },
+    {
+      "name": "Incom Moon P (compactos)",
+      "closed": {
+        "W": 38.099998474121094,
+        "H": 14,
+        "D": 37.70000076293945
+      },
+      "returnError": 0,
+      "checks": [
+        {
+          "angle": 0,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 15,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 30,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 60,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 90,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 105,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 120,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 135,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 180,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        }
+      ]
+    },
+    {
+      "name": "Incom Big 4 (paletas)",
+      "closed": {
+        "W": 89.99896621704102,
+        "H": 14.300000190734863,
+        "D": 89.59798431396484
+      },
+      "returnError": 0,
+      "checks": [
+        {
+          "angle": 0,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 15,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 30,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 60,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 90,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 105,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 120,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 135,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 180,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        }
+      ]
+    },
+    {
+      "name": "Incom Big 9 (paletas)",
+      "closed": {
+        "W": 89.99896621704102,
+        "H": 14.300000190734863,
+        "D": 89.59798431396484
+      },
+      "returnError": 0,
+      "checks": [
+        {
+          "angle": 0,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 15,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 30,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 60,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 90,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 105,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 120,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 135,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 180,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        }
+      ]
+    },
+    {
+      "name": "Incom Flat Dez (paletas)",
+      "closed": {
+        "W": 119.68394470214844,
+        "H": 14.100000381469727,
+        "D": 62.50880432128906
+      },
+      "returnError": 0,
+      "checks": [
+        {
+          "angle": 0,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 15,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 30,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 60,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 90,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 105,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 120,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 135,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 180,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        }
+      ]
+    },
+    {
+      "name": "Incom Flat Duo (paletas)",
+      "closed": {
+        "W": 119.68394470214844,
+        "H": 14.100000381469727,
+        "D": 62.50880432128906
+      },
+      "returnError": 0,
+      "checks": [
+        {
+          "angle": 0,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 15,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 30,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 60,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 90,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 105,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 120,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 135,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 180,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        }
+      ]
+    },
+    {
+      "name": "Incom Flat Sexteto (paletas)",
+      "closed": {
+        "W": 119.68394470214844,
+        "H": 14.100000381469727,
+        "D": 62.50880432128906
+      },
+      "returnError": 0,
+      "checks": [
+        {
+          "angle": 0,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 15,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 30,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 60,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 90,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 105,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 120,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 135,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 180,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        }
+      ]
+    },
+    {
+      "name": "Incom Flat Trio Retangular (paletas)",
+      "closed": {
+        "W": 119.68394470214844,
+        "H": 14.100000381469727,
+        "D": 62.50880432128906
+      },
+      "returnError": 0,
+      "checks": [
+        {
+          "angle": 0,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 15,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 30,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 60,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 90,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 105,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 120,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 135,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 180,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        }
+      ]
+    },
+    {
+      "name": "Incom Flat Trio Redondo (paletas)",
+      "closed": {
+        "W": 119.68394470214844,
+        "H": 14.100000381469727,
+        "D": 62.50880432128906
+      },
+      "returnError": 0,
+      "checks": [
+        {
+          "angle": 0,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 15,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 30,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 60,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 90,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 105,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 120,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 135,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 180,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        }
+      ]
+    },
+    {
+      "name": "Incom Flat 6 + 1 (paletas)",
+      "closed": {
+        "W": 119.68394470214844,
+        "H": 14.100000381469727,
+        "D": 62.50880432128906
+      },
+      "returnError": 0,
+      "checks": [
+        {
+          "angle": 0,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 15,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 30,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 60,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 90,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 105,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 120,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 135,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 180,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        }
+      ]
+    },
+    {
+      "name": "Incom Case G Tampa Cristal (compactos)",
+      "closed": {
+        "W": 71.88224792480469,
+        "H": 13.699999809265137,
+        "D": 70.0557861328125
+      },
+      "returnError": 0,
+      "checks": [
+        {
+          "angle": 0,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        },
+        {
+          "angle": 15,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        },
+        {
+          "angle": 30,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        },
+        {
+          "angle": 60,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        },
+        {
+          "angle": 90,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        },
+        {
+          "angle": 105,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        },
+        {
+          "angle": 120,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        },
+        {
+          "angle": 135,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        },
+        {
+          "angle": 180,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        }
+      ]
+    },
+    {
+      "name": "Incom Case M Tampa Cristal (compactos)",
+      "closed": {
+        "W": 57.793331146240234,
+        "H": 13.699999809265137,
+        "D": 56.03874397277832
+      },
+      "returnError": 0,
+      "checks": [
+        {
+          "angle": 0,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        },
+        {
+          "angle": 15,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        },
+        {
+          "angle": 30,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        },
+        {
+          "angle": 60,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        },
+        {
+          "angle": 90,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        },
+        {
+          "angle": 105,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        },
+        {
+          "angle": 120,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        },
+        {
+          "angle": 135,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        },
+        {
+          "angle": 180,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        }
+      ]
+    }
+  ]
+}

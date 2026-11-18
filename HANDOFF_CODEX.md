@@ -1,3 +1,7 @@
+# Atualização Codex — 18/11/2026, cdx29
+
+Ler `APROVACAO_INCOM_CODEX.md` para os status da dona. Auditoria inicial de 32 conjuntos: Case corrigido com alojamentos circulares mais curtos e pinagem real; cinco variantes validadas. Os 13 Moon/Classic aprovados têm as mesmas malhas. Registro e validação em CODEX_REFINO.md e tools/conferencia/validacao-cdx29.json. Frame/Macaroon ainda em estudo isolado; não mudar hingeBloco dos Moon. Nenhuma aprovação foi marcada automaticamente.
+
 # Retomada OUTBOX / Incom — 17/11/2026
 
 ## ATUALIZAÇÃO MAIS RECENTE — 17/11/2026, fim da sessão Claude (ler primeiro)
