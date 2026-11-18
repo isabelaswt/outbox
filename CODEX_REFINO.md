@@ -179,6 +179,7 @@ Pendências conhecidas (precisam de dado ou de decisão; não invente):
 
 **Registro** (o mais novo em cima):
 
+- 2026-11-18, Claude, `2026-11-18.cl57`: Aprovação Incom. **Flat Dez (e todas as Flat/Big com `hingeOculta`)** ("não é um cilindro, tem uma rampa que desce e sobe" — na dobradiça, confirmado pela dona): o rebaixo de trás da base é um trapézio (desce em rampa das pontas, corre reto, sobe; rampa 1,4× a profundidade), cortado só na base, e a faixa da tampa tem o mesmo desenho, encaixada com 0,25 mm de folga.
 - 2026-11-18, Claude, `2026-11-18.cl56`: Aprovação Incom. **Big 4 (e Big 9/Flat, mesmo mecanismo)** ("dobradiça não aparece como cilindro; as laterais têm um vão e encaixam na base na parte central", foto 2): o rolo da tampa virou faixa reta (caixa de cantos pouco arredondados) ocupando o centro da calha (~90%), com o vão da calha aparecendo nas pontas.
 - 2026-11-18, Claude, `2026-11-18.cl55`: Aprovação Incom. **Moon (e todos com `hingeBloco`: Frame, Macaroon)** ("esse recorte tem que vir até em cima; aberto, a dobradiça aparece e fica uma caixa"): a dobradiça passa a ser a própria parede de trás da tampa, separada por dois cortes que sobem até o topo; a peça a mais é só a língua que desce no vão da base (sobe 0,4 mm na tampa).
 - 2026-11-18, Claude, `2026-11-18.cl54`: Aprovação Incom. **Macaroon G** ("dobradiça mais fina; tem um recorte no desenho da base para a dobradiça", foto 3 lilás): `hingeBloco: { w: 0.09, vao: 3 }` — bloco com 9% da largura e o vão da base entrando 3 mm a mais na borda, como o recorte da foto.

@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-18.cl56';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-18.cl57';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -707,7 +707,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-18.cl56';
+const BUILD = '2026-11-18.cl57';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -6902,7 +6902,7 @@ function compactParts(product, L, S0) {
       const hz = m.hingeCalha ? z + r + 0.35 : z + r * 0.7; // calha: o eixo fica para dentro, num recorte do fundo da base e da tampa
       const kn = (c, x0, x1) => { const g = new THREE.CylinderGeometry(r, r, x1 - x0, 40); g.rotateZ(Math.PI / 2); g.translate(cx + c + (x0 + x1) / 2, y0, hz); return g; };
       const mB = bObjs[0].material, mT = objs[0].material;
-      if (m.hingeCalha && !THUMB_LITE) { const ni = x => { const g = x.index ? x.toNonIndexed() : x; for (const k in g.attributes) if (k !== 'position' && k !== 'normal') g.deleteAttribute(k); return g; };
+      if (m.hingeCalha && !m.hingeOculta && !THUMB_LITE) { const ni = x => { const g = x.index ? x.toNonIndexed() : x; for (const k in g.attributes) if (k !== 'position' && k !== 'normal') g.deleteAttribute(k); return g; };
         const cut = new THREE.BoxGeometry(Lh + 0.6, 2 * r + 0.8, 2 * r + 1.6); cut.translate(cx, y0, z + r + 0.35 - 0.4);
         [objs[0], bObjs[0]].forEach(o => { const [outer, inner] = cutHole(o.geometry, cut); if (outer === o.geometry) return; const g = mergeGeometries([ni(outer), ni(inner)]); if (g) { o.geometry.dispose(); o.geometry = g; } });
         cut.dispose(); }
@@ -6951,8 +6951,16 @@ function compactParts(product, L, S0) {
       } else if (m.hingeOculta) { // Big/Flat (cl51): rolo da tampa preenchendo a calha, rente às costas; o eixo fica escondido dentro
         // cl56 (Big 4: "não aparece como cilindro; as laterais têm um vão e encaixam na base na parte central", foto 2): faixa reta da
         // tampa (caixa de cantos pouco arredondados) na parte central da calha; nas pontas fica o vão da calha
-        const bw = Lh * 0.9 - 0.3, bh = 2 * r + 0.66, g = new RoundedBoxGeometry(bw, bh, bh, 3, Math.min(0.6, r * 0.35)); g.translate(cx, y0, hz);
-        add(g, mT, idx, 'dobradica', 0, 0, 0); objs.push(product.children.at(-1));
+        // cl57 (Flat Dez: "não é um cilindro, tem uma rampa que desce e sobe" — na dobradiça): o rebaixo de trás da base é um trapézio —
+        // desce em rampa das pontas, corre reto e sobe — e a faixa da tampa tem o mesmo desenho, encaixada nele com folga
+        const dd = Math.min(base.m.h * 0.6, 2 * r + 0.6), ramp = dd * 1.4, dz = 2 * r + 0.8, trap = (wTop, h, y1, inset) => { const sh = new THREE.Shape(), a = wTop / 2 - inset, b = a - ramp;
+          sh.moveTo(-a, y1); sh.lineTo(-b, y1 - h); sh.lineTo(b, y1 - h); sh.lineTo(a, y1); sh.lineTo(a, y1 + 0.4); sh.lineTo(-a, y1 + 0.4); sh.closePath(); return sh; };
+        const band = new THREE.ExtrudeGeometry(trap(Lh, dd - 0.25, y0, 0.25), { depth: dz - 0.2, bevelEnabled: true, bevelThickness: 0.15, bevelSize: 0.15, bevelSegments: 2 });
+        band.deleteAttribute('uv'); band.translate(cx, 0, z + 0.25); add(band, mT, idx, 'dobradica', 0, 0, 0); objs.push(product.children.at(-1));
+        if (!THUMB_LITE) { const ni = x => { const g = x.index ? x.toNonIndexed() : x; for (const k in g.attributes) if (k !== 'position' && k !== 'normal') g.deleteAttribute(k); return g; };
+          const cut = new THREE.ExtrudeGeometry(trap(Lh, dd, y0 + 0.05, 0), { depth: dz + 1.4, bevelEnabled: false }); cut.translate(cx, 0, z - 1);
+          const [outer, inner] = cutHole(bObjs[0].geometry, cut); cut.dispose();
+          if (outer !== bObjs[0].geometry) { const g = mergeGeometries([ni(outer), ni(inner)]); if (g) { bObjs[0].geometry.dispose(); bObjs[0].geometry = g; } } }
       } else
       (m.hingePair ? [-W * (m.hingePair.x ?? 0.30), W * (m.hingePair.x ?? 0.30)] : [0]).forEach(c => {
         const pin = new THREE.CylinderGeometry(r * 0.38, r * 0.38, Lh - 0.6, 24); pin.rotateZ(Math.PI / 2); pin.translate(cx + c, y0, hz);
