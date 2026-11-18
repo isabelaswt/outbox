@@ -1,4 +1,6 @@
-# Atualização Claude — 18/11/2026, cl62–cl69
+# Atualização Claude — 18/11/2026, cl62–cl70
+
+cl70: Case — eixo dentro da tampa, cilindro aflorando como círculo na lateral, rebaixo arredondado na borda de trás da base. Próximo carimbo: cl71.
 
 cl69: Case — peça quadrada sobe como nervura até o espelho; cilindro da ponta dentro de uma abertura da tampa (vão atrás dele). Próximo carimbo: cl70.
 

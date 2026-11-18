@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION, ADDITION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-18.cl69';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-18.cl70';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -707,7 +707,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-18.cl69';
+const BUILD = '2026-11-18.cl70';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -7058,15 +7058,16 @@ function compactParts(product, L, S0) {
         // Medidas na foto (Case G, 71,9 mm): centro da base até 21,7%; nó da tampa 23,7–34,2%; nó da base da ponta até 45,6%.
         const [c0, c1, c2] = m.hingeCase.length === 3 ? m.hingeCase : [0.217, 0.342, 0.456], gv = 1.4, gs = 0.8,
           bore = r * 0.38 + 0.08, cutsT = [], cutsB = [], len = (p, q) => Math.abs(q - p), mid = (p, q) => (p + q) / 2;
-        const cyl = (p, q, rr) => { const g = new THREE.CylinderGeometry(rr, rr, len(p, q), 48); g.rotateZ(Math.PI / 2); g.translate(mid(p, q), y0, hz); return g; };
+        const cyl = (p, q, rr) => { const g = new THREE.CylinderGeometry(rr, rr, len(p, q), 48); g.rotateZ(Math.PI / 2); g.translate(mid(p, q), y0, HZ); return g; };
         const tube = (p, q) => { const sh = new THREE.Shape(); sh.absarc(0, 0, r, 0, TAU, false);
           const hole = new THREE.Path(); hole.absarc(0, 0, bore, 0, TAU, true); sh.holes.push(hole);
           const g = new THREE.ExtrudeGeometry(sh, { depth: len(p, q), bevelEnabled: false, curveSegments: 24 });
-          g.deleteAttribute('uv'); g.rotateY(Math.PI / 2); g.translate(Math.min(p, q), y0, hz); return g; };
-        const X = f => W * f, dE = W / 2 - 1.6, Lc = Math.min(7, W * 0.1), b0 = dE - Lc, t1 = b0 - gs, t0 = t1 - Lc, rc = r + 0.5; // cl68: cilindro da ponta ~7 mm, peça quadrada com a mesma largura; cl69: o cilindro termina dentro da parede lateral da tampa
+          g.deleteAttribute('uv'); g.rotateY(Math.PI / 2); g.translate(Math.min(p, q), y0, HZ); return g; };
+        const X = f => W * f, dE = W / 2 - 0.05, /* cl70 (dona: "e aparece na lateral", foto da quina): a ponta do cilindro chega à face lateral */ Lc = Math.min(7, W * 0.1), b0 = dE - Lc, t1 = b0 - gs, t0 = t1 - Lc, rc = r + 0.5, HZ = bb.min.z + rc + 0.35; axis = { y: y0, z: HZ }; // cl70 (dona: "mais para dentro ainda", "ele sai de dentro da tampa"): eixo dentro da tampa, o cilindro não passa das costas // cl68: cilindro da ponta ~7 mm, peça quadrada com a mesma largura; cl69: o cilindro termina dentro da parede lateral da tampa
         // cl64 (dona: "acho que não tem pino no centro"): sem nó nem pino no centro. cl65 ("depois dessa base, tem um vão no
         // centro"): entre os dois nós da tampa, um canal vazio ao longo do eixo, cortado na tampa e na base
-        { const cc = t0 - 0.4; cutsT.push(cyl(cx - cc, cx + cc, r + 0.3)); cutsB.push(cyl(cx - cc, cx + cc, r + 0.3)); }
+        { const cc = t0 - 0.4; cutsT.push(cyl(cx - cc, cx + cc, r + 0.3)); /* na base o rebaixo corrido já abre o vão */ }
+        const reliefB = cyl(cx - W / 2 - 0.3, cx + W / 2 + 0.3, HZ - bb.min.z + 0.25); // cl70: com o eixo para dentro, a parede de trás da tampa desce ao abrir — a borda de trás da base tem o rebaixo arredondado
         [-1, 1].forEach(sg => {
           const P = v => cx + sg * v;
           { // cl65 ("base quadrada arredondada que segura o pino"), cl68 (mesma largura do cilindro). cl69 (dona: "esse quadrado parece
@@ -7076,26 +7077,26 @@ function compactParts(product, L, S0) {
             sh.lineTo(-q, -q + k); sh.quadraticCurveTo(-q, -q, -q + k, -q);
             const hole = new THREE.Path(); hole.absarc(0, 0, bore, 0, TAU, true); sh.holes.push(hole);
             const g = new THREE.ExtrudeGeometry(sh, { depth: len(t0, t1), bevelEnabled: false, curveSegments: 16 });
-            g.deleteAttribute('uv'); g.rotateY(Math.PI / 2); g.translate(Math.min(P(t0), P(t1)), y0, hz);
+            g.deleteAttribute('uv'); g.rotateY(Math.PI / 2); g.translate(Math.min(P(t0), P(t1)), y0, HZ);
             add(g, mT, idx, 'dobradica', 0, 0, 0); objs.push(product.children.at(-1));
-            const zb = bb.min.z + 0.3, zf = hz + q, yb = y0 + q - 0.3, yt = y0 + m.h - 1.8;
+            const zb = bb.min.z + 0.3, zf = HZ + q, yb = y0 + q - 0.3, yt = y0 + m.h - 1.8;
             if (yt > yb + 0.5) { add(new RoundedBoxGeometry(len(t0, t1), yt - yb, zf - zb, 2, Math.min(0.5, k)), mT, idx, 'nervura_dobradica', P((t0 + t1) / 2), (yb + yt) / 2, (zb + zf) / 2); objs.push(product.children.at(-1)); } }
           // cl67/cl68: na ponta UM cilindro curto e grosso. cl69 ("tem um vão de abertura atrás do cilindro"; "o cilindro é dentro da
           // tampa"): fica dentro de uma abertura da tampa, com folga em volta (o vão claro em L da foto), preso pela ponta à parede lateral
-          { const L = dE - b0, c = Math.min(rc * 0.6, 0.7), pts = [[0, 0], [rc, 0], [rc, L - c]];
+          { const L = dE - b0, c = 0.25, pts = [[0, 0], [rc, 0], [rc, L - c]];
             for (let i = 1; i <= 8; i++) { const a = i / 8 * Math.PI / 2; pts.push([rc - c + c * Math.cos(a), L - c + c * Math.sin(a)]); } pts.push([0, L]);
             const g = new THREE.LatheGeometry(pts.map(([a, b]) => new THREE.Vector2(a, b)), 48); g.deleteAttribute('uv');
-            g.rotateZ(-sg * Math.PI / 2); g.translate(P(b0), y0, hz); add(g, mT, idx, 'dobradica', 0, 0, 0); objs.push(product.children.at(-1)); } // cl69 (dona: "o cilindro é dentro da tampa"): peça da tampa, presa pela ponta à parede lateral
+            g.rotateZ(-sg * Math.PI / 2); g.translate(P(b0), y0, HZ); add(g, mT, idx, 'dobradica', 0, 0, 0); objs.push(product.children.at(-1)); } // cl69 (dona: "o cilindro é dentro da tampa"): peça da tampa, presa pela ponta à parede lateral
           add(cyl(P(t0 + 0.3), P(dE - 1), r * 0.38), mirrorMat, base.idx, 'pino', 0, 0, 0); // eixo interno, só desta ponta; aparece só no vão
           // tampa: abertura em volta do cilindro da base (o vão atrás dele), sem atravessar a parede lateral; furo do pino na peça quadrada
-          cutsT.push(cyl(P(b0 - gs / 2 + 0.02), P(dE + 0.2), rc + 0.5));
+          cutsT.push(cyl(P(b0 - gs / 2 + 0.02), P(dE - 1.4), rc + 0.5)); // a abertura não atravessa a parede lateral: lá o cilindro aflora na face
           cutsT.push(cyl(P(t0 + 0.05), P(t1 - 0.05), bore));
           // base: cede ao giro da peça quadrada e do cilindro da tampa
           cutsB.push(cyl(P(t0 - 0.2), P(t1 + gs / 2 - 0.02), Math.hypot(rc, rc) + 0.15));
           cutsB.push(cyl(P(b0 - gs / 2 + 0.02), P(W / 2 + 0.3), rc + 0.16));
         });
         if (!THUMB_LITE) { const ni = x => { const g = x.index ? x.toNonIndexed() : x; for (const k in g.attributes) if (k !== 'position' && k !== 'normal') g.deleteAttribute(k); return g; };
-          [[objs[0], cutsT], [bObjs[0], cutsB]].forEach(([o, cs]) => { const cut = mergeGeometries(cs.map(ni)); const [outer, inner] = cutHole(o.geometry, cut); cut.dispose();
+          [[objs[0], cutsT], [bObjs[0], cutsB], [bObjs[0], [reliefB]]].forEach(([o, cs]) => { const cut = mergeGeometries(cs.map(ni)); const [outer, inner] = cutHole(o.geometry, cut); cut.dispose();
             if (outer === o.geometry) return; const g = mergeGeometries([ni(outer), ni(inner)]); if (g) { o.geometry.dispose(); o.geometry = g; } }); }
       } else if (m.hingeOculta) { // Big/Flat — cl58, foto ampliada da dona (assets/revisao/ref-dona/flat-dobradica-ampliada.png):
         // nada de rolo/faixa. Na borda de trás a TAMPA é recortada para cima no centro (as pontas descem até a divisão e "abraçam"
