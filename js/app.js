@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION, ADDITION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-18.cl78';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-18.cl79';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -707,7 +707,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-18.cl78';
+const BUILD = '2026-11-18.cl79';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -1257,7 +1257,8 @@ function normalize(s) {
     if (savedMacaroon && m.hingeLeaf?.w === 0.145 && m.hingeLeaf.center === 0.62 && m.hingeLeaf.compact && m.hingeLeaf.concealed == null) m.hingeLeaf = { ...m.hingeLeaf, concealed: true };
     if (savedMacaroon && m.hinge && ((m.hingeLeaf?.w === 0.09 && m.hingeLeaf.center == null) || (m.hingeLeaf?.w === 0.16 && m.hingeLeaf.center === 0.7 && m.hingeLeaf.bridge === true && !m.hingeLeaf.compact) || (!m.hingeLeaf && m.hingeBloco?.w === 0.09 && m.hingeBloco.vao === 3))) m.hingeLeaf = { w: 0.145, center: 0.62, bridge: true, compact: true, concealed: true };
     if (savedFrame && m.hinge && m.hingeLeaf?.w === 0.16 && Object.keys(m.hingeLeaf).length === 1) { delete m.hingeLeaf; m.hingeBloco ??= true; } // cl77: Frame salvo com as 3 peças volta ao bloco inteiro
-    if (savedFrame && m.n === 8 && m.planBow === 0.07) { m.n = 7.5; m.planBow = 0.1; } // cl77: planta do Frame pelo desenho da dona
+    if (savedFrame && m.n === 8 && m.planBow === 0.07) { m.n = 7.5; m.planBow = 0.1; }
+    if (savedFrame && m.n === 7.5 && m.planBow === 0.1 && m.visorBow == null) { m.visorN = 8; m.visorBow = 0.08; } // cl79: contorno de dentro (visor) do desenho da dona // cl77: planta do Frame pelo desenho da dona
     // Case salvo na cl53–59: atualiza só as proporções antigas conhecidas, preservando edições próprias.
     if (m.hingeCase?.length === 3 && m.hingeCase[0] === 0.18 && m.hingeCase[1] === 0.31 && m.hingeCase[2] === 0.44) m.hingeCase = [0.26, 0.38];
     if (m.type === 'bisnaga') {
@@ -6467,7 +6468,7 @@ function ocoGeo(g, m, y0) {
   let [outer, inner] = cutHole(g, cut); if (outer === g) return g;
   g = mergeGeometries([ni(outer), ni(inner)]) || g;
   if (m.visor) { // janela no teto (visor): moldura de ~12% da largura em volta
-    const v = visorBox(m, w + 2 * OW, d + 2 * OW), win = !m.sides && m.n > 2 ? seSlab(v.w / 2, v.d / 2, m.n, OT + 3) : m.sides ? new RoundedBoxGeometry(v.w, OT + 3, v.d, 3, Math.min(4, Math.min(v.w, v.d) * 0.12)) : new THREE.CylinderGeometry(v.w / 2, v.w / 2, OT + 3, 96);
+    const v = visorBox(m, w + 2 * OW, d + 2 * OW), win = !m.sides && m.n > 2 ? seSlab(v.w / 2, v.d / 2, m.visorN ?? m.n, OT + 3, m.visorBow ?? 0) : /* cl79: visor com a forma do desenho da dona */ m.sides ? new RoundedBoxGeometry(v.w, OT + 3, v.d, 3, Math.min(4, Math.min(v.w, v.d) * 0.12)) : new THREE.CylinderGeometry(v.w / 2, v.w / 2, OT + 3, 96);
     win.translate(cx, y0 + m.h - OT / 2, cz);
     [outer, inner] = cutHole(g, win); if (outer !== g) g = mergeGeometries([ni(outer), ni(inner)]) || g;
   }
@@ -6489,7 +6490,7 @@ function ocoTopoGeo(g, m, y0, neck, lift) {
 }
 // Superelipse vista de cima (Frame): contorno plano e placa centrada na altura
 function seShape(a, b, n, seg = 128, bow = 0) { const sh = new THREE.Shape(); for (let i = 0; i <= seg; i++) { const [x, y] = sp(a, b, n, i / seg * Math.PI * 2, bow); i ? sh.lineTo(x, y) : sh.moveTo(x, y); } return sh; }
-function seSlab(a, b, n, h) { const g = new THREE.ExtrudeGeometry(seShape(a, b, n), { depth: h, bevelEnabled: false, curveSegments: 4 }); g.deleteAttribute('uv'); g.rotateX(-Math.PI / 2); g.translate(0, -h / 2, 0); return g; }
+function seSlab(a, b, n, h, bow = 0) { const g = new THREE.ExtrudeGeometry(seShape(a, b, n, 128, bow), { depth: h, bevelEnabled: false, curveSegments: 4 }); g.deleteAttribute('uv'); g.rotateX(-Math.PI / 2); g.translate(0, -h / 2, 0); return g; }
 // Frame (foto da tampa aberta): a janela vai quase de parede a parede, moldura fina (~3 mm); o preto largo visto
 // de fora é a base por baixo do visor
 const visorBox = (m, w, d) => { const f = m.visorBorder ?? (m.visorFino || (!m.sides && m.n > 2) ? OCO.wall + 1.2 : Math.max(4.5, Math.min(w, d) * 0.12)); return { w: w - 2 * f, d: m.sides ? d - 2 * f : w - 2 * f }; };
@@ -6795,7 +6796,7 @@ function compactParts(product, L, S0) {
     }
     if (m.visor && m.oco) { // placa transparente da janela, por dentro do teto
       const v = visorBox(m, w, d), pw = Math.min(v.w + 3, w - 2 * OCO.wall - 0.2), pd = Math.min(v.d + 3, d - 2 * OCO.wall - 0.2);
-      const g = se ? seSlab(pw / 2, pd / 2, m.n, 1) : m.sides ? new RoundedBoxGeometry(pw, 1, pd, 2, Math.min(4, Math.min(pw, pd) * 0.12)) : new THREE.CylinderGeometry(pw / 2, pw / 2, 1, 96);
+      const g = se ? seSlab(pw / 2, pd / 2, m.visorN ?? m.n, 1, m.visorBow ?? 0) : m.sides ? new RoundedBoxGeometry(pw, 1, pd, 2, Math.min(4, Math.min(pw, pd) * 0.12)) : new THREE.CylinderGeometry(pw / 2, pw / 2, 1, 96);
       add(g, clearMat, idx, 'visor', cx, y0 + m.h - OCO.top - 0.5, cz);
     }
     if (m.oco && m.hinge && m.finish === 'cristal' && !m.sides && !(m.n > 2)) { // tampa redonda de cristal (foto): anel de encaixe por
@@ -10095,7 +10096,7 @@ function incomProduct(r) {
       // tampa oca (casca) e base com rebaixo do godê; abertura para o dedo na frente, metade na borda
       // de cima da base e metade na de baixo da tampa
       // Desenho cotado Big 4/9 da dona: n=20 e curvatura=0,035 ajustados ao traço; W/D oficiais preservados.
-      const s0 = /^Big (4|9)$/.test(r.n) ? { n: 20, planBow: 0.035 } : r.t === 'cr' ? {} : frameN(r.n) ? { n: 7.5, planBow: 0.1 } : sq(r.t === 'cqr' ? 0.22 : 0.04), hb = H * 0.55, ht = H * 0.45, nw = r1(Math.min(22, Math.min(W, D) * 0.32));
+      const s0 = /^Big (4|9)$/.test(r.n) ? { n: 20, planBow: 0.035 } : r.t === 'cr' ? {} : frameN(r.n) ? { n: 7.5, planBow: 0.1, visorN: 8, visorBow: 0.08 } : sq(r.t === 'cqr' ? 0.22 : 0.04), hb = H * 0.55, ht = H * 0.45, nw = r1(Math.min(22, Math.min(W, D) * 0.32));
       // paleta: abertura retangular larga (~42% da frente) só na base, logo abaixo da tampa, como no desenho
       // a dobradiça sai 0,3 do raio para trás: a caixa perde isso na profundidade e o total bate com o catálogo
       const Dc = r2(D - 0.3 * clamp(Math.min(hb, ht) * 0.22, 1.1, 2.2)), pal = r.c === 'Paletas' && r.t !== 'cr', dB = pal ? { rect: true, top: true, w: r1(W * 0.42), h: r1(Math.min(4.5, hb * 0.58)), d: 2.4 } : { rect: true, top: true, arc: r.t === 'cr', w: nw, h: r1(Math.min(3.2, hb * 0.42)), d: 1.6 }; // desenho: entalhe retangular só na base (redondo: acompanha a curva)

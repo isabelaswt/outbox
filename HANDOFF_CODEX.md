@@ -1,4 +1,6 @@
-# Atualização Claude — 18/11/2026, cl78
+# Atualização Claude — 18/11/2026, cl78–cl79
+
+cl79: visor dos Frame com a forma de dentro do desenho da dona (visorN 8, visorBow 0,08). Próximo carimbo: cl80.
 
 Moon/Frame (`hingeBloco`): bloco da dobradiça é da tampa, mais alto, num entalhe da base com folga (pedido da dona). Próximo carimbo: cl79.
 
