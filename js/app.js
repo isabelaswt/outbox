@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION, ADDITION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-18.cl77';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-18.cl78';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -707,7 +707,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-18.cl77';
+const BUILD = '2026-11-18.cl78';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -7044,14 +7044,17 @@ function compactParts(product, L, S0) {
         // sentado num entalhe da borda de trás da base e subindo até a tampa, que tem o entalhe dela por cima dele; o pino passa no
         // alto do bloco. Aberta, o bloco fica à vista ligando base e tampa (não há cortes compridos na tampa — cl55 desfeito).
         // hingeBloco.w/.vao: largura (fração) e quanto o entalhe da base entra a mais (Macaroon, cl53)
-        const hk = typeof m.hingeBloco === 'object' ? m.hingeBloco : {}, Lb = Math.min(W * (hk.w ?? 0.16), 13), hb = clamp(base.m.h * 0.55, 1.5, 5),
-          hu = 0, t = 2 * r + 0.4, gp = 0.3, z0 = z + 0.25, vao = hk.vao ?? 0; // cl59 ("isso não é degrau, é reto"): sem entalhe na tampa — o bloco
+        const hk = typeof m.hingeBloco === 'object' ? m.hingeBloco : {}, Lb = Math.min(W * (hk.w ?? 0.16), 13), hb = clamp(base.m.h * 0.8, 1.5, 6),
+          hu = 0, t = 2 * r + 0.4, gp = 0.45, z0 = z + 0.25, vao = hk.vao ?? 0; // cl59 ("isso não é degrau, é reto"): sem entalhe na tampa — o bloco
         // vai rente até a divisão e a borda de trás da tampa passa reta por cima dele
-        add(new RoundedBoxGeometry(Lb, hb + hu, t, 3, Math.min(0.5, Lb * 0.08)), mB, base.idx, 'dobradica', cx, y0 + (hu - hb) / 2, z0 + t / 2);
-        axis = { y: y0 - Math.min(r * 0.6, hb * 0.3), z: z0 + t / 2 };
+        // cl78 (dona, fotos do Moon aberto: "a dobradiça tem mais altura, não é colada na base"): o bloco é da TAMPA, mais alto (80% da
+        // base), descendo num entalhe da base com folga em volta; o eixo fica perto do pé dele — aberta, o bloco deita e faz a ponte
+        // entre a borda da base e a tampa, como na foto
+        add(new RoundedBoxGeometry(Lb, hb + hu, t, 3, Math.min(0.5, Lb * 0.08)), mT, idx, 'dobradica', cx, y0 + (hu - hb) / 2, z0 + t / 2); objs.push(product.children.at(-1));
+        axis = { y: y0 - hb + t / 2, z: z0 + t / 2 };
         const pin = new THREE.CylinderGeometry(r * 0.3, r * 0.3, Lb + 2 * gp + 0.4, 24); pin.rotateZ(Math.PI / 2); pin.translate(cx, axis.y, axis.z); add(pin, mirrorMat, base.idx, 'pino', 0, 0, 0);
         if (!THUMB_LITE) { const ni = x => { const g = x.index ? x.toNonIndexed() : x; for (const k in g.attributes) if (k !== 'position' && k !== 'normal') g.deleteAttribute(k); return g; };
-          const cutB = ni(new RoundedBoxGeometry(Lb + 2 * gp, hb + gp + 2, t + 2.4 + vao, 2, 0.3).translate(cx, y0 - hb - gp + (hb + gp + 2) / 2, z - 2 + (t + 2.4 + vao) / 2));
+          const cutB = ni(new RoundedBoxGeometry(Lb + 2 * gp, hb + gp + 2, t + 2.4 + gp + vao, 2, 0.3).translate(cx, y0 - hb - gp + (hb + gp + 2) / 2, z - 2 + (t + 2.4 + gp + vao) / 2));
           const cutT = ni(new RoundedBoxGeometry(Lb + 2 * gp, hu + gp + 1, t + 2.4, 2, 0.3).translate(cx, y0 - 1 + (hu + gp + 1) / 2, z - 2 + (t + 2.4) / 2));
           cutT.dispose(); [[bObjs[0], cutB]].forEach(([o, cut]) => { const [outer, inner] = cutHole(o.geometry, cut); cut.dispose();
             if (outer !== o.geometry) { const g = mergeGeometries([ni(outer), ni(inner)]); if (g) { o.geometry.dispose(); o.geometry = g; } } }); }

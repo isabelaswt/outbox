@@ -1,3 +1,7 @@
+# Atualização Claude — 18/11/2026, cl78
+
+Moon/Frame (`hingeBloco`): bloco da dobradiça é da tampa, mais alto, num entalhe da base com folga (pedido da dona). Próximo carimbo: cl79.
+
 # Atualização Claude — 18/11/2026, cl77
 
 Frame: planta pelo desenho da dona (n 7,5, bow 0,10) e dobradiça em bloco inteiro (hingeBloco, como Moon), sem as 3 peças. Próximo carimbo: cl78.
