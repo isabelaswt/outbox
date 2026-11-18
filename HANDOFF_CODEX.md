@@ -1,3 +1,7 @@
+# Atualização Claude — 18/11/2026, cl88
+
+Macaroon: dobradiça em bloco arredondado da tampa num rebaixo com fundo e moldura em U (foto lilás), pino interno. Próximo carimbo: cl89.
+
 # Atualização Claude — 18/11/2026, cl87
 
 Big 4/9: dobradiça com 1/3 da largura (centralizada atrás). Próximo carimbo: cl88.
