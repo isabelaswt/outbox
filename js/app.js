@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION, ADDITION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-18.cl86';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-18.cl87';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -707,7 +707,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-18.cl86';
+const BUILD = '2026-11-18.cl87';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -7141,7 +7141,7 @@ function compactParts(product, L, S0) {
         // cl86 (dona: "está voando, precisamos que seja uma peça real"): dobradiça de verdade atrás da junção — eixo logo atrás das costas,
         // na altura da divisão; nós da BASE nas pontas e nó da TAMPA no meio, no mesmo eixo, cada um preso à sua peça por uma aba.
         // Aberta, a tampa gira em volta desse eixo; o pino de metal passa por dentro dos três nós.
-        if (cn) { const rc = 0.75, ya = yL, za = z - rc, gk = 0.2, Lk = W * 0.14, Lm = W * 0.36, xm = Lm / 2, xb0 = xm + gk, xb1 = xb0 + Lk;
+        if (cn) { const rc = 0.75, ya = yL, za = z - rc, gk = 0.2, Lk = W * 0.047, Lm = W * 0.12, /* cl87 (dona: "diminuir a largura do cilindro, quero 1/3 disso"): conjunto com 1/3 da largura (era 14%/36%) */ xm = Lm / 2, xb0 = xm + gk, xb1 = xb0 + Lk;
           const knuckle = (x0, x1) => { const g = new THREE.CylinderGeometry(rc, rc, x1 - x0, 32); g.rotateZ(Math.PI / 2); g.translate(cx + (x0 + x1) / 2, ya, za); return g; };
           const web = (x0, x1, y0w, y1w) => new THREE.BoxGeometry(x1 - x0, y1w - y0w, rc + 0.3).translate(cx + (x0 + x1) / 2, (y0w + y1w) / 2, za + (rc + 0.3) / 2);
           [[-xb1, -xb0], [xb0, xb1]].forEach(([a0, a1]) => { add(knuckle(a0, a1), mB, base.idx, 'dobradica', 0, 0, 0); add(web(a0, a1, ya - rc, ya - 0.02), mB, base.idx, 'dobradica', 0, 0, 0); });

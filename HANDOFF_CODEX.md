@@ -1,3 +1,7 @@
+# Atualização Claude — 18/11/2026, cl87
+
+Big 4/9: dobradiça com 1/3 da largura (centralizada atrás). Próximo carimbo: cl88.
+
 # Atualização Claude — 18/11/2026, cl86
 
 Big 4/9: dobradiça real atrás (nós da base nas pontas, nó da tampa no meio, abas e pino). Próximo carimbo: cl87.
