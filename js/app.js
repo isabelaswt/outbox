@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION, ADDITION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-18.cl60';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-18.cl61';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -707,7 +707,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-18.cl60';
+const BUILD = '2026-11-18.cl61';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -2090,16 +2090,21 @@ function sprayGeo(m, y0, { lo = false } = {}) {
   } else if (m.sprayType === 'gotas') {
     // Conta-gotas: bulbo de borracha com topo em domo. De botão (Flacon Botão, Julie): colar alto e liso e um
     // botão cilíndrico de topo reto saindo dele, como na foto do catálogo
-    if (m.botao) head.push(ring(m.actW, m.actH, top - 0.5, { rBot: 0.4, rTop: Math.min(m.actH * 0.45, m.actW * 0.38) })); // cl52: "topo do conta-gotas é curvo"
-    else { // aprovação cl48 (fotos Flacon, "para todos conta-gotas"): a borracha abre larga na base, afina, tem um dente e depois o bulbo
-      // cl52 (Flacon 15 Bulbo: "muito gordo, dente estranho"; fotos FLACON-15/30-BULBO abertas): a borracha não passa da largura da
-      // base — saia curta na boca, uma cintura leve (o "dente") e o corpo um pouco mais fino com topo em domo
-      const R = m.actW / 2, H = m.actH, Rb = Math.min(R * 0.84, H * 0.4), y = v => top - 0.5 + v, pts = [[0, 0], [R, 0], [R, H * 0.16]];
-      for (let i = 1; i <= 6; i++) { const u = i / 6; pts.push([R - (R - R * 0.78) * Math.sin(u * Math.PI / 2), H * 0.16 + H * 0.07 * (1 - Math.cos(u * Math.PI / 2))]); }
-      for (let i = 1; i <= 6; i++) { const u = i / 6; pts.push([R * 0.78 + (Rb - R * 0.78) * Math.sin(u * Math.PI / 2), H * 0.23 + H * 0.09 * u]); }
+    const lathe = pts => { const g = new THREE.LatheGeometry(pts.map(([a, b]) => new THREE.Vector2(a, top - 0.5 + b)), lo ? 32 : 72); g.deleteAttribute('uv'); return g; };
+    if (m.botao) { // cl60 (Flacon 15 Botão: "ele é oval em cima"; Flacon 30 Botão/Julie: "é um domo em cima"; fotos de fundo cinza):
+      // lados retos e o topo INTEIRO em domo baixo (superelipse, ~18% da largura de altura), não só a quina arredondada
+      const R = m.actW / 2, H = m.actH, dH = Math.min(m.actW * 0.18, H * 0.4), pts = [[0, 0], [R - 0.4, 0], [R, 0.4], [R, H - dH]];
+      for (let i = 1; i <= 16; i++) { const t = i / 16 * Math.PI / 2, n = 2.8; pts.push([R * Math.pow(Math.cos(t), 2 / n), H - dH + dH * Math.pow(Math.sin(t), 2 / n)]); }
+      head.push(lathe(pts)); }
+    else { // cl60 (Bulb, Dispensing 30, Flacon 15 Bulbo: "veja a silhueta do conta-gotas, ele vai abrindo para baixo, como um sino,
+      // depois disso tem um respiro embaixo"; fotos Sydney 60, Bulb vermelho, Dispensing 15 preto): corpo cilíndrico com topo em
+      // domo; no terço de baixo abre em sino (curva côncava) até a largura da base; no pé, antes do colar, um anel mais estreito (respiro)
+      const R = m.actW / 2, H = m.actH, Rb = Math.min(R * 0.86, H * 0.4), gH = Math.min(0.9, H * 0.06), Rg = R * 0.8, bH = H * 0.32,
+        pts = [[0, 0], [Rg, 0], [Rg, gH], [R - 0.25, gH], [R, gH + 0.25]];
+      for (let i = 1; i <= 10; i++) { const u = i / 10; pts.push([Rb + (R - Rb) * (1 - u) * (1 - u), gH + 0.25 + bH * u]); }
       pts.push([Rb, H - Rb]);
       for (let i = 1; i <= 12; i++) { const a = i / 12 * Math.PI / 2; pts.push([Rb * Math.cos(a), H - Rb + Rb * Math.sin(a)]); }
-      const g = new THREE.LatheGeometry(pts.map(([a, b]) => new THREE.Vector2(a, y(b))), lo ? 32 : 72); g.deleteAttribute('uv'); head.push(g); }
+      head.push(lathe(pts)); }
   } else if (m.sprayType === 'bico') {
     // Bico dosador alto: virola frisada, ombro cônico, corpo superior frisado e ponteira longa.
     const yS = top - 0.05, shoulderH = Math.max(5.2, m.W * 0.2), baseW = m.W * 0.92;
@@ -10114,7 +10119,10 @@ function incomProduct(r) {
       ms = [P('Frasco', W, D, H * f0, { ...sh, vol: true, rBot: rb, rTop: 1, ...(r.t === 'cgt' ? { taperB: 86 } : {}), _t: [0, f0] }), P('Anel', W, D, H * (f1 - f0), { ...sh, _t: [f0, f1] }), v, cap];
       // cl51 (Amsterdam Deluxe 100: "base do spray tá alta e o spray tá pequeno", foto AMSTERDAM-DELUXE-100-1): mesma altura total,
       // dividida como na foto — base ~39%, anel guia ~23% (72% da base de largura), atuador ~38%; vale para todos os Deluxe
-      if (dlx) { const T = v.h + (v.guideH || 0) + (v.actH || 0); Object.assign(v, { h: r1(T * 0.39), guideH: r1(T * 0.23), guideW: r1(v.W * 0.72), actH: r1(T * 0.38), actW: r1(v.W * 0.47) }); }
+      // cl60 (Amsterdam Deluxe 100: "spray tá terrível, agora fino demais"; foto preta incom-packing-4 ampliada, spray à vista): o spray
+      // era alongado — base e atuador altos e atuador estreito. Pela foto, a partir da largura da base: base 46% de altura, guia 74% de
+      // largura × 33%, atuador 62% de largura × 53% (≈ ⅓ da largura do frasco); o conjunto fica mais baixo e encorpado
+      if (dlx) { const B = v.W; Object.assign(v, { h: r1(B * 0.46), guideH: r1(B * 0.33), guideW: r1(B * 0.74), actH: r1(B * 0.53), actW: r1(B * 0.62) }); }
       if (r.c === 'Dispensadores' || dlx) {
         // P46–54: 20-410; Deluxes 100: 20-410, 200: 24-410. Não inclui On-Off/Twist.
         const standard = dlx && /200$/.test(r.n) ? '24/410' : '20/410';
@@ -10168,6 +10176,11 @@ function incomProduct(r) {
         // fica ~1,2 mm acima do ombro (o gargalo aparece) e a quina de cima dele é quase viva; vale para os Flacon de bulbo
         // cl52: o perfil do desenho deixava o ombro do Flacon 30 reto (o rTop nem era usado) — sem ele, ombro torneado de ~22% da largura
         if (/^Flacon 30/.test(r.n)) { const fr = ms[0]; delete fr.prof; delete fr.W0; Object.assign(fr, { rTop: r1(W * 0.22), rTopW: 0 }); }
+        // cl60 (Flacon 30 Bulbo: "arredondou demais, parece mais largo; suavizar a base deixando levemente mais arredondada";
+        // Flacon 15 Bulbo: "ombro do frasco é mais arredondado em cima"), fotos de fundo cinza: ombro ~17% no 30 e ~10% no 15
+        // (o 15 seguia o perfil do desenho, de ombro em quina); fundo levemente arredondado nos dois
+        if (r.n === 'Flacon 30 Bulbo') Object.assign(ms[0], { rTop: r1(W * 0.17), rBot: r1(W * 0.08) });
+        if (r.n === 'Flacon 15 Bulbo') { const fr = ms[0]; delete fr.prof; delete fr.W0; Object.assign(fr, { rTop: r1(W * 0.1), rTopW: 0, rBot: r1(W * 0.06) }); }
         if (/^Flacon .*Bulbo/.test(r.n)) { const rg = 1.2; Object.assign(v, { gap: rg, h: r2(v.h - rg), rTop: 0.4 }); } }
       break; }
     case 'fr': case 'frr': case 'frsq': case 'frsqr': case 'frt': case 'frsh': case 'frap': case 'frflat': {
@@ -10541,7 +10554,7 @@ function incomProduct(r) {
     // Foto Dispensing 30: só a casca grossa e a coluna do produto aparecem — a cavidade encosta no refil (folga 0,4 mm),
     // senão eram quatro paredes à vista; sem o fundo grosso extra do SAN (a casca já tem o piso da cavidade).
     Object.assign(fr, { vol: false, liq: false, bpesc: false, casca: true, apoio: false, fundoGrosso: false,
-      incomRefillCavity: { W: r1(rw + 0.4), D: r1(rd + 0.4), floor: r2(floor * 0.65), rBot: rb, ...side } });
+      incomRefillCavity: { W: r1(rw + 0.4), D: r1(rd + 0.4), floor: r2(roundK ? floor - 0.4 : floor * 0.65), rBot: r1(roundK ? rb + 0.2 : rb), ...side } }); // cl60 (Dispensing 15 conta-gotas: "refil está acabando antes do fundo"): na cápsula de fundo curvo a cavidade acompanha o refil até embaixo
     const refill = P('Refil PET', rw, rd, hr, { ...clear, ...shape, h: hr, vol: true, casca: true, apoio: false, // conteúdo no refil (cheio, tom de base)
       liq: true, liqType: 'cremoso', liqLevel: 94, liqColor: corDe(BASE_CORES, r.n),
       gap: r2(floor - fr.h), rBot: rb, rTop: 0.5, incomRefillCavity: { W: r1(rw - 2 * wall), D: r1(rd - 2 * wall), floor: wall, rBot: Math.max(0, rb - wall), ...side } });

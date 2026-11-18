@@ -1,3 +1,7 @@
+# Atualização Claude — 18/11/2026, cl61
+
+Conta-gotas: borracha em sino com respiro no pé (todos de bulbo), botão com topo em domo (Flacon Botão, Julie), ombros/fundos dos Flacon 15/30 Bulbo, refil do Dispensing 15/30 até o fundo da cavidade, spray dos Deluxe reproporcionado pela foto (mais baixo e encorpado). Os 10 itens marcados "feito" na revisão. Próximo carimbo: cl62.
+
 # Atualização Claude — 18/11/2026, cl60
 
 Case (todos): dente da tampa nas pontas da dobradiça (parede lateral desce em volta do eixo, fechando o nó da base por fora) e sem o apoio em bloco da cdx29 (a dona disse que não existe). Próximo carimbo: cl61. Macaroon cdx33 segue aguardando a dona; Moon/Classic aprovados intocados. PDF: a dona disse que não precisa gerar.
