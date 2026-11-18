@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION, ADDITION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-18.cl97';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-18.cl98';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -707,7 +707,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-18.cl97';
+const BUILD = '2026-11-18.cl98';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -7129,7 +7129,20 @@ function compactParts(product, L, S0) {
         if (!THUMB_LITE) { const ni = x => { const g = x.index ? x.toNonIndexed() : x; for (const k in g.attributes) if (k !== 'position' && k !== 'normal') g.deleteAttribute(k); return g; };
           const cutB = ni(new RoundedBoxGeometry(Lb + 2 * gp, hb + gp + 2, t + 2.4 + gp + vao, 2, 0.3).translate(cx, y0 - hb - gp + (hb + gp + 2) / 2, z - 2 + (t + 2.4 + gp + vao) / 2));
           const cutT = ni(new RoundedBoxGeometry(Lb + 2 * gp, hu + gp + 1, t + 2.4, 2, 0.3).translate(cx, y0 - 1 + (hu + gp + 1) / 2, z - 2 + (t + 2.4) / 2));
-          cutT.dispose(); [[bObjs[0], cutB]].forEach(([o, cut]) => { const [outer, inner] = cutHole(o.geometry, cut); cut.dispose();
+          // cl98 (dona: "a moon deck tá com sobreposição na dobradiça, acho que tem que ter uma área livre"): o eixo fica baixo e recuado, e ao abrir
+          // a borda de trás da tampa varre a quina de trás da peça de baixo — rebaixo em arco (setor em volta do eixo, atrás dele e abaixo da
+          // divisão) ao longo das costas. Só nos redondos (Moon); o Frame aprovado não muda.
+          const cuts = [[bObjs[0], cutB]];
+          if (!nest && !(m.n > 2)) { const R = Math.hypot(y0 - axis.y, axis.z - z) + 0.35, yTopR = y0 + 0.05, sh = new THREE.Shape(), A = [];
+            const aS = Math.PI - Math.asin(Math.min(1, (yTopR - axis.y) / R)), aE = Math.atan2(y0 - axis.y, z - axis.z) + (Math.max(m.abreAberto ?? 105, 105) + 6) * Math.PI / 180;
+            // só o caminho da quina de trás da tampa: do ponto onde o arco cruza a divisão até onde ela para aberta
+            for (let k = 0; k <= 20; k++) { const a = aS + (aE - aS) * k / 20; A.push([axis.z + Math.cos(a) * R, axis.y + Math.sin(a) * R]); }
+            sh.moveTo(-axis.z, axis.y); A.forEach(([zz, yy]) => sh.lineTo(-zz, Math.min(yy, yTopR))); sh.closePath();
+            const Lr = Math.min(W * 0.6, 2 * Math.sqrt(W * 0.9)), rel = new THREE.ExtrudeGeometry(sh, { depth: Lr, bevelEnabled: true, bevelSize: 0.2, bevelThickness: 0.4, bevelSegments: 3, curveSegments: 1 }); rel.deleteAttribute('uv'); // só no trecho do meio: nas laterais a costa redonda já fica à frente do eixo
+            // shape em (−z, y); rotateY(π/2) leva x→−z e a extrusão para x (rotação própria: normais certas)
+            rel.rotateY(Math.PI / 2); rel.translate(cx - Lr / 2, 0, 0);
+            cuts.push([bObjs[0], ni(rel)]); }
+          cutT.dispose(); cuts.forEach(([o, cut]) => { const [outer, inner] = cutHole(o.geometry, cut); cut.dispose();
             if (outer !== o.geometry) { const g = mergeGeometries([ni(outer), ni(inner)]); if (g) { o.geometry.dispose(); o.geometry = g; } } }); }
       } else if (m.hingeCase) { // Case — cl63, foto CASE-G-2 ampliada pela dona ("olha como é montada, tem alguns vãos que não temos;
         // quero que fique exatamente igual"). Cinco nós no mesmo eixo, de fora para dentro em cada lado: dente da tampa (a parede

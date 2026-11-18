@@ -1,3 +1,7 @@
+# Atualização Claude — 18/11/2026, cl98
+
+Moon (redondos): área livre em arco na quina de trás da peça de baixo, no caminho da tampa ao abrir. Frame intacto. Próximo carimbo: cl99.
+
 # Atualização Claude — 18/11/2026, cl97
 
 Macaroon: aba reta até a tampa (sem concordância que abria). Próximo carimbo: cl98.
