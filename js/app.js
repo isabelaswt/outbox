@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION, ADDITION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-18.cl64';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-18.cl65';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -707,7 +707,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-18.cl64';
+const BUILD = '2026-11-18.cl65';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -7064,11 +7064,20 @@ function compactParts(product, L, S0) {
           const g = new THREE.ExtrudeGeometry(sh, { depth: len(p, q), bevelEnabled: false, curveSegments: 24 });
           g.deleteAttribute('uv'); g.rotateY(Math.PI / 2); g.translate(Math.min(p, q), y0, hz); return g; };
         const X = f => W * f, e0 = X(c0), t0 = e0 + gv, t1 = X(c1), b0 = t1 + gs, b1 = X(c2), d0 = b1 + gs, dE = W / 2 - 0.4;
-        // cl64 (dona, mesmo recorte: "acho que não tem pino no centro"): o centro é liso — sem nó da base nem rebaixo na tampa;
-        // as linhas verticais da foto são as pontas de dentro dos nós da tampa
+        // cl64 (dona: "acho que não tem pino no centro"): sem nó nem pino no centro. cl65 ("depois dessa base, tem um vão no
+        // centro"): entre os dois nós da tampa, um canal vazio ao longo do eixo, cortado na tampa e na base
+        { const cc = W * c0 + gv - 0.4; cutsT.push(cyl(cx - cc, cx + cc, r + 0.3)); cutsB.push(cyl(cx - cc, cx + cc, r + 0.3)); }
         [-1, 1].forEach(sg => {
           const P = v => cx + sg * v;
-          add(tube(P(t0), P(t1)), mT, idx, 'dobradica', 0, 0, 0); objs.push(product.children.at(-1));
+          { // cl65 (dona: "tem uma base quadrada arredondada que segura o pino"): nó da tampa em seção quadrada de cantos
+            // arredondados em volta do eixo, com o furo redondo do pino
+            const q = r + 0.25, k = 0.55, sh = new THREE.Shape(); sh.moveTo(-q + k, -q); sh.lineTo(q - k, -q); sh.quadraticCurveTo(q, -q, q, -q + k);
+            sh.lineTo(q, q - k); sh.quadraticCurveTo(q, q, q - k, q); sh.lineTo(-q + k, q); sh.quadraticCurveTo(-q, q, -q, q - k);
+            sh.lineTo(-q, -q + k); sh.quadraticCurveTo(-q, -q, -q + k, -q);
+            const hole = new THREE.Path(); hole.absarc(0, 0, bore, 0, TAU, true); sh.holes.push(hole);
+            const g = new THREE.ExtrudeGeometry(sh, { depth: len(t0, t1), bevelEnabled: false, curveSegments: 16 });
+            g.deleteAttribute('uv'); g.rotateY(Math.PI / 2); g.translate(Math.min(P(t0), P(t1)), y0, hz);
+            add(g, mT, idx, 'dobradica', 0, 0, 0); objs.push(product.children.at(-1)); }
           { // nó da base na ponta = bloco (foto: topo plano e frente reta, à frente do eixo), costas redondas e furo redondo do pino
             const ext = 1.2, k = 0.35, sh = new THREE.Shape(); sh.moveTo(0, -r); sh.lineTo(-(r + ext) + k, -r); sh.quadraticCurveTo(-(r + ext), -r, -(r + ext), -r + k);
             sh.lineTo(-(r + ext), r - k); sh.quadraticCurveTo(-(r + ext), r, -(r + ext) + k, r); sh.lineTo(0, r); sh.absarc(0, 0, r, Math.PI / 2, -Math.PI / 2, true);
@@ -7085,7 +7094,7 @@ function compactParts(product, L, S0) {
           cutsT.push(cyl(P(t0 + 0.05), P(t1 - 0.05), bore));
           cutsT.push(cyl(P(b0 - gs / 2), P(d0 - 0.02), Math.hypot(r + 1.2, r) + 0.3)); // entalhe da tampa sobre o bloco: gira livre e deixa o vão em L
           // base: cede lugar ao nó da tampa e ao dente; furo do pino no nó da ponta
-          cutsB.push(cyl(P(t0 - gv / 2 + 0.06), P(t1 + gs / 2 - 0.02), r + 0.16));
+          cutsB.push(cyl(P(t0 - 0.2), P(t1 + gs / 2 - 0.02), Math.hypot(r + 0.25, r + 0.25) - 0.15)); // a base cede ao giro do nó quadrado
           cutsB.push(cyl(P(b0 + 0.04), P(b1 - 0.04), bore));
           cutsB.push(cyl(P(d0 - gs / 2 + 0.02), P(W / 2 + 0.3), r + 0.16));
         });

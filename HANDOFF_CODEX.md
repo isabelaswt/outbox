@@ -1,4 +1,6 @@
-# Atualização Claude — 18/11/2026, cl62–cl64
+# Atualização Claude — 18/11/2026, cl62–cl65
+
+cl65: Case — nó da tampa quadrado arredondado segurando o pino e canal vazio no centro (pedido da dona). Próximo carimbo: cl66.
 
 cl64: Case sem nó/pino no centro (pedido da dona); dobradiça só nas pontas: dente da tampa, bloco da base, vão fino, nó da tampa. Próximo carimbo: cl65.
 
