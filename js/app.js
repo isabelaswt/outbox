@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-18.cl45';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-18.cl46';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -707,7 +707,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-18.cl45';
+const BUILD = '2026-11-18.cl46';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -6510,6 +6510,16 @@ function pocketCut(outline, cx, cz, yb, yt, f, fb, up = 2) { // fb: raio do fund
   ring(f, yt + up);
   return loftPts(rings);
 }
+// Corte de anel com perfil livre (cl46, Big): profile = [[outline, o, y], …] em volta fechada; cada outline(o) devolve N pontos
+// [x, z] (mesmo N e mesmo início em todos). Serve para baixar a borda de fora deixando a quina do patamar arredondada.
+function sweepCut(profile, cx, cz) {
+  const rings = profile.map(([fn, o, y]) => fn(o).map(([x, z]) => [cx + x, y, cz + z])), R = rings.length, N = rings[0].length, P = [], I = [];
+  rings.forEach(r => r.forEach(q => P.push(q[0], q[1], q[2])));
+  for (let i = 0; i < R; i++) { const i2 = (i + 1) % R; for (let j = 0; j < N; j++) { const j2 = (j + 1) % N, a = i * N + j, b = i * N + j2, c = i2 * N + j, d = i2 * N + j2; I.push(a, c, b, b, c, d); } }
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(P, 3)); g.setIndex(I);
+  if (signedVolume(g, true) < 0) { for (let i = 0; i < I.length; i += 3) [I[i + 1], I[i + 2]] = [I[i + 2], I[i + 1]]; g.setIndex(I); }
+  g.computeVertexNormals(); return g;
+}
 // Recorte de frente no contorno da aba (cantos de baixo arredondados), de z0 a z1: Frame (aprovação cl40)
 function frontTabCut(w, yb, yt, z0, z1, rc) {
   const half = w / 2; rc = Math.max(0.2, Math.min(rc, half - 0.05, (yt - yb) - 0.05)); const sh = new THREE.Shape();
@@ -6680,8 +6690,13 @@ function compactParts(product, L, S0) {
           const g = new THREE.ExtrudeGeometry(sh, { depth, bevelEnabled: false, curveSegments: 32 });
           g.deleteAttribute('uv'); g.rotateX(-Math.PI / 2); g.translate(cx, bottom, cz); return g;
         }, iw = w - 2 * c.inset, id = d - 2 * c.inset;
-        edgeCut = shapeRing(w + 10, d + 10, iw, id, c.h + 2, top - c.h);
-        grooveCut = shapeRing(iw + 2 * c.w, id + 2 * c.w, iw, id, c.h * 1.5 + 2, top - c.h * 1.5);
+        // cl46 (Big 9: "degrau é muito maior… fillet nas bordas"): a borda de fora desce com a quina do patamar arredondada
+        const N = 192, seO = (a, b) => o => Array.from({ length: N }, (_, i) => { const [x, y] = sp(a + o, b + o, m.n, i / N * TAU, m.planBow); return [x, -y]; });
+        const inO = seO(iw / 2, id / 2), outO = seO((w + 10) / 2, (d + 10) / 2), f = Math.min(1, c.h * 0.6), prof = [[inO, 0, top - c.h]];
+        for (let i = 0; i <= 8; i++) { const a = i / 8 * Math.PI / 2; prof.push([inO, -f + f * Math.cos(a), top - f + f * Math.sin(a)]); }
+        prof.push([inO, -f, top + 2], [outO, 0, top + 2], [outO, 0, top - c.h]);
+        edgeCut = sweepCut(prof, cx, cz);
+        grooveCut = shapeRing(iw + 2 * c.w, id + 2 * c.w, iw, id, c.h + 0.5 + 2, top - c.h - 0.5);
       }
       const allWells = wells.length > 1 ? mergeGeometries(wells.map(ni)) : wells[0];
       if (!THUMB_LITE) for (const cut of [allWells, stepCut, recessCut, edgeCut, grooveCut].filter(Boolean)) objs.forEach(o => { const [outer, inner] = cutHole(o.geometry, cut); if (outer === o.geometry) return;
@@ -9841,11 +9856,13 @@ function incomProduct(r) {
       const wIn = inner * 2 * (r.t === 'dsq' ? 0.62 : 0.56);
       // conta-gotas na linha Conta-gotas; spray nos Deluxes; pump dosadora nos Dispensadores
       // dispensador: válvula pump dosadora (a do catálogo e das fotos), não spray nem pump de bico pato
-      const v = r.c === 'Conta-gotas' ? fitValveIn('contaGotas', cap, Math.min(22, wIn)) : r.c === 'Deluxes' ? fitValveIn('spray', cap, Math.min(26, wIn)) : fitValveIn('pumpDosadora', cap, Math.min(26.3, wIn));
+      // aprovação cl46: o Amsterdam Deluxe 100 (também listado em Conta-gotas) é spray ou dosadora, não conta-gotas — vai como os Deluxes
+      const dlx = r.c === 'Deluxes' || /^Amsterdam Deluxe/.test(r.n);
+      const v = dlx ? fitValveIn('spray', cap, Math.min(26, wIn)) : r.c === 'Conta-gotas' ? fitValveIn('contaGotas', cap, Math.min(22, wIn)) : fitValveIn('pumpDosadora', cap, Math.min(26.3, wIn));
       ms = [P('Frasco', W, D, H * f0, { ...sh, vol: true, rBot: rb, rTop: 1, ...(r.t === 'cgt' ? { taperB: 86 } : {}), _t: [0, f0] }), P('Anel', W, D, H * (f1 - f0), { ...sh, _t: [f0, f1] }), v, cap];
-      if (r.c === 'Dispensadores' || r.c === 'Deluxes') {
+      if (r.c === 'Dispensadores' || dlx) {
         // P46–54: 20-410; Deluxes 100: 20-410, 200: 24-410. Não inclui On-Off/Twist.
-        const standard = r.c === 'Deluxes' && /200$/.test(r.n) ? '24/410' : '20/410';
+        const standard = dlx && /200$/.test(r.n) ? '24/410' : '20/410';
         const neck = NECK(standard, { exposedNeck: true, embed: 0, neckFillet: 0 });
         const descriptor = { W: neck.W, h: neck.h, pitch: neck.pitch, turns: neck.turns, threadD: neck.threadD, ringH: neck.ringH };
         // Anel e saia da válvula cobrem juntos a boca; passagem contínua sem mudar a altura externa.
@@ -10179,7 +10196,7 @@ function incomProduct(r) {
         // Fotos da dona: aba larga e reta; abertura baixa da mesma largura. Dimensões internas estimadas.
         t.snapFlat = true; t.snapWidth = r1(W * (/^Flat/.test(r.n) ? 0.42 : 0.29));
         Object.assign(b.dedo, { w: r1(t.snapWidth + 0.2), h: 3.2, d: 1 });
-        if (/^Big (4|9)$/.test(r.n)) { delete b.rebaixo; b.canal = { inset: 3.2, w: 0.6, h: 0.6 };
+        if (/^Big (4|9)$/.test(r.n)) { delete b.rebaixo; b.canal = { inset: 3.2, w: 0.6, h: 1.3 }; // cl46 (Big 9): degrau bem maior — borda de fora mais baixa (era 0,6)
           // Aprovação cl37 (fotos BIG-4): produto quase no nível da divisória e duas dobradiças, junto aos cantos
           if (b.godes) b.godes = { ...b.godes, fundo: 2.1 }; t.hingePair = { x: 0.4, w: 0.1 }; }
         // Págs.28–33: encaixes estreitos junto ao eixo; proporções estimadas na foto
@@ -10220,7 +10237,7 @@ function incomProduct(r) {
     // Julie p43: frasco PE opaco na foto e na lista de materiais; demais PET/SAN preservados.
     if (r.c === 'Conta-gotas' && r.n === 'Julie' && fr) Object.assign(fr, { own: true, color: BEIGE, finish: 'fosco' });
     // Deluxes, págs. 57–62: saia lisa na foto principal e nos detalhes spray/dosadora.
-    if (r.c === 'Deluxes') ms.forEach(m => { if (m.kind === 'spray') Object.assign(m, { ridges: 0, skirtPct: 100, bandInset: 0 }); });
+    if (r.c === 'Deluxes' || /^Amsterdam Deluxe/.test(r.n)) ms.forEach(m => { if (m.kind === 'spray') Object.assign(m, { ridges: 0, skirtPct: 100, bandInset: 0 }); });
     const c = ms.find(m => m.name === 'Sobretampa');
     if (c && r.k === 'incomp_dispensadores_dispensing_cube') Object.assign(c, { own: false, casca: true, capa: 'vira', oco: true });
     if (c && r.k === 'incomp_dispensadores_dispensing_eliptico') Object.assign(c, { ...clear, casca: true, capa: 'vira' }); }
