@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION, ADDITION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-18.cl81';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-18.cl82';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -707,7 +707,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-18.cl81';
+const BUILD = '2026-11-18.cl82';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -7131,16 +7131,18 @@ function compactParts(product, L, S0) {
         // ("a rampa que desce e sobe"). O eixo corre escondido dentro do ressalto.
         const e = Math.max(4, W * 0.05), a = W / 2 - e, hn = clamp(m.h * 0.45, 1.8, 2 * r + 1), dz = 2 * r + 1, ch = Math.min(0.8, hn * 0.4), gp = 0.25;
         const prof = (A, yb, yt, c) => { const sh = new THREE.Shape(); sh.moveTo(-A, yb); sh.lineTo(A, yb); sh.lineTo(A, yt - c); sh.lineTo(A - c, yt); sh.lineTo(-(A - c), yt); sh.lineTo(-A, yt - c); sh.closePath(); return sh; };
-        const cn = base.m.canal, yb = cn ? y0 - cn.h - 0.1 : y0 - 0.6; // cl81: com o degrau maior (Big), o ressalto nasce na borda de fora rebaixada
-        const ridge = new THREE.ExtrudeGeometry(prof(a - gp, yb, y0 + hn - gp, ch), { depth: dz - gp - 0.3, bevelEnabled: true, bevelThickness: 0.15, bevelSize: 0.15, bevelSegments: 2 });
+        const cn = base.m.canal, yL = cn ? y0 - cn.h : y0, yb = cn ? yL - 0.1 : y0 - 0.6; // cl81: com o degrau maior (Big), o ressalto nasce na borda de fora rebaixada
+        // cl82 (dona: "lateral afastada, começa no início da base, não tem caixa embaixo"): nas Big a tampa começa na borda de fora (saia),
+        // então a dobradiça inteira desce para lá (yL) — com o eixo no alto, a saia girava para trás e virava uma caixa sob a tampa
+        const ridge = new THREE.ExtrudeGeometry(prof(a - gp, yb, yL + hn - gp, ch), { depth: dz - gp - 0.3, bevelEnabled: true, bevelThickness: 0.15, bevelSize: 0.15, bevelSegments: 2 });
         ridge.deleteAttribute('uv'); ridge.translate(cx, 0, z + 0.15); add(ridge, mB, base.idx, 'dobradica', 0, 0, 0);
-        axis = { y: y0 + (hn - gp) / 2, z: z + dz / 2 };
+        axis = { y: yL + (hn - gp) / 2, z: z + dz / 2 };
         // cl81 (dona: "dobradiça não chegou, ela não aparece", foto ampliada): logo depois do degrau de cada ponta aparece a peça da
         // dobradiça, cinza clara, cruzando a divisão — metade na base (fica) e metade na tampa (gira com ela), saliente na face de dentro
         const kw = clamp(W * 0.028, 1.8, 3), kx = a - gp - Math.max(2.5, W * 0.038) - kw / 2, kd = 0.9, kz = z + dz - 0.15 - kd / 2 + 0.45;
         [-kx, kx].forEach(sx => {
-          add(new RoundedBoxGeometry(kw, axis.y - (y0 - 1.6), kd, 2, 0.25), hingeMat, base.idx, 'dobradica_peca', cx + sx, (axis.y + y0 - 1.6) / 2, kz);
-          add(new RoundedBoxGeometry(kw, y0 + hn + 1.2 - axis.y - 0.2, kd, 2, 0.25), hingeMat, idx, 'dobradica_peca', cx + sx, (y0 + hn + 1.2 + axis.y + 0.2) / 2, kz); objs.push(product.children.at(-1));
+          add(new RoundedBoxGeometry(kw, axis.y - (yL - 1.6), kd, 2, 0.25), hingeMat, base.idx, 'dobradica_peca', cx + sx, (axis.y + yL - 1.6) / 2, kz);
+          add(new RoundedBoxGeometry(kw, yL + hn + 1.2 - axis.y - 0.2, kd, 2, 0.25), hingeMat, idx, 'dobradica_peca', cx + sx, (yL + hn + 1.2 + axis.y + 0.2) / 2, kz); objs.push(product.children.at(-1));
         });
         // cl81 (dona: "altura da paleta está diferente", foto BIG-4): a bandeja fica bem acima da borda de fora; a tampa desce numa
         // saia até essa borda, contornando a bandeja com folga, e fecha sem fresta
@@ -7151,7 +7153,7 @@ function compactParts(product, L, S0) {
           const g = new THREE.ExtrudeGeometry(sh, { depth: cn.h + 0.3, bevelEnabled: false, curveSegments: 32 }); g.deleteAttribute('uv'); g.rotateX(-Math.PI / 2);
           g.translate(cx, y0 - cn.h, bcz); add(g, mT, idx, 'saia', 0, 0, 0); saia = product.children.at(-1); objs.push(saia); }
         if (!THUMB_LITE) { const ni = x => { const g = x.index ? x.toNonIndexed() : x; for (const k in g.attributes) if (k !== 'position' && k !== 'normal') g.deleteAttribute(k); return g; };
-          const cut = new THREE.ExtrudeGeometry(prof(a, cn ? yb - 0.5 : y0 - 1, y0 + hn, ch), { depth: dz + 1, bevelEnabled: false }); cut.translate(cx, 0, z - 1);
+          const cut = new THREE.ExtrudeGeometry(prof(a, cn ? yb - 0.5 : y0 - 1, yL + hn, ch), { depth: dz + 1, bevelEnabled: false }); cut.translate(cx, 0, z - 1);
           [objs[0], saia].filter(Boolean).forEach(o => { const [outer, inner] = cutHole(o.geometry, cut);
             if (outer !== o.geometry) { const g = mergeGeometries([ni(outer), ni(inner)]); if (g) { o.geometry.dispose(); o.geometry = g; } } }); cut.dispose(); }
       } else

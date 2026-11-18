@@ -1,3 +1,7 @@
+# Atualização Claude — 18/11/2026, cl82
+
+Big 4/9: dobradiça desce para a borda de fora (a tampa aberta começa na borda de trás, sem caixa embaixo). Próximo carimbo: cl83.
+
 # Atualização Claude — 18/11/2026, cl81
 
 Moon Deck: andar do meio encaixado volta ao eixo da cl77 (não afunda na base). Big/Flat: peça da dobradiça visível nas pontas. Big 4/9: degrau 2,6 e tampa com saia. Próximo carimbo: cl82.
