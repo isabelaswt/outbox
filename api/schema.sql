@@ -81,3 +81,11 @@ CREATE TABLE IF NOT EXISTS upload_chunks (
   data MEDIUMBLOB NOT NULL,
   PRIMARY KEY (file_id, idx)
 ) ENGINE=InnoDB;
+
+-- Aprovação Incom (revisao.html): situação e conversa de cada modelo Incom (foto real × render).
+CREATE TABLE IF NOT EXISTS incom_revisao (
+  k VARCHAR(190) PRIMARY KEY,
+  status VARCHAR(12) NOT NULL DEFAULT '',
+  thread MEDIUMTEXT NOT NULL,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
