@@ -181,6 +181,7 @@ Pendências conhecidas (precisam de dado ou de decisão; não invente):
 
 **Registro** (o mais novo em cima):
 
+- 2026-11-18, Claude, `2026-11-18.cl95`: **Macaroon** ("parece que não está tocando" / "tocando na tampa"): recuo do eixo = profundidade (za = costas + max(OCO.wall, dn) + tb/2) — a 90° a borda da tampa encosta nas costas da base; o pescoço da aba sobe até o teto de dentro da tampa (medido na malha), em vez de terminar no vazio. Rebaixo para 0,6 mm antes da bandeja.
 - 2026-11-18, Claude, `2026-11-18.cl94`: **Macaroon** — (1) "acho que precisa descer mais" / "é uns 3 mm": eixo e aba 3 mm abaixo da divisão (`dn` 3). (2) "aqui não tem emenda, é uma coisa só": aba e pescoço numa peça reta só. (3) "ele fica dentro da tampa, não na borda": a aba sai por dentro da parede de trás da tampa (za = costas + OCO.wall + tb/2), fenda interna; o rebaixo para 1,4 mm antes da bandeja do godê (comprimento da aba limitado).
 - 2026-11-18, Claude, `2026-11-18.cl93`: **Macaroon** ("é isso, mas ele fica colocado mais abaixo"): eixo e aba 1 mm mais fundos (`dn`), com pescoço, fenda e rebaixo acompanhando.
 - 2026-11-18, Claude, `2026-11-18.cl92`: **Macaroon** — (1) "sim, volta" (moldura): U em volta do rebaixo, discreto (topo 0,3 abaixo da divisão), pontas de trás terminando antes das costas. (2) "quando o produto fica a 90° a aba da dobradiça fica na horizontal": Macaroon abre por padrão a 90° (`abreAberto` 90) — a aba fica deitada no rebaixo, como nas fotos.

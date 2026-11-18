@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION, ADDITION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-18.cl94';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-18.cl95';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -707,7 +707,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-18.cl94';
+const BUILD = '2026-11-18.cl95';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -6968,14 +6968,17 @@ function compactParts(product, L, S0) {
             const o = bObjs[0]; o.updateMatrix(); const p = o.geometry.attributes.position, v = new THREE.Vector3(); let zm = Infinity;
             for (let i = 0; i < p.count; i++) { v.fromBufferAttribute(p, i).applyMatrix4(o.matrix); if (Math.abs(v.x - cx) < 1.5 && v.y > y0 - 1.6 && v.y < y0 - 0.4) zm = Math.min(zm, v.z); }
             return Number.isFinite(zm) ? zm : bb.min.z; })(),
-          dn = 3.0, Lk = Math.max(3, Math.min(leafW * 0.85, base.m.h - 6)), /* cl94 (dona: "acho que precisa descer mais", "é uns 3 mm"): 1 → 3 mm */ ya = yT - tb / 2 - dn, za = zb + OCO.wall + tb / 2 + 0.1; // cl94 (dona: "ele fica dentro da tampa, não na borda"): a aba sai por dentro da parede de trás da tampa // cl93 (dona: "é isso, mas ele fica colocado mais abaixo"): eixo e aba 1 mm mais fundos
+          dn = 3.0, Lk = Math.max(3, Math.min(leafW * 0.85, base.m.h - 6)), /* cl94 (dona: "acho que precisa descer mais", "é uns 3 mm"): 1 → 3 mm */ ya = yT - tb / 2 - dn, za = zb + Math.max(OCO.wall, dn) + tb / 2 + 0.05; // cl94 (dona: "ele fica dentro da tampa, não na borda"): a aba sai por dentro da parede de trás da tampa; cl95 ("parece que não está tocando"): recuo = profundidade do eixo — a 90° a borda da tampa encosta nas costas da base // cl93 (dona: "é isso, mas ele fica colocado mais abaixo"): eixo e aba 1 mm mais fundos
         // cl94: o rebaixo para antes da bandeja do godê (com a aba recuada para dentro, ele chegava a abrir até o godê)
         { const tray = bObjs.find(o => /_(bandeja|gode)$/.test(o.name)); if (tray) { tray.updateMatrix(); tray.geometry.computeBoundingBox(); const tb2 = tray.geometry.boundingBox.clone().applyMatrix4(tray.matrix);
-          Lk = Math.max(2.4, Math.min(Lk, tb2.min.z - za - gp - 1.4)); } }
+          Lk = Math.max(2.4, Math.min(Lk, tb2.min.z - za - gp - 0.6)); } }
         axis = { y: ya, z: za };
         // peça (coordenadas da tampa fechada): em pé, de ya (ponta redonda no eixo) descendo Lk, face de fora rente às costas
         // cl94: aba e pescoço numa peça reta só, da parede da tampa (yT+1,3) até a ponta da aba — sem emenda entre os dois
-        const yTop = yT + 1.3, yBot = ya - Lk, blk = new RoundedBoxGeometry(leafW, yTop - yBot, tb, 3, Math.min(0.75, tb / 2 - 0.02));
+        const yTop = (() => { // cl95 (dona: "tocando na tampa"): o pescoço sobe até o teto de dentro da tampa naquele ponto (antes terminava no vazio)
+            const o = objs[0]; o.updateMatrix(); const p = o.geometry.attributes.position, v = new THREE.Vector3(); let ym = Infinity;
+            for (let i = 0; i < p.count; i++) { v.fromBufferAttribute(p, i).applyMatrix4(o.matrix); if (Math.abs(v.x - cx) < leafW / 2 && Math.abs(v.z - za) < tb / 2 + 0.3 && v.y > yT + 0.2) ym = Math.min(ym, v.y); }
+            return Number.isFinite(ym) ? ym + 0.5 : yT + 1.3; })(), yBot = ya - Lk, blk = new RoundedBoxGeometry(leafW, yTop - yBot, tb, 3, Math.min(0.75, tb / 2 - 0.02));
         blk.translate(cx, (yTop + yBot) / 2, za);
         // emenda com a parede de trás da tampa: um trecho da própria parede, da divisão até um pouco acima, para a peça sair dela
         const lidAdd = [blk];

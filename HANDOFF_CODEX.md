@@ -1,3 +1,7 @@
+# Atualização Claude — 18/11/2026, cl95
+
+Macaroon: tampa encosta na base a 90° e a aba nasce do teto de dentro da tampa. Próximo carimbo: cl96.
+
 # Atualização Claude — 18/11/2026, cl94
 
 Macaroon: aba 3 mm abaixo da divisão, peça reta única, saindo por dentro da tampa; rebaixo termina antes do godê. Próximo carimbo: cl95.
