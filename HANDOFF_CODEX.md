@@ -1,4 +1,6 @@
-# Atualização Claude — 18/11/2026, cl105
+# Atualização Claude — 18/11/2026, cl106
+
+- **cl106** — Flat (todas): dobradiça macho e fêmea no lugar do ressalto da cl58. A borda de trás da base tem POR DENTRO um recuo em trapézio (--\\___/--: rampa, fundo reto, rampa; W·0,65 em cima, rampas de max(2,4; W·0,035), fundo ~0,3·h da base) e a tampa uma língua do mesmo desenho (folga 0,22) que vai até a face de dentro da borda (medida na malha). Dois pinos r 0,3 no alto das rampas, rente à divisão (eixo yL−0,45, 1,75 mm para dentro), entrando nas pontas da base. O recuo começa depois do arredondado da quina de trás: fechada, as costas ficam lisas (dona: "atrás é reto, não tem desenho"); aberta, a língua sobe e o desenho aparece de frente. Big 4/9 seguem como na cl103.
 
 - **cl105** — revisao.html mais compacta para a foto da Incom crescer: barra de decisão com max-height 26vh (era 42vh), nome e meta numa linha, botões menores, comentário de uma linha com Enviar ao lado (a dica do ⌘+Enter foi para o placeholder), miniaturas 46 px.
 

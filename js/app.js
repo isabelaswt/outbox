@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION, ADDITION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-18.cl105';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-18.cl106';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -707,7 +707,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-18.cl105';
+const BUILD = '2026-11-18.cl106';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -7260,7 +7260,22 @@ function compactParts(product, L, S0) {
           tongue = [cylX(2 * (half - gq), rr), prismX(2 * (half - gq), ya, yTopT, za - rr, za + rr, 0.3)];
           femea = [cylX(2 * half, rr + gq), prismX(2 * half, ya, yL + 1.5, z - 1.5, za + rr + gq, 0.25)];
           const pin = new THREE.CylinderGeometry(0.3, 0.3, 2 * half + 4, 20); pin.rotateZ(Math.PI / 2); pin.translate(cx, ya, za); add(pin, mirrorMat, base.idx, 'pino', 0, 0, 0); }
-        const ridge = cn ? null : new THREE.ExtrudeGeometry(prof(a - gp, yb, yL + hn - gp, ch), { depth: dz - gp - 0.3, bevelEnabled: true, bevelThickness: 0.15, bevelSize: 0.15, bevelSegments: 2 });
+        else { // cl106 (dona, fotos de Flat aberta de frente: "faça o mesmo mecanismo que chegamos no Big 4", "é um macho e fêmea mas o meio tem
+          // uma diferença, são duas rampas que se encontram", "--\____/--", "na parte alta da rampa ficam os pinos", "atrás é reto, não tem desenho"):
+          // a borda de trás da BASE tem por dentro um recuo em trapézio (rampa, fundo reto, rampa) e a TAMPA uma língua do mesmo desenho que
+          // desce nele. Os dois pinos ficam no alto das rampas, rente à divisão, entrando nas pontas da base. Por trás a parede da base fica
+          // inteira (o recuo não vaza): fechada, as costas são retas; aberta, a língua sobe e o desenho aparece de frente.
+          const half = W * 0.325, gq = 0.22, A = half - gq, D = clamp(base.m.h * 0.3, 1.6, 2.6), dr = Math.max(2.4, W * 0.035), za = z + 1.75 /* o recuo começa depois do arredondado da quina de trás (~1 mm): por trás nada aparece */, ya = yL - 0.45, yTopT = yL + 0.6;
+          axis = { y: ya, z: za };
+          let zIn = z + 4; { const bo = bObjs[0], p = bo.geometry.attributes.position, v = new THREE.Vector3(); bo.updateMatrix(); let zm = Infinity;
+            for (let k = 0; k < p.count; k++) { v.fromBufferAttribute(p, k).applyMatrix4(bo.matrix); if (Math.abs(v.x - cx) < A - dr && v.y > yL - 0.6 && v.y < yL + 0.01 && v.z > z + 2 && v.z < z + 9) zm = Math.min(zm, v.z); }
+            if (zm < Infinity) zIn = zm; }
+          const trap = (a2, yB, yT, z0b, z1b, bv) => { const sh = new THREE.Shape(); sh.moveTo(-a2, yT); sh.lineTo(-a2, yL); sh.lineTo(-a2 + dr, yB); sh.lineTo(a2 - dr, yB); sh.lineTo(a2, yL); sh.lineTo(a2, yT); sh.closePath();
+            const g = new THREE.ExtrudeGeometry(sh, { depth: z1b - z0b - 2 * bv, bevelEnabled: bv > 0, bevelThickness: bv, bevelSize: bv, bevelSegments: 2 }); g.deleteAttribute('uv'); g.translate(cx, 0, z0b + bv); return g; };
+          tongue = [trap(A, yL - D, yTopT, za - 0.4, zIn - gq, 0.12)];
+          femea = [trap(A + gq, yL - D - gq, yL + 1.5, za - 0.4 - gq, zIn + 1.5, 0)];
+          [-1, 1].forEach(sg => { const pin = new THREE.CylinderGeometry(0.3, 0.3, 6, 20); pin.rotateZ(Math.PI / 2); pin.translate(cx + sg * A, ya, za); add(pin, mirrorMat, base.idx, 'pino', 0, 0, 0); }); }
+        const ridge = null;
         if (ridge) { ridge.deleteAttribute('uv'); ridge.translate(cx, 0, z + 0.15); add(ridge, mB, base.idx, 'dobradica', 0, 0, 0);
           axis = { y: yL + (hn - gp) / 2, z: z + dz / 2 }; }
         // cl81 (dona: "altura da paleta está diferente", foto BIG-4): a bandeja fica bem acima da borda de fora; a tampa desce numa
@@ -7285,7 +7300,7 @@ function compactParts(product, L, S0) {
             body.geometry.dispose(); body.geometry = gg; g.dispose(); ok = true;
           } catch (e) { console.warn('Saia da tampa (Big):', e); body.updateMatrix(); g.applyMatrix4(body.matrix); }
           if (!ok) { add(g, mT, idx, 'saia', 0, 0, 0); saia = product.children.at(-1); objs.push(saia); } }
-        if (cn && !THUMB_LITE) { const ni = x => { const g = x.index ? x.toNonIndexed() : x; for (const k in g.attributes) if (k !== 'position' && k !== 'normal') g.deleteAttribute(k); return g; };
+        if (!THUMB_LITE) { const ni = x => { const g = x.index ? x.toNonIndexed() : x; for (const k in g.attributes) if (k !== 'position' && k !== 'normal') g.deleteAttribute(k); return g; };
           femea.forEach(cut => { const [outer, inner] = cutHole(bObjs[0].geometry, ni(cut)); cut.dispose(); if (outer !== bObjs[0].geometry) { const g = mergeGeometries([ni(outer), ni(inner)]); if (g) { bObjs[0].geometry.dispose(); bObjs[0].geometry = g; } } });
           const body = objs[0]; let ok = false;
           try { body.updateMatrix(); const inv = body.matrix.clone().invert(), ev = new Evaluator(); ev.attributes = ['position', 'normal']; ev.useGroups = false; let out = flatPN(body.geometry);
@@ -7293,8 +7308,8 @@ function compactParts(product, L, S0) {
             out.userData = { ...body.geometry.userData }; body.geometry.dispose(); body.geometry = out; ok = true;
           } catch (e) { console.warn('Língua da dobradiça (Big):', e); body.updateMatrix(); tongue.forEach(g => g.applyMatrix4(body.matrix)); }
           if (!ok) tongue.forEach(g => { add(g, mT, idx, 'dobradica', 0, 0, 0); objs.push(product.children.at(-1)); }); else tongue.forEach(g => g.dispose()); }
-        else if (cn) tongue.forEach(g => { add(g, mT, idx, 'dobradica', 0, 0, 0); objs.push(product.children.at(-1)); });
-        if (!cn && !THUMB_LITE) { const ni = x => { const g = x.index ? x.toNonIndexed() : x; for (const k in g.attributes) if (k !== 'position' && k !== 'normal') g.deleteAttribute(k); return g; };
+        else tongue.forEach(g => { add(g, mT, idx, 'dobradica', 0, 0, 0); objs.push(product.children.at(-1)); });
+        if (false) { const ni = x => { const g = x.index ? x.toNonIndexed() : x; for (const k in g.attributes) if (k !== 'position' && k !== 'normal') g.deleteAttribute(k); return g; };
           const cut = new THREE.ExtrudeGeometry(prof(a, cn ? yb - 0.5 : y0 - 1, yL + hn, ch), { depth: dz + 1, bevelEnabled: false }); cut.translate(cx, 0, z - 1);
           [objs[0], saia].filter(Boolean).forEach(o => { const [outer, inner] = cutHole(o.geometry, cut);
             if (outer !== o.geometry) { const g = mergeGeometries([ni(outer), ni(inner)]); if (g) { o.geometry.dispose(); o.geometry = g; } } }); cut.dispose(); }
