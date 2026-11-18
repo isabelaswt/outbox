@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION, ADDITION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-18.cl93';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-18.cl94';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -707,7 +707,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-18.cl93';
+const BUILD = '2026-11-18.cl94';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -6963,19 +6963,22 @@ function compactParts(product, L, S0) {
         // ligado à tampa, não são dois itens separados", "olha como faz parte da tampa"): a peça é a CONTINUAÇÃO DA PAREDE DE TRÁS DA TAMPA.
         // Fechada, desce por uma fenda na parede de trás da base (rente às costas); o eixo fica no alto dela, junto da divisão. Aberta, gira
         // para a frente e fica deitada num rebaixo em cima da borda da base — vista de cima (foto) parece em pé, na inclinação da tampa.
-        const hk = m.hingeLeaf, Lb = Math.min(W * hk.w, 13), leafW = Lb * 0.75, gp = 0.22, tb = 1.6, yT = y0,
+        let hk = m.hingeLeaf, Lb = Math.min(W * hk.w, 13), leafW = Lb * 0.75, gp = 0.22, tb = 1.6, yT = y0,
           zb = (() => { // costas da base na altura da junção (o Macaroon é abaulado)
             const o = bObjs[0]; o.updateMatrix(); const p = o.geometry.attributes.position, v = new THREE.Vector3(); let zm = Infinity;
             for (let i = 0; i < p.count; i++) { v.fromBufferAttribute(p, i).applyMatrix4(o.matrix); if (Math.abs(v.x - cx) < 1.5 && v.y > y0 - 1.6 && v.y < y0 - 0.4) zm = Math.min(zm, v.z); }
             return Number.isFinite(zm) ? zm : bb.min.z; })(),
-          dn = 1.0, Lk = Math.max(3, Math.min(leafW * 0.85, base.m.h - 4)), ya = yT - tb / 2 - dn, za = zb + tb / 2; // cl93 (dona: "é isso, mas ele fica colocado mais abaixo"): eixo e aba 1 mm mais fundos
+          dn = 3.0, Lk = Math.max(3, Math.min(leafW * 0.85, base.m.h - 6)), /* cl94 (dona: "acho que precisa descer mais", "é uns 3 mm"): 1 → 3 mm */ ya = yT - tb / 2 - dn, za = zb + OCO.wall + tb / 2 + 0.1; // cl94 (dona: "ele fica dentro da tampa, não na borda"): a aba sai por dentro da parede de trás da tampa // cl93 (dona: "é isso, mas ele fica colocado mais abaixo"): eixo e aba 1 mm mais fundos
+        // cl94: o rebaixo para antes da bandeja do godê (com a aba recuada para dentro, ele chegava a abrir até o godê)
+        { const tray = bObjs.find(o => /_(bandeja|gode)$/.test(o.name)); if (tray) { tray.updateMatrix(); tray.geometry.computeBoundingBox(); const tb2 = tray.geometry.boundingBox.clone().applyMatrix4(tray.matrix);
+          Lk = Math.max(2.4, Math.min(Lk, tb2.min.z - za - gp - 1.4)); } }
         axis = { y: ya, z: za };
         // peça (coordenadas da tampa fechada): em pé, de ya (ponta redonda no eixo) descendo Lk, face de fora rente às costas
-        const blk = new RoundedBoxGeometry(leafW, Lk + tb / 2, tb, 3, Math.min(0.75, tb / 2 - 0.02));
-        blk.translate(cx, ya + tb / 2 - (Lk + tb / 2) / 2, za);
+        // cl94: aba e pescoço numa peça reta só, da parede da tampa (yT+1,3) até a ponta da aba — sem emenda entre os dois
+        const yTop = yT + 1.3, yBot = ya - Lk, blk = new RoundedBoxGeometry(leafW, yTop - yBot, tb, 3, Math.min(0.75, tb / 2 - 0.02));
+        blk.translate(cx, (yTop + yBot) / 2, za);
         // emenda com a parede de trás da tampa: um trecho da própria parede, da divisão até um pouco acima, para a peça sair dela
-        const neck = new RoundedBoxGeometry(leafW, 1.6 + dn, tb, 3, Math.min(0.6, tb / 2 - 0.02)); neck.translate(cx, yT + 0.5 - dn / 2, za);
-        const lidAdd = [blk, neck];
+        const lidAdd = [blk];
         { const body = objs[0]; let ok = false;
           if (!THUMB_LITE) try { body.updateMatrix(); const inv = body.matrix.clone().invert(), ev = new Evaluator(); ev.attributes = ['position', 'normal']; ev.useGroups = false;
             let out = flatPN(body.geometry); for (const g of lidAdd) { g.applyMatrix4(inv); const r2 = ev.evaluate(new Brush(out), new Brush(flatPN(g)), ADDITION).geometry; out.dispose(); out = r2; }
@@ -6988,7 +6991,7 @@ function compactParts(product, L, S0) {
           const ni = g => { const x = g.index ? g.toNonIndexed() : g; for (const k in x.attributes) if (k !== 'position' && k !== 'normal') x.deleteAttribute(k); return x; };
           const pw = leafW + 2 * gp, sinA = Math.sin(15 * Math.PI / 180);
           // fenda nas costas (peça fechada) + rebaixo em cima da borda (peça aberta, deitada para a frente)
-          const slot = new RoundedBoxGeometry(pw, Lk + gp + 1.2 + dn, tb + gp + 1.2, 2, 0.2); slot.translate(cx, yT - (Lk + gp + dn) / 2 + 0.6, zb + (tb + gp) / 2 - 0.6);
+          const slot = new RoundedBoxGeometry(pw, Lk + gp + 1.2 + dn, tb + 2 * gp, 2, 0.2); slot.translate(cx, yT - (Lk + gp + dn) / 2 + 0.6, za);
           const pFront = za + Lk + gp + 0.3, pBot = yT - tb - gp - dn;
           const pocket = new RoundedBoxGeometry(pw, yT + 2 - pBot, pFront - (zb - 0.5), 2, 0.25); pocket.translate(cx, (yT + 2 + pBot) / 2, (pFront + zb - 0.5) / 2);
           for (const o of bObjs.filter(o => !/_(gode|bandeja)$/.test(o.name))) for (const cut of [slot, pocket]) {

@@ -1,3 +1,7 @@
+# Atualização Claude — 18/11/2026, cl94
+
+Macaroon: aba 3 mm abaixo da divisão, peça reta única, saindo por dentro da tampa; rebaixo termina antes do godê. Próximo carimbo: cl95.
+
 # Atualização Claude — 18/11/2026, cl93
 
 Macaroon: aba da dobradiça 1 mm mais funda no rebaixo. Próximo carimbo: cl94.
