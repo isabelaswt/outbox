@@ -17,9 +17,9 @@ import { GTAOPass } from 'three/addons/postprocessing/GTAOPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
-import { Brush, Evaluator, SUBTRACTION } from 'three-bvh-csg';
+import { Brush, Evaluator, SUBTRACTION, ADDITION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-18.cdx30';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-18.cdx31';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -707,7 +707,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-18.cdx30';
+const BUILD = '2026-11-18.cdx31';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -1251,7 +1251,9 @@ function normalize(s) {
   s.side = (s.side || []).map(it => { const n = normalize({ wall: s.wall, bg: s.bg, ...it, side: [] }); delete n.side; delete n.gap; delete n.file; return n; });
   // Peças em malha (versão antiga da Draft) não existem mais.
   s.modules = (s.modules || []).filter(m => m.kind !== 'malha').map(m => ({ ...m, color: unpink(m.color) })).map(m => ({ ...BASE, uid: newUid(), ...m, ...(m.sprayType === 'pump' ? { sprayType: 'locao' } : m.sprayType === 'foamInc' ? { sprayType: 'foam' } : m.sprayType === 'foam' && m.actW > 20 ? { actW: 15, actH: 24, nozzleL: 2.6 } : {}) }));
+  const savedMacaroon = s.modules.some(m => m.forn === 'Incom' && /MACAROON/i.test(m.ref || ''));
   s.modules.forEach(m => {
+    if (savedMacaroon && m.hinge && ((m.hingeLeaf?.w === 0.09 && m.hingeLeaf.center == null) || (!m.hingeLeaf && m.hingeBloco?.w === 0.09 && m.hingeBloco.vao === 3))) m.hingeLeaf = { w: 0.16, center: 0.7, bridge: true };
     // Case salvo na cl53–59: atualiza só as proporções antigas conhecidas, preservando edições próprias.
     if (m.hingeCase?.length === 3 && m.hingeCase[0] === 0.18 && m.hingeCase[1] === 0.31 && m.hingeCase[2] === 0.44) m.hingeCase = [0.26, 0.38];
     if (m.type === 'bisnaga') {
@@ -6592,6 +6594,30 @@ const godeFundo = m => m.godes.fundo ?? r1(clamp(m.h - 2.5, 1.8, 3));
 function compactParts(product, L, S0) {
   const mine = idx => product.children.filter(o => o.isMesh && o.userData.idx === idx);
   const add = (geo, mat, idx, name, x, y, z) => { const o = new THREE.Mesh(geo, mat); o.position.set(x, y, z); o.userData.idx = idx; o.name = `${String(idx + 1).padStart(2, '0')}_${name}`; o.castShadow = o.receiveShadow = true; product.add(o); };
+  // A aba é continuação da casca, não uma segunda chapa sobreposta (friso na junção).
+  // União em cache: câmera/cor não refazem a operação booleana.
+  const joinTab = (geo, objs, m, idx, x, y, z, y0) => {
+    const body = objs.find(o => o.userData.main) || objs[0]; body.updateMatrix();
+    geo.translate(x, y, z); geo.applyMatrix4(body.matrix.clone().invert());
+    const old = body.geometry;
+    try {
+      // Miniatura sólida e modelo com oco/visor nunca compartilham a mesma entrada.
+      const joined = cutCached('abaUnida', [THUMB_LITE, m, idx, x, y, z, y0], old, () => {
+        const solid = m.oco ? moduleGeo(m, y0) : old, a = flatPN(solid), b = flatPN(geo); a.clearGroups(); b.clearGroups();
+        if (solid !== old) solid.dispose();
+        const ev = new Evaluator(); ev.attributes = ['position', 'normal']; ev.useGroups = false;
+        let out = THUMB_LITE ? mergeGeometries([a, b]) : ev.evaluate(new Brush(a), new Brush(b), ADDITION).geometry;
+        // Une primeiro o sólido, depois corta o oco/visor uma única vez.
+        // Fazer a união da casca já vazada gerava faces coplanares na janela.
+        if (!THUMB_LITE && m.oco) { const cut = ocoGeo(out, m, y0); if (cut !== out) out.dispose(); out = cut; }
+        if (!THUMB_LITE && m.dedo) { const cut = dedoGeo(out, m.dedo, y0, m.h); if (cut !== out) out.dispose(); out = cut; }
+        if (!out?.attributes.position.count) throw new Error('União da aba vazia');
+        const g = toCreasedNormals(out, THREE.MathUtils.degToRad(38));
+        g.userData = { ...old.userData }; if (g !== out) out.dispose(); a.dispose(); b.dispose(); return g;
+      });
+      body.geometry = joined; if (joined !== old) old.dispose(); geo.dispose();
+    } catch (e) { console.warn('União da aba:', e); geo.applyMatrix4(body.matrix); add(geo, body.material, idx, 'aba', 0, 0, 0); }
+  };
   L.forEach(({ m, idx, y0 }) => {
     if (m.hidden || !(m.godes || m.espelho || m.visor || m.aba || m.caseLatch || m.snapFront)) return;
     const objs = mine(idx); if (!objs.length) return;
@@ -6767,8 +6793,8 @@ function compactParts(product, L, S0) {
       // rente à superfície e na mesma curva (desenho do Moon Deck/Moon Eco), não um bloco saltado
       const a = m.aba, R = bb.max.z - cz;
       // a.rc: aba de cantos redondos que sobe até cobrir o arredondado da borda da tampa (sem vinco entre a aba e a tampa)
-      const g = a.rc ? roundTab(R - a.d + 0.2, R - 0.004, a.w, a.down + (m.rBot || 0) * 0.7, a.rc) : arcSlab(R - a.d + 0.2, R - 0.02, a.w / R, a.down + 0.05); // rente à parede e terminando dentro do arredondado da borda da tampa: continuação dela, sem friso
-      add(g, objs[0].material, idx, 'aba', cx, y0 - a.down, cz);
+      const g = a.rc ? roundTab(R - a.d + 0.2, R - 0.06, a.w, a.down + radii(m).rB, a.rc) : arcSlab(R - a.d + 0.2, R - 0.06, a.w / R, a.down + radii(m).rB); // rente à parede e terminando dentro do arredondado da borda da tampa: continuação dela, sem friso
+      joinTab(g, objs, m, idx, cx, y0 - a.down, cz, y0);
     }
     if (m.snapFront) {
       const base = L.find(e => e.idx === idx - 1), bObjs = base ? mine(base.idx) : [];
@@ -6784,29 +6810,34 @@ function compactParts(product, L, S0) {
           socket = arcSlab(inner - 0.6, inner + 0.23, (tw + 0.3) / R, 0.65); socket.translate(cx, yB + 0.05, cz);
         } else {
           // Aba das paletas plana; demais fechos mantêm a ligação inclinada à parede.
-          const top = y0 + (m.snapTop ?? Math.min(2.2, m.h * 0.25)); // snapTop: a aba sobe só até cobrir o arredondado da borda (sem friso na parede da tampa)
+          const top = y0 + (m.snapFlat && !m.snapInset ? radii(m).rB : (m.snapTop ?? Math.min(2.2, m.h * 0.25))); // snapTop: a aba sobe só até cobrir o arredondado da borda (sem friso na parede da tampa)
           if (m.snapFlat) {
             // Foto ampliada: contorno frontal com dois cantos inferiores arredondados, não só chanfro na espessura.
             const sh = new THREE.Shape(), half = tw / 2, rc = Math.min(m.snapRc ?? 1.2, (top - yB) * 0.45, tw * (m.snapRc ? 0.2 : 0.07));
             sh.moveTo(-half, top); sh.lineTo(half, top); sh.lineTo(half, yB + rc);
             sh.quadraticCurveTo(half, yB, half - rc, yB); sh.lineTo(-half + rc, yB);
             sh.quadraticCurveTo(-half, yB, -half, yB + rc); sh.closePath();
-            const stem = new THREE.ExtrudeGeometry(sh, { depth: 0.65, bevelEnabled: false, curveSegments: 16 }); stem.deleteAttribute('uv');
+            let stem = new THREE.ExtrudeGeometry(sh, { depth: m.snapInset ? 0.65 : 0.60, bevelEnabled: false, curveSegments: 16 }); stem.deleteAttribute('uv');
             if (m.snapConform) {
+              // A face precisa de colunas: só os vértices das pontas formavam uma corda plana
+              // sobre a tampa abaulada, criando o friso mesmo depois da união.
+              const raw = stem; stem = mergeVertices(raw); raw.dispose(); refineCreased(stem, 1, 12000);
               const p = stem.attributes.position, A = w / 2, B = d / 2;
-              for (let j = 0; j < p.count; j++) { const x = Math.min(0.9999, Math.abs(p.getX(j)) / A);
-                p.setZ(j, p.getZ(j) + B * (Math.pow(1 - x ** m.n, 1 / m.n) - 1)); }
+              for (let j = 0; j < p.count; j++) { const x = Math.min(A - 0.0001, Math.abs(p.getX(j))); let lo = 0, hi = Math.PI / 2;
+                // Mesmo contorno abaulado da casca (planBow), inclusive nas laterais da aba.
+                for (let k = 0; k < 28; k++) { const mid = (lo + hi) / 2; if (sp(A, B, m.n, mid, m.planBow || 0)[0] > x) lo = mid; else hi = mid; }
+                p.setZ(j, p.getZ(j) + sp(A, B, m.n, (lo + hi) / 2, m.planBow || 0)[1] - B); }
               p.needsUpdate = true; stem.computeVertexNormals();
             }
-            add(stem, objs[0].material, idx, 'lingua_fecho', cx, 0, cz + inner);
-            // Face externa 0,01 mm atrás da parede para unir visualmente sem sobreposição coplanar.
+            joinTab(stem, objs, m, idx, cx, 0, cz + inner, y0);
+            // Raiz 0,06 mm dentro da casca: a união atravessa a superfície, sem topo coplanar sobreposto.
             // Sem ponte/apoio: a aba prolonga a face da tampa, como na foto da dona.
           } else {
             const sh = new THREE.Shape(), points = [[R - 0.25, top], [R - OCO.wall - 0.7, top], [inner, yB], [inner + 0.65, yB], [R - 0.25, y0 + 0.15]];
             points.forEach(([z, y], j) => j ? sh.lineTo(-z, y) : sh.moveTo(-z, y)); sh.closePath();
             const stem = new THREE.ExtrudeGeometry(sh, { depth: tw, bevelEnabled: false }); stem.deleteAttribute('uv');
             stem.translate(0, 0, -tw / 2); stem.rotateY(Math.PI / 2);
-            add(stem, objs[0].material, idx, 'lingua_fecho', cx, 0, cz);
+            joinTab(stem, objs, m, idx, cx, 0, cz, y0);
           }
           const hookY = base.m.fechoRebaixo ? base.y0 + base.m.h - 1.1 : yB + 0.375;
           tooth = new THREE.BoxGeometry(m.snapFlat ? tw * 0.65 : tw, 0.35, 0.53).translate(cx, hookY, cz + inner - 0.185);
@@ -6844,7 +6875,10 @@ function compactParts(product, L, S0) {
         // Largura/espessuras estimadas na foto; folgas de representação, não cotas de molde.
         const b = base.m, top = base.y0 + b.h, lip = top + b.godes.relevo - 0.3,
           tw = w * 0.10, side = 0.55, slotW = tw + 0.3, outerW = slotW + 2 * side,
-          front = bb.max.z - OCO.wall, back = front - 0.8, bottom = top - 0.02,
+          front = bb.max.z - OCO.wall,
+          // Case: o fecho acompanha o colar do godê, não a borda externa da tampa.
+          // Distância visual estimada na foto; mantém passagem para o dente interno.
+          back = m.caseLatchSimple ? Math.min(front - 0.8, cz + b.godes.mm / 2 + 1.4 + 0.85) : front - 0.8, bottom = top - 0.02,
           slotB = lip - 1.4, slotT = lip - 0.5, roof = y0 + (m.latchRoof ?? m.dedo.h) + 0.25;
         let catchTop = lip;
         if (m.caseLatchSimple) {
@@ -6866,7 +6900,7 @@ function compactParts(product, L, S0) {
         }
         const hookB = m.caseLatchSimple ? catchTop - 0.7 : lip - 1.15, hookH = 0.4, stemB = hookB, stemZ = back - 0.4;
         add(new THREE.BoxGeometry(tw, roof - stemB, 0.45), objs[0].material, idx, 'lingua_fecho', cx, (roof + stemB) / 2, stemZ);
-        add(new THREE.BoxGeometry(tw, hookH, 0.9), objs[0].material, idx, 'dente_fecho', cx, hookB + hookH / 2, back - (m.caseLatchSimple ? 0.55 : 0.05));
+        add(new THREE.BoxGeometry(tw, hookH, m.caseLatchSimple ? 0.6 : 0.9), objs[0].material, idx, 'dente_fecho', cx, hookB + hookH / 2, back - (m.caseLatchSimple ? 0.4 : 0.05));
       }
     }
     if (m.espelho) { // no teto do oco da tampa, virado para baixo (fechada, fica escondido dentro dela)
@@ -6911,7 +6945,7 @@ function compactParts(product, L, S0) {
       if (m.hingeLeaf) { // Frame/Macaroon (fotos abertas): aba fina da tampa articulada entre dois apoios da base.
         // Opção só destas famílias; hingeBloco dos Moon aprovados não muda.
         const hk = m.hingeLeaf, Lb = Math.min(W * hk.w, 13), rr = Math.min(0.9, r * 0.7),
-          pinR = rr * 0.28, holeR = pinR + 0.07, gp = 0.18, leafW = Lb * 0.56,
+          pinR = rr * 0.28, holeR = pinR + 0.07, gp = 0.18, leafW = Lb * (hk.center || 0.56),
           hb = Math.min(3, base.m.h - rr * 0.55 - 0.25), cy = y0 - rr * 0.55, cz = z + rr + 0.4;
         axis = { y: cy, z: cz };
         // Perfil lateral do apoio com cabeça redonda e furo; pé ligado à base, sem caixa maciça no eixo.
@@ -6925,8 +6959,19 @@ function compactParts(product, L, S0) {
         }
         const eye = new THREE.Shape(); eye.absarc(0, 0, rr, 0, TAU, false); eye.holes.push(hole());
         add(extrude(eye, -leafW / 2, leafW / 2), mT, idx, 'dobradica', 0, 0, 0); objs.push(product.children.at(-1));
-        const bottom = cy + holeR + 0.1, top = y0 + Math.max(1.1, m.rBot || 0) + 0.5;
-        add(new RoundedBoxGeometry(leafW, top - bottom, 0.8, 2, 0.12), mT, idx, 'aba_dobradica', cx, (top + bottom) / 2, cz + 0.05); objs.push(product.children.at(-1));
+        if (hk.bridge) {
+          // Ampliação Macaroon da dona: ponte larga por DENTRO da tampa, do eixo até perto do espelho.
+          // A chapa vertical antiga ficava escondida na parede quando a tampa abria.
+          const endZ = (bb.min.z + bb.max.z) / 2 - (Math.min(W, bb.max.z - bb.min.z) / 2 * (m.espR || 0.62) + 0.4), depth = endZ - cz,
+            innerY = y0 + m.h - OCO.top - 0.4 - cy, rootY = holeR + 0.1, thickness = 0.9,
+            sh = new THREE.Shape();
+          sh.moveTo(0, rootY); sh.lineTo(depth, innerY); sh.lineTo(depth, innerY + thickness); sh.lineTo(0, rootY + thickness); sh.closePath();
+          add(extrude(sh, -leafW / 2, leafW / 2), mT, idx, 'aba_dobradica', 0, 0, 0);
+        } else {
+          const bottom = cy + holeR + 0.1, top = y0 + Math.max(1.1, m.rBot || 0) + 0.5;
+          add(new RoundedBoxGeometry(leafW, top - bottom, 0.8, 2, 0.12), mT, idx, 'aba_dobradica', cx, (top + bottom) / 2, cz + 0.05);
+        }
+        objs.push(product.children.at(-1));
         const pin = new THREE.CylinderGeometry(pinR, pinR, Lb - 0.2, 32); pin.rotateZ(Math.PI / 2); pin.translate(cx, cy, cz);
         add(pin, mirrorMat, base.idx, 'pino', 0, 0, 0);
         if (!THUMB_LITE) {
@@ -10318,7 +10363,7 @@ function incomProduct(r) {
     if (/^Frame|^Moon|^Macaroon/.test(r.n)) ms.filter(m => m.hinge).forEach(m => { m.hingeWidth = 0.18; m.hingeBloco = /^Macaroon/.test(r.n) ? { w: 0.09, vao: 3 } : true; }); // cl50: bloco inteiro num vão da base; cl53: Macaroon mais fino, com o recorte entrando na base
     // Fotos FRAME-G aberta e MACAROON-G lilás: a tampa tem uma aba própria chegando ao pino.
     // Espessuras/folgas proporcionais às fotos; não são cotas de fabricação.
-    if (/^Frame|^Macaroon/.test(r.n)) ms.filter(m => m.hinge).forEach(m => { m.hingeLeaf = { w: /^Macaroon/.test(r.n) ? 0.09 : 0.16 }; });
+    if (/^Frame|^Macaroon/.test(r.n)) ms.filter(m => m.hinge).forEach(m => { m.hingeLeaf = /^Macaroon/.test(r.n) ? { w: 0.16, center: 0.7, bridge: true } : { w: 0.16 }; });
     if (/^Flat/.test(r.n)) { const t = ms.find(m => m.name === 'Tampa'); if (t) {
       // cl51 (todas as Flat: "dobradiça é escondida, a tampa tem uma parte que abraça a dobradiça", 2ª foto): eixo dentro de uma calha
       // de ~90% da largura, coberto por um rolo da própria tampa, rente às costas — por fora não aparece nó nem pino

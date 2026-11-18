@@ -1,3 +1,9 @@
+# Atualização Codex — 18/11/2026, cdx31
+
+Pedidos novos: Case com lingueta próxima do colar do godê (cinco variantes), dente interno reposicionado junto. Aba frontal integrada à tampa por união do sólido antes dos recortes de oco/visor; raiz sem chapa sobreposta. Frame com malha subdividida antes de acompanhar a planta abaulada, para não virar uma corda reta. Folga/espessuras de representação estimadas nas fotos. Testes em tools/conferencia/validacao-cdx31.json. Resultado: 32 modelos/288 poses, retorno exato, dimensões fechadas preservadas, 80 amostras livres dos eixos, 45 raios livres nas janelas, espelhos/visores com as mesmas malhas. Três exports de controle. Cache da miniatura separado do modelo completo para não substituir o visor por uma tampa sólida. Dimensões fechadas e demais dobradiças são controles contra cdx30; só a ponte do Macaroon muda nesta rodada.
+
+**Foto nova Macaroon:** assets/revisao/ref-dona/macaroon-fechamento-ampliado.png. A dona confirmou que aponta a ponte larga entre tampa/base (dobradiça). Ponte alargada e orientada pelo interior da tampa, do eixo até perto do espelho; a chapa vertical anterior ficava escondida na parede ao abrir. Folgas/espessuras estimadas, aguardando conferência visual da dona; não marcar aprovado automaticamente. PDF final continua aguardando correções e conferência.
+
 # Atualização Codex — 18/11/2026, cdx30
 
 Frame/Macaroon receberam articulação própria: apoios fixos com furo, olhal e aba móvel da tampa chegando ao pino. Moon/Classic aprovados preservados. Auditoria de 32 modelos / 288 poses, retorno fechado e export de controle: tools/conferencia/validacao-cdx30.json. Pendências novas da dona: eliminar friso na junção tampa/aba e aproximar a lingueta do Case do colar do godê, com encaixe correspondente na tampa. Não marcar aprovação automaticamente.

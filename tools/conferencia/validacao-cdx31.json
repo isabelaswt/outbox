@@ -1,0 +1,490 @@
+{
+  "build": "2026-11-18.cdx31",
+  "baseline": "2026-11-18.cdx30",
+  "models": 32,
+  "poses": 288,
+  "closedDimensionsPreserved": true,
+  "changedHinges": [
+    "Incom Macaroon G (compactos)"
+  ],
+  "pinAxisSamplesClear": 80,
+  "visorRaysClear": 45,
+  "mirrorAndVisorMeshesPreserved": true,
+  "legacyCasesAndMacaroonMigrated": true,
+  "exports": [
+    {
+      "model": "Incom Case M (compactos)",
+      "parts": 19
+    },
+    {
+      "model": "Incom Frame G com Visor (compactos)",
+      "parts": 12
+    },
+    {
+      "model": "Incom Macaroon G (compactos)",
+      "parts": 12
+    }
+  ],
+  "anglesDeg": [
+    0,
+    15,
+    30,
+    60,
+    90,
+    105,
+    120,
+    135,
+    180
+  ],
+  "limits": "135/180 graus apenas na bancada; amostras de eixo e poses não são simulação de flexão/colisão integral nem cotas de molde. Detalhes proporcionais às fotos, aguardam conferência da dona.",
+  "modelsResult": [
+    {
+      "model": "Incom Case G (compactos)",
+      "sameHingeAsCdx30": true,
+      "closedMm": {
+        "W": 71.882,
+        "H": 13.7,
+        "D": 70.056
+      },
+      "poses": 9,
+      "invalidGeometry": 0,
+      "returnError": 0,
+      "sameMirrorAndVisorMeshes": true,
+      "visorRaysClear": 0
+    },
+    {
+      "model": "Incom Case M (compactos)",
+      "sameHingeAsCdx30": true,
+      "closedMm": {
+        "W": 57.793,
+        "H": 13.7,
+        "D": 56.039
+      },
+      "poses": 9,
+      "invalidGeometry": 0,
+      "returnError": 0,
+      "sameMirrorAndVisorMeshes": true,
+      "visorRaysClear": 0
+    },
+    {
+      "model": "Incom Case M All Crystal (compactos)",
+      "sameHingeAsCdx30": true,
+      "closedMm": {
+        "W": 57.793,
+        "H": 13.7,
+        "D": 56.039
+      },
+      "poses": 9,
+      "invalidGeometry": 0,
+      "returnError": 0,
+      "sameMirrorAndVisorMeshes": true,
+      "visorRaysClear": 0
+    },
+    {
+      "model": "Incom Classic Duo (compactos)",
+      "sameHingeAsCdx30": true,
+      "closedMm": {
+        "W": 69.079,
+        "H": 18,
+        "D": 69.163
+      },
+      "poses": 9,
+      "invalidGeometry": 0,
+      "returnError": 0,
+      "sameMirrorAndVisorMeshes": true,
+      "visorRaysClear": 0
+    },
+    {
+      "model": "Incom Classic Quarteto (compactos)",
+      "sameHingeAsCdx30": true,
+      "closedMm": {
+        "W": 69.079,
+        "H": 18,
+        "D": 69.163
+      },
+      "poses": 9,
+      "invalidGeometry": 0,
+      "returnError": 0,
+      "sameMirrorAndVisorMeshes": true,
+      "visorRaysClear": 0
+    },
+    {
+      "model": "Incom Classic Uno (compactos)",
+      "sameHingeAsCdx30": true,
+      "closedMm": {
+        "W": 69.079,
+        "H": 18,
+        "D": 69.163
+      },
+      "poses": 9,
+      "invalidGeometry": 0,
+      "returnError": 0,
+      "sameMirrorAndVisorMeshes": true,
+      "visorRaysClear": 0
+    },
+    {
+      "model": "Incom Frame G com Visor (compactos)",
+      "sameHingeAsCdx30": true,
+      "closedMm": {
+        "W": 69.3,
+        "H": 17.3,
+        "D": 68.8
+      },
+      "poses": 9,
+      "invalidGeometry": 0,
+      "returnError": 0,
+      "sameMirrorAndVisorMeshes": true,
+      "visorRaysClear": 5
+    },
+    {
+      "model": "Incom Frame G Quinteto (compactos)",
+      "sameHingeAsCdx30": true,
+      "closedMm": {
+        "W": 69.3,
+        "H": 17.3,
+        "D": 68.8
+      },
+      "poses": 9,
+      "invalidGeometry": 0,
+      "returnError": 0,
+      "sameMirrorAndVisorMeshes": true,
+      "visorRaysClear": 5
+    },
+    {
+      "model": "Incom Frame G Tampa Fechada (compactos)",
+      "sameHingeAsCdx30": true,
+      "closedMm": {
+        "W": 69.3,
+        "H": 17.3,
+        "D": 68.8
+      },
+      "poses": 9,
+      "invalidGeometry": 0,
+      "returnError": 0,
+      "sameMirrorAndVisorMeshes": true,
+      "visorRaysClear": 0
+    },
+    {
+      "model": "Incom Frame M (compactos)",
+      "sameHingeAsCdx30": true,
+      "closedMm": {
+        "W": 52.3,
+        "H": 14.9,
+        "D": 51.9
+      },
+      "poses": 9,
+      "invalidGeometry": 0,
+      "returnError": 0,
+      "sameMirrorAndVisorMeshes": true,
+      "visorRaysClear": 5
+    },
+    {
+      "model": "Incom Frame P (compactos)",
+      "sameHingeAsCdx30": true,
+      "closedMm": {
+        "W": 38.1,
+        "H": 14.8,
+        "D": 37.7
+      },
+      "poses": 9,
+      "invalidGeometry": 0,
+      "returnError": 0,
+      "sameMirrorAndVisorMeshes": true,
+      "visorRaysClear": 5
+    },
+    {
+      "model": "Incom Macaroon G (compactos)",
+      "sameHingeAsCdx30": false,
+      "closedMm": {
+        "W": 76,
+        "H": 23.7,
+        "D": 75.3
+      },
+      "poses": 9,
+      "invalidGeometry": 0,
+      "returnError": 0,
+      "sameMirrorAndVisorMeshes": true,
+      "visorRaysClear": 0
+    },
+    {
+      "model": "Incom Moon Deck (compactos)",
+      "sameHingeAsCdx30": true,
+      "closedMm": {
+        "W": 68.9,
+        "H": 21.5,
+        "D": 68.5
+      },
+      "poses": 9,
+      "invalidGeometry": 0,
+      "returnError": 0,
+      "sameMirrorAndVisorMeshes": true,
+      "visorRaysClear": 0
+    },
+    {
+      "model": "Incom Moon Eco All Crystal (compactos)",
+      "sameHingeAsCdx30": true,
+      "closedMm": {
+        "W": 69.6,
+        "H": 18.1,
+        "D": 69.1
+      },
+      "poses": 9,
+      "invalidGeometry": 0,
+      "returnError": 0,
+      "sameMirrorAndVisorMeshes": true,
+      "visorRaysClear": 0
+    },
+    {
+      "model": "Incom Moon Eco (compactos)",
+      "sameHingeAsCdx30": true,
+      "closedMm": {
+        "W": 69.6,
+        "H": 18.1,
+        "D": 69.1
+      },
+      "poses": 9,
+      "invalidGeometry": 0,
+      "returnError": 0,
+      "sameMirrorAndVisorMeshes": true,
+      "visorRaysClear": 5
+    },
+    {
+      "model": "Incom Moon G Tampa Fechada (compactos)",
+      "sameHingeAsCdx30": true,
+      "closedMm": {
+        "W": 69.4,
+        "H": 16,
+        "D": 68.9
+      },
+      "poses": 9,
+      "invalidGeometry": 0,
+      "returnError": 0,
+      "sameMirrorAndVisorMeshes": true,
+      "visorRaysClear": 0
+    },
+    {
+      "model": "Incom Moon G com Visor (compactos)",
+      "sameHingeAsCdx30": true,
+      "closedMm": {
+        "W": 69.6,
+        "H": 18.1,
+        "D": 69.1
+      },
+      "poses": 9,
+      "invalidGeometry": 0,
+      "returnError": 0,
+      "sameMirrorAndVisorMeshes": true,
+      "visorRaysClear": 5
+    },
+    {
+      "model": "Incom Moon G Quarteto (compactos)",
+      "sameHingeAsCdx30": true,
+      "closedMm": {
+        "W": 69.4,
+        "H": 16,
+        "D": 68.9
+      },
+      "poses": 9,
+      "invalidGeometry": 0,
+      "returnError": 0,
+      "sameMirrorAndVisorMeshes": true,
+      "visorRaysClear": 5
+    },
+    {
+      "model": "Incom Moon M All Crystal (compactos)",
+      "sameHingeAsCdx30": true,
+      "closedMm": {
+        "W": 69.6,
+        "H": 18.1,
+        "D": 69.3
+      },
+      "poses": 9,
+      "invalidGeometry": 0,
+      "returnError": 0,
+      "sameMirrorAndVisorMeshes": true,
+      "visorRaysClear": 0
+    },
+    {
+      "model": "Incom Moon M com Visor (compactos)",
+      "sameHingeAsCdx30": true,
+      "closedMm": {
+        "W": 52.6,
+        "H": 17.3,
+        "D": 52.1
+      },
+      "poses": 9,
+      "invalidGeometry": 0,
+      "returnError": 0,
+      "sameMirrorAndVisorMeshes": true,
+      "visorRaysClear": 5
+    },
+    {
+      "model": "Incom Moon M Tampa Fechada (compactos)",
+      "sameHingeAsCdx30": true,
+      "closedMm": {
+        "W": 69.6,
+        "H": 18.1,
+        "D": 69.1
+      },
+      "poses": 9,
+      "invalidGeometry": 0,
+      "returnError": 0,
+      "sameMirrorAndVisorMeshes": true,
+      "visorRaysClear": 0
+    },
+    {
+      "model": "Incom Moon P (compactos)",
+      "sameHingeAsCdx30": true,
+      "closedMm": {
+        "W": 38.1,
+        "H": 14,
+        "D": 37.7
+      },
+      "poses": 9,
+      "invalidGeometry": 0,
+      "returnError": 0,
+      "sameMirrorAndVisorMeshes": true,
+      "visorRaysClear": 5
+    },
+    {
+      "model": "Incom Big 4 (paletas)",
+      "sameHingeAsCdx30": true,
+      "closedMm": {
+        "W": 89.999,
+        "H": 14.3,
+        "D": 89.598
+      },
+      "poses": 9,
+      "invalidGeometry": 0,
+      "returnError": 0,
+      "sameMirrorAndVisorMeshes": true,
+      "visorRaysClear": 0
+    },
+    {
+      "model": "Incom Big 9 (paletas)",
+      "sameHingeAsCdx30": true,
+      "closedMm": {
+        "W": 89.999,
+        "H": 14.3,
+        "D": 89.598
+      },
+      "poses": 9,
+      "invalidGeometry": 0,
+      "returnError": 0,
+      "sameMirrorAndVisorMeshes": true,
+      "visorRaysClear": 0
+    },
+    {
+      "model": "Incom Flat Dez (paletas)",
+      "sameHingeAsCdx30": true,
+      "closedMm": {
+        "W": 119.684,
+        "H": 14.1,
+        "D": 62.509
+      },
+      "poses": 9,
+      "invalidGeometry": 0,
+      "returnError": 0,
+      "sameMirrorAndVisorMeshes": true,
+      "visorRaysClear": 0
+    },
+    {
+      "model": "Incom Flat Duo (paletas)",
+      "sameHingeAsCdx30": true,
+      "closedMm": {
+        "W": 119.684,
+        "H": 14.1,
+        "D": 62.509
+      },
+      "poses": 9,
+      "invalidGeometry": 0,
+      "returnError": 0,
+      "sameMirrorAndVisorMeshes": true,
+      "visorRaysClear": 0
+    },
+    {
+      "model": "Incom Flat Sexteto (paletas)",
+      "sameHingeAsCdx30": true,
+      "closedMm": {
+        "W": 119.684,
+        "H": 14.1,
+        "D": 62.509
+      },
+      "poses": 9,
+      "invalidGeometry": 0,
+      "returnError": 0,
+      "sameMirrorAndVisorMeshes": true,
+      "visorRaysClear": 0
+    },
+    {
+      "model": "Incom Flat Trio Retangular (paletas)",
+      "sameHingeAsCdx30": true,
+      "closedMm": {
+        "W": 119.684,
+        "H": 14.1,
+        "D": 62.509
+      },
+      "poses": 9,
+      "invalidGeometry": 0,
+      "returnError": 0,
+      "sameMirrorAndVisorMeshes": true,
+      "visorRaysClear": 0
+    },
+    {
+      "model": "Incom Flat Trio Redondo (paletas)",
+      "sameHingeAsCdx30": true,
+      "closedMm": {
+        "W": 119.684,
+        "H": 14.1,
+        "D": 62.509
+      },
+      "poses": 9,
+      "invalidGeometry": 0,
+      "returnError": 0,
+      "sameMirrorAndVisorMeshes": true,
+      "visorRaysClear": 0
+    },
+    {
+      "model": "Incom Flat 6 + 1 (paletas)",
+      "sameHingeAsCdx30": true,
+      "closedMm": {
+        "W": 119.684,
+        "H": 14.1,
+        "D": 62.509
+      },
+      "poses": 9,
+      "invalidGeometry": 0,
+      "returnError": 0,
+      "sameMirrorAndVisorMeshes": true,
+      "visorRaysClear": 0
+    },
+    {
+      "model": "Incom Case G Tampa Cristal (compactos)",
+      "sameHingeAsCdx30": true,
+      "closedMm": {
+        "W": 71.882,
+        "H": 13.7,
+        "D": 70.056
+      },
+      "poses": 9,
+      "invalidGeometry": 0,
+      "returnError": 0,
+      "sameMirrorAndVisorMeshes": true,
+      "visorRaysClear": 0
+    },
+    {
+      "model": "Incom Case M Tampa Cristal (compactos)",
+      "sameHingeAsCdx30": true,
+      "closedMm": {
+        "W": 57.793,
+        "H": 13.7,
+        "D": 56.039
+      },
+      "poses": 9,
+      "invalidGeometry": 0,
+      "returnError": 0,
+      "sameMirrorAndVisorMeshes": true,
+      "visorRaysClear": 0
+    }
+  ]
+}
