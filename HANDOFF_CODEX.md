@@ -1,3 +1,7 @@
+# Atualização Claude — 18/11/2026, cl84
+
+Big 4/9: pino fino na quina de trás (invisível de frente, aberta ou fechada); godês menores com moldura mais larga (`godes.mgK` 0,118). Próximo carimbo: cl85.
+
 # Atualização Claude — 18/11/2026, cl83
 
 Big 4/9: dobradiça = cilindro discreto atrás (nada visível de frente), sem canal ao pé da bandeja, tampa e saia numa malha só. Flat sem as peças cinzas da cl81. Próximo carimbo: cl84.

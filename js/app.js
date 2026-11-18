@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION, ADDITION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-18.cl83';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-18.cl84';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -707,7 +707,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-18.cl83';
+const BUILD = '2026-11-18.cl84';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -6639,7 +6639,7 @@ function compactParts(product, L, S0) {
     if (m.hidden || !(m.godes || m.espelho || m.visor || m.aba || m.caseLatch || m.snapFront)) return;
     const objs = mine(idx); if (!objs.length) return;
     const bb = localBox(objs), w = bb.max.x - bb.min.x, d = bb.max.z - bb.min.z, cx = (bb.max.x + bb.min.x) / 2, cz = (bb.max.z + bb.min.z) / 2;
-    const se = !m.sides && m.n > 2, round = !m.sides && !se, mg = Math.max(3.5, Math.min(w, d) * 0.09); // se: superelipse (Frame)
+    const se = !m.sides && m.n > 2, round = !m.sides && !se, mg = m.godes?.mgK ? Math.min(w, d) * m.godes.mgK : Math.max(3.5, Math.min(w, d) * 0.09); // se: superelipse (Frame); mgK: margem própria (Big, cl84)
     if (m.godes) {
       const { rows, rect } = m.godes, top = y0 + m.h - (m.rebaixo?.h || 0), one = rows.length === 1 && rows[0] === 1, wells = []; let stepCut = null;
       let aw = round && !one ? Math.min(w, d) * 0.68 : w - 2 * mg, ad = round && !one ? Math.min(w, d) * 0.68 : d - 2 * mg;
@@ -7136,9 +7136,11 @@ function compactParts(product, L, S0) {
         // cl83 (dona, Big 4 aberta de frente: "essa caixa de dobradiça fica apenas atrás, não é vista na frente, imagino que seja um cilindro
         // discreto atrás, não aparecer nada"): nas Big (canal) sem ressalto, sem peças e sem recorte — só um cilindro fino nas costas,
         // na altura da borda de fora, com o eixo na face de trás. As Flat seguem com o ressalto da rampa (cl58), sem as peças da cl81.
-        if (cn) { const rc = clamp(r * 0.75, 0.9, 1.4), Lc = W * 0.8;
-          const cyl = new THREE.CylinderGeometry(rc, rc, Lc, 40); cyl.rotateZ(Math.PI / 2); cyl.translate(cx, yL, z + 0.1); add(cyl, mB, base.idx, 'dobradica', 0, 0, 0);
-          axis = { y: yL, z: z + 0.1 }; }
+        // cl84 (dona: "o cilindro não deve aparecer, ele deve ser menor e escondido atrás, mesmo quando abre"): pino fino, logo atrás
+        // das costas, na quina de trás da base
+        if (cn) { const rc = 0.45, Lc = W * 0.7, ya = yL, za = z; // eixo na quina de trás da base: a tampa gira rente, sem vão, e o pino vira um arredondado mínimo no canto
+          const cyl = new THREE.CylinderGeometry(rc, rc, Lc, 32); cyl.rotateZ(Math.PI / 2); cyl.translate(cx, ya, za); add(cyl, mB, base.idx, 'dobradica', 0, 0, 0);
+          axis = { y: ya, z: za }; }
         const ridge = cn ? null : new THREE.ExtrudeGeometry(prof(a - gp, yb, yL + hn - gp, ch), { depth: dz - gp - 0.3, bevelEnabled: true, bevelThickness: 0.15, bevelSize: 0.15, bevelSegments: 2 });
         if (ridge) { ridge.deleteAttribute('uv'); ridge.translate(cx, 0, z + 0.15); add(ridge, mB, base.idx, 'dobradica', 0, 0, 0);
           axis = { y: yL + (hn - gp) / 2, z: z + dz / 2 }; }
@@ -10549,7 +10551,7 @@ function incomProduct(r) {
         Object.assign(b.dedo, { w: r1(t.snapWidth + 0.2), h: 3.2, d: 1 });
         if (/^Big (4|9)$/.test(r.n)) { delete b.rebaixo; b.canal = { inset: 3.2, w: 0.6, h: 2.6, groove: false }; t.rBot = 0; /* cl83 (dona: "porque tem uma faixa? a tampa é uma coisa só"): sem arredondado embaixo, a tampa continua reta na saia */ /* cl81 ("altura da paleta está diferente", foto BIG-4): degrau 1,3 → 2,6, tampa com saia */ // cl46 (Big 9): degrau bem maior — borda de fora mais baixa (era 0,6)
           // Aprovação cl37 (fotos BIG-4): produto quase no nível da divisória e duas dobradiças, junto aos cantos
-          if (b.godes) b.godes = { ...b.godes, fundo: 2.1 }; Object.assign(t, { hingeCalha: 0.9, hingeOculta: true }); } // cl51: dobradiça escondida (era um par aparente)
+          if (b.godes) b.godes = { ...b.godes, fundo: 2.1, mgK: 0.118 }; /* cl84 (dona: "o nosso [godê] parece que tá maior, com menos borda"): moldura da bandeja mais larga, godês menores */ Object.assign(t, { hingeCalha: 0.9, hingeOculta: true }); } // cl51: dobradiça escondida (era um par aparente)
         // Págs.28–33: encaixes estreitos junto ao eixo; proporções estimadas na foto
         // (largura ~2,3% do estojo), preservando a faixa sem espelho.
         if (/^Flat/.test(r.n)) { t.espBand = 0; t.espLatches = { w: r1(W * 0.023), h: 1.2, x: 0.26, depth: 0.5 };
