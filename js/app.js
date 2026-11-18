@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION, ADDITION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-18.cl91';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-18.cl92';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -707,7 +707,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-18.cl91';
+const BUILD = '2026-11-18.cl92';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -6995,6 +6995,13 @@ function compactParts(product, L, S0) {
             const [outer, inner] = cutHole(o.geometry, ni(cut.clone())); if (outer === o.geometry) continue;
             const g = mergeGeometries([ni(outer), ni(inner)]); if (g) { o.geometry.dispose(); o.geometry = g; } }
           slot.dispose(); pocket.dispose();
+          // cl92 (dona: "sim, volta" a moldura): U em volta do rebaixo, discreto (topo 0,3 abaixo da divisão — a borda ali já é arredondada), cantos arredondados; as pontas de trás
+          // terminam antes das costas (na cl88 elas passavam do contorno abaulado e apareciam — "isso não existe")
+          const half = pw / 2, wall = 0.9, rear = zb + 0.9, front = pFront + wall, sh = new THREE.Shape(),
+            pts = [[-half - wall, rear], [-half - wall, front], [half + wall, front], [half + wall, rear], [half, rear], [half, pFront], [-half, pFront], [-half, rear]];
+          pts.forEach(([x, zz], i) => i ? sh.lineTo(x, -zz) : sh.moveTo(x, -zz)); sh.closePath();
+          const rim = new THREE.ExtrudeGeometry(sh, { depth: yT - 0.45 - pBot, bevelEnabled: true, bevelSize: 0.15, bevelThickness: 0.15, bevelSegments: 3 });
+          rim.deleteAttribute('uv'); rim.rotateX(-Math.PI / 2); rim.translate(cx, pBot, 0); add(rim, mB, base.idx, 'desvio_dobradica', 0, 0, 0);
         }
       } else if (m.hingeLeaf) { // Frame/Macaroon (fotos abertas): aba fina da tampa articulada entre dois apoios da base.
         // Opção só destas famílias; hingeBloco dos Moon aprovados não muda.
@@ -10533,7 +10540,7 @@ function incomProduct(r) {
     // Espessuras/folgas proporcionais às fotos; não são cotas de fabricação.
     // cl77 (dona, foto FRAME aberta de cima: "dobradiça do frame é inteira, sem 3 pontos"): o Frame volta ao bloco inteiro (hingeBloco, o dos Moon);
     // só o Macaroon segue com a aba própria
-    if (/^Macaroon/.test(r.n)) ms.filter(m => m.hinge).forEach(m => { m.hingeLeaf = { w: 0.145, center: 0.62, bridge: true, compact: true, concealed: true }; });
+    if (/^Macaroon/.test(r.n)) ms.filter(m => m.hinge).forEach(m => { m.hingeLeaf = { w: 0.145, center: 0.62, bridge: true, compact: true, concealed: true }; m.abreAberto = 90; }); // cl92 (dona: "quando o produto fica a 90° a aba da dobradiça fica na horizontal"): aberto a 90°, como nas fotos
     if (/^Flat/.test(r.n)) { const t = ms.find(m => m.name === 'Tampa'); if (t) {
       // cl51 (todas as Flat: "dobradiça é escondida, a tampa tem uma parte que abraça a dobradiça", 2ª foto): eixo dentro de uma calha
       // de ~90% da largura, coberto por um rolo da própria tampa, rente às costas — por fora não aparece nó nem pino

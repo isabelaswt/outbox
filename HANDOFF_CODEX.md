@@ -1,3 +1,7 @@
+# Atualização Claude — 18/11/2026, cl92
+
+Macaroon: moldura em U de volta (discreta) e abertura padrão 90° (aba na horizontal). Próximo carimbo: cl93.
+
 # Atualização Claude — 18/11/2026, cl91
 
 Macaroon: peça da dobradiça = continuação da parede de trás da tampa; fechada numa fenda das costas da base, aberta deitada num rebaixo da borda. Próximo carimbo: cl92.
