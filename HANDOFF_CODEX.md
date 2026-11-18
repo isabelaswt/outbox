@@ -2,11 +2,11 @@
 
 ## ATUALIZAÇÃO MAIS RECENTE — 17/11/2026, fim da sessão Claude (ler primeiro)
 
-Versão no ar: **`2026-11-18.cl41`** (`main`). Duas sessões Claude trabalharam em paralelo na mesma pasta (a "fork" fez os aplicadores do Petit, cl5–cl17). Antes de commitar: `git fetch` + `git log HEAD..origin/main`; push por SSH `git@github.com:isabelaswt/outbox.git`; carimbo em 3 lugares (BUILD e import `incom.js?v=` em `js/app.js`, `?v=` de css/js em `index.html`). Próximo carimbo: **cl42**. Registro de cada envio na seção 8 do CODEX_REFINO.md.
+Versão no ar: **`2026-11-18.cl42`** (`main`). Duas sessões Claude trabalharam em paralelo na mesma pasta (a "fork" fez os aplicadores do Petit, cl5–cl17). Antes de commitar: `git fetch` + `git log HEAD..origin/main`; push por SSH `git@github.com:isabelaswt/outbox.git`; carimbo em 3 lugares (BUILD e import `incom.js?v=` em `js/app.js`, `?v=` de css/js em `index.html`). Próximo carimbo: **cl43**. Registro de cada envio na seção 8 do CODEX_REFINO.md.
 
-### PENDENTE AGORA (2026-11-18, versão no ar cl41)
-cl40 e cl41 resolveram tudo o que estava em "ajustar" (Case, Classic, Frame, Macaroon; fillets dos Moon estendidos a todos os compactos/paletas; segunda camada do Moon Deck abrindo junto) e marcaram "feito". Regra da dona: ir fazendo sem perguntar e aplicar cada pedido em lote aos produtos irmãos. Próximo passo: ler de novo `api/revisao.php?a=list` e trabalhar o que voltar em "ajustar". Pendência técnica: os godês desenhados por contorno (`godes.cells`: Flat, Big, Frame, Macaroon) ainda não têm concordância na boca. Login: aba do navegador do app em outbox.swtool.co logada pela dona.
-Próximo carimbo: cl42.
+### PENDENTE AGORA (2026-11-18, versão no ar cl42)
+cl40–cl42 resolveram tudo o que estava em "ajustar" (Case, Classic, Frame, Macaroon; fillets dos Moon estendidos a todos os compactos/paletas; segunda camada do Moon Deck abrindo junto) e marcaram "feito". Regra da dona: ir fazendo sem perguntar e aplicar cada pedido em lote aos produtos irmãos. Próximo passo: ler de novo `api/revisao.php?a=list` e trabalhar o que voltar em "ajustar". Pendência técnica: os godês desenhados por contorno (`godes.cells`: Flat, Big, Frame, Macaroon) ainda não têm concordância na boca. Login: aba do navegador do app em outbox.swtool.co logada pela dona.
+Próximo carimbo: cl43.
 
 ### Aprovação Incom (revisao.html) — fluxo de trabalho a partir do cl34
 A dona avalia cada modelo em `https://outbox.swtool.co/revisao.html` (foto real × render ao vivo) e marca **Aprovar** ou **Ajustar** com comentário. Para trabalhar: ler `api/revisao.php?a=list` (precisa da sessão dela — pelo navegador dela, com permissão) e pegar os itens com status `ajustar`; corrigir, publicar e responder com POST `api/revisao.php?a=set` `{k, status: 'feito', texto: 'o que mudou', build: '<carimbo>', autor: 'Claude'}`. Ela revisa os `feito` e aprova ou pede de novo. Fotos novas: rodar `python3 tools/revisao/fotos.py` (lista em `tools/revisao/lista.json`, tirada de `window.OUTBOX.PRESETS`).

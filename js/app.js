@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-18.cl41';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-18.cl42';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -707,7 +707,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-18.cl41';
+const BUILD = '2026-11-18.cl42';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -6561,8 +6561,12 @@ function compactParts(product, L, S0) {
         // Foto Case enviada pela dona: colar, borda da latinha e produto no mesmo nível.
         const R = m.godes.mm / 2, hg = m.godes.relevo, rente = !!m.godes.rente,
           hc = rente ? hg - 0.3 + 0.01 : r1(Math.min(3, hg - 1.4)), ph = hg - (rente ? 1.3 : 1.6), mat = objs[0].material;
-        const sh = new THREE.Shape(); sh.absarc(0, 0, R + 1.4, 0, Math.PI * 2, false); const ho = new THREE.Path(); ho.absarc(0, 0, R + (rente ? -0.01 : 0.25), 0, Math.PI * 2, true); sh.holes.push(ho);
-        const col = new THREE.ExtrudeGeometry(sh, { depth: hc, bevelEnabled: false, curveSegments: 72 }); col.deleteAttribute('uv'); col.rotateX(-Math.PI / 2);
+        // aprovação cl42 ("a própria estrutura do godê precisa de um fillet"): colar torneado com as duas quinas de cima arredondadas
+        const Ri = R + (rente ? -0.01 : 0.25), Ro = R + 1.4, rq = Math.max(0.05, Math.min(0.5, (Ro - Ri) / 2 - 0.05, hc * 0.4)), cp = [[Ri, 0], [Ro, 0], [Ro, hc - rq]];
+        for (let i = 1; i <= 8; i++) { const a = i / 8 * Math.PI / 2; cp.push([Ro - rq + rq * Math.cos(a), hc - rq + rq * Math.sin(a)]); }
+        for (let i = 0; i <= 8; i++) { const a = Math.PI / 2 + i / 8 * Math.PI / 2; cp.push([Ri + rq + rq * Math.cos(a), hc - rq + rq * Math.sin(a)]); }
+        cp.push([Ri, 0]);
+        const col = new THREE.LatheGeometry(cp.map(([r, y]) => new THREE.Vector2(r, y)), 96); col.deleteAttribute('uv');
         add(col, mat, idx, 'colar', cx, top - 0.01, cz);
         // Aprovação (Case G/M/M All Crystal): concordância côncava (~1 mm) no pé do colar, colar e placa sem quina seca
         const rf = Math.min(1, hc * 0.6), Rc = R + 1.4, fp = [];
