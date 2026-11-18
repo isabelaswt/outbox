@@ -41,27 +41,28 @@ button,textarea,select{font:inherit;color:inherit}
 .zoomBar .z{min-width:46px;cursor:default;color:var(--muted)}
 .big .lbl{position:absolute;left:12px;top:10px;}.view3d .lbl{position:absolute;right:12px;top:10px;}.big .lbl,.view3d .lbl{background:rgba(255,255,255,.92);border:1px solid var(--line);border-radius:7px;padding:3px 8px;font-size:12px;color:#555;z-index:2}
 .empty{color:var(--muted);text-align:center;padding:30px}
-.thumbs{display:flex;gap:6px;padding:8px;overflow-x:auto;border-top:1px solid var(--line);background:var(--panel)}
-.thumbs button{flex:none;width:64px;height:64px;border:2px solid transparent;border-radius:8px;padding:0;background:#fff;cursor:pointer;overflow:hidden;position:relative}
+.thumbs{display:flex;gap:6px;padding:5px 8px;overflow-x:auto;border-top:1px solid var(--line);background:var(--panel)}
+.thumbs button{flex:none;width:46px;height:46px;border:2px solid transparent;border-radius:8px;padding:0;background:#fff;cursor:pointer;overflow:hidden;position:relative}
 .thumbs button.on{border-color:var(--ink)}
 .thumbs img{width:100%;height:100%;object-fit:contain}
 .thumbs .cat{position:absolute;bottom:0;left:0;right:0;font-size:9px;background:rgba(0,0,0,.6);color:#fff;text-align:center}
 .view3d{position:relative;min-height:0;background:#f1f0ed}
 .view3d iframe{width:100%;height:100%;border:0;display:block}
 .view3d .wait{position:absolute;inset:0;display:grid;place-items:center;color:var(--muted);background:#f1f0ed}
-.decide{grid-column:2/4;background:var(--panel);border-top:1px solid var(--line);display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px;padding:12px 16px;max-height:42vh}
-.decide h2{font-size:16px;margin:0 0 2px;font-weight:600}
-.decide .meta{color:var(--muted);font-size:12px;margin-bottom:10px}
-.btns{display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap}
-.btn{border:1px solid var(--line);background:var(--panel);border-radius:9px;padding:8px 14px;cursor:pointer;font-weight:600;display:flex;align-items:center;gap:6px}
+.decide{grid-column:2/4;background:var(--panel);border-top:1px solid var(--line);display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px;padding:8px 12px;max-height:26vh}
+.hd{display:flex;align-items:baseline;gap:8px;min-width:0;margin-bottom:6px}
+.decide h2{font-size:14px;margin:0;font-weight:600;white-space:nowrap}
+.decide .meta{color:var(--muted);font-size:11.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.btns{display:flex;gap:6px;margin-bottom:6px;flex-wrap:wrap}
+.btn{border:1px solid var(--line);background:var(--panel);border-radius:8px;padding:4px 10px;cursor:pointer;font-weight:600;display:flex;align-items:center;gap:6px}
 .btn:hover{border-color:#cbc5bb}
 .btn.ok.on{background:var(--ok);border-color:var(--ok);color:#fff}
 .btn.ajustar.on{background:var(--aj);border-color:var(--aj);color:#fff}
 .btn.send{background:var(--ink);border-color:var(--ink);color:#fff}
 .btn:disabled{opacity:.5;cursor:default}
-textarea{width:100%;min-height:70px;resize:vertical;border:1px solid var(--line);border-radius:9px;padding:9px 10px;outline:none;background:#fff}
+textarea{flex:1;min-width:0;height:38px;min-height:38px;resize:vertical;border:1px solid var(--line);border-radius:8px;padding:8px 10px;outline:none;background:#fff}
 textarea:focus{border-color:var(--accent)}
-.row{display:flex;gap:8px;align-items:center;margin-top:6px}.row .tip{color:var(--muted);font-size:11.5px;flex:1}
+.row{display:flex;gap:6px;align-items:flex-start}.row .send{align-self:stretch;max-height:38px}
 .thread{overflow-y:auto;min-height:0;display:flex;flex-direction:column;gap:8px}
 .msg{border:1px solid var(--line);border-radius:10px;padding:8px 10px;background:var(--soft)}
 .msg.claude{background:var(--feitoBg);border-color:#d6e0f3}
@@ -92,15 +93,13 @@ kbd{font:inherit;font-size:11px;background:var(--soft);border:1px solid var(--li
   <section class="view3d"><span class="lbl">OUTBOX · render ao vivo</span><iframe id="app" src="about:blank" title="Render do OUTBOX"></iframe><div class="wait" id="wait">Abrindo o OUTBOX…</div></section>
   <section class="decide">
     <div>
-      <h2 id="nome"></h2>
-      <div class="meta" id="meta"></div>
+      <div class="hd"><h2 id="nome"></h2><div class="meta" id="meta"></div></div>
       <div class="btns">
         <button class="btn ok" id="bOk" title="Aprovar (A)">✓ Aprovar</button>
         <button class="btn ajustar" id="bAj" title="Pedir ajuste (R)">✎ Ajustar</button>
         <button class="btn" id="bPrev" title="Anterior (←)">←</button><button class="btn" id="bNext" title="Próximo (→)">→</button>
       </div>
-      <textarea id="txt" placeholder="O que está diferente da foto? (fechamento, onde começa cada peça, arredondamentos, cor, conteúdo…)"></textarea>
-      <div class="row"><span class="tip">Enviar com <kbd>⌘</kbd>+<kbd>Enter</kbd>. Comentar sem escolher ainda também vale.</span><button class="btn send" id="bSend">Enviar</button></div>
+      <div class="row"><textarea id="txt" rows="1" placeholder="O que está diferente da foto? (⌘+Enter envia; comentar sem escolher também vale)"></textarea><button class="btn send" id="bSend" title="Enviar (⌘+Enter)">Enviar</button></div>
     </div>
     <div class="thread" id="thread"></div>
   </section>
