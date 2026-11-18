@@ -1,0 +1,6568 @@
+{
+  "build": "2026-11-18.cdx30",
+  "models": 32,
+  "changedFamilies": [
+    "Incom Case G (compactos)",
+    "Incom Case M (compactos)",
+    "Incom Case M All Crystal (compactos)",
+    "Incom Frame G com Visor (compactos)",
+    "Incom Frame G Quinteto (compactos)",
+    "Incom Frame G Tampa Fechada (compactos)",
+    "Incom Frame M (compactos)",
+    "Incom Frame P (compactos)",
+    "Incom Macaroon G (compactos)",
+    "Incom Case G Tampa Cristal (compactos)",
+    "Incom Case M Tampa Cristal (compactos)"
+  ],
+  "unchanged": [
+    "Incom Classic Duo (compactos)",
+    "Incom Classic Quarteto (compactos)",
+    "Incom Classic Uno (compactos)",
+    "Incom Moon Deck (compactos)",
+    "Incom Moon Eco All Crystal (compactos)",
+    "Incom Moon Eco (compactos)",
+    "Incom Moon G Tampa Fechada (compactos)",
+    "Incom Moon G com Visor (compactos)",
+    "Incom Moon G Quarteto (compactos)",
+    "Incom Moon M All Crystal (compactos)",
+    "Incom Moon M com Visor (compactos)",
+    "Incom Moon M Tampa Fechada (compactos)",
+    "Incom Moon P (compactos)",
+    "Incom Big 4 (paletas)",
+    "Incom Big 9 (paletas)",
+    "Incom Flat Dez (paletas)",
+    "Incom Flat Duo (paletas)",
+    "Incom Flat Sexteto (paletas)",
+    "Incom Flat Trio Retangular (paletas)",
+    "Incom Flat Trio Redondo (paletas)",
+    "Incom Flat 6 + 1 (paletas)"
+  ],
+  "uiMaxAngle": 120,
+  "stressAngles": [
+    135,
+    180
+  ],
+  "closedDimensionsUnchanged": true,
+  "results": [
+    {
+      "name": "Incom Case G (compactos)",
+      "build": "versão 2026-11-18.cdx30",
+      "closed": {
+        "W": 71.88224792480469,
+        "H": 13.699999809265137,
+        "D": 70.0557861328125
+      },
+      "modules": [
+        {
+          "idx": 1,
+          "name": "Tampa",
+          "hingeCase": [
+            0.26,
+            0.38
+          ]
+        }
+      ],
+      "parts": [
+        {
+          "name": "02_dobradica",
+          "idx": 1,
+          "W": 8.55086898803711,
+          "H": 2.200000047683716,
+          "D": 2.200000762939453,
+          "axis": {
+            "y": 3.3,
+            "z": -34.0928921508789
+          }
+        },
+        {
+          "name": "01_dobradica",
+          "idx": 0,
+          "W": 6.856353759765625,
+          "H": 2.200000047683716,
+          "D": 2.200000762939453,
+          "axis": null
+        },
+        {
+          "name": "01_apoio_dobradica",
+          "idx": 0,
+          "W": 6.856354236602783,
+          "H": 1.7000000476837158,
+          "D": 1.899999976158142,
+          "axis": null
+        },
+        {
+          "name": "01_pino",
+          "idx": 0,
+          "W": 14.957225799560547,
+          "H": 0.8359999656677246,
+          "D": 0.83599853515625,
+          "axis": null
+        },
+        {
+          "name": "02_dobradica",
+          "idx": 1,
+          "W": 8.55086898803711,
+          "H": 2.200000047683716,
+          "D": 2.200000762939453,
+          "axis": {
+            "y": 3.3,
+            "z": -34.0928921508789
+          }
+        },
+        {
+          "name": "01_dobradica",
+          "idx": 0,
+          "W": 6.856353759765625,
+          "H": 2.200000047683716,
+          "D": 2.200000762939453,
+          "axis": null
+        },
+        {
+          "name": "01_apoio_dobradica",
+          "idx": 0,
+          "W": 6.856354236602783,
+          "H": 1.7000000476837158,
+          "D": 1.899999976158142,
+          "axis": null
+        },
+        {
+          "name": "01_pino",
+          "idx": 0,
+          "W": 14.957225799560547,
+          "H": 0.8359999656677246,
+          "D": 0.83599853515625,
+          "axis": null
+        }
+      ],
+      "pinChecks": [
+        {
+          "name": "01_pino",
+          "tested": 5,
+          "occupied": 0,
+          "blocked": []
+        },
+        {
+          "name": "01_pino",
+          "tested": 5,
+          "occupied": 0,
+          "blocked": []
+        }
+      ],
+      "checks": [
+        {
+          "angle": 0,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        },
+        {
+          "angle": 15,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        },
+        {
+          "angle": 30,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        },
+        {
+          "angle": 60,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        },
+        {
+          "angle": 90,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        },
+        {
+          "angle": 105,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        },
+        {
+          "angle": 120,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        },
+        {
+          "angle": 135,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        },
+        {
+          "angle": 180,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        }
+      ],
+      "returnError": 0,
+      "invalidGeometry": 0,
+      "geometry": [
+        {
+          "name": "01_Base",
+          "idx": 0,
+          "hash": "3d5583bc"
+        },
+        {
+          "name": "02_Tampa",
+          "idx": 1,
+          "hash": "261e5cb9"
+        },
+        {
+          "name": "01_colar",
+          "idx": 0,
+          "hash": "ae8dba0c"
+        },
+        {
+          "name": "01_colar",
+          "idx": 0,
+          "hash": "ef5191"
+        },
+        {
+          "name": "01_bandeja",
+          "idx": 0,
+          "hash": "ff894851"
+        },
+        {
+          "name": "01_bandeja",
+          "idx": 0,
+          "hash": "61d44135"
+        },
+        {
+          "name": "01_gode",
+          "idx": 0,
+          "hash": "beaa73b5"
+        },
+        {
+          "name": "01_lingueta_rebaixo",
+          "idx": 0,
+          "hash": "ad7cae19"
+        },
+        {
+          "name": "02_lingua_fecho",
+          "idx": 1,
+          "hash": "35391595"
+        },
+        {
+          "name": "02_dente_fecho",
+          "idx": 1,
+          "hash": "33b4c4d5"
+        },
+        {
+          "name": "02_espelho",
+          "idx": 1,
+          "hash": "ab4a89af"
+        },
+        {
+          "name": "02_dobradica",
+          "idx": 1,
+          "hash": "7effb837"
+        },
+        {
+          "name": "01_dobradica",
+          "idx": 0,
+          "hash": "362bf15d"
+        },
+        {
+          "name": "01_apoio_dobradica",
+          "idx": 0,
+          "hash": "cfcfd485"
+        },
+        {
+          "name": "01_pino",
+          "idx": 0,
+          "hash": "20f75925"
+        },
+        {
+          "name": "02_dobradica",
+          "idx": 1,
+          "hash": "cadab2b3"
+        },
+        {
+          "name": "01_dobradica",
+          "idx": 0,
+          "hash": "dcd80d99"
+        },
+        {
+          "name": "01_apoio_dobradica",
+          "idx": 0,
+          "hash": "cfcfd485"
+        },
+        {
+          "name": "01_pino",
+          "idx": 0,
+          "hash": "fd65cb1"
+        }
+      ]
+    },
+    {
+      "exportedParts": [
+        {
+          "name": "01_Base",
+          "vertices": 54312
+        },
+        {
+          "name": "02_Tampa",
+          "vertices": 85650
+        },
+        {
+          "name": "01_colar",
+          "vertices": 2037
+        },
+        {
+          "name": "01_colar",
+          "vertices": 1261
+        },
+        {
+          "name": "01_bandeja",
+          "vertices": 4632
+        },
+        {
+          "name": "01_bandeja",
+          "vertices": 580
+        },
+        {
+          "name": "01_gode",
+          "vertices": 580
+        },
+        {
+          "name": "01_lingueta_rebaixo",
+          "vertices": 1764
+        },
+        {
+          "name": "02_lingua_fecho",
+          "vertices": 24
+        },
+        {
+          "name": "02_dente_fecho",
+          "vertices": 24
+        },
+        {
+          "name": "02_espelho",
+          "vertices": 3072
+        },
+        {
+          "name": "02_dobradica",
+          "vertices": 1176
+        },
+        {
+          "name": "01_dobradica",
+          "vertices": 1176
+        },
+        {
+          "name": "01_apoio_dobradica",
+          "vertices": 900
+        },
+        {
+          "name": "01_pino",
+          "vertices": 292
+        },
+        {
+          "name": "02_dobradica",
+          "vertices": 1176
+        },
+        {
+          "name": "01_dobradica",
+          "vertices": 1176
+        },
+        {
+          "name": "01_apoio_dobradica",
+          "vertices": 900
+        },
+        {
+          "name": "01_pino",
+          "vertices": 292
+        }
+      ],
+      "name": "Incom Case M (compactos)",
+      "build": "versão 2026-11-18.cdx30",
+      "closed": {
+        "W": 57.793331146240234,
+        "H": 13.699999809265137,
+        "D": 56.03874397277832
+      },
+      "modules": [
+        {
+          "idx": 1,
+          "name": "Tampa",
+          "hingeCase": [
+            0.26,
+            0.38
+          ]
+        }
+      ],
+      "parts": [
+        {
+          "name": "02_dobradica",
+          "idx": 1,
+          "W": 6.860198974609375,
+          "H": 2.200000047683716,
+          "D": 2.200000762939453,
+          "axis": {
+            "y": 3.3,
+            "z": -27.084372024536133
+          }
+        },
+        {
+          "name": "01_dobradica",
+          "idx": 0,
+          "W": 5.446023941040039,
+          "H": 2.200000047683716,
+          "D": 2.200000762939453,
+          "axis": null
+        },
+        {
+          "name": "01_apoio_dobradica",
+          "idx": 0,
+          "W": 5.4460248947143555,
+          "H": 1.7000000476837158,
+          "D": 1.899999976158142,
+          "axis": null
+        },
+        {
+          "name": "01_pino",
+          "idx": 0,
+          "W": 11.85622501373291,
+          "H": 0.8359999656677246,
+          "D": 0.8360004425048828,
+          "axis": null
+        },
+        {
+          "name": "02_dobradica",
+          "idx": 1,
+          "W": 6.860200881958008,
+          "H": 2.200000047683716,
+          "D": 2.200000762939453,
+          "axis": {
+            "y": 3.3,
+            "z": -27.084372024536133
+          }
+        },
+        {
+          "name": "01_dobradica",
+          "idx": 0,
+          "W": 5.446023941040039,
+          "H": 2.200000047683716,
+          "D": 2.200000762939453,
+          "axis": null
+        },
+        {
+          "name": "01_apoio_dobradica",
+          "idx": 0,
+          "W": 5.4460248947143555,
+          "H": 1.7000000476837158,
+          "D": 1.899999976158142,
+          "axis": null
+        },
+        {
+          "name": "01_pino",
+          "idx": 0,
+          "W": 11.85622501373291,
+          "H": 0.8359999656677246,
+          "D": 0.8360004425048828,
+          "axis": null
+        }
+      ],
+      "pinChecks": [
+        {
+          "name": "01_pino",
+          "tested": 5,
+          "occupied": 0,
+          "blocked": []
+        },
+        {
+          "name": "01_pino",
+          "tested": 5,
+          "occupied": 0,
+          "blocked": []
+        }
+      ],
+      "checks": [
+        {
+          "angle": 0,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        },
+        {
+          "angle": 15,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        },
+        {
+          "angle": 30,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        },
+        {
+          "angle": 60,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        },
+        {
+          "angle": 90,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        },
+        {
+          "angle": 105,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        },
+        {
+          "angle": 120,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        },
+        {
+          "angle": 135,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        },
+        {
+          "angle": 180,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        }
+      ],
+      "returnError": 0,
+      "invalidGeometry": 0,
+      "geometry": [
+        {
+          "name": "01_Base",
+          "idx": 0,
+          "hash": "3ac580d3"
+        },
+        {
+          "name": "02_Tampa",
+          "idx": 1,
+          "hash": "7526f71"
+        },
+        {
+          "name": "01_colar",
+          "idx": 0,
+          "hash": "8ed2a7b8"
+        },
+        {
+          "name": "01_colar",
+          "idx": 0,
+          "hash": "9a84b778"
+        },
+        {
+          "name": "01_bandeja",
+          "idx": 0,
+          "hash": "aef10b49"
+        },
+        {
+          "name": "01_bandeja",
+          "idx": 0,
+          "hash": "20a45135"
+        },
+        {
+          "name": "01_gode",
+          "idx": 0,
+          "hash": "e2df49f5"
+        },
+        {
+          "name": "01_lingueta_rebaixo",
+          "idx": 0,
+          "hash": "5f1dc01"
+        },
+        {
+          "name": "02_lingua_fecho",
+          "idx": 1,
+          "hash": "e1636c05"
+        },
+        {
+          "name": "02_dente_fecho",
+          "idx": 1,
+          "hash": "6fa175f5"
+        },
+        {
+          "name": "02_espelho",
+          "idx": 1,
+          "hash": "53732ddf"
+        },
+        {
+          "name": "02_dobradica",
+          "idx": 1,
+          "hash": "35a07f1"
+        },
+        {
+          "name": "01_dobradica",
+          "idx": 0,
+          "hash": "d666ea69"
+        },
+        {
+          "name": "01_apoio_dobradica",
+          "idx": 0,
+          "hash": "73579c35"
+        },
+        {
+          "name": "01_pino",
+          "idx": 0,
+          "hash": "ffcb9405"
+        },
+        {
+          "name": "02_dobradica",
+          "idx": 1,
+          "hash": "4503ec5"
+        },
+        {
+          "name": "01_dobradica",
+          "idx": 0,
+          "hash": "715635c9"
+        },
+        {
+          "name": "01_apoio_dobradica",
+          "idx": 0,
+          "hash": "73579c35"
+        },
+        {
+          "name": "01_pino",
+          "idx": 0,
+          "hash": "ade39eb5"
+        }
+      ]
+    },
+    {
+      "name": "Incom Case M All Crystal (compactos)",
+      "build": "versão 2026-11-18.cdx30",
+      "closed": {
+        "W": 57.793331146240234,
+        "H": 13.699999809265137,
+        "D": 56.03874397277832
+      },
+      "modules": [
+        {
+          "idx": 1,
+          "name": "Tampa",
+          "hingeCase": [
+            0.26,
+            0.38
+          ]
+        }
+      ],
+      "parts": [
+        {
+          "name": "02_dobradica",
+          "idx": 1,
+          "W": 6.860198974609375,
+          "H": 2.200000047683716,
+          "D": 2.200000762939453,
+          "axis": {
+            "y": 3.3,
+            "z": -27.084372024536133
+          }
+        },
+        {
+          "name": "01_dobradica",
+          "idx": 0,
+          "W": 5.446023941040039,
+          "H": 2.200000047683716,
+          "D": 2.200000762939453,
+          "axis": null
+        },
+        {
+          "name": "01_apoio_dobradica",
+          "idx": 0,
+          "W": 5.4460248947143555,
+          "H": 1.7000000476837158,
+          "D": 1.899999976158142,
+          "axis": null
+        },
+        {
+          "name": "01_pino",
+          "idx": 0,
+          "W": 11.85622501373291,
+          "H": 0.8359999656677246,
+          "D": 0.8360004425048828,
+          "axis": null
+        },
+        {
+          "name": "02_dobradica",
+          "idx": 1,
+          "W": 6.860200881958008,
+          "H": 2.200000047683716,
+          "D": 2.200000762939453,
+          "axis": {
+            "y": 3.3,
+            "z": -27.084372024536133
+          }
+        },
+        {
+          "name": "01_dobradica",
+          "idx": 0,
+          "W": 5.446023941040039,
+          "H": 2.200000047683716,
+          "D": 2.200000762939453,
+          "axis": null
+        },
+        {
+          "name": "01_apoio_dobradica",
+          "idx": 0,
+          "W": 5.4460248947143555,
+          "H": 1.7000000476837158,
+          "D": 1.899999976158142,
+          "axis": null
+        },
+        {
+          "name": "01_pino",
+          "idx": 0,
+          "W": 11.85622501373291,
+          "H": 0.8359999656677246,
+          "D": 0.8360004425048828,
+          "axis": null
+        }
+      ],
+      "pinChecks": [
+        {
+          "name": "01_pino",
+          "tested": 5,
+          "occupied": 0,
+          "blocked": []
+        },
+        {
+          "name": "01_pino",
+          "tested": 5,
+          "occupied": 0,
+          "blocked": []
+        }
+      ],
+      "checks": [
+        {
+          "angle": 0,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        },
+        {
+          "angle": 15,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        },
+        {
+          "angle": 30,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        },
+        {
+          "angle": 60,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        },
+        {
+          "angle": 90,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        },
+        {
+          "angle": 105,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        },
+        {
+          "angle": 120,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        },
+        {
+          "angle": 135,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        },
+        {
+          "angle": 180,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        }
+      ],
+      "returnError": 0,
+      "invalidGeometry": 0,
+      "geometry": [
+        {
+          "name": "01_Base",
+          "idx": 0,
+          "hash": "3ac580d3"
+        },
+        {
+          "name": "02_Tampa",
+          "idx": 1,
+          "hash": "7526f71"
+        },
+        {
+          "name": "01_colar",
+          "idx": 0,
+          "hash": "8ed2a7b8"
+        },
+        {
+          "name": "01_colar",
+          "idx": 0,
+          "hash": "9a84b778"
+        },
+        {
+          "name": "01_bandeja",
+          "idx": 0,
+          "hash": "aef10b49"
+        },
+        {
+          "name": "01_bandeja",
+          "idx": 0,
+          "hash": "20a45135"
+        },
+        {
+          "name": "01_gode",
+          "idx": 0,
+          "hash": "e2df49f5"
+        },
+        {
+          "name": "01_lingueta_rebaixo",
+          "idx": 0,
+          "hash": "5f1dc01"
+        },
+        {
+          "name": "02_lingua_fecho",
+          "idx": 1,
+          "hash": "e1636c05"
+        },
+        {
+          "name": "02_dente_fecho",
+          "idx": 1,
+          "hash": "6fa175f5"
+        },
+        {
+          "name": "02_dobradica",
+          "idx": 1,
+          "hash": "35a07f1"
+        },
+        {
+          "name": "01_dobradica",
+          "idx": 0,
+          "hash": "d666ea69"
+        },
+        {
+          "name": "01_apoio_dobradica",
+          "idx": 0,
+          "hash": "73579c35"
+        },
+        {
+          "name": "01_pino",
+          "idx": 0,
+          "hash": "ffcb9405"
+        },
+        {
+          "name": "02_dobradica",
+          "idx": 1,
+          "hash": "4503ec5"
+        },
+        {
+          "name": "01_dobradica",
+          "idx": 0,
+          "hash": "715635c9"
+        },
+        {
+          "name": "01_apoio_dobradica",
+          "idx": 0,
+          "hash": "73579c35"
+        },
+        {
+          "name": "01_pino",
+          "idx": 0,
+          "hash": "ade39eb5"
+        }
+      ]
+    },
+    {
+      "name": "Incom Classic Duo (compactos)",
+      "build": "versão 2026-11-18.cdx30",
+      "closed": {
+        "W": 69.07884216308594,
+        "H": 18,
+        "D": 69.16306686401367
+      },
+      "modules": [
+        {
+          "idx": 1,
+          "name": "Tampa"
+        }
+      ],
+      "parts": [
+        {
+          "name": "01_dobradica",
+          "idx": 0,
+          "W": 8.860512256622314,
+          "H": 3.915999412536621,
+          "D": 3.9159984588623047,
+          "axis": null
+        },
+        {
+          "name": "01_dobradica",
+          "idx": 0,
+          "W": 8.860512256622314,
+          "H": 3.915999412536621,
+          "D": 3.9159984588623047,
+          "axis": null
+        },
+        {
+          "name": "01_pino",
+          "idx": 0,
+          "W": 27.031536102294922,
+          "H": 1.4880800247192383,
+          "D": 1.4880790710449219,
+          "axis": null
+        },
+        {
+          "name": "02_dobradica",
+          "idx": 1,
+          "W": 9.210512161254883,
+          "H": 3.915999412536621,
+          "D": 3.9159984588623047,
+          "axis": {
+            "y": 9.1,
+            "z": -32.917234167480466
+          }
+        }
+      ],
+      "pinChecks": [],
+      "checks": [
+        {
+          "angle": 0,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 3,
+          "collisions": []
+        },
+        {
+          "angle": 15,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 3,
+          "collisions": []
+        },
+        {
+          "angle": 30,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 3,
+          "collisions": []
+        },
+        {
+          "angle": 60,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 3,
+          "collisions": []
+        },
+        {
+          "angle": 90,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 3,
+          "collisions": []
+        },
+        {
+          "angle": 105,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 3,
+          "collisions": []
+        },
+        {
+          "angle": 120,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 3,
+          "collisions": []
+        },
+        {
+          "angle": 135,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 3,
+          "collisions": []
+        },
+        {
+          "angle": 180,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 3,
+          "collisions": []
+        }
+      ],
+      "returnError": 0,
+      "invalidGeometry": 0,
+      "geometry": [
+        {
+          "name": "01_Base",
+          "idx": 0,
+          "hash": "e244fb3b"
+        },
+        {
+          "name": "02_Tampa",
+          "idx": 1,
+          "hash": "4d09f4fa"
+        },
+        {
+          "name": "01_bandeja",
+          "idx": 0,
+          "hash": "2663b475"
+        },
+        {
+          "name": "01_gode",
+          "idx": 0,
+          "hash": "90728ef5"
+        },
+        {
+          "name": "01_bandeja",
+          "idx": 0,
+          "hash": "86a70bb1"
+        },
+        {
+          "name": "01_gode",
+          "idx": 0,
+          "hash": "93d01a5"
+        },
+        {
+          "name": "02_lingua_fecho",
+          "idx": 1,
+          "hash": "12d2e03d"
+        },
+        {
+          "name": "02_dente_fecho",
+          "idx": 1,
+          "hash": "e17692fd"
+        },
+        {
+          "name": "02_espelho",
+          "idx": 1,
+          "hash": "28d89df1"
+        },
+        {
+          "name": "01_dobradica",
+          "idx": 0,
+          "hash": "a90814b1"
+        },
+        {
+          "name": "01_dobradica",
+          "idx": 0,
+          "hash": "572c3efd"
+        },
+        {
+          "name": "01_pino",
+          "idx": 0,
+          "hash": "cd4b6aa5"
+        },
+        {
+          "name": "02_dobradica",
+          "idx": 1,
+          "hash": "3f73d1b9"
+        }
+      ]
+    },
+    {
+      "name": "Incom Classic Quarteto (compactos)",
+      "build": "versão 2026-11-18.cdx30",
+      "closed": {
+        "W": 69.07884216308594,
+        "H": 18,
+        "D": 69.16306686401367
+      },
+      "modules": [
+        {
+          "idx": 1,
+          "name": "Tampa"
+        }
+      ],
+      "parts": [
+        {
+          "name": "01_dobradica",
+          "idx": 0,
+          "W": 8.860512256622314,
+          "H": 3.915999412536621,
+          "D": 3.9159984588623047,
+          "axis": null
+        },
+        {
+          "name": "01_dobradica",
+          "idx": 0,
+          "W": 8.860512256622314,
+          "H": 3.915999412536621,
+          "D": 3.9159984588623047,
+          "axis": null
+        },
+        {
+          "name": "01_pino",
+          "idx": 0,
+          "W": 27.031536102294922,
+          "H": 1.4880800247192383,
+          "D": 1.4880790710449219,
+          "axis": null
+        },
+        {
+          "name": "02_dobradica",
+          "idx": 1,
+          "W": 9.210512161254883,
+          "H": 3.915999412536621,
+          "D": 3.9159984588623047,
+          "axis": {
+            "y": 9.1,
+            "z": -32.917234167480466
+          }
+        }
+      ],
+      "pinChecks": [],
+      "checks": [
+        {
+          "angle": 0,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 3,
+          "collisions": []
+        },
+        {
+          "angle": 15,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 3,
+          "collisions": []
+        },
+        {
+          "angle": 30,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 3,
+          "collisions": []
+        },
+        {
+          "angle": 60,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 3,
+          "collisions": []
+        },
+        {
+          "angle": 90,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 3,
+          "collisions": []
+        },
+        {
+          "angle": 105,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 3,
+          "collisions": []
+        },
+        {
+          "angle": 120,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 3,
+          "collisions": []
+        },
+        {
+          "angle": 135,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 3,
+          "collisions": []
+        },
+        {
+          "angle": 180,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 3,
+          "collisions": []
+        }
+      ],
+      "returnError": 0,
+      "invalidGeometry": 0,
+      "geometry": [
+        {
+          "name": "01_Base",
+          "idx": 0,
+          "hash": "ab94a473"
+        },
+        {
+          "name": "02_Tampa",
+          "idx": 1,
+          "hash": "4d09f4fa"
+        },
+        {
+          "name": "01_bandeja",
+          "idx": 0,
+          "hash": "aa6dd917"
+        },
+        {
+          "name": "01_gode",
+          "idx": 0,
+          "hash": "35ba212f"
+        },
+        {
+          "name": "01_bandeja",
+          "idx": 0,
+          "hash": "dd5f8b53"
+        },
+        {
+          "name": "01_gode",
+          "idx": 0,
+          "hash": "3eeb4157"
+        },
+        {
+          "name": "01_bandeja",
+          "idx": 0,
+          "hash": "8fddc99"
+        },
+        {
+          "name": "01_gode",
+          "idx": 0,
+          "hash": "d5338ef5"
+        },
+        {
+          "name": "01_bandeja",
+          "idx": 0,
+          "hash": "2bebd7f7"
+        },
+        {
+          "name": "01_gode",
+          "idx": 0,
+          "hash": "9a8bac4d"
+        },
+        {
+          "name": "02_lingua_fecho",
+          "idx": 1,
+          "hash": "12d2e03d"
+        },
+        {
+          "name": "02_dente_fecho",
+          "idx": 1,
+          "hash": "e17692fd"
+        },
+        {
+          "name": "02_espelho",
+          "idx": 1,
+          "hash": "28d89df1"
+        },
+        {
+          "name": "01_dobradica",
+          "idx": 0,
+          "hash": "a90814b1"
+        },
+        {
+          "name": "01_dobradica",
+          "idx": 0,
+          "hash": "572c3efd"
+        },
+        {
+          "name": "01_pino",
+          "idx": 0,
+          "hash": "cd4b6aa5"
+        },
+        {
+          "name": "02_dobradica",
+          "idx": 1,
+          "hash": "3f73d1b9"
+        }
+      ]
+    },
+    {
+      "name": "Incom Classic Uno (compactos)",
+      "build": "versão 2026-11-18.cdx30",
+      "closed": {
+        "W": 69.07884216308594,
+        "H": 18,
+        "D": 69.16306686401367
+      },
+      "modules": [
+        {
+          "idx": 1,
+          "name": "Tampa"
+        }
+      ],
+      "parts": [
+        {
+          "name": "01_dobradica",
+          "idx": 0,
+          "W": 8.860512256622314,
+          "H": 3.915999412536621,
+          "D": 3.9159984588623047,
+          "axis": null
+        },
+        {
+          "name": "01_dobradica",
+          "idx": 0,
+          "W": 8.860512256622314,
+          "H": 3.915999412536621,
+          "D": 3.9159984588623047,
+          "axis": null
+        },
+        {
+          "name": "01_pino",
+          "idx": 0,
+          "W": 27.031536102294922,
+          "H": 1.4880800247192383,
+          "D": 1.4880790710449219,
+          "axis": null
+        },
+        {
+          "name": "02_dobradica",
+          "idx": 1,
+          "W": 9.210512161254883,
+          "H": 3.915999412536621,
+          "D": 3.9159984588623047,
+          "axis": {
+            "y": 9.1,
+            "z": -32.917234167480466
+          }
+        }
+      ],
+      "pinChecks": [],
+      "checks": [
+        {
+          "angle": 0,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 3,
+          "collisions": []
+        },
+        {
+          "angle": 15,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 3,
+          "collisions": []
+        },
+        {
+          "angle": 30,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 3,
+          "collisions": []
+        },
+        {
+          "angle": 60,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 3,
+          "collisions": []
+        },
+        {
+          "angle": 90,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 3,
+          "collisions": []
+        },
+        {
+          "angle": 105,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 3,
+          "collisions": []
+        },
+        {
+          "angle": 120,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 3,
+          "collisions": []
+        },
+        {
+          "angle": 135,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 3,
+          "collisions": []
+        },
+        {
+          "angle": 180,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 3,
+          "collisions": []
+        }
+      ],
+      "returnError": 0,
+      "invalidGeometry": 0,
+      "geometry": [
+        {
+          "name": "01_Base",
+          "idx": 0,
+          "hash": "622de8c1"
+        },
+        {
+          "name": "02_Tampa",
+          "idx": 1,
+          "hash": "4d09f4fa"
+        },
+        {
+          "name": "01_bandeja",
+          "idx": 0,
+          "hash": "1b73ad5d"
+        },
+        {
+          "name": "01_gode",
+          "idx": 0,
+          "hash": "f9f7a2ad"
+        },
+        {
+          "name": "02_lingua_fecho",
+          "idx": 1,
+          "hash": "12d2e03d"
+        },
+        {
+          "name": "02_dente_fecho",
+          "idx": 1,
+          "hash": "e17692fd"
+        },
+        {
+          "name": "02_espelho",
+          "idx": 1,
+          "hash": "28d89df1"
+        },
+        {
+          "name": "01_dobradica",
+          "idx": 0,
+          "hash": "a90814b1"
+        },
+        {
+          "name": "01_dobradica",
+          "idx": 0,
+          "hash": "572c3efd"
+        },
+        {
+          "name": "01_pino",
+          "idx": 0,
+          "hash": "cd4b6aa5"
+        },
+        {
+          "name": "02_dobradica",
+          "idx": 1,
+          "hash": "3f73d1b9"
+        }
+      ]
+    },
+    {
+      "exportedParts": [
+        {
+          "name": "01_Base",
+          "vertices": 76602
+        },
+        {
+          "name": "02_Tampa",
+          "vertices": 88044
+        },
+        {
+          "name": "01_bandeja",
+          "vertices": 8052
+        },
+        {
+          "name": "01_gode",
+          "vertices": 8052
+        },
+        {
+          "name": "02_visor",
+          "vertices": 1536
+        },
+        {
+          "name": "02_lingua_fecho",
+          "vertices": 420
+        },
+        {
+          "name": "02_dente_fecho",
+          "vertices": 24
+        },
+        {
+          "name": "01_lingueta_rebaixo",
+          "vertices": 900
+        },
+        {
+          "name": "01_dobradica",
+          "vertices": 1212
+        },
+        {
+          "name": "01_dobradica",
+          "vertices": 1212
+        },
+        {
+          "name": "02_dobradica",
+          "vertices": 1176
+        },
+        {
+          "name": "02_aba_dobradica",
+          "vertices": 900
+        },
+        {
+          "name": "01_pino",
+          "vertices": 196
+        }
+      ],
+      "name": "Incom Frame G com Visor (compactos)",
+      "build": "versão 2026-11-18.cdx30",
+      "closed": {
+        "W": 69.30000305175781,
+        "H": 17.299999237060547,
+        "D": 68.80000305175781
+      },
+      "modules": [
+        {
+          "idx": 1,
+          "name": "Tampa",
+          "hingeLeaf": {
+            "w": 0.16
+          },
+          "hingeBloco": true
+        }
+      ],
+      "parts": [
+        {
+          "name": "01_dobradica",
+          "idx": 0,
+          "W": 2.2593600749969482,
+          "H": 3.8999996185302734,
+          "D": 2.999998092651367,
+          "axis": null
+        },
+        {
+          "name": "01_dobradica",
+          "idx": 0,
+          "W": 2.2593600749969482,
+          "H": 3.8999996185302734,
+          "D": 2.999998092651367,
+          "axis": null
+        },
+        {
+          "name": "02_dobradica",
+          "idx": 1,
+          "W": 6.209280490875244,
+          "H": 1.7999992370605469,
+          "D": 1.7999992370605469,
+          "axis": {
+            "y": 9.005,
+            "z": -33.10000152587891
+          }
+        },
+        {
+          "name": "02_aba_dobradica",
+          "idx": 1,
+          "W": 6.209280490875244,
+          "H": 1.9730000495910645,
+          "D": 0.800000011920929,
+          "axis": {
+            "y": 9.005,
+            "z": -33.10000152587891
+          }
+        },
+        {
+          "name": "01_pino",
+          "idx": 0,
+          "W": 10.88800048828125,
+          "H": 0.5039997100830078,
+          "D": 0.503997802734375,
+          "axis": null
+        }
+      ],
+      "pinChecks": [
+        {
+          "name": "01_pino",
+          "tested": 5,
+          "occupied": 0,
+          "blocked": []
+        }
+      ],
+      "checks": [
+        {
+          "angle": 0,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        },
+        {
+          "angle": 15,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        },
+        {
+          "angle": 30,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        },
+        {
+          "angle": 60,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        },
+        {
+          "angle": 90,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        },
+        {
+          "angle": 105,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        },
+        {
+          "angle": 120,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        },
+        {
+          "angle": 135,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        },
+        {
+          "angle": 180,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        }
+      ],
+      "returnError": 0,
+      "invalidGeometry": 0,
+      "geometry": [
+        {
+          "name": "01_Base",
+          "idx": 0,
+          "hash": "104598b1"
+        },
+        {
+          "name": "02_Tampa",
+          "idx": 1,
+          "hash": "87fc8d55"
+        },
+        {
+          "name": "01_bandeja",
+          "idx": 0,
+          "hash": "b160ca2d"
+        },
+        {
+          "name": "01_gode",
+          "idx": 0,
+          "hash": "4a101f65"
+        },
+        {
+          "name": "02_visor",
+          "idx": 1,
+          "hash": "4b8430b"
+        },
+        {
+          "name": "02_lingua_fecho",
+          "idx": 1,
+          "hash": "e6da2c2d"
+        },
+        {
+          "name": "02_dente_fecho",
+          "idx": 1,
+          "hash": "9ffb21c5"
+        },
+        {
+          "name": "01_lingueta_rebaixo",
+          "idx": 0,
+          "hash": "cdfeadd"
+        },
+        {
+          "name": "01_dobradica",
+          "idx": 0,
+          "hash": "3cfe82d9"
+        },
+        {
+          "name": "01_dobradica",
+          "idx": 0,
+          "hash": "65ebb759"
+        },
+        {
+          "name": "02_dobradica",
+          "idx": 1,
+          "hash": "44db0cd5"
+        },
+        {
+          "name": "02_aba_dobradica",
+          "idx": 1,
+          "hash": "8cd510b5"
+        },
+        {
+          "name": "01_pino",
+          "idx": 0,
+          "hash": "974820c5"
+        }
+      ]
+    },
+    {
+      "name": "Incom Frame G Quinteto (compactos)",
+      "build": "versão 2026-11-18.cdx30",
+      "closed": {
+        "W": 69.30000305175781,
+        "H": 17.299999237060547,
+        "D": 68.80000305175781
+      },
+      "modules": [
+        {
+          "idx": 1,
+          "name": "Tampa",
+          "hingeLeaf": {
+            "w": 0.16
+          },
+          "hingeBloco": true
+        }
+      ],
+      "parts": [
+        {
+          "name": "01_dobradica",
+          "idx": 0,
+          "W": 2.2593600749969482,
+          "H": 3.8999996185302734,
+          "D": 2.999998092651367,
+          "axis": null
+        },
+        {
+          "name": "01_dobradica",
+          "idx": 0,
+          "W": 2.2593600749969482,
+          "H": 3.8999996185302734,
+          "D": 2.999998092651367,
+          "axis": null
+        },
+        {
+          "name": "02_dobradica",
+          "idx": 1,
+          "W": 6.209280490875244,
+          "H": 1.7999992370605469,
+          "D": 1.7999992370605469,
+          "axis": {
+            "y": 9.005,
+            "z": -33.10000152587891
+          }
+        },
+        {
+          "name": "02_aba_dobradica",
+          "idx": 1,
+          "W": 6.209280490875244,
+          "H": 1.9730000495910645,
+          "D": 0.800000011920929,
+          "axis": {
+            "y": 9.005,
+            "z": -33.10000152587891
+          }
+        },
+        {
+          "name": "01_pino",
+          "idx": 0,
+          "W": 10.88800048828125,
+          "H": 0.5039997100830078,
+          "D": 0.503997802734375,
+          "axis": null
+        }
+      ],
+      "pinChecks": [
+        {
+          "name": "01_pino",
+          "tested": 5,
+          "occupied": 0,
+          "blocked": []
+        }
+      ],
+      "checks": [
+        {
+          "angle": 0,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        },
+        {
+          "angle": 15,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        },
+        {
+          "angle": 30,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        },
+        {
+          "angle": 60,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        },
+        {
+          "angle": 90,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        },
+        {
+          "angle": 105,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        },
+        {
+          "angle": 120,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        },
+        {
+          "angle": 135,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        },
+        {
+          "angle": 180,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        }
+      ],
+      "returnError": 0,
+      "invalidGeometry": 0,
+      "geometry": [
+        {
+          "name": "01_Base",
+          "idx": 0,
+          "hash": "301b8d0f"
+        },
+        {
+          "name": "02_Tampa",
+          "idx": 1,
+          "hash": "29d00050"
+        },
+        {
+          "name": "01_bandeja",
+          "idx": 0,
+          "hash": "56d9658d"
+        },
+        {
+          "name": "01_gode",
+          "idx": 0,
+          "hash": "d6633fa1"
+        },
+        {
+          "name": "01_bandeja",
+          "idx": 0,
+          "hash": "93d7b289"
+        },
+        {
+          "name": "01_gode",
+          "idx": 0,
+          "hash": "ccebc9a9"
+        },
+        {
+          "name": "01_bandeja",
+          "idx": 0,
+          "hash": "17644d81"
+        },
+        {
+          "name": "01_gode",
+          "idx": 0,
+          "hash": "e2571d59"
+        },
+        {
+          "name": "01_bandeja",
+          "idx": 0,
+          "hash": "b3fe3c31"
+        },
+        {
+          "name": "01_gode",
+          "idx": 0,
+          "hash": "48cd6a51"
+        },
+        {
+          "name": "01_bandeja",
+          "idx": 0,
+          "hash": "eb514031"
+        },
+        {
+          "name": "01_gode",
+          "idx": 0,
+          "hash": "dc205661"
+        },
+        {
+          "name": "02_visor",
+          "idx": 1,
+          "hash": "ea6f61cb"
+        },
+        {
+          "name": "02_lingua_fecho",
+          "idx": 1,
+          "hash": "e6da2c2d"
+        },
+        {
+          "name": "02_dente_fecho",
+          "idx": 1,
+          "hash": "9ffb21c5"
+        },
+        {
+          "name": "01_lingueta_rebaixo",
+          "idx": 0,
+          "hash": "cdfeadd"
+        },
+        {
+          "name": "01_dobradica",
+          "idx": 0,
+          "hash": "3cfe82d9"
+        },
+        {
+          "name": "01_dobradica",
+          "idx": 0,
+          "hash": "65ebb759"
+        },
+        {
+          "name": "02_dobradica",
+          "idx": 1,
+          "hash": "44db0cd5"
+        },
+        {
+          "name": "02_aba_dobradica",
+          "idx": 1,
+          "hash": "8cd510b5"
+        },
+        {
+          "name": "01_pino",
+          "idx": 0,
+          "hash": "974820c5"
+        }
+      ]
+    },
+    {
+      "name": "Incom Frame G Tampa Fechada (compactos)",
+      "build": "versão 2026-11-18.cdx30",
+      "closed": {
+        "W": 69.30000305175781,
+        "H": 17.299999237060547,
+        "D": 68.80000305175781
+      },
+      "modules": [
+        {
+          "idx": 1,
+          "name": "Tampa",
+          "hingeLeaf": {
+            "w": 0.16
+          },
+          "hingeBloco": true
+        }
+      ],
+      "parts": [
+        {
+          "name": "01_dobradica",
+          "idx": 0,
+          "W": 2.2593600749969482,
+          "H": 3.8999996185302734,
+          "D": 2.999998092651367,
+          "axis": null
+        },
+        {
+          "name": "01_dobradica",
+          "idx": 0,
+          "W": 2.2593600749969482,
+          "H": 3.8999996185302734,
+          "D": 2.999998092651367,
+          "axis": null
+        },
+        {
+          "name": "02_dobradica",
+          "idx": 1,
+          "W": 6.209280490875244,
+          "H": 1.7999992370605469,
+          "D": 1.7999992370605469,
+          "axis": {
+            "y": 9.005,
+            "z": -33.10000152587891
+          }
+        },
+        {
+          "name": "02_aba_dobradica",
+          "idx": 1,
+          "W": 6.209280490875244,
+          "H": 1.9730000495910645,
+          "D": 0.800000011920929,
+          "axis": {
+            "y": 9.005,
+            "z": -33.10000152587891
+          }
+        },
+        {
+          "name": "01_pino",
+          "idx": 0,
+          "W": 10.88800048828125,
+          "H": 0.5039997100830078,
+          "D": 0.503997802734375,
+          "axis": null
+        }
+      ],
+      "pinChecks": [
+        {
+          "name": "01_pino",
+          "tested": 5,
+          "occupied": 0,
+          "blocked": []
+        }
+      ],
+      "checks": [
+        {
+          "angle": 0,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        },
+        {
+          "angle": 15,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        },
+        {
+          "angle": 30,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        },
+        {
+          "angle": 60,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        },
+        {
+          "angle": 90,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        },
+        {
+          "angle": 105,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        },
+        {
+          "angle": 120,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        },
+        {
+          "angle": 135,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        },
+        {
+          "angle": 180,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        }
+      ],
+      "returnError": 0,
+      "invalidGeometry": 0,
+      "geometry": [
+        {
+          "name": "01_Base",
+          "idx": 0,
+          "hash": "104598b1"
+        },
+        {
+          "name": "02_Tampa",
+          "idx": 1,
+          "hash": "87a0923"
+        },
+        {
+          "name": "01_bandeja",
+          "idx": 0,
+          "hash": "b160ca2d"
+        },
+        {
+          "name": "01_gode",
+          "idx": 0,
+          "hash": "4a101f65"
+        },
+        {
+          "name": "02_lingua_fecho",
+          "idx": 1,
+          "hash": "e6da2c2d"
+        },
+        {
+          "name": "02_dente_fecho",
+          "idx": 1,
+          "hash": "9ffb21c5"
+        },
+        {
+          "name": "01_lingueta_rebaixo",
+          "idx": 0,
+          "hash": "cdfeadd"
+        },
+        {
+          "name": "02_espelho",
+          "idx": 1,
+          "hash": "8bfe1677"
+        },
+        {
+          "name": "01_dobradica",
+          "idx": 0,
+          "hash": "3cfe82d9"
+        },
+        {
+          "name": "01_dobradica",
+          "idx": 0,
+          "hash": "65ebb759"
+        },
+        {
+          "name": "02_dobradica",
+          "idx": 1,
+          "hash": "44db0cd5"
+        },
+        {
+          "name": "02_aba_dobradica",
+          "idx": 1,
+          "hash": "8cd510b5"
+        },
+        {
+          "name": "01_pino",
+          "idx": 0,
+          "hash": "974820c5"
+        }
+      ]
+    },
+    {
+      "name": "Incom Frame M (compactos)",
+      "build": "versão 2026-11-18.cdx30",
+      "closed": {
+        "W": 52.29999923706055,
+        "H": 14.899999618530273,
+        "D": 51.900001525878906
+      },
+      "modules": [
+        {
+          "idx": 1,
+          "name": "Tampa",
+          "hingeLeaf": {
+            "w": 0.16
+          },
+          "hingeBloco": true
+        }
+      ],
+      "parts": [
+        {
+          "name": "01_dobradica",
+          "idx": 0,
+          "W": 1.6609599590301514,
+          "H": 3.8999996185302734,
+          "D": 3,
+          "axis": null
+        },
+        {
+          "name": "01_dobradica",
+          "idx": 0,
+          "W": 1.6609599590301514,
+          "H": 3.8999996185302734,
+          "D": 3,
+          "axis": null
+        },
+        {
+          "name": "02_dobradica",
+          "idx": 1,
+          "W": 4.686079978942871,
+          "H": 1.799999713897705,
+          "D": 1.8000011444091797,
+          "axis": {
+            "y": 7.704999999999999,
+            "z": -24.650000762939456
+          }
+        },
+        {
+          "name": "02_aba_dobradica",
+          "idx": 1,
+          "W": 4.686079978942871,
+          "H": 1.9730000495910645,
+          "D": 0.800000011920929,
+          "axis": {
+            "y": 7.704999999999999,
+            "z": -24.650000762939456
+          }
+        },
+        {
+          "name": "01_pino",
+          "idx": 0,
+          "W": 8.168000221252441,
+          "H": 0.5039997100830078,
+          "D": 0.5039997100830078,
+          "axis": null
+        }
+      ],
+      "pinChecks": [
+        {
+          "name": "01_pino",
+          "tested": 5,
+          "occupied": 0,
+          "blocked": []
+        }
+      ],
+      "checks": [
+        {
+          "angle": 0,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        },
+        {
+          "angle": 15,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        },
+        {
+          "angle": 30,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        },
+        {
+          "angle": 60,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        },
+        {
+          "angle": 90,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        },
+        {
+          "angle": 105,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        },
+        {
+          "angle": 120,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        },
+        {
+          "angle": 135,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        },
+        {
+          "angle": 180,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        }
+      ],
+      "returnError": 0,
+      "invalidGeometry": 0,
+      "geometry": [
+        {
+          "name": "01_Base",
+          "idx": 0,
+          "hash": "710363d1"
+        },
+        {
+          "name": "02_Tampa",
+          "idx": 1,
+          "hash": "e2ff47ae"
+        },
+        {
+          "name": "01_bandeja",
+          "idx": 0,
+          "hash": "57838ad"
+        },
+        {
+          "name": "01_gode",
+          "idx": 0,
+          "hash": "533f5145"
+        },
+        {
+          "name": "02_visor",
+          "idx": 1,
+          "hash": "f7e974ad"
+        },
+        {
+          "name": "02_lingua_fecho",
+          "idx": 1,
+          "hash": "4fd3c5b5"
+        },
+        {
+          "name": "02_dente_fecho",
+          "idx": 1,
+          "hash": "4f100675"
+        },
+        {
+          "name": "01_lingueta_rebaixo",
+          "idx": 0,
+          "hash": "4fff91d9"
+        },
+        {
+          "name": "01_dobradica",
+          "idx": 0,
+          "hash": "a12c87d3"
+        },
+        {
+          "name": "01_dobradica",
+          "idx": 0,
+          "hash": "efa08b33"
+        },
+        {
+          "name": "02_dobradica",
+          "idx": 1,
+          "hash": "be8ffe7d"
+        },
+        {
+          "name": "02_aba_dobradica",
+          "idx": 1,
+          "hash": "6c3ad4b5"
+        },
+        {
+          "name": "01_pino",
+          "idx": 0,
+          "hash": "eaba58e5"
+        }
+      ]
+    },
+    {
+      "name": "Incom Frame P (compactos)",
+      "build": "versão 2026-11-18.cdx30",
+      "closed": {
+        "W": 38.099998474121094,
+        "H": 14.800000190734863,
+        "D": 37.70000076293945
+      },
+      "modules": [
+        {
+          "idx": 1,
+          "name": "Tampa",
+          "hingeLeaf": {
+            "w": 0.16
+          },
+          "hingeBloco": true
+        }
+      ],
+      "parts": [
+        {
+          "name": "01_dobradica",
+          "idx": 0,
+          "W": 1.1611199378967285,
+          "H": 3.9000000953674316,
+          "D": 3,
+          "axis": null
+        },
+        {
+          "name": "01_dobradica",
+          "idx": 0,
+          "W": 1.1611199378967285,
+          "H": 3.9000000953674316,
+          "D": 3,
+          "axis": null
+        },
+        {
+          "name": "02_dobradica",
+          "idx": 1,
+          "W": 3.41375994682312,
+          "H": 1.8000001907348633,
+          "D": 1.8000011444091797,
+          "axis": {
+            "y": 7.6049999999999995,
+            "z": -17.55000038146973
+          }
+        },
+        {
+          "name": "02_aba_dobradica",
+          "idx": 1,
+          "W": 3.41375994682312,
+          "H": 1.9730000495910645,
+          "D": 0.800000011920929,
+          "axis": {
+            "y": 7.6049999999999995,
+            "z": -17.55000038146973
+          }
+        },
+        {
+          "name": "01_pino",
+          "idx": 0,
+          "W": 5.895999908447266,
+          "H": 0.5039997100830078,
+          "D": 0.5039997100830078,
+          "axis": null
+        }
+      ],
+      "pinChecks": [
+        {
+          "name": "01_pino",
+          "tested": 5,
+          "occupied": 0,
+          "blocked": []
+        }
+      ],
+      "checks": [
+        {
+          "angle": 0,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        },
+        {
+          "angle": 15,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        },
+        {
+          "angle": 30,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        },
+        {
+          "angle": 60,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        },
+        {
+          "angle": 90,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        },
+        {
+          "angle": 105,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        },
+        {
+          "angle": 120,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        },
+        {
+          "angle": 135,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        },
+        {
+          "angle": 180,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        }
+      ],
+      "returnError": 0,
+      "invalidGeometry": 0,
+      "geometry": [
+        {
+          "name": "01_Base",
+          "idx": 0,
+          "hash": "e2d7160b"
+        },
+        {
+          "name": "02_Tampa",
+          "idx": 1,
+          "hash": "74b954bd"
+        },
+        {
+          "name": "01_bandeja",
+          "idx": 0,
+          "hash": "f257a73d"
+        },
+        {
+          "name": "01_gode",
+          "idx": 0,
+          "hash": "88e91c4d"
+        },
+        {
+          "name": "02_visor",
+          "idx": 1,
+          "hash": "4bb7c6b5"
+        },
+        {
+          "name": "02_lingua_fecho",
+          "idx": 1,
+          "hash": "7a496485"
+        },
+        {
+          "name": "02_dente_fecho",
+          "idx": 1,
+          "hash": "6ee19c5"
+        },
+        {
+          "name": "01_lingueta_rebaixo",
+          "idx": 0,
+          "hash": "6e1f7ae9"
+        },
+        {
+          "name": "01_dobradica",
+          "idx": 0,
+          "hash": "e8aa4c25"
+        },
+        {
+          "name": "01_dobradica",
+          "idx": 0,
+          "hash": "ec8e8fe5"
+        },
+        {
+          "name": "02_dobradica",
+          "idx": 1,
+          "hash": "1aed1441"
+        },
+        {
+          "name": "02_aba_dobradica",
+          "idx": 1,
+          "hash": "50b094b5"
+        },
+        {
+          "name": "01_pino",
+          "idx": 0,
+          "hash": "2b9c02a5"
+        }
+      ]
+    },
+    {
+      "exportedParts": [
+        {
+          "name": "01_Base",
+          "vertices": 76527
+        },
+        {
+          "name": "02_Tampa",
+          "vertices": 79575
+        },
+        {
+          "name": "01_bandeja",
+          "vertices": 2676
+        },
+        {
+          "name": "01_gode",
+          "vertices": 2676
+        },
+        {
+          "name": "01_parede",
+          "vertices": 9216
+        },
+        {
+          "name": "02_aba",
+          "vertices": 3852
+        },
+        {
+          "name": "02_dente_fecho",
+          "vertices": 2316
+        },
+        {
+          "name": "02_espelho",
+          "vertices": 576
+        },
+        {
+          "name": "01_dobradica",
+          "vertices": 1212
+        },
+        {
+          "name": "01_dobradica",
+          "vertices": 1212
+        },
+        {
+          "name": "02_dobradica",
+          "vertices": 1176
+        },
+        {
+          "name": "02_aba_dobradica",
+          "vertices": 900
+        },
+        {
+          "name": "01_pino",
+          "vertices": 196
+        }
+      ],
+      "name": "Incom Macaroon G (compactos)",
+      "build": "versão 2026-11-18.cdx30",
+      "closed": {
+        "W": 76,
+        "H": 23.700000762939453,
+        "D": 75.30000305175781
+      },
+      "modules": [
+        {
+          "idx": 1,
+          "name": "Tampa",
+          "hingeLeaf": {
+            "w": 0.09
+          },
+          "hingeBloco": {
+            "w": 0.09,
+            "vao": 3
+          }
+        }
+      ],
+      "parts": [
+        {
+          "name": "01_dobradica",
+          "idx": 0,
+          "W": 1.3248000144958496,
+          "H": 3.8999996185302734,
+          "D": 3,
+          "axis": null
+        },
+        {
+          "name": "01_dobradica",
+          "idx": 0,
+          "W": 1.3248000144958496,
+          "H": 3.8999996185302734,
+          "D": 3,
+          "axis": null
+        },
+        {
+          "name": "02_dobradica",
+          "idx": 1,
+          "W": 3.830399990081787,
+          "H": 1.7999992370605469,
+          "D": 1.7999992370605469,
+          "axis": {
+            "y": 12.505,
+            "z": -36.35000152587891
+          }
+        },
+        {
+          "name": "02_aba_dobradica",
+          "idx": 1,
+          "W": 3.830399990081787,
+          "H": 1.9730000495910645,
+          "D": 0.800000011920929,
+          "axis": {
+            "y": 12.505,
+            "z": -36.35000152587891
+          }
+        },
+        {
+          "name": "01_pino",
+          "idx": 0,
+          "W": 6.639999866485596,
+          "H": 0.5039997100830078,
+          "D": 0.503997802734375,
+          "axis": null
+        }
+      ],
+      "pinChecks": [
+        {
+          "name": "01_pino",
+          "tested": 5,
+          "occupied": 0,
+          "blocked": []
+        }
+      ],
+      "checks": [
+        {
+          "angle": 0,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        },
+        {
+          "angle": 15,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        },
+        {
+          "angle": 30,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        },
+        {
+          "angle": 60,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        },
+        {
+          "angle": 90,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        },
+        {
+          "angle": 105,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        },
+        {
+          "angle": 120,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        },
+        {
+          "angle": 135,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        },
+        {
+          "angle": 180,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        }
+      ],
+      "returnError": 0,
+      "invalidGeometry": 0,
+      "geometry": [
+        {
+          "name": "01_Base",
+          "idx": 0,
+          "hash": "cb011c1"
+        },
+        {
+          "name": "02_Tampa",
+          "idx": 1,
+          "hash": "1a8d1c5"
+        },
+        {
+          "name": "01_bandeja",
+          "idx": 0,
+          "hash": "adb05c8f"
+        },
+        {
+          "name": "01_gode",
+          "idx": 0,
+          "hash": "b490af"
+        },
+        {
+          "name": "01_parede",
+          "idx": 0,
+          "hash": "e2333d15"
+        },
+        {
+          "name": "02_aba",
+          "idx": 1,
+          "hash": "a9751daf"
+        },
+        {
+          "name": "02_dente_fecho",
+          "idx": 1,
+          "hash": "9389e39"
+        },
+        {
+          "name": "02_espelho",
+          "idx": 1,
+          "hash": "5b1241e3"
+        },
+        {
+          "name": "01_dobradica",
+          "idx": 0,
+          "hash": "e37b9159"
+        },
+        {
+          "name": "01_dobradica",
+          "idx": 0,
+          "hash": "4dbc6899"
+        },
+        {
+          "name": "02_dobradica",
+          "idx": 1,
+          "hash": "2f624695"
+        },
+        {
+          "name": "02_aba_dobradica",
+          "idx": 1,
+          "hash": "15cd3175"
+        },
+        {
+          "name": "01_pino",
+          "idx": 0,
+          "hash": "11ffacc5"
+        }
+      ]
+    },
+    {
+      "name": "Incom Moon Deck (compactos)",
+      "build": "versão 2026-11-18.cdx30",
+      "closed": {
+        "W": 68.9000015258789,
+        "H": 21.5,
+        "D": 68.5
+      },
+      "modules": [
+        {
+          "idx": 1,
+          "name": "Andar do meio",
+          "hingeBloco": true
+        },
+        {
+          "idx": 2,
+          "name": "Tampa",
+          "hingeBloco": true
+        }
+      ],
+      "parts": [
+        {
+          "name": "01_dobradica",
+          "idx": 0,
+          "W": 10.032000541687012,
+          "H": 5,
+          "D": 3.259999990463257,
+          "axis": null
+        },
+        {
+          "name": "01_pino",
+          "idx": 0,
+          "W": 11.032000541687012,
+          "H": 0.8579998016357422,
+          "D": 0.8579998016357422,
+          "axis": null
+        },
+        {
+          "name": "02_dobradica",
+          "idx": 1,
+          "W": 11.02400016784668,
+          "H": 3.575000047683716,
+          "D": 3.259999990463257,
+          "axis": {
+            "y": 7.342,
+            "z": -29.269999618530274
+          }
+        },
+        {
+          "name": "02_pino",
+          "idx": 1,
+          "W": 12.02400016784668,
+          "H": 0.8579998016357422,
+          "D": 0.8579998016357422,
+          "axis": {
+            "y": 7.342,
+            "z": -29.269999618530274
+          }
+        }
+      ],
+      "pinChecks": [],
+      "checks": [
+        {
+          "angle": 0,
+          "invalid": 0,
+          "occupied": 3,
+          "tested": 3,
+          "collisions": [
+            {
+              "part": "02_dobradica",
+              "x": -3.307200050354004,
+              "y": 12.9125,
+              "z": -32.37
+            },
+            {
+              "part": "02_dobradica",
+              "x": 0,
+              "y": 12.9125,
+              "z": -32.37
+            },
+            {
+              "part": "02_dobradica",
+              "x": 3.307200050354004,
+              "y": 12.9125,
+              "z": -32.37
+            }
+          ]
+        },
+        {
+          "angle": 15,
+          "invalid": 0,
+          "occupied": 3,
+          "tested": 3,
+          "collisions": [
+            {
+              "part": "02_dobradica",
+              "x": -3.307200050354004,
+              "y": 12.9125,
+              "z": -32.37
+            },
+            {
+              "part": "02_dobradica",
+              "x": 0,
+              "y": 12.9125,
+              "z": -32.37
+            },
+            {
+              "part": "02_dobradica",
+              "x": 3.307200050354004,
+              "y": 12.9125,
+              "z": -32.37
+            }
+          ]
+        },
+        {
+          "angle": 30,
+          "invalid": 0,
+          "occupied": 3,
+          "tested": 3,
+          "collisions": [
+            {
+              "part": "02_dobradica",
+              "x": -3.307200050354004,
+              "y": 12.9125,
+              "z": -32.37
+            },
+            {
+              "part": "02_dobradica",
+              "x": 0,
+              "y": 12.9125,
+              "z": -32.37
+            },
+            {
+              "part": "02_dobradica",
+              "x": 3.307200050354004,
+              "y": 12.9125,
+              "z": -32.37
+            }
+          ]
+        },
+        {
+          "angle": 60,
+          "invalid": 0,
+          "occupied": 3,
+          "tested": 3,
+          "collisions": [
+            {
+              "part": "02_dobradica",
+              "x": -3.307200050354004,
+              "y": 12.9125,
+              "z": -32.37
+            },
+            {
+              "part": "02_dobradica",
+              "x": 0,
+              "y": 12.9125,
+              "z": -32.37
+            },
+            {
+              "part": "02_dobradica",
+              "x": 3.307200050354004,
+              "y": 12.9125,
+              "z": -32.37
+            }
+          ]
+        },
+        {
+          "angle": 90,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 3,
+          "collisions": []
+        },
+        {
+          "angle": 105,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 3,
+          "collisions": []
+        },
+        {
+          "angle": 120,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 3,
+          "collisions": []
+        },
+        {
+          "angle": 135,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 3,
+          "collisions": []
+        },
+        {
+          "angle": 180,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 3,
+          "collisions": []
+        }
+      ],
+      "returnError": 0,
+      "invalidGeometry": 0,
+      "geometry": [
+        {
+          "name": "01_Base",
+          "idx": 0,
+          "hash": "5e1ba865"
+        },
+        {
+          "name": "02_Andar do meio",
+          "idx": 1,
+          "hash": "c76825d2"
+        },
+        {
+          "name": "03_Tampa",
+          "idx": 2,
+          "hash": "973efa30"
+        },
+        {
+          "name": "01_esponja",
+          "idx": 0,
+          "hash": "881b0e95"
+        },
+        {
+          "name": "02_bandeja",
+          "idx": 1,
+          "hash": "967c463"
+        },
+        {
+          "name": "02_gode",
+          "idx": 1,
+          "hash": "f9a3ec5b"
+        },
+        {
+          "name": "03_aba",
+          "idx": 2,
+          "hash": "3a94c43b"
+        },
+        {
+          "name": "03_espelho",
+          "idx": 2,
+          "hash": "1564a61b"
+        },
+        {
+          "name": "01_dobradica",
+          "idx": 0,
+          "hash": "50c5b50d"
+        },
+        {
+          "name": "01_pino",
+          "idx": 0,
+          "hash": "d0a6adf5"
+        },
+        {
+          "name": "02_dobradica",
+          "idx": 1,
+          "hash": "57746d65"
+        },
+        {
+          "name": "02_pino",
+          "idx": 1,
+          "hash": "ec1a5a85"
+        }
+      ]
+    },
+    {
+      "name": "Incom Moon Eco All Crystal (compactos)",
+      "build": "versão 2026-11-18.cdx30",
+      "closed": {
+        "W": 69.5999984741211,
+        "H": 18.100000381469727,
+        "D": 69.0999984741211
+      },
+      "modules": [
+        {
+          "idx": 1,
+          "name": "Tampa",
+          "hingeBloco": true
+        }
+      ],
+      "parts": [
+        {
+          "name": "01_dobradica",
+          "idx": 0,
+          "W": 11.13599967956543,
+          "H": 5,
+          "D": 3.9639999866485596,
+          "axis": null
+        },
+        {
+          "name": "01_pino",
+          "idx": 0,
+          "W": 12.13599967956543,
+          "H": 1.069199562072754,
+          "D": 1.0692005157470703,
+          "axis": null
+        }
+      ],
+      "pinChecks": [],
+      "checks": [
+        {
+          "angle": 0,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 15,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 30,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 60,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 90,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 105,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 120,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 135,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 180,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        }
+      ],
+      "returnError": 0,
+      "invalidGeometry": 0,
+      "geometry": [
+        {
+          "name": "01_Base",
+          "idx": 0,
+          "hash": "f43a4eee"
+        },
+        {
+          "name": "02_Tampa",
+          "idx": 1,
+          "hash": "8201ba28"
+        },
+        {
+          "name": "01_bandeja",
+          "idx": 0,
+          "hash": "817f3865"
+        },
+        {
+          "name": "01_gode",
+          "idx": 0,
+          "hash": "6ecd6f9f"
+        },
+        {
+          "name": "02_anel",
+          "idx": 1,
+          "hash": "70a5bd95"
+        },
+        {
+          "name": "02_aba",
+          "idx": 1,
+          "hash": "4629bc47"
+        },
+        {
+          "name": "02_dente_fecho",
+          "idx": 1,
+          "hash": "1efe6869"
+        },
+        {
+          "name": "01_dobradica",
+          "idx": 0,
+          "hash": "9bcadb0d"
+        },
+        {
+          "name": "01_pino",
+          "idx": 0,
+          "hash": "1bdd9a15"
+        }
+      ]
+    },
+    {
+      "name": "Incom Moon Eco (compactos)",
+      "build": "versão 2026-11-18.cdx30",
+      "closed": {
+        "W": 69.5999984741211,
+        "H": 18.100000381469727,
+        "D": 69.0999984741211
+      },
+      "modules": [
+        {
+          "idx": 1,
+          "name": "Tampa",
+          "hingeBloco": true
+        }
+      ],
+      "parts": [
+        {
+          "name": "01_dobradica",
+          "idx": 0,
+          "W": 11.13599967956543,
+          "H": 5,
+          "D": 3.9639999866485596,
+          "axis": null
+        },
+        {
+          "name": "01_pino",
+          "idx": 0,
+          "W": 12.13599967956543,
+          "H": 1.069199562072754,
+          "D": 1.0692005157470703,
+          "axis": null
+        }
+      ],
+      "pinChecks": [],
+      "checks": [
+        {
+          "angle": 0,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 15,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 30,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 60,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 90,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 105,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 120,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 135,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 180,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        }
+      ],
+      "returnError": 0,
+      "invalidGeometry": 0,
+      "geometry": [
+        {
+          "name": "01_Base",
+          "idx": 0,
+          "hash": "c07c3ab8"
+        },
+        {
+          "name": "02_Tampa",
+          "idx": 1,
+          "hash": "36a9ab9"
+        },
+        {
+          "name": "01_bandeja",
+          "idx": 0,
+          "hash": "3be0ff0f"
+        },
+        {
+          "name": "01_gode",
+          "idx": 0,
+          "hash": "70276725"
+        },
+        {
+          "name": "02_visor",
+          "idx": 1,
+          "hash": "506f6d55"
+        },
+        {
+          "name": "02_aba",
+          "idx": 1,
+          "hash": "4629bc47"
+        },
+        {
+          "name": "02_dente_fecho",
+          "idx": 1,
+          "hash": "1efe6869"
+        },
+        {
+          "name": "01_dobradica",
+          "idx": 0,
+          "hash": "9bcadb0d"
+        },
+        {
+          "name": "01_pino",
+          "idx": 0,
+          "hash": "1bdd9a15"
+        }
+      ]
+    },
+    {
+      "name": "Incom Moon G Tampa Fechada (compactos)",
+      "build": "versão 2026-11-18.cdx30",
+      "closed": {
+        "W": 69.4000015258789,
+        "H": 16,
+        "D": 68.9000015258789
+      },
+      "modules": [
+        {
+          "idx": 1,
+          "name": "Tampa",
+          "hingeBloco": true
+        }
+      ],
+      "parts": [
+        {
+          "name": "01_dobradica",
+          "idx": 0,
+          "W": 11.104000091552734,
+          "H": 4.840000152587891,
+          "D": 3.568000078201294,
+          "axis": null
+        },
+        {
+          "name": "01_pino",
+          "idx": 0,
+          "W": 12.104000091552734,
+          "H": 0.9503993988037109,
+          "D": 0.9503993988037109,
+          "axis": null
+        }
+      ],
+      "pinChecks": [],
+      "checks": [
+        {
+          "angle": 0,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 15,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 30,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 60,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 90,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 105,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 120,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 135,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 180,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        }
+      ],
+      "returnError": 0,
+      "invalidGeometry": 0,
+      "geometry": [
+        {
+          "name": "01_Base",
+          "idx": 0,
+          "hash": "ba8231a5"
+        },
+        {
+          "name": "02_Tampa",
+          "idx": 1,
+          "hash": "cc47b8aa"
+        },
+        {
+          "name": "01_bandeja",
+          "idx": 0,
+          "hash": "ff2ac9d5"
+        },
+        {
+          "name": "01_gode",
+          "idx": 0,
+          "hash": "341819e3"
+        },
+        {
+          "name": "02_aba",
+          "idx": 1,
+          "hash": "8275b401"
+        },
+        {
+          "name": "02_dente_fecho",
+          "idx": 1,
+          "hash": "e0a5a205"
+        },
+        {
+          "name": "02_espelho",
+          "idx": 1,
+          "hash": "674e9f5"
+        },
+        {
+          "name": "01_dobradica",
+          "idx": 0,
+          "hash": "cf59952d"
+        },
+        {
+          "name": "01_pino",
+          "idx": 0,
+          "hash": "640cca15"
+        }
+      ]
+    },
+    {
+      "name": "Incom Moon G com Visor (compactos)",
+      "build": "versão 2026-11-18.cdx30",
+      "closed": {
+        "W": 69.5999984741211,
+        "H": 18.100000381469727,
+        "D": 69.0999984741211
+      },
+      "modules": [
+        {
+          "idx": 1,
+          "name": "Tampa",
+          "hingeBloco": true
+        }
+      ],
+      "parts": [
+        {
+          "name": "01_dobradica",
+          "idx": 0,
+          "W": 11.13599967956543,
+          "H": 5,
+          "D": 3.9639999866485596,
+          "axis": null
+        },
+        {
+          "name": "01_pino",
+          "idx": 0,
+          "W": 12.13599967956543,
+          "H": 1.069199562072754,
+          "D": 1.0692005157470703,
+          "axis": null
+        }
+      ],
+      "pinChecks": [],
+      "checks": [
+        {
+          "angle": 0,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 15,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 30,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 60,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 90,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 105,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 120,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 135,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 180,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        }
+      ],
+      "returnError": 0,
+      "invalidGeometry": 0,
+      "geometry": [
+        {
+          "name": "01_Base",
+          "idx": 0,
+          "hash": "b384e4a5"
+        },
+        {
+          "name": "02_Tampa",
+          "idx": 1,
+          "hash": "640df78b"
+        },
+        {
+          "name": "01_bandeja",
+          "idx": 0,
+          "hash": "3be0ff0f"
+        },
+        {
+          "name": "01_gode",
+          "idx": 0,
+          "hash": "70276725"
+        },
+        {
+          "name": "02_visor",
+          "idx": 1,
+          "hash": "b810dc75"
+        },
+        {
+          "name": "02_aba",
+          "idx": 1,
+          "hash": "d251b2bf"
+        },
+        {
+          "name": "02_dente_fecho",
+          "idx": 1,
+          "hash": "e629c0c5"
+        },
+        {
+          "name": "01_dobradica",
+          "idx": 0,
+          "hash": "9bcadb0d"
+        },
+        {
+          "name": "01_pino",
+          "idx": 0,
+          "hash": "1bdd9a15"
+        }
+      ]
+    },
+    {
+      "name": "Incom Moon G Quarteto (compactos)",
+      "build": "versão 2026-11-18.cdx30",
+      "closed": {
+        "W": 69.4000015258789,
+        "H": 16,
+        "D": 68.9000015258789
+      },
+      "modules": [
+        {
+          "idx": 1,
+          "name": "Tampa",
+          "hingeBloco": true
+        }
+      ],
+      "parts": [
+        {
+          "name": "01_dobradica",
+          "idx": 0,
+          "W": 11.104000091552734,
+          "H": 4.840000152587891,
+          "D": 3.568000078201294,
+          "axis": null
+        },
+        {
+          "name": "01_pino",
+          "idx": 0,
+          "W": 12.104000091552734,
+          "H": 0.9503993988037109,
+          "D": 0.9503993988037109,
+          "axis": null
+        }
+      ],
+      "pinChecks": [],
+      "checks": [
+        {
+          "angle": 0,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 15,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 30,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 60,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 90,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 105,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 120,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 135,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 180,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        }
+      ],
+      "returnError": 0,
+      "invalidGeometry": 0,
+      "geometry": [
+        {
+          "name": "01_Base",
+          "idx": 0,
+          "hash": "82600a08"
+        },
+        {
+          "name": "02_Tampa",
+          "idx": 1,
+          "hash": "4e271ce0"
+        },
+        {
+          "name": "01_bandeja",
+          "idx": 0,
+          "hash": "83640f5d"
+        },
+        {
+          "name": "01_gode",
+          "idx": 0,
+          "hash": "a699d827"
+        },
+        {
+          "name": "01_bandeja",
+          "idx": 0,
+          "hash": "e36843c5"
+        },
+        {
+          "name": "01_gode",
+          "idx": 0,
+          "hash": "fdba7317"
+        },
+        {
+          "name": "01_bandeja",
+          "idx": 0,
+          "hash": "9c5756e1"
+        },
+        {
+          "name": "01_gode",
+          "idx": 0,
+          "hash": "e3f5f885"
+        },
+        {
+          "name": "01_bandeja",
+          "idx": 0,
+          "hash": "df41d105"
+        },
+        {
+          "name": "01_gode",
+          "idx": 0,
+          "hash": "57403ea5"
+        },
+        {
+          "name": "02_visor",
+          "idx": 1,
+          "hash": "cba04df5"
+        },
+        {
+          "name": "02_aba",
+          "idx": 1,
+          "hash": "8275b401"
+        },
+        {
+          "name": "02_dente_fecho",
+          "idx": 1,
+          "hash": "e0a5a205"
+        },
+        {
+          "name": "01_dobradica",
+          "idx": 0,
+          "hash": "cf59952d"
+        },
+        {
+          "name": "01_pino",
+          "idx": 0,
+          "hash": "640cca15"
+        }
+      ]
+    },
+    {
+      "name": "Incom Moon M All Crystal (compactos)",
+      "build": "versão 2026-11-18.cdx30",
+      "closed": {
+        "W": 69.5999984741211,
+        "H": 18.100000381469727,
+        "D": 69.30000305175781
+      },
+      "modules": [
+        {
+          "idx": 1,
+          "name": "Tampa",
+          "hingeBloco": true
+        }
+      ],
+      "parts": [
+        {
+          "name": "01_dobradica",
+          "idx": 0,
+          "W": 11.13599967956543,
+          "H": 4.675000190734863,
+          "D": 4.139999866485596,
+          "axis": null
+        },
+        {
+          "name": "01_pino",
+          "idx": 0,
+          "W": 12.13599967956543,
+          "H": 1.1220002174377441,
+          "D": 1.1220016479492188,
+          "axis": null
+        }
+      ],
+      "pinChecks": [],
+      "checks": [
+        {
+          "angle": 0,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 15,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 30,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 60,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 90,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 105,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 120,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 135,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 180,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        }
+      ],
+      "returnError": 0,
+      "invalidGeometry": 0,
+      "geometry": [
+        {
+          "name": "01_Base",
+          "idx": 0,
+          "hash": "4650bd40"
+        },
+        {
+          "name": "02_Tampa",
+          "idx": 1,
+          "hash": "803b68f3"
+        },
+        {
+          "name": "01_bandeja",
+          "idx": 0,
+          "hash": "6bb18575"
+        },
+        {
+          "name": "01_gode",
+          "idx": 0,
+          "hash": "1ab5ca35"
+        },
+        {
+          "name": "02_anel",
+          "idx": 1,
+          "hash": "e687629"
+        },
+        {
+          "name": "02_aba",
+          "idx": 1,
+          "hash": "f164cfb3"
+        },
+        {
+          "name": "02_dente_fecho",
+          "idx": 1,
+          "hash": "f0f9f39d"
+        },
+        {
+          "name": "01_dobradica",
+          "idx": 0,
+          "hash": "7bf24ea5"
+        },
+        {
+          "name": "01_pino",
+          "idx": 0,
+          "hash": "901534a5"
+        }
+      ]
+    },
+    {
+      "name": "Incom Moon M com Visor (compactos)",
+      "build": "versão 2026-11-18.cdx30",
+      "closed": {
+        "W": 52.599998474121094,
+        "H": 17.299999237060547,
+        "D": 52.099998474121094
+      },
+      "modules": [
+        {
+          "idx": 1,
+          "name": "Tampa",
+          "hingeBloco": true
+        }
+      ],
+      "parts": [
+        {
+          "name": "01_dobradica",
+          "idx": 0,
+          "W": 8.415999412536621,
+          "H": 5,
+          "D": 3.8320000171661377,
+          "axis": null
+        },
+        {
+          "name": "01_pino",
+          "idx": 0,
+          "W": 9.415999412536621,
+          "H": 1.0296001434326172,
+          "D": 1.0296001434326172,
+          "axis": null
+        }
+      ],
+      "pinChecks": [],
+      "checks": [
+        {
+          "angle": 0,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 15,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 30,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 60,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 90,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 105,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 120,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 135,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 180,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        }
+      ],
+      "returnError": 0,
+      "invalidGeometry": 0,
+      "geometry": [
+        {
+          "name": "01_Base",
+          "idx": 0,
+          "hash": "79f20043"
+        },
+        {
+          "name": "02_Tampa",
+          "idx": 1,
+          "hash": "213108cf"
+        },
+        {
+          "name": "01_bandeja",
+          "idx": 0,
+          "hash": "db3046c9"
+        },
+        {
+          "name": "01_gode",
+          "idx": 0,
+          "hash": "1c0bd3e9"
+        },
+        {
+          "name": "01_bandeja",
+          "idx": 0,
+          "hash": "28b8dff1"
+        },
+        {
+          "name": "01_gode",
+          "idx": 0,
+          "hash": "80de7959"
+        },
+        {
+          "name": "02_visor",
+          "idx": 1,
+          "hash": "cdf32735"
+        },
+        {
+          "name": "02_aba",
+          "idx": 1,
+          "hash": "505defe9"
+        },
+        {
+          "name": "02_dente_fecho",
+          "idx": 1,
+          "hash": "40618415"
+        },
+        {
+          "name": "01_dobradica",
+          "idx": 0,
+          "hash": "f64921fd"
+        },
+        {
+          "name": "01_pino",
+          "idx": 0,
+          "hash": "1fcfc9d5"
+        }
+      ]
+    },
+    {
+      "name": "Incom Moon M Tampa Fechada (compactos)",
+      "build": "versão 2026-11-18.cdx30",
+      "closed": {
+        "W": 69.5999984741211,
+        "H": 18.100000381469727,
+        "D": 69.0999984741211
+      },
+      "modules": [
+        {
+          "idx": 1,
+          "name": "Tampa",
+          "hingeBloco": true
+        }
+      ],
+      "parts": [
+        {
+          "name": "01_dobradica",
+          "idx": 0,
+          "W": 11.13599967956543,
+          "H": 5,
+          "D": 3.9639999866485596,
+          "axis": null
+        },
+        {
+          "name": "01_pino",
+          "idx": 0,
+          "W": 12.13599967956543,
+          "H": 1.069199562072754,
+          "D": 1.0692005157470703,
+          "axis": null
+        }
+      ],
+      "pinChecks": [],
+      "checks": [
+        {
+          "angle": 0,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 15,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 30,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 60,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 90,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 105,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 120,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 135,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 180,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        }
+      ],
+      "returnError": 0,
+      "invalidGeometry": 0,
+      "geometry": [
+        {
+          "name": "01_Base",
+          "idx": 0,
+          "hash": "2d5f9c07"
+        },
+        {
+          "name": "02_Tampa",
+          "idx": 1,
+          "hash": "8201ba28"
+        },
+        {
+          "name": "01_bandeja",
+          "idx": 0,
+          "hash": "2d7f45c5"
+        },
+        {
+          "name": "01_gode",
+          "idx": 0,
+          "hash": "f2ef24c5"
+        },
+        {
+          "name": "02_aba",
+          "idx": 1,
+          "hash": "d251b2bf"
+        },
+        {
+          "name": "02_dente_fecho",
+          "idx": 1,
+          "hash": "e629c0c5"
+        },
+        {
+          "name": "02_espelho",
+          "idx": 1,
+          "hash": "990500d1"
+        },
+        {
+          "name": "01_dobradica",
+          "idx": 0,
+          "hash": "9bcadb0d"
+        },
+        {
+          "name": "01_pino",
+          "idx": 0,
+          "hash": "1bdd9a15"
+        }
+      ]
+    },
+    {
+      "name": "Incom Moon P (compactos)",
+      "build": "versão 2026-11-18.cdx30",
+      "closed": {
+        "W": 38.099998474121094,
+        "H": 14,
+        "D": 37.70000076293945
+      },
+      "modules": [
+        {
+          "idx": 1,
+          "name": "Tampa",
+          "hingeBloco": true
+        }
+      ],
+      "parts": [
+        {
+          "name": "01_dobradica",
+          "idx": 0,
+          "W": 6.095999717712402,
+          "H": 4.235000133514404,
+          "D": 3.171999931335449,
+          "axis": null
+        },
+        {
+          "name": "01_pino",
+          "idx": 0,
+          "W": 7.095999717712402,
+          "H": 0.8316001892089844,
+          "D": 0.8316001892089844,
+          "axis": null
+        }
+      ],
+      "pinChecks": [],
+      "checks": [
+        {
+          "angle": 0,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 15,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 30,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 60,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 90,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 105,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 120,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 135,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 180,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        }
+      ],
+      "returnError": 0,
+      "invalidGeometry": 0,
+      "geometry": [
+        {
+          "name": "01_Base",
+          "idx": 0,
+          "hash": "691fa4f7"
+        },
+        {
+          "name": "02_Tampa",
+          "idx": 1,
+          "hash": "1b48bfd3"
+        },
+        {
+          "name": "01_bandeja",
+          "idx": 0,
+          "hash": "9b368de3"
+        },
+        {
+          "name": "01_gode",
+          "idx": 0,
+          "hash": "2c13097d"
+        },
+        {
+          "name": "02_visor",
+          "idx": 1,
+          "hash": "9359cf55"
+        },
+        {
+          "name": "02_aba",
+          "idx": 1,
+          "hash": "8dc58963"
+        },
+        {
+          "name": "02_dente_fecho",
+          "idx": 1,
+          "hash": "42a3589d"
+        },
+        {
+          "name": "01_dobradica",
+          "idx": 0,
+          "hash": "dedbd01d"
+        },
+        {
+          "name": "01_pino",
+          "idx": 0,
+          "hash": "bc0a5455"
+        }
+      ]
+    },
+    {
+      "name": "Incom Big 4 (paletas)",
+      "build": "versão 2026-11-18.cdx30",
+      "closed": {
+        "W": 89.99896621704102,
+        "H": 14.300000190734863,
+        "D": 89.59798431396484
+      },
+      "modules": [
+        {
+          "idx": 1,
+          "name": "Tampa",
+          "hingeOculta": true
+        }
+      ],
+      "parts": [
+        {
+          "name": "01_dobradica",
+          "idx": 0,
+          "W": 80.799072265625,
+          "H": 3.5300002098083496,
+          "D": 3.565998077392578,
+          "axis": null
+        }
+      ],
+      "pinChecks": [],
+      "checks": [
+        {
+          "angle": 0,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 15,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 30,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 60,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 90,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 105,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 120,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 135,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 180,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        }
+      ],
+      "returnError": 0,
+      "invalidGeometry": 0,
+      "geometry": [
+        {
+          "name": "01_Base",
+          "idx": 0,
+          "hash": "d6a5dad0"
+        },
+        {
+          "name": "02_Tampa",
+          "idx": 1,
+          "hash": "b351e628"
+        },
+        {
+          "name": "01_bandeja",
+          "idx": 0,
+          "hash": "7000129"
+        },
+        {
+          "name": "01_gode",
+          "idx": 0,
+          "hash": "762677bb"
+        },
+        {
+          "name": "01_bandeja",
+          "idx": 0,
+          "hash": "a9ae6d4d"
+        },
+        {
+          "name": "01_gode",
+          "idx": 0,
+          "hash": "8108a191"
+        },
+        {
+          "name": "01_bandeja",
+          "idx": 0,
+          "hash": "42708361"
+        },
+        {
+          "name": "01_gode",
+          "idx": 0,
+          "hash": "b5b7b611"
+        },
+        {
+          "name": "01_bandeja",
+          "idx": 0,
+          "hash": "d90169f9"
+        },
+        {
+          "name": "01_gode",
+          "idx": 0,
+          "hash": "d5d9165b"
+        },
+        {
+          "name": "02_lingua_fecho",
+          "idx": 1,
+          "hash": "a4544fcd"
+        },
+        {
+          "name": "02_dente_fecho",
+          "idx": 1,
+          "hash": "e47a3d85"
+        },
+        {
+          "name": "01_lingueta_rebaixo",
+          "idx": 0,
+          "hash": "f3c8cc41"
+        },
+        {
+          "name": "02_espelho",
+          "idx": 1,
+          "hash": "198c0b39"
+        },
+        {
+          "name": "01_dobradica",
+          "idx": 0,
+          "hash": "d4b7ecc7"
+        }
+      ]
+    },
+    {
+      "name": "Incom Big 9 (paletas)",
+      "build": "versão 2026-11-18.cdx30",
+      "closed": {
+        "W": 89.99896621704102,
+        "H": 14.300000190734863,
+        "D": 89.59798431396484
+      },
+      "modules": [
+        {
+          "idx": 1,
+          "name": "Tampa",
+          "hingeOculta": true
+        }
+      ],
+      "parts": [
+        {
+          "name": "01_dobradica",
+          "idx": 0,
+          "W": 80.799072265625,
+          "H": 3.5300002098083496,
+          "D": 3.565998077392578,
+          "axis": null
+        }
+      ],
+      "pinChecks": [],
+      "checks": [
+        {
+          "angle": 0,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 15,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 30,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 60,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 90,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 105,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 120,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 135,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 180,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        }
+      ],
+      "returnError": 0,
+      "invalidGeometry": 0,
+      "geometry": [
+        {
+          "name": "01_Base",
+          "idx": 0,
+          "hash": "5a33943f"
+        },
+        {
+          "name": "02_Tampa",
+          "idx": 1,
+          "hash": "b351e628"
+        },
+        {
+          "name": "01_bandeja",
+          "idx": 0,
+          "hash": "86d3f32f"
+        },
+        {
+          "name": "01_gode",
+          "idx": 0,
+          "hash": "3396a547"
+        },
+        {
+          "name": "01_bandeja",
+          "idx": 0,
+          "hash": "fb19a605"
+        },
+        {
+          "name": "01_gode",
+          "idx": 0,
+          "hash": "acf014f1"
+        },
+        {
+          "name": "01_bandeja",
+          "idx": 0,
+          "hash": "7cfe21d5"
+        },
+        {
+          "name": "01_gode",
+          "idx": 0,
+          "hash": "ea510d1f"
+        },
+        {
+          "name": "01_bandeja",
+          "idx": 0,
+          "hash": "84c00f13"
+        },
+        {
+          "name": "01_gode",
+          "idx": 0,
+          "hash": "700c5ebf"
+        },
+        {
+          "name": "01_bandeja",
+          "idx": 0,
+          "hash": "54ec559f"
+        },
+        {
+          "name": "01_gode",
+          "idx": 0,
+          "hash": "2d8185b7"
+        },
+        {
+          "name": "01_bandeja",
+          "idx": 0,
+          "hash": "7e97565"
+        },
+        {
+          "name": "01_gode",
+          "idx": 0,
+          "hash": "735dfd03"
+        },
+        {
+          "name": "01_bandeja",
+          "idx": 0,
+          "hash": "13417159"
+        },
+        {
+          "name": "01_gode",
+          "idx": 0,
+          "hash": "e55e41a5"
+        },
+        {
+          "name": "01_bandeja",
+          "idx": 0,
+          "hash": "2caf62d7"
+        },
+        {
+          "name": "01_gode",
+          "idx": 0,
+          "hash": "c248f8c3"
+        },
+        {
+          "name": "01_bandeja",
+          "idx": 0,
+          "hash": "4a82e887"
+        },
+        {
+          "name": "01_gode",
+          "idx": 0,
+          "hash": "28d82fc3"
+        },
+        {
+          "name": "02_lingua_fecho",
+          "idx": 1,
+          "hash": "a4544fcd"
+        },
+        {
+          "name": "02_dente_fecho",
+          "idx": 1,
+          "hash": "e47a3d85"
+        },
+        {
+          "name": "01_lingueta_rebaixo",
+          "idx": 0,
+          "hash": "f3c8cc41"
+        },
+        {
+          "name": "02_espelho",
+          "idx": 1,
+          "hash": "198c0b39"
+        },
+        {
+          "name": "01_dobradica",
+          "idx": 0,
+          "hash": "d4b7ecc7"
+        }
+      ]
+    },
+    {
+      "name": "Incom Flat Dez (paletas)",
+      "build": "versão 2026-11-18.cdx30",
+      "closed": {
+        "W": 119.68394470214844,
+        "H": 14.100000381469727,
+        "D": 62.50880432128906
+      },
+      "modules": [
+        {
+          "idx": 1,
+          "name": "Tampa",
+          "hingeOculta": true
+        }
+      ],
+      "parts": [
+        {
+          "name": "01_dobradica",
+          "idx": 0,
+          "W": 107.51554870605469,
+          "H": 3.484999656677246,
+          "D": 3.5219993591308594,
+          "axis": null
+        }
+      ],
+      "pinChecks": [],
+      "checks": [
+        {
+          "angle": 0,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 15,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 30,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 60,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 90,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 105,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 120,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 135,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 180,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        }
+      ],
+      "returnError": 0,
+      "invalidGeometry": 0,
+      "geometry": [
+        {
+          "name": "01_Base",
+          "idx": 0,
+          "hash": "ca28c117"
+        },
+        {
+          "name": "02_Tampa",
+          "idx": 1,
+          "hash": "9054e5d4"
+        },
+        {
+          "name": "01_bandeja",
+          "idx": 0,
+          "hash": "7bc47c53"
+        },
+        {
+          "name": "01_gode",
+          "idx": 0,
+          "hash": "4f5cc5f"
+        },
+        {
+          "name": "01_bandeja",
+          "idx": 0,
+          "hash": "5ebab4cb"
+        },
+        {
+          "name": "01_gode",
+          "idx": 0,
+          "hash": "62a1434d"
+        },
+        {
+          "name": "01_bandeja",
+          "idx": 0,
+          "hash": "4f051d5"
+        },
+        {
+          "name": "01_gode",
+          "idx": 0,
+          "hash": "a162f1b5"
+        },
+        {
+          "name": "01_bandeja",
+          "idx": 0,
+          "hash": "5fcd8db9"
+        },
+        {
+          "name": "01_gode",
+          "idx": 0,
+          "hash": "b4ae5e03"
+        },
+        {
+          "name": "01_bandeja",
+          "idx": 0,
+          "hash": "1c4043cd"
+        },
+        {
+          "name": "01_gode",
+          "idx": 0,
+          "hash": "959a7d21"
+        },
+        {
+          "name": "01_bandeja",
+          "idx": 0,
+          "hash": "b0fae5dd"
+        },
+        {
+          "name": "01_gode",
+          "idx": 0,
+          "hash": "140a39f9"
+        },
+        {
+          "name": "01_bandeja",
+          "idx": 0,
+          "hash": "1577d40f"
+        },
+        {
+          "name": "01_gode",
+          "idx": 0,
+          "hash": "5598cca5"
+        },
+        {
+          "name": "01_bandeja",
+          "idx": 0,
+          "hash": "c1c5a593"
+        },
+        {
+          "name": "01_gode",
+          "idx": 0,
+          "hash": "91efcfaf"
+        },
+        {
+          "name": "01_bandeja",
+          "idx": 0,
+          "hash": "cb3ac1ef"
+        },
+        {
+          "name": "01_gode",
+          "idx": 0,
+          "hash": "9e0927bd"
+        },
+        {
+          "name": "01_bandeja",
+          "idx": 0,
+          "hash": "76d9f75d"
+        },
+        {
+          "name": "01_gode",
+          "idx": 0,
+          "hash": "b5a7992f"
+        },
+        {
+          "name": "02_lingua_fecho",
+          "idx": 1,
+          "hash": "6c464375"
+        },
+        {
+          "name": "02_dente_fecho",
+          "idx": 1,
+          "hash": "8c5652a5"
+        },
+        {
+          "name": "01_lingueta_rebaixo",
+          "idx": 0,
+          "hash": "7726247d"
+        },
+        {
+          "name": "02_espelho",
+          "idx": 1,
+          "hash": "7b0e05ad"
+        },
+        {
+          "name": "01_dobradica",
+          "idx": 0,
+          "hash": "645cbea1"
+        }
+      ]
+    },
+    {
+      "name": "Incom Flat Duo (paletas)",
+      "build": "versão 2026-11-18.cdx30",
+      "closed": {
+        "W": 119.68394470214844,
+        "H": 14.100000381469727,
+        "D": 62.50880432128906
+      },
+      "modules": [
+        {
+          "idx": 1,
+          "name": "Tampa",
+          "hingeOculta": true
+        }
+      ],
+      "parts": [
+        {
+          "name": "01_dobradica",
+          "idx": 0,
+          "W": 107.51554870605469,
+          "H": 3.484999656677246,
+          "D": 3.5219993591308594,
+          "axis": null
+        }
+      ],
+      "pinChecks": [],
+      "checks": [
+        {
+          "angle": 0,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 15,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 30,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 60,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 90,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 105,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 120,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 135,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 180,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        }
+      ],
+      "returnError": 0,
+      "invalidGeometry": 0,
+      "geometry": [
+        {
+          "name": "01_Base",
+          "idx": 0,
+          "hash": "ec073542"
+        },
+        {
+          "name": "02_Tampa",
+          "idx": 1,
+          "hash": "9054e5d4"
+        },
+        {
+          "name": "01_bandeja",
+          "idx": 0,
+          "hash": "164c38a5"
+        },
+        {
+          "name": "01_gode",
+          "idx": 0,
+          "hash": "e4f9da25"
+        },
+        {
+          "name": "01_bandeja",
+          "idx": 0,
+          "hash": "58de5659"
+        },
+        {
+          "name": "01_gode",
+          "idx": 0,
+          "hash": "6a9d5d7d"
+        },
+        {
+          "name": "02_lingua_fecho",
+          "idx": 1,
+          "hash": "6c464375"
+        },
+        {
+          "name": "02_dente_fecho",
+          "idx": 1,
+          "hash": "8c5652a5"
+        },
+        {
+          "name": "01_lingueta_rebaixo",
+          "idx": 0,
+          "hash": "7726247d"
+        },
+        {
+          "name": "02_espelho",
+          "idx": 1,
+          "hash": "7b0e05ad"
+        },
+        {
+          "name": "01_dobradica",
+          "idx": 0,
+          "hash": "645cbea1"
+        }
+      ]
+    },
+    {
+      "name": "Incom Flat Sexteto (paletas)",
+      "build": "versão 2026-11-18.cdx30",
+      "closed": {
+        "W": 119.68394470214844,
+        "H": 14.100000381469727,
+        "D": 62.50880432128906
+      },
+      "modules": [
+        {
+          "idx": 1,
+          "name": "Tampa",
+          "hingeOculta": true
+        }
+      ],
+      "parts": [
+        {
+          "name": "01_dobradica",
+          "idx": 0,
+          "W": 107.51554870605469,
+          "H": 3.484999656677246,
+          "D": 3.5219993591308594,
+          "axis": null
+        }
+      ],
+      "pinChecks": [],
+      "checks": [
+        {
+          "angle": 0,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 15,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 30,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 60,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 90,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 105,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 120,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 135,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 180,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        }
+      ],
+      "returnError": 0,
+      "invalidGeometry": 0,
+      "geometry": [
+        {
+          "name": "01_Base",
+          "idx": 0,
+          "hash": "c3a83cf5"
+        },
+        {
+          "name": "02_Tampa",
+          "idx": 1,
+          "hash": "9054e5d4"
+        },
+        {
+          "name": "01_bandeja",
+          "idx": 0,
+          "hash": "20f7bd05"
+        },
+        {
+          "name": "01_gode",
+          "idx": 0,
+          "hash": "c66a2009"
+        },
+        {
+          "name": "01_bandeja",
+          "idx": 0,
+          "hash": "4e9bf159"
+        },
+        {
+          "name": "01_gode",
+          "idx": 0,
+          "hash": "88ef96c5"
+        },
+        {
+          "name": "01_bandeja",
+          "idx": 0,
+          "hash": "f869a7c3"
+        },
+        {
+          "name": "01_gode",
+          "idx": 0,
+          "hash": "c7c0560f"
+        },
+        {
+          "name": "01_bandeja",
+          "idx": 0,
+          "hash": "ac14e567"
+        },
+        {
+          "name": "01_gode",
+          "idx": 0,
+          "hash": "d234bc8d"
+        },
+        {
+          "name": "01_bandeja",
+          "idx": 0,
+          "hash": "95be1649"
+        },
+        {
+          "name": "01_gode",
+          "idx": 0,
+          "hash": "22fe04b7"
+        },
+        {
+          "name": "01_bandeja",
+          "idx": 0,
+          "hash": "3bece023"
+        },
+        {
+          "name": "01_gode",
+          "idx": 0,
+          "hash": "ec1a9285"
+        },
+        {
+          "name": "02_lingua_fecho",
+          "idx": 1,
+          "hash": "6c464375"
+        },
+        {
+          "name": "02_dente_fecho",
+          "idx": 1,
+          "hash": "8c5652a5"
+        },
+        {
+          "name": "01_lingueta_rebaixo",
+          "idx": 0,
+          "hash": "7726247d"
+        },
+        {
+          "name": "02_espelho",
+          "idx": 1,
+          "hash": "7b0e05ad"
+        },
+        {
+          "name": "01_dobradica",
+          "idx": 0,
+          "hash": "645cbea1"
+        }
+      ]
+    },
+    {
+      "name": "Incom Flat Trio Retangular (paletas)",
+      "build": "versão 2026-11-18.cdx30",
+      "closed": {
+        "W": 119.68394470214844,
+        "H": 14.100000381469727,
+        "D": 62.50880432128906
+      },
+      "modules": [
+        {
+          "idx": 1,
+          "name": "Tampa",
+          "hingeOculta": true
+        }
+      ],
+      "parts": [
+        {
+          "name": "01_dobradica",
+          "idx": 0,
+          "W": 107.51554870605469,
+          "H": 3.484999656677246,
+          "D": 3.5219993591308594,
+          "axis": null
+        }
+      ],
+      "pinChecks": [],
+      "checks": [
+        {
+          "angle": 0,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 15,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 30,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 60,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 90,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 105,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 120,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 135,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 180,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        }
+      ],
+      "returnError": 0,
+      "invalidGeometry": 0,
+      "geometry": [
+        {
+          "name": "01_Base",
+          "idx": 0,
+          "hash": "c745c5cb"
+        },
+        {
+          "name": "02_Tampa",
+          "idx": 1,
+          "hash": "9054e5d4"
+        },
+        {
+          "name": "01_bandeja",
+          "idx": 0,
+          "hash": "44eb99fd"
+        },
+        {
+          "name": "01_gode",
+          "idx": 0,
+          "hash": "701c899"
+        },
+        {
+          "name": "01_bandeja",
+          "idx": 0,
+          "hash": "9cad5d29"
+        },
+        {
+          "name": "01_gode",
+          "idx": 0,
+          "hash": "a08b8a51"
+        },
+        {
+          "name": "01_bandeja",
+          "idx": 0,
+          "hash": "fe0ad69"
+        },
+        {
+          "name": "01_gode",
+          "idx": 0,
+          "hash": "19c82b65"
+        },
+        {
+          "name": "02_lingua_fecho",
+          "idx": 1,
+          "hash": "6c464375"
+        },
+        {
+          "name": "02_dente_fecho",
+          "idx": 1,
+          "hash": "8c5652a5"
+        },
+        {
+          "name": "01_lingueta_rebaixo",
+          "idx": 0,
+          "hash": "7726247d"
+        },
+        {
+          "name": "02_espelho",
+          "idx": 1,
+          "hash": "7b0e05ad"
+        },
+        {
+          "name": "01_dobradica",
+          "idx": 0,
+          "hash": "645cbea1"
+        }
+      ]
+    },
+    {
+      "name": "Incom Flat Trio Redondo (paletas)",
+      "build": "versão 2026-11-18.cdx30",
+      "closed": {
+        "W": 119.68394470214844,
+        "H": 14.100000381469727,
+        "D": 62.50880432128906
+      },
+      "modules": [
+        {
+          "idx": 1,
+          "name": "Tampa",
+          "hingeOculta": true
+        }
+      ],
+      "parts": [
+        {
+          "name": "01_dobradica",
+          "idx": 0,
+          "W": 107.51554870605469,
+          "H": 3.484999656677246,
+          "D": 3.5219993591308594,
+          "axis": null
+        }
+      ],
+      "pinChecks": [],
+      "checks": [
+        {
+          "angle": 0,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 15,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 30,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 60,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 90,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 105,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 120,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 135,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 180,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        }
+      ],
+      "returnError": 0,
+      "invalidGeometry": 0,
+      "geometry": [
+        {
+          "name": "01_Base",
+          "idx": 0,
+          "hash": "7d78e076"
+        },
+        {
+          "name": "02_Tampa",
+          "idx": 1,
+          "hash": "9054e5d4"
+        },
+        {
+          "name": "01_bandeja",
+          "idx": 0,
+          "hash": "318e6f55"
+        },
+        {
+          "name": "01_gode",
+          "idx": 0,
+          "hash": "6518c103"
+        },
+        {
+          "name": "01_bandeja",
+          "idx": 0,
+          "hash": "a77d663"
+        },
+        {
+          "name": "01_gode",
+          "idx": 0,
+          "hash": "f8aaa1f9"
+        },
+        {
+          "name": "01_bandeja",
+          "idx": 0,
+          "hash": "7c8ad073"
+        },
+        {
+          "name": "01_gode",
+          "idx": 0,
+          "hash": "3373512f"
+        },
+        {
+          "name": "02_lingua_fecho",
+          "idx": 1,
+          "hash": "6c464375"
+        },
+        {
+          "name": "02_dente_fecho",
+          "idx": 1,
+          "hash": "8c5652a5"
+        },
+        {
+          "name": "01_lingueta_rebaixo",
+          "idx": 0,
+          "hash": "7726247d"
+        },
+        {
+          "name": "02_espelho",
+          "idx": 1,
+          "hash": "7b0e05ad"
+        },
+        {
+          "name": "01_dobradica",
+          "idx": 0,
+          "hash": "645cbea1"
+        }
+      ]
+    },
+    {
+      "name": "Incom Flat 6 + 1 (paletas)",
+      "build": "versão 2026-11-18.cdx30",
+      "closed": {
+        "W": 119.68394470214844,
+        "H": 14.100000381469727,
+        "D": 62.50880432128906
+      },
+      "modules": [
+        {
+          "idx": 1,
+          "name": "Tampa",
+          "hingeOculta": true
+        }
+      ],
+      "parts": [
+        {
+          "name": "01_dobradica",
+          "idx": 0,
+          "W": 107.51554870605469,
+          "H": 3.484999656677246,
+          "D": 3.5219993591308594,
+          "axis": null
+        }
+      ],
+      "pinChecks": [],
+      "checks": [
+        {
+          "angle": 0,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 15,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 30,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 60,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 90,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 105,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 120,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 135,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        },
+        {
+          "angle": 180,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 0,
+          "collisions": []
+        }
+      ],
+      "returnError": 0,
+      "invalidGeometry": 0,
+      "geometry": [
+        {
+          "name": "01_Base",
+          "idx": 0,
+          "hash": "780a7d82"
+        },
+        {
+          "name": "02_Tampa",
+          "idx": 1,
+          "hash": "9054e5d4"
+        },
+        {
+          "name": "01_bandeja",
+          "idx": 0,
+          "hash": "b221ffed"
+        },
+        {
+          "name": "01_gode",
+          "idx": 0,
+          "hash": "863a6efd"
+        },
+        {
+          "name": "01_bandeja",
+          "idx": 0,
+          "hash": "94a6a3c7"
+        },
+        {
+          "name": "01_gode",
+          "idx": 0,
+          "hash": "8b47f1ff"
+        },
+        {
+          "name": "01_bandeja",
+          "idx": 0,
+          "hash": "6906f3d9"
+        },
+        {
+          "name": "01_gode",
+          "idx": 0,
+          "hash": "bbee46d3"
+        },
+        {
+          "name": "01_bandeja",
+          "idx": 0,
+          "hash": "f599ee67"
+        },
+        {
+          "name": "01_gode",
+          "idx": 0,
+          "hash": "1ad58c17"
+        },
+        {
+          "name": "01_bandeja",
+          "idx": 0,
+          "hash": "69b35735"
+        },
+        {
+          "name": "01_gode",
+          "idx": 0,
+          "hash": "33e47e4d"
+        },
+        {
+          "name": "01_bandeja",
+          "idx": 0,
+          "hash": "3c19c5d1"
+        },
+        {
+          "name": "01_gode",
+          "idx": 0,
+          "hash": "a68f1707"
+        },
+        {
+          "name": "01_bandeja",
+          "idx": 0,
+          "hash": "ffb98125"
+        },
+        {
+          "name": "01_gode",
+          "idx": 0,
+          "hash": "bb21fc25"
+        },
+        {
+          "name": "02_lingua_fecho",
+          "idx": 1,
+          "hash": "6c464375"
+        },
+        {
+          "name": "02_dente_fecho",
+          "idx": 1,
+          "hash": "8c5652a5"
+        },
+        {
+          "name": "01_lingueta_rebaixo",
+          "idx": 0,
+          "hash": "7726247d"
+        },
+        {
+          "name": "02_espelho",
+          "idx": 1,
+          "hash": "7b0e05ad"
+        },
+        {
+          "name": "01_dobradica",
+          "idx": 0,
+          "hash": "645cbea1"
+        }
+      ]
+    },
+    {
+      "name": "Incom Case G Tampa Cristal (compactos)",
+      "build": "versão 2026-11-18.cdx30",
+      "closed": {
+        "W": 71.88224792480469,
+        "H": 13.699999809265137,
+        "D": 70.0557861328125
+      },
+      "modules": [
+        {
+          "idx": 1,
+          "name": "Tampa",
+          "hingeCase": [
+            0.26,
+            0.38
+          ]
+        }
+      ],
+      "parts": [
+        {
+          "name": "02_dobradica",
+          "idx": 1,
+          "W": 8.55086898803711,
+          "H": 2.200000047683716,
+          "D": 2.200000762939453,
+          "axis": {
+            "y": 3.3,
+            "z": -34.0928921508789
+          }
+        },
+        {
+          "name": "01_dobradica",
+          "idx": 0,
+          "W": 6.856353759765625,
+          "H": 2.200000047683716,
+          "D": 2.200000762939453,
+          "axis": null
+        },
+        {
+          "name": "01_apoio_dobradica",
+          "idx": 0,
+          "W": 6.856354236602783,
+          "H": 1.7000000476837158,
+          "D": 1.899999976158142,
+          "axis": null
+        },
+        {
+          "name": "01_pino",
+          "idx": 0,
+          "W": 14.957225799560547,
+          "H": 0.8359999656677246,
+          "D": 0.83599853515625,
+          "axis": null
+        },
+        {
+          "name": "02_dobradica",
+          "idx": 1,
+          "W": 8.55086898803711,
+          "H": 2.200000047683716,
+          "D": 2.200000762939453,
+          "axis": {
+            "y": 3.3,
+            "z": -34.0928921508789
+          }
+        },
+        {
+          "name": "01_dobradica",
+          "idx": 0,
+          "W": 6.856353759765625,
+          "H": 2.200000047683716,
+          "D": 2.200000762939453,
+          "axis": null
+        },
+        {
+          "name": "01_apoio_dobradica",
+          "idx": 0,
+          "W": 6.856354236602783,
+          "H": 1.7000000476837158,
+          "D": 1.899999976158142,
+          "axis": null
+        },
+        {
+          "name": "01_pino",
+          "idx": 0,
+          "W": 14.957225799560547,
+          "H": 0.8359999656677246,
+          "D": 0.83599853515625,
+          "axis": null
+        }
+      ],
+      "pinChecks": [
+        {
+          "name": "01_pino",
+          "tested": 5,
+          "occupied": 0,
+          "blocked": []
+        },
+        {
+          "name": "01_pino",
+          "tested": 5,
+          "occupied": 0,
+          "blocked": []
+        }
+      ],
+      "checks": [
+        {
+          "angle": 0,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        },
+        {
+          "angle": 15,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        },
+        {
+          "angle": 30,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        },
+        {
+          "angle": 60,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        },
+        {
+          "angle": 90,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        },
+        {
+          "angle": 105,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        },
+        {
+          "angle": 120,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        },
+        {
+          "angle": 135,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        },
+        {
+          "angle": 180,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        }
+      ],
+      "returnError": 0,
+      "invalidGeometry": 0,
+      "geometry": [
+        {
+          "name": "01_Base",
+          "idx": 0,
+          "hash": "3d5583bc"
+        },
+        {
+          "name": "02_Tampa",
+          "idx": 1,
+          "hash": "261e5cb9"
+        },
+        {
+          "name": "01_colar",
+          "idx": 0,
+          "hash": "ae8dba0c"
+        },
+        {
+          "name": "01_colar",
+          "idx": 0,
+          "hash": "ef5191"
+        },
+        {
+          "name": "01_bandeja",
+          "idx": 0,
+          "hash": "ff894851"
+        },
+        {
+          "name": "01_bandeja",
+          "idx": 0,
+          "hash": "61d44135"
+        },
+        {
+          "name": "01_gode",
+          "idx": 0,
+          "hash": "beaa73b5"
+        },
+        {
+          "name": "01_lingueta_rebaixo",
+          "idx": 0,
+          "hash": "ad7cae19"
+        },
+        {
+          "name": "02_lingua_fecho",
+          "idx": 1,
+          "hash": "35391595"
+        },
+        {
+          "name": "02_dente_fecho",
+          "idx": 1,
+          "hash": "33b4c4d5"
+        },
+        {
+          "name": "02_dobradica",
+          "idx": 1,
+          "hash": "7effb837"
+        },
+        {
+          "name": "01_dobradica",
+          "idx": 0,
+          "hash": "362bf15d"
+        },
+        {
+          "name": "01_apoio_dobradica",
+          "idx": 0,
+          "hash": "cfcfd485"
+        },
+        {
+          "name": "01_pino",
+          "idx": 0,
+          "hash": "20f75925"
+        },
+        {
+          "name": "02_dobradica",
+          "idx": 1,
+          "hash": "cadab2b3"
+        },
+        {
+          "name": "01_dobradica",
+          "idx": 0,
+          "hash": "dcd80d99"
+        },
+        {
+          "name": "01_apoio_dobradica",
+          "idx": 0,
+          "hash": "cfcfd485"
+        },
+        {
+          "name": "01_pino",
+          "idx": 0,
+          "hash": "fd65cb1"
+        }
+      ]
+    },
+    {
+      "name": "Incom Case M Tampa Cristal (compactos)",
+      "build": "versão 2026-11-18.cdx30",
+      "closed": {
+        "W": 57.793331146240234,
+        "H": 13.699999809265137,
+        "D": 56.03874397277832
+      },
+      "modules": [
+        {
+          "idx": 1,
+          "name": "Tampa",
+          "hingeCase": [
+            0.26,
+            0.38
+          ]
+        }
+      ],
+      "parts": [
+        {
+          "name": "02_dobradica",
+          "idx": 1,
+          "W": 6.860198974609375,
+          "H": 2.200000047683716,
+          "D": 2.200000762939453,
+          "axis": {
+            "y": 3.3,
+            "z": -27.084372024536133
+          }
+        },
+        {
+          "name": "01_dobradica",
+          "idx": 0,
+          "W": 5.446023941040039,
+          "H": 2.200000047683716,
+          "D": 2.200000762939453,
+          "axis": null
+        },
+        {
+          "name": "01_apoio_dobradica",
+          "idx": 0,
+          "W": 5.4460248947143555,
+          "H": 1.7000000476837158,
+          "D": 1.899999976158142,
+          "axis": null
+        },
+        {
+          "name": "01_pino",
+          "idx": 0,
+          "W": 11.85622501373291,
+          "H": 0.8359999656677246,
+          "D": 0.8360004425048828,
+          "axis": null
+        },
+        {
+          "name": "02_dobradica",
+          "idx": 1,
+          "W": 6.860200881958008,
+          "H": 2.200000047683716,
+          "D": 2.200000762939453,
+          "axis": {
+            "y": 3.3,
+            "z": -27.084372024536133
+          }
+        },
+        {
+          "name": "01_dobradica",
+          "idx": 0,
+          "W": 5.446023941040039,
+          "H": 2.200000047683716,
+          "D": 2.200000762939453,
+          "axis": null
+        },
+        {
+          "name": "01_apoio_dobradica",
+          "idx": 0,
+          "W": 5.4460248947143555,
+          "H": 1.7000000476837158,
+          "D": 1.899999976158142,
+          "axis": null
+        },
+        {
+          "name": "01_pino",
+          "idx": 0,
+          "W": 11.85622501373291,
+          "H": 0.8359999656677246,
+          "D": 0.8360004425048828,
+          "axis": null
+        }
+      ],
+      "pinChecks": [
+        {
+          "name": "01_pino",
+          "tested": 5,
+          "occupied": 0,
+          "blocked": []
+        },
+        {
+          "name": "01_pino",
+          "tested": 5,
+          "occupied": 0,
+          "blocked": []
+        }
+      ],
+      "checks": [
+        {
+          "angle": 0,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        },
+        {
+          "angle": 15,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        },
+        {
+          "angle": 30,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        },
+        {
+          "angle": 60,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        },
+        {
+          "angle": 90,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        },
+        {
+          "angle": 105,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        },
+        {
+          "angle": 120,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        },
+        {
+          "angle": 135,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        },
+        {
+          "angle": 180,
+          "invalid": 0,
+          "occupied": 0,
+          "tested": 6,
+          "collisions": []
+        }
+      ],
+      "returnError": 0,
+      "invalidGeometry": 0,
+      "geometry": [
+        {
+          "name": "01_Base",
+          "idx": 0,
+          "hash": "3ac580d3"
+        },
+        {
+          "name": "02_Tampa",
+          "idx": 1,
+          "hash": "7526f71"
+        },
+        {
+          "name": "01_colar",
+          "idx": 0,
+          "hash": "8ed2a7b8"
+        },
+        {
+          "name": "01_colar",
+          "idx": 0,
+          "hash": "9a84b778"
+        },
+        {
+          "name": "01_bandeja",
+          "idx": 0,
+          "hash": "aef10b49"
+        },
+        {
+          "name": "01_bandeja",
+          "idx": 0,
+          "hash": "20a45135"
+        },
+        {
+          "name": "01_gode",
+          "idx": 0,
+          "hash": "e2df49f5"
+        },
+        {
+          "name": "01_lingueta_rebaixo",
+          "idx": 0,
+          "hash": "5f1dc01"
+        },
+        {
+          "name": "02_lingua_fecho",
+          "idx": 1,
+          "hash": "e1636c05"
+        },
+        {
+          "name": "02_dente_fecho",
+          "idx": 1,
+          "hash": "6fa175f5"
+        },
+        {
+          "name": "02_dobradica",
+          "idx": 1,
+          "hash": "35a07f1"
+        },
+        {
+          "name": "01_dobradica",
+          "idx": 0,
+          "hash": "d666ea69"
+        },
+        {
+          "name": "01_apoio_dobradica",
+          "idx": 0,
+          "hash": "73579c35"
+        },
+        {
+          "name": "01_pino",
+          "idx": 0,
+          "hash": "ffcb9405"
+        },
+        {
+          "name": "02_dobradica",
+          "idx": 1,
+          "hash": "4503ec5"
+        },
+        {
+          "name": "01_dobradica",
+          "idx": 0,
+          "hash": "715635c9"
+        },
+        {
+          "name": "01_apoio_dobradica",
+          "idx": 0,
+          "hash": "73579c35"
+        },
+        {
+          "name": "01_pino",
+          "idx": 0,
+          "hash": "ade39eb5"
+        }
+      ]
+    }
+  ]
+}

@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-18.cdx29';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-18.cdx30';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -707,7 +707,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-18.cdx29';
+const BUILD = '2026-11-18.cdx30';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -6908,7 +6908,40 @@ function compactParts(product, L, S0) {
         const cut = new THREE.BoxGeometry(Lh + 0.6, 2 * r + 0.8, 2 * r + 1.6); cut.translate(cx, y0, z + r + 0.35 - 0.4);
         [objs[0], bObjs[0]].forEach(o => { const [outer, inner] = cutHole(o.geometry, cut); if (outer === o.geometry) return; const g = mergeGeometries([ni(outer), ni(inner)]); if (g) { o.geometry.dispose(); o.geometry = g; } });
         cut.dispose(); }
-      if (m.hingeBloco) { // Moon, Frame, Macaroon — cl58, foto MOON aberta ampliada pela dona: a dobradiça é um BLOCO PRESO À BASE,
+      if (m.hingeLeaf) { // Frame/Macaroon (fotos abertas): aba fina da tampa articulada entre dois apoios da base.
+        // Opção só destas famílias; hingeBloco dos Moon aprovados não muda.
+        const hk = m.hingeLeaf, Lb = Math.min(W * hk.w, 13), rr = Math.min(0.9, r * 0.7),
+          pinR = rr * 0.28, holeR = pinR + 0.07, gp = 0.18, leafW = Lb * 0.56,
+          hb = Math.min(3, base.m.h - rr * 0.55 - 0.25), cy = y0 - rr * 0.55, cz = z + rr + 0.4;
+        axis = { y: cy, z: cz };
+        // Perfil lateral do apoio com cabeça redonda e furo; pé ligado à base, sem caixa maciça no eixo.
+        const extrude = (sh, a, b) => { const g = new THREE.ExtrudeGeometry(sh, { depth: b - a, bevelEnabled: false, curveSegments: 24 });
+          g.deleteAttribute('uv'); g.rotateY(-Math.PI / 2); g.translate(cx + b, cy, cz); return g; };
+        const hole = () => { const h = new THREE.Path(); h.absarc(0, 0, holeR, 0, TAU, true); return h; };
+        for (const [a, b] of [[-Lb / 2, -leafW / 2 - gp], [leafW / 2 + gp, Lb / 2]]) {
+          const sh = new THREE.Shape(); sh.moveTo(-rr, -hb); sh.lineTo(rr + 1.2, -hb); sh.lineTo(rr + 1.2, -0.4);
+          sh.lineTo(rr, 0); sh.absarc(0, 0, rr, 0, Math.PI, false); sh.lineTo(-rr, -hb); sh.closePath(); sh.holes.push(hole());
+          add(extrude(sh, a, b), mB, base.idx, 'dobradica', 0, 0, 0);
+        }
+        const eye = new THREE.Shape(); eye.absarc(0, 0, rr, 0, TAU, false); eye.holes.push(hole());
+        add(extrude(eye, -leafW / 2, leafW / 2), mT, idx, 'dobradica', 0, 0, 0); objs.push(product.children.at(-1));
+        const bottom = cy + holeR + 0.1, top = y0 + Math.max(1.1, m.rBot || 0) + 0.5;
+        add(new RoundedBoxGeometry(leafW, top - bottom, 0.8, 2, 0.12), mT, idx, 'aba_dobradica', cx, (top + bottom) / 2, cz + 0.05); objs.push(product.children.at(-1));
+        const pin = new THREE.CylinderGeometry(pinR, pinR, Lb - 0.2, 32); pin.rotateZ(Math.PI / 2); pin.translate(cx, cy, cz);
+        add(pin, mirrorMat, base.idx, 'pino', 0, 0, 0);
+        if (!THUMB_LITE) {
+          const ni = g => { const x = g.index ? g.toNonIndexed() : g; for (const k in x.attributes) if (k !== 'position' && k !== 'normal') x.deleteAttribute(k); return x; };
+          const cutBottom = cy - hb + 0.35, cutTop = cy + rr + 0.3,
+            cutB = new RoundedBoxGeometry(Lb + 0.4, cutTop - cutBottom, 2 * rr + 1.8, 2, 0.15);
+          cutB.translate(cx, (cutBottom + cutTop) / 2, cz - 0.5);
+          const cutsT = [[-Lb / 2 - 0.1, -leafW / 2 - gp / 2], [leafW / 2 + gp / 2, Lb / 2 + 0.1]].map(([a, b]) => {
+            const g = new THREE.CylinderGeometry(rr + 0.14, rr + 0.14, b - a, 48); g.rotateZ(Math.PI / 2); g.translate(cx + (a + b) / 2, cy, cz); return ni(g); });
+          for (const [o, cut] of [[bObjs[0], ni(cutB)], [objs[0], mergeGeometries(cutsT)]]) {
+            const [outer, inner] = cutHole(o.geometry, cut); cut.dispose();
+            if (outer !== o.geometry) { const g = mergeGeometries([ni(outer), ni(inner)]); if (g) { o.geometry.dispose(); o.geometry = g; } }
+          }
+        }
+      } else if (m.hingeBloco) { // Moon, Frame, Macaroon — cl58, foto MOON aberta ampliada pela dona: a dobradiça é um BLOCO PRESO À BASE,
         // sentado num entalhe da borda de trás da base e subindo até a tampa, que tem o entalhe dela por cima dele; o pino passa no
         // alto do bloco. Aberta, o bloco fica à vista ligando base e tampa (não há cortes compridos na tampa — cl55 desfeito).
         // hingeBloco.w/.vao: largura (fração) e quanto o entalhe da base entra a mais (Macaroon, cl53)
@@ -10283,6 +10316,9 @@ function incomProduct(r) {
       t.dedo = { rect: true, panel: true, w: r1(W * 0.39), h: r1(t.h - (t.rTop || 1.2) - 0.5), lip: 0, d: 0.5 }; } } // aprovação cl38: menos largo e reto até a borda de baixo, sem a bordinha
     // Fotos p9–25: Frame e redondos usam um eixo central curto. P28–33: Flat tem dois apoios.
     if (/^Frame|^Moon|^Macaroon/.test(r.n)) ms.filter(m => m.hinge).forEach(m => { m.hingeWidth = 0.18; m.hingeBloco = /^Macaroon/.test(r.n) ? { w: 0.09, vao: 3 } : true; }); // cl50: bloco inteiro num vão da base; cl53: Macaroon mais fino, com o recorte entrando na base
+    // Fotos FRAME-G aberta e MACAROON-G lilás: a tampa tem uma aba própria chegando ao pino.
+    // Espessuras/folgas proporcionais às fotos; não são cotas de fabricação.
+    if (/^Frame|^Macaroon/.test(r.n)) ms.filter(m => m.hinge).forEach(m => { m.hingeLeaf = { w: /^Macaroon/.test(r.n) ? 0.09 : 0.16 }; });
     if (/^Flat/.test(r.n)) { const t = ms.find(m => m.name === 'Tampa'); if (t) {
       // cl51 (todas as Flat: "dobradiça é escondida, a tampa tem uma parte que abraça a dobradiça", 2ª foto): eixo dentro de uma calha
       // de ~90% da largura, coberto por um rolo da própria tampa, rente às costas — por fora não aparece nó nem pino

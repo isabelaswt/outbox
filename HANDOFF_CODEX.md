@@ -1,3 +1,7 @@
+# Atualização Codex — 18/11/2026, cdx30
+
+Frame/Macaroon receberam articulação própria: apoios fixos com furo, olhal e aba móvel da tampa chegando ao pino. Moon/Classic aprovados preservados. Auditoria de 32 modelos / 288 poses, retorno fechado e export de controle: tools/conferencia/validacao-cdx30.json. Pendências novas da dona: eliminar friso na junção tampa/aba e aproximar a lingueta do Case do colar do godê, com encaixe correspondente na tampa. Não marcar aprovação automaticamente.
+
 # Atualização Codex — 18/11/2026, cdx29
 
 Ler `APROVACAO_INCOM_CODEX.md` para os status da dona. Auditoria inicial de 32 conjuntos: Case corrigido com alojamentos circulares mais curtos e pinagem real; cinco variantes validadas. Os 13 Moon/Classic aprovados têm as mesmas malhas. Registro e validação em CODEX_REFINO.md e tools/conferencia/validacao-cdx29.json. Frame/Macaroon ainda em estudo isolado; não mudar hingeBloco dos Moon. Nenhuma aprovação foi marcada automaticamente.

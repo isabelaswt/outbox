@@ -305,3 +305,5 @@ Pendências conhecidas (precisam de dado ou de decisão; não invente):
 - 2026-11-17 cl15 (Claude): Flocada Cushion pela foto de uso — haste branca flocada larga, bola com leve cintura, disco translúcido; curto (h 13). Aplicador pode ter altura própria (APLIC.h) e a tampa compensa: fechado 104,6 mm.
 - 2026-11-17 cl16 (Claude): Silicone pela foto do catálogo — dedo ~5 mm × 17 mm com pé alargado, sem anel preto (h 17).
 - 2026-11-17 cl17 (Claude): frasco do Petit (Aplicador e com Haste) afina levemente para a ponta selada (taperB 88, fotos). Fechado 104,6 mm.
+
+- 2026-11-18, Codex, `2026-11-18.cdx30`: Frame/Macaroon com apoios laterais fixos, olhal central e aba móvel chegando ao pino. Ramo próprio hingeLeaf, sem alterar hingeBloco dos Moon. 32 modelos / 288 poses, dimensões fechadas preservadas, 80 amostras livres dos eixos Case/Frame/Macaroon; 13 aprovados idênticos à cl59. Quatro controles com botão abrir/fechar e export de três controles. São folgas de representação estimadas nas fotos, não projeto de molde. Novos pedidos da dona ainda pendentes nesta publicação: friso da aba e posição do fecho Case.
