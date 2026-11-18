@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-18.cl57';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-18.cl58';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -707,7 +707,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-18.cl57';
+const BUILD = '2026-11-18.cl58';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -6895,7 +6895,7 @@ function compactParts(product, L, S0) {
     const z = localBox(objs).min.z, bb = localBox(objs), W = bb.max.x - bb.min.x, cx = (bb.max.x + bb.min.x) / 2;
     // dobradiça atrás: dois nós presos à base nas pontas e um nó da tampa no meio, no mesmo eixo
     // (o nó da tampa gira em volta dele mesmo); pino de metal aparecendo nas juntas
-    const base = L.find(e => e.idx === idx - 1), bObjs = base ? mine(base.idx) : [];
+    const base = L.find(e => e.idx === idx - 1), bObjs = base ? mine(base.idx) : []; let axis = null; // axis: eixo próprio (Big/Flat, cl58)
     if (bObjs.length) {
       // Case p3–5 e foto ampliada: duas articulações curtas a ~30% do centro, não um eixo longo central.
       const r = clamp(Math.min(base.m.h, m.h) * 0.22, 1.1, 2.2), Lh = m.hingeCalha ? W * m.hingeCalha : m.hingeFull ? W * 0.94 : m.hingePair ? W * (m.hingePair.w ?? 0.11) : Math.min(W * (m.hingeWidth ?? (m.sides ? 0.4 : 0.32)), m.sides ? 44 : 24), g3 = Lh / 3, gap = m.hingePair ? 0.15 : 0.35;
@@ -6906,24 +6906,20 @@ function compactParts(product, L, S0) {
         const cut = new THREE.BoxGeometry(Lh + 0.6, 2 * r + 0.8, 2 * r + 1.6); cut.translate(cx, y0, z + r + 0.35 - 0.4);
         [objs[0], bObjs[0]].forEach(o => { const [outer, inner] = cutHole(o.geometry, cut); if (outer === o.geometry) return; const g = mergeGeometries([ni(outer), ni(inner)]); if (g) { o.geometry.dispose(); o.geometry = g; } });
         cut.dispose(); }
-      if (m.hingeBloco) { // Moon, Frame, Macaroon (aprovação cl50, fotos MOON-P/MOON-ECO/FRAME-P/MACAROON): a dobradiça é um bloco
-        // inteiro da tampa, que desce num vão recortado na parede de trás da base (fechado, o bloco preenche o vão)
-        // cl52 ("tá muito grande, um quadrado passando por cima do 3D, precisa ter um recorte nesse vão"): bloco mais estreito, rente ao
-        // contorno (não sobressai), e a tampa também ganha o recorte dos lados dele — ele fica dentro do vão, com folga em volta
-        // cl53 (Macaroon G: "essa dobradiça é mais fina; tem um recorte no desenho da base para a dobradiça", foto 3): hingeBloco.w/.vao
-        const hk = typeof m.hingeBloco === 'object' ? m.hingeBloco : {}, Lb = Math.min(W * (hk.w ?? 0.14), 12), hb = clamp(base.m.h * 0.55, 1.5, 5), t = 2 * r + 0.2, hu = 0.4, gp = 0.3, z0 = z + 0.25, vao = hk.vao ?? 0;
-        // cl54 (Moon: "esse recorte tem que vir até em cima; aberto, a dobradiça vira uma caixa"): a dobradiça é a própria parede de trás
-        // da tampa, separada por dois cortes que sobem até o topo; só a língua que desce no vão da base é peça a mais
-        add(new RoundedBoxGeometry(Lb, hb + hu, t, 3, Math.min(0.5, Lb * 0.08)), mT, idx, 'dobradica', cx, y0 + (hu - hb) / 2, z0 + t / 2); objs.push(product.children.at(-1));
+      if (m.hingeBloco) { // Moon, Frame, Macaroon — cl58, foto MOON aberta ampliada pela dona: a dobradiça é um BLOCO PRESO À BASE,
+        // sentado num entalhe da borda de trás da base e subindo até a tampa, que tem o entalhe dela por cima dele; o pino passa no
+        // alto do bloco. Aberta, o bloco fica à vista ligando base e tampa (não há cortes compridos na tampa — cl55 desfeito).
+        // hingeBloco.w/.vao: largura (fração) e quanto o entalhe da base entra a mais (Macaroon, cl53)
+        const hk = typeof m.hingeBloco === 'object' ? m.hingeBloco : {}, Lb = Math.min(W * (hk.w ?? 0.16), 13), hb = clamp(base.m.h * 0.55, 1.5, 5),
+          hu = clamp(m.h * 0.5, 1.6, 4), t = 2 * r + 0.4, gp = 0.3, z0 = z + 0.25, vao = hk.vao ?? 0;
+        add(new RoundedBoxGeometry(Lb, hb + hu, t, 3, Math.min(0.5, Lb * 0.08)), mB, base.idx, 'dobradica', cx, y0 + (hu - hb) / 2, z0 + t / 2);
+        axis = { y: y0 + hu - Math.min(r, hu * 0.45), z: z0 + t / 2 };
+        const pin = new THREE.CylinderGeometry(r * 0.3, r * 0.3, Lb + 2 * gp + 0.4, 24); pin.rotateZ(Math.PI / 2); pin.translate(cx, axis.y, axis.z); add(pin, mirrorMat, base.idx, 'pino', 0, 0, 0);
         if (!THUMB_LITE) { const ni = x => { const g = x.index ? x.toNonIndexed() : x; for (const k in g.attributes) if (k !== 'position' && k !== 'normal') g.deleteAttribute(k); return g; };
-          const hs = m.h + 1.5, cutT = mergeGeometries([-1, 1].map(sg => ni(new THREE.BoxGeometry(gp + 0.01, hs, t + 2.4).translate(cx + sg * (Lb + gp) / 2, y0 + hs / 2 - 0.05, z - 2 + (t + 2.4) / 2))));
-          const [o2, i2] = cutHole(objs[0].geometry, cutT); cutT.dispose();
-          if (o2 !== objs[0].geometry) { const g = mergeGeometries([ni(o2), ni(i2)]); if (g) { objs[0].geometry.dispose(); objs[0].geometry = g; } } }
-        const pin = new THREE.CylinderGeometry(r * 0.35, r * 0.35, Lb + 2 * gp + 0.6, 24); pin.rotateZ(Math.PI / 2); pin.translate(cx, y0, hz); add(pin, mirrorMat, base.idx, 'pino', 0, 0, 0);
-        if (!THUMB_LITE) { const ni = x => { const g = x.index ? x.toNonIndexed() : x; for (const k in g.attributes) if (k !== 'position' && k !== 'normal') g.deleteAttribute(k); return g; };
-          const cut = ni(new RoundedBoxGeometry(Lb + 2 * gp, hb + gp + 2, t + 2.4 + vao, 2, 0.3).translate(cx, y0 - hb - gp + (hb + gp + 2) / 2, z - 2 + (t + 2.4 + vao) / 2));
-          const [outer, inner] = cutHole(bObjs[0].geometry, cut); cut.dispose();
-          if (outer !== bObjs[0].geometry) { const g = mergeGeometries([ni(outer), ni(inner)]); if (g) { bObjs[0].geometry.dispose(); bObjs[0].geometry = g; } } }
+          const cutB = ni(new RoundedBoxGeometry(Lb + 2 * gp, hb + gp + 2, t + 2.4 + vao, 2, 0.3).translate(cx, y0 - hb - gp + (hb + gp + 2) / 2, z - 2 + (t + 2.4 + vao) / 2));
+          const cutT = ni(new RoundedBoxGeometry(Lb + 2 * gp, hu + gp + 1, t + 2.4, 2, 0.3).translate(cx, y0 - 1 + (hu + gp + 1) / 2, z - 2 + (t + 2.4) / 2));
+          [[bObjs[0], cutB], [objs[0], cutT]].forEach(([o, cut]) => { const [outer, inner] = cutHole(o.geometry, cut); cut.dispose();
+            if (outer !== o.geometry) { const g = mergeGeometries([ni(outer), ni(inner)]); if (g) { o.geometry.dispose(); o.geometry = g; } } }); }
       } else if (m.hingeCase) { // Case (aprovação cl49, fotos CASE-M-4/8/9): de cada lado, nó da base por dentro (~18–31% do centro), num ressalto
         // atrás da base, e nó da tampa por fora até perto da borda (~44%); a tampa tem o recorte onde o ressalto da base entra
         // e a base o recorte onde desce o nó da tampa; pino de metal corrido pelos dois nós
@@ -6948,19 +6944,19 @@ function compactParts(product, L, S0) {
         if (!THUMB_LITE) { const ni = x => { const g = x.index ? x.toNonIndexed() : x; for (const k in g.attributes) if (k !== 'position' && k !== 'normal') g.deleteAttribute(k); return g; };
           [[objs[0], cutsT], [bObjs[0], cutsB]].forEach(([o, cs]) => { const cut = mergeGeometries(cs.map(ni)); const [outer, inner] = cutHole(o.geometry, cut); cut.dispose();
             if (outer === o.geometry) return; const g = mergeGeometries([ni(outer), ni(inner)]); if (g) { o.geometry.dispose(); o.geometry = g; } }); }
-      } else if (m.hingeOculta) { // Big/Flat (cl51): rolo da tampa preenchendo a calha, rente às costas; o eixo fica escondido dentro
-        // cl56 (Big 4: "não aparece como cilindro; as laterais têm um vão e encaixam na base na parte central", foto 2): faixa reta da
-        // tampa (caixa de cantos pouco arredondados) na parte central da calha; nas pontas fica o vão da calha
-        // cl57 (Flat Dez: "não é um cilindro, tem uma rampa que desce e sobe" — na dobradiça): o rebaixo de trás da base é um trapézio —
-        // desce em rampa das pontas, corre reto e sobe — e a faixa da tampa tem o mesmo desenho, encaixada nele com folga
-        const dd = Math.min(base.m.h * 0.6, 2 * r + 0.6), ramp = dd * 1.4, dz = 2 * r + 0.8, trap = (wTop, h, y1, inset) => { const sh = new THREE.Shape(), a = wTop / 2 - inset, b = a - ramp;
-          sh.moveTo(-a, y1); sh.lineTo(-b, y1 - h); sh.lineTo(b, y1 - h); sh.lineTo(a, y1); sh.lineTo(a, y1 + 0.4); sh.lineTo(-a, y1 + 0.4); sh.closePath(); return sh; };
-        const band = new THREE.ExtrudeGeometry(trap(Lh, dd - 0.25, y0, 0.25), { depth: dz - 0.2, bevelEnabled: true, bevelThickness: 0.15, bevelSize: 0.15, bevelSegments: 2 });
-        band.deleteAttribute('uv'); band.translate(cx, 0, z + 0.25); add(band, mT, idx, 'dobradica', 0, 0, 0); objs.push(product.children.at(-1));
+      } else if (m.hingeOculta) { // Big/Flat — cl58, foto ampliada da dona (assets/revisao/ref-dona/flat-dobradica-ampliada.png):
+        // nada de rolo/faixa. Na borda de trás a TAMPA é recortada para cima no centro (as pontas descem até a divisão e "abraçam"
+        // o eixo) e a BASE sobe no centro num ressalto que entra nesse recorte; a passagem ponta→centro é um degrau com chanfro
+        // ("a rampa que desce e sobe"). O eixo corre escondido dentro do ressalto.
+        const e = Math.max(4, W * 0.05), a = W / 2 - e, hn = clamp(m.h * 0.45, 1.8, 2 * r + 1), dz = 2 * r + 1, ch = Math.min(0.8, hn * 0.4), gp = 0.25;
+        const prof = (A, yb, yt, c) => { const sh = new THREE.Shape(); sh.moveTo(-A, yb); sh.lineTo(A, yb); sh.lineTo(A, yt - c); sh.lineTo(A - c, yt); sh.lineTo(-(A - c), yt); sh.lineTo(-A, yt - c); sh.closePath(); return sh; };
+        const ridge = new THREE.ExtrudeGeometry(prof(a - gp, y0 - 0.6, y0 + hn - gp, ch), { depth: dz - gp - 0.3, bevelEnabled: true, bevelThickness: 0.15, bevelSize: 0.15, bevelSegments: 2 });
+        ridge.deleteAttribute('uv'); ridge.translate(cx, 0, z + 0.15); add(ridge, mB, base.idx, 'dobradica', 0, 0, 0);
+        axis = { y: y0 + (hn - gp) / 2, z: z + dz / 2 };
         if (!THUMB_LITE) { const ni = x => { const g = x.index ? x.toNonIndexed() : x; for (const k in g.attributes) if (k !== 'position' && k !== 'normal') g.deleteAttribute(k); return g; };
-          const cut = new THREE.ExtrudeGeometry(trap(Lh, dd, y0 + 0.05, 0), { depth: dz + 1.4, bevelEnabled: false }); cut.translate(cx, 0, z - 1);
-          const [outer, inner] = cutHole(bObjs[0].geometry, cut); cut.dispose();
-          if (outer !== bObjs[0].geometry) { const g = mergeGeometries([ni(outer), ni(inner)]); if (g) { bObjs[0].geometry.dispose(); bObjs[0].geometry = g; } } }
+          const cut = new THREE.ExtrudeGeometry(prof(a, y0 - 1, y0 + hn, ch), { depth: dz + 1, bevelEnabled: false }); cut.translate(cx, 0, z - 1);
+          const [outer, inner] = cutHole(objs[0].geometry, cut); cut.dispose();
+          if (outer !== objs[0].geometry) { const g = mergeGeometries([ni(outer), ni(inner)]); if (g) { objs[0].geometry.dispose(); objs[0].geometry = g; } } }
       } else
       (m.hingePair ? [-W * (m.hingePair.x ?? 0.30), W * (m.hingePair.x ?? 0.30)] : [0]).forEach(c => {
         const pin = new THREE.CylinderGeometry(r * 0.38, r * 0.38, Lh - 0.6, 24); pin.rotateZ(Math.PI / 2); pin.translate(cx + c, y0, hz);
@@ -6971,7 +6967,7 @@ function compactParts(product, L, S0) {
       });
     }
     const rH = bObjs.length ? clamp(Math.min(base.m.h, m.h) * 0.22, 1.1, 2.2) : 0;
-    hingeInfo.set(idx, { y0, z: z + (m.hingeCalha && rH ? rH + 0.35 : rH * 0.7), ang, under: base?.idx });
+    hingeInfo.set(idx, axis ? { y0: axis.y, z: axis.z, ang, under: base?.idx } : { y0, z: z + (m.hingeCalha && rH ? rH + 0.35 : rH * 0.7), ang, under: base?.idx });
   });
   // cl50 (Moon Deck: "bug ao fechar/abrir"): primeiro monta todas as dobradiças, depois gira. A tampa vai presa ao andar do meio
   // (o eixo dela anda junto quando ele abre) e as peças da dobradiça presas ao andar do meio giram com ele

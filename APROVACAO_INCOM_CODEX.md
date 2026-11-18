@@ -4,7 +4,7 @@ Escrito em 18/11/2026 pela sessão Claude, que publicou da cl40 à cl57. É a pa
 
 Situação: a dona acha que **não estamos acertando as dobradiças**. Ela quer que o Codex tente entender o mecanismo melhor. As seções 4 e 5 contam cada tentativa e a resposta dela.
 
-Versão no ar: **`2026-11-18.cl57`**. Próximo carimbo: **cl58**.
+Versão no ar: **`2026-11-18.cl58`**. Próximo carimbo: **cl59**.
 
 ---
 
@@ -110,8 +110,13 @@ Como lemos a foto (a confirmar com a dona antes de modelar):
   - As pontas da tampa "abraçam" as extremidades desse bloco, e o eixo passa por dentro: "as laterais têm um vão e depois encaixam na base na parte central".
 - A **peça translúcida no meio** liga a tampa e a base. Ela é o encaixe de fechamento perto do eixo (`espLatches`); não é a dobradiça.
 - **Portanto:** não há cilindro, rolo nem faixa aparente. A dobradiça aparece como um **recorte em degrau na tampa** casado com um **ressalto central na base**, ambos com a parede preta lisa.
-- **O que está no ar (cl57) não bate com isso:** a cl57 tem uma faixa da tampa num rebaixo trapezoidal da base. O desenho é o inverso, porque o centro alto é da BASE e o recorte é da TAMPA.
+- **Feito na cl58** exatamente assim (`hingeOculta` em `compactParts`, com o eixo próprio `axis` dentro do ressalto). Falta a dona conferir.
 - Provavelmente o mesmo desenho vale para todas as Flat e as Big (a dona usou a mesma frase em todas).
+
+### ⚠️ Foto ampliada da dona do Moon aberto (cl58)
+- A dobradiça é um **bloco preso à BASE**, sentado num entalhe da borda de trás da base e subindo até a tampa, que tem um entalhe por cima dele.
+- O pino passa no alto do bloco. Aberto, o bloco fica à vista ligando base e tampa.
+- **Feito na cl58** (`hingeBloco`): os cortes de altura inteira da cl55 foram desfeitos. Falta a dona conferir.
 
 ### Moon Deck (dois andares)
 - **Pedido:** "bug ao fechar/abrir".
