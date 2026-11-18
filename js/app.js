@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-18.cl54';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-18.cl55';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -707,7 +707,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-18.cl54';
+const BUILD = '2026-11-18.cl55';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -6911,10 +6911,12 @@ function compactParts(product, L, S0) {
         // cl52 ("tá muito grande, um quadrado passando por cima do 3D, precisa ter um recorte nesse vão"): bloco mais estreito, rente ao
         // contorno (não sobressai), e a tampa também ganha o recorte dos lados dele — ele fica dentro do vão, com folga em volta
         // cl53 (Macaroon G: "essa dobradiça é mais fina; tem um recorte no desenho da base para a dobradiça", foto 3): hingeBloco.w/.vao
-        const hk = typeof m.hingeBloco === 'object' ? m.hingeBloco : {}, Lb = Math.min(W * (hk.w ?? 0.14), 12), hb = clamp(base.m.h * 0.55, 1.5, 5), t = 2 * r + 0.2, hu = clamp(m.h * 0.35, 1, 2.5), gp = 0.3, z0 = z + 0.25, vao = hk.vao ?? 0;
+        const hk = typeof m.hingeBloco === 'object' ? m.hingeBloco : {}, Lb = Math.min(W * (hk.w ?? 0.14), 12), hb = clamp(base.m.h * 0.55, 1.5, 5), t = 2 * r + 0.2, hu = 0.4, gp = 0.3, z0 = z + 0.25, vao = hk.vao ?? 0;
+        // cl54 (Moon: "esse recorte tem que vir até em cima; aberto, a dobradiça vira uma caixa"): a dobradiça é a própria parede de trás
+        // da tampa, separada por dois cortes que sobem até o topo; só a língua que desce no vão da base é peça a mais
         add(new RoundedBoxGeometry(Lb, hb + hu, t, 3, Math.min(0.5, Lb * 0.08)), mT, idx, 'dobradica', cx, y0 + (hu - hb) / 2, z0 + t / 2); objs.push(product.children.at(-1));
         if (!THUMB_LITE) { const ni = x => { const g = x.index ? x.toNonIndexed() : x; for (const k in g.attributes) if (k !== 'position' && k !== 'normal') g.deleteAttribute(k); return g; };
-          const cutT = mergeGeometries([-1, 1].map(sg => ni(new THREE.BoxGeometry(gp + 0.01, hu + 0.1, t + 2.4).translate(cx + sg * (Lb + gp) / 2, y0 + hu / 2 - 0.05, z - 2 + (t + 2.4) / 2))));
+          const hs = m.h + 1.5, cutT = mergeGeometries([-1, 1].map(sg => ni(new THREE.BoxGeometry(gp + 0.01, hs, t + 2.4).translate(cx + sg * (Lb + gp) / 2, y0 + hs / 2 - 0.05, z - 2 + (t + 2.4) / 2))));
           const [o2, i2] = cutHole(objs[0].geometry, cutT); cutT.dispose();
           if (o2 !== objs[0].geometry) { const g = mergeGeometries([ni(o2), ni(i2)]); if (g) { objs[0].geometry.dispose(); objs[0].geometry = g; } } }
         const pin = new THREE.CylinderGeometry(r * 0.35, r * 0.35, Lb + 2 * gp + 0.6, 24); pin.rotateZ(Math.PI / 2); pin.translate(cx, y0, hz); add(pin, mirrorMat, base.idx, 'pino', 0, 0, 0);
