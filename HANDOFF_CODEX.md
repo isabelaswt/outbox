@@ -1,5 +1,7 @@
 # Atualização Claude — 18/11/2026, cl103
 
+- **cl104** — Conta-gotas (Julie, Sydney; vale para a linha toda): o furo da rosca atravessava o colar e ele ficava oco em cima (o botão parecia voando); agora o furo para 1 mm abaixo do topo e o colar fica fechado. Botão (Julie, Flacon 15/30 Botão): +10% de diâmetro, lado reto até uma aresta viva (ponto repetido no perfil do lathe = normal partida) e calota esférica baixa; colar com quina viva (collarR 0,35). Bulbo (Sydney, Bulb, Dispensing, Flacon Bulbo): +12% de largura e respiro do pé mais alto (gH até 1,5 mm, Rg 0,82R).
+
 Big 4/9: aba de abertura com espaço para o dedo embaixo; fillet 0,35 nas quinas da junção tampa/base. Próximo carimbo: cl104.
 
 # Atualização Claude — 18/11/2026, cl102

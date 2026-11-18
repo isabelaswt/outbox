@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION, ADDITION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-18.cl103';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-18.cl104';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -707,7 +707,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-18.cl103';
+const BUILD = '2026-11-18.cl104';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -2097,13 +2097,15 @@ function sprayGeo(m, y0, { lo = false } = {}) {
     const lathe = pts => { const g = new THREE.LatheGeometry(pts.map(([a, b]) => new THREE.Vector2(a, top - 0.5 + b)), lo ? 32 : 72); g.deleteAttribute('uv'); return g; };
     if (m.botao) { // cl60 (Flacon 15 Botão: "ele é oval em cima"; Flacon 30 Botão/Julie: "é um domo em cima"; fotos de fundo cinza):
       // lados retos e o topo INTEIRO em domo baixo (superelipse, ~18% da largura de altura), não só a quina arredondada
-      const R = m.actW / 2, H = m.actH, dH = Math.min(m.actW * 0.18, H * 0.4), pts = [[0, 0], [R - 0.4, 0], [R, 0.4], [R, H - dH]];
-      for (let i = 1; i <= 16; i++) { const t = i / 16 * Math.PI / 2, n = 2.8; pts.push([R * Math.pow(Math.cos(t), 2 / n), H - dH + dH * Math.pow(Math.sin(t), 2 / n)]); }
+      // cl104 ("deixar os vértices mais aparentes, é mais duro, não arredondado"): lado reto até uma ARESTA viva e, acima dela, a
+      // calota esférica baixa (ponto repetido na aresta = normal partida, sem sombreado arredondando a quina)
+      const R = m.actW / 2, H = m.actH, dH = Math.min(m.actW * 0.15, H * 0.4), Rs = (R * R + dH * dH) / (2 * dH), pts = [[0, 0], [R - 0.2, 0], [R, 0.2], [R, H - dH], [R, H - dH]];
+      for (let i = 1; i <= 16; i++) { const x = R * (1 - i / 16); pts.push([x, H - Rs + Math.sqrt(Rs * Rs - x * x)]); }
       head.push(lathe(pts)); }
     else { // cl60 (Bulb, Dispensing 30, Flacon 15 Bulbo: "veja a silhueta do conta-gotas, ele vai abrindo para baixo, como um sino,
       // depois disso tem um respiro embaixo"; fotos Sydney 60, Bulb vermelho, Dispensing 15 preto): corpo cilíndrico com topo em
       // domo; no terço de baixo abre em sino (curva côncava) até a largura da base; no pé, antes do colar, um anel mais estreito (respiro)
-      const R = m.actW / 2, H = m.actH, Rb = Math.min(R * 0.86, H * 0.4), gH = Math.min(0.9, H * 0.06), Rg = R * 0.8, bH = H * 0.32,
+      const R = m.actW / 2, H = m.actH, Rb = Math.min(R * 0.86, H * 0.4), gH = Math.min(1.5, H * 0.07), Rg = R * 0.82, bH = H * 0.32, /* cl104 (Sydney: "fazer essa entrada embaixo do conta-gotas"): respiro mais alto, aparece entre o sino e o colar */
         pts = [[0, 0], [Rg, 0], [Rg, gH], [R - 0.25, gH], [R, gH + 0.25]];
       for (let i = 1; i <= 10; i++) { const u = i / 10; pts.push([Rb + (R - Rb) * (1 - u) * (1 - u), gH + 0.25 + bH * u]); }
       pts.push([Rb, H - Rb]);
@@ -7425,7 +7427,7 @@ function buildInto(product, S, explodeAmt = 0) {
     if (!THUMB_LITE && m0.incomPoteCavity) g = cutCached('incomPote', [m, y0], g, () => incomPoteGeo(g, m, y0));
     if (m0.oco && !m0.threadReceiver && !THUMB_LITE) g = cutCached('oco', [m, y0, hasLogo], g, () => ocoGeo(g, m, y0));
     if (m0.threadReceiver && !THUMB_LITE) g = cutCached('threadReceiver', [m, y0], g, () => {
-      const height = m.threadThrough ? m.h + 0.6 : m.threadCavityFull ? m.h - (m.ocoTop ?? OCO.top) : Math.min(m.h - 0.8, m.threadReceiver.h - m.threadPhase + 0.3);
+      const height = m.threadThrough ? (m.sprayType === 'gotas' ? m.h - 1 : m.h + 0.6) /* cl104: no conta-gotas o colar fica fechado em cima (o furo aparecia em volta do botão) */ : m.threadCavityFull ? m.h - (m.ocoTop ?? OCO.top) : Math.min(m.h - 0.8, m.threadReceiver.h - m.threadPhase + 0.3);
       const cut = femaleThreadCutter({ ...m, femaleThread: m.threadReceiver }, y0, height), extras = g.userData.extras;
       const [outer, inner] = cutHole(g, cut); cut.dispose();
       const result = outer !== g ? mergeLoose([outer, inner]) : g;
@@ -10718,7 +10720,10 @@ function incomProduct(r) {
     // o conteúdo fica numa coluna acima dele. Medida na foto do Dispensing 15, sem cota de molde.
     if (fr && /Frasco em SAN/.test(r.mat)) Object.assign(fr, { fundoGrosso: true, fundo: r1(H * 0.05), fundoR: 2 }); // a dona achou 10% pesado demais
     else if (fr && /Frasco em PET/.test(r.mat)) Object.assign(fr, { fundoGrosso: true, fundo: r1(H * 0.025), fundoR: 2 }); // PET (fotos Sydney, Flacon, Deluxes): fundo pesado ~2,5% (4% ficou pesado)
-    ms.forEach(m => { if (m.type === 'contaGotas') m.ridges = 0; });
+    ms.forEach(m => { if (m.type === 'contaGotas') { m.ridges = 0;
+      // cl104 (Julie: "aumentar diâmetro do botão levemente", "é mais duro, não arredondado"; Sydney: "aumentar levemente a borracha"):
+      // botão +10% de diâmetro e colar de quina viva; bulbo de borracha +12% de largura. Vale para todos os conta-gotas da linha
+      if (m.botao) Object.assign(m, { actW: r1(Math.min(m.W - 3, m.actW * 1.1)), collarR: 0.35 }); else m.actW = r1(Math.min(m.W - 3, m.actW * 1.12)); } });
     // Julie p43: frasco PE opaco na foto e na lista de materiais; demais PET/SAN preservados.
     if (r.c === 'Conta-gotas' && r.n === 'Julie' && fr) Object.assign(fr, { own: true, color: BEIGE, finish: 'fosco' });
     // Deluxes, págs. 57–62: saia lisa na foto principal e nos detalhes spray/dosadora.
