@@ -19,6 +19,8 @@ const visiveis = () => itens.filter(i => (!linha || i.linha === linha) && (filtr
 
 // ---------- OUTBOX embutido (render ao vivo) ----------
 const frame = $('#app');
+// cl50: endereço único a cada abertura — o servidor guardava uma cópia velha de index.html?embed=1 (a revisão abria a cl44)
+frame.src = 'index.html?embed=1&t=' + Date.now();
 const app = () => { try { const w = frame.contentWindow; return w?.OUTBOX?.PRESETS && !w.document.body.classList.contains('auth-locked') ? w : null; } catch { return null; } };
 const appPronto = new Promise(res => { const t = setInterval(() => { if (app()) { clearInterval(t); res(app()); } }, 250); });
 const versao = () => ((app()?.document.getElementById('build')?.textContent || '').match(/\d{4}-\d{2}-\d{2}\.\w+/) || [''])[0];

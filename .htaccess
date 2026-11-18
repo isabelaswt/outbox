@@ -3,6 +3,8 @@
 <IfModule mod_headers.c>
   <FilesMatch "\.(html|json)$">
     Header set Cache-Control "no-cache, must-revalidate"
+    # cache do servidor (LiteSpeed/Hostinger) também não guarda o HTML: guardava index.html?embed=1 antigo
+    Header set X-LiteSpeed-Cache-Control "no-cache"
   </FilesMatch>
   # js/app.js e css/app.css vêm sempre com ?v=versão no HTML: podem ficar no cache
   # (cada versão nova tem endereço novo, então nunca fica a antiga)
