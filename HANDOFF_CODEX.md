@@ -1,4 +1,6 @@
-# Atualização Claude — 18/11/2026, cl62–cl66
+# Atualização Claude — 18/11/2026, cl62–cl67
+
+cl67: Case — na ponta um cilindro único da tampa (antes bloco da base + dente) com o pino em L por cima; peça quadrada de dentro é da base; vão no centro. Próximo carimbo: cl68.
 
 cl66: Case — pino metálico visível em L em cada ponta (sobre o bloco da base e dobrando no vão), dois mecanismos independentes. Próximo carimbo: cl67.
 
