@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION, ADDITION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-18.cl101';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-18.cl102';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -707,7 +707,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-18.cl101';
+const BUILD = '2026-11-18.cl102';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -7244,14 +7244,17 @@ function compactParts(product, L, S0) {
         // cl86 (dona: "está voando, precisamos que seja uma peça real"): dobradiça de verdade atrás da junção — eixo logo atrás das costas,
         // na altura da divisão; nós da BASE nas pontas e nó da TAMPA no meio, no mesmo eixo, cada um preso à sua peça por uma aba.
         // Aberta, a tampa gira em volta desse eixo; o pino de metal passa por dentro dos três nós.
-        if (cn) { const rc = 0.75, ya = yL, za = z - rc, gk = 0.2, Lk = W * 0.047, Lm = W * 0.12, /* cl87 (dona: "diminuir a largura do cilindro, quero 1/3 disso"): conjunto com 1/3 da largura (era 14%/36%) */ xm = Lm / 2, xb0 = xm + gk, xb1 = xb0 + Lk;
-          const knuckle = (x0, x1) => { const g = new THREE.CylinderGeometry(rc, rc, x1 - x0, 32); g.rotateZ(Math.PI / 2); g.translate(cx + (x0 + x1) / 2, ya, za); return g; };
-          const web = (x0, x1, y0w, y1w) => new THREE.BoxGeometry(x1 - x0, y1w - y0w, rc + 0.3).translate(cx + (x0 + x1) / 2, (y0w + y1w) / 2, za + (rc + 0.3) / 2);
-          [[-xb1, -xb0], [xb0, xb1]].forEach(([a0, a1]) => { add(knuckle(a0, a1), mB, base.idx, 'dobradica', 0, 0, 0); add(web(a0, a1, ya - rc, ya - 0.02), mB, base.idx, 'dobradica', 0, 0, 0); });
-          add(knuckle(-xm, xm), mT, idx, 'dobradica', 0, 0, 0); objs.push(product.children.at(-1));
-          add(web(-xm, xm, ya + 0.02, ya + rc), mT, idx, 'dobradica', 0, 0, 0); objs.push(product.children.at(-1));
-          const pin = new THREE.CylinderGeometry(rc * 0.35, rc * 0.35, 2 * xb1 + 0.3, 20); pin.rotateZ(Math.PI / 2); pin.translate(cx, ya, za); add(pin, mirrorMat, base.idx, 'pino', 0, 0, 0);
-          axis = { y: ya, z: za }; }
+        let tongue = null, femea = null;
+        // cl102 (dona, foto Big aberta por trás: "é tampa macho e fêmea com o pino cruzando os dois; a base tem um recuo para entrar a parte da
+        // tampa"): nas costas a BASE tem um recuo no meio (~65% da largura) e a TAMPA uma língua no meio que desce nele; as pontas da base
+        // ficam inteiras. O pino atravessa a língua e entra nas pontas. A língua é redonda em volta do eixo (gira dentro do recuo sem bater).
+        if (cn) { const half = W * 0.325, rr = 1.1, gq = 0.22, za = z + rr + 0.15, ya = yL - rr - 0.35, yTopT = yL + 0.6;
+          axis = { y: ya, z: za };
+          const prismX = (w, y0b, y1b, z0b, z1b, rad) => new RoundedBoxGeometry(w, y1b - y0b, z1b - z0b, 3, rad).translate(cx, (y0b + y1b) / 2, (z0b + z1b) / 2);
+          const cylX = (w, r) => { const g = new THREE.CylinderGeometry(r, r, w, 40); g.rotateZ(Math.PI / 2); g.translate(cx, ya, za); return g; };
+          tongue = [cylX(2 * (half - gq), rr), prismX(2 * (half - gq), ya, yTopT, za - rr, za + rr, 0.3)];
+          femea = [cylX(2 * half, rr + gq), prismX(2 * half, ya, yL + 1.5, z - 1.5, za + rr + gq, 0.25)];
+          const pin = new THREE.CylinderGeometry(0.3, 0.3, 2 * half + 4, 20); pin.rotateZ(Math.PI / 2); pin.translate(cx, ya, za); add(pin, mirrorMat, base.idx, 'pino', 0, 0, 0); }
         const ridge = cn ? null : new THREE.ExtrudeGeometry(prof(a - gp, yb, yL + hn - gp, ch), { depth: dz - gp - 0.3, bevelEnabled: true, bevelThickness: 0.15, bevelSize: 0.15, bevelSegments: 2 });
         if (ridge) { ridge.deleteAttribute('uv'); ridge.translate(cx, 0, z + 0.15); add(ridge, mB, base.idx, 'dobradica', 0, 0, 0);
           axis = { y: yL + (hn - gp) / 2, z: z + dz / 2 }; }
@@ -7271,6 +7274,15 @@ function compactParts(product, L, S0) {
             body.geometry.dispose(); body.geometry = gg; g.dispose(); ok = true;
           } catch (e) { console.warn('Saia da tampa (Big):', e); body.updateMatrix(); g.applyMatrix4(body.matrix); }
           if (!ok) { add(g, mT, idx, 'saia', 0, 0, 0); saia = product.children.at(-1); objs.push(saia); } }
+        if (cn && !THUMB_LITE) { const ni = x => { const g = x.index ? x.toNonIndexed() : x; for (const k in g.attributes) if (k !== 'position' && k !== 'normal') g.deleteAttribute(k); return g; };
+          femea.forEach(cut => { const [outer, inner] = cutHole(bObjs[0].geometry, ni(cut)); cut.dispose(); if (outer !== bObjs[0].geometry) { const g = mergeGeometries([ni(outer), ni(inner)]); if (g) { bObjs[0].geometry.dispose(); bObjs[0].geometry = g; } } });
+          const body = objs[0]; let ok = false;
+          try { body.updateMatrix(); const inv = body.matrix.clone().invert(), ev = new Evaluator(); ev.attributes = ['position', 'normal']; ev.useGroups = false; let out = flatPN(body.geometry);
+            for (const g of tongue) { g.applyMatrix4(inv); const r2 = ev.evaluate(new Brush(out), new Brush(flatPN(g)), ADDITION).geometry; out.dispose(); out = r2; }
+            out.userData = { ...body.geometry.userData }; body.geometry.dispose(); body.geometry = out; ok = true;
+          } catch (e) { console.warn('Língua da dobradiça (Big):', e); body.updateMatrix(); tongue.forEach(g => g.applyMatrix4(body.matrix)); }
+          if (!ok) tongue.forEach(g => { add(g, mT, idx, 'dobradica', 0, 0, 0); objs.push(product.children.at(-1)); }); else tongue.forEach(g => g.dispose()); }
+        else if (cn) tongue.forEach(g => { add(g, mT, idx, 'dobradica', 0, 0, 0); objs.push(product.children.at(-1)); });
         if (!cn && !THUMB_LITE) { const ni = x => { const g = x.index ? x.toNonIndexed() : x; for (const k in g.attributes) if (k !== 'position' && k !== 'normal') g.deleteAttribute(k); return g; };
           const cut = new THREE.ExtrudeGeometry(prof(a, cn ? yb - 0.5 : y0 - 1, yL + hn, ch), { depth: dz + 1, bevelEnabled: false }); cut.translate(cx, 0, z - 1);
           [objs[0], saia].filter(Boolean).forEach(o => { const [outer, inner] = cutHole(o.geometry, cut);
@@ -10662,7 +10674,7 @@ function incomProduct(r) {
         Object.assign(b.dedo, { w: r1(t.snapWidth + 0.2), h: 3.2, d: 1 });
         if (/^Big (4|9)$/.test(r.n)) { delete b.rebaixo; b.canal = { inset: 3.2, w: 0.6, h: 2.6, groove: false }; t.rBot = 0; /* cl83 (dona: "porque tem uma faixa? a tampa é uma coisa só"): sem arredondado embaixo, a tampa continua reta na saia */ /* cl81 ("altura da paleta está diferente", foto BIG-4): degrau 1,3 → 2,6, tampa com saia */ // cl46 (Big 9): degrau bem maior — borda de fora mais baixa (era 0,6)
           // Aprovação cl37 (fotos BIG-4): produto quase no nível da divisória e duas dobradiças, junto aos cantos
-          if (b.godes) b.godes = { ...b.godes, fundo: 2.1, mgK: 0.118 }; /* cl84 (dona: "o nosso [godê] parece que tá maior, com menos borda"): moldura da bandeja mais larga, godês menores */ Object.assign(t, { hingeCalha: 0.9, hingeOculta: true }); } // cl51: dobradiça escondida (era um par aparente)
+          b.dedo.h = 6.4; /* cl102 (dona: "aumentar aba de fechamento em 3 vezes a altura", foto PALETA-BIG-FECHADA): com o degrau de 2,6 a aba aparecia ~1 mm abaixo da divisão; agora desce ~3,5 mm (≈2/3 da frente da base) */ if (b.godes) b.godes = { ...b.godes, fundo: 2.1, mgK: 0.118 }; /* cl84 (dona: "o nosso [godê] parece que tá maior, com menos borda"): moldura da bandeja mais larga, godês menores */ Object.assign(t, { hingeCalha: 0.9, hingeOculta: true }); } // cl51: dobradiça escondida (era um par aparente)
         // Págs.28–33: encaixes estreitos junto ao eixo; proporções estimadas na foto
         // (largura ~2,3% do estojo), preservando a faixa sem espelho.
         if (/^Flat/.test(r.n)) { t.espBand = 0; t.espLatches = { w: r1(W * 0.023), h: 1.2, x: 0.26, depth: 0.5 };

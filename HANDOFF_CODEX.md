@@ -1,3 +1,7 @@
+# Atualização Claude — 18/11/2026, cl102
+
+Big 4/9: aba de fechamento ~3× mais alta; dobradiça macho e fêmea (recuo no meio da base, língua da tampa, pino cruzando). Próximo carimbo: cl103.
+
 # Atualização Claude — 18/11/2026
 
 Moon APROVADOS na cl101 (10 itens `ok`), junto com Frame e Case: não mexer em `hingeBloco`/`hingeCase` sem pedido. Próximo carimbo: cl102.
