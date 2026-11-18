@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-18.cl50';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-18.cl51';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -707,7 +707,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-18.cl50';
+const BUILD = '2026-11-18.cl51';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -6934,6 +6934,9 @@ function compactParts(product, L, S0) {
         if (!THUMB_LITE) { const ni = x => { const g = x.index ? x.toNonIndexed() : x; for (const k in g.attributes) if (k !== 'position' && k !== 'normal') g.deleteAttribute(k); return g; };
           [[objs[0], cutsT], [bObjs[0], cutsB]].forEach(([o, cs]) => { const cut = mergeGeometries(cs.map(ni)); const [outer, inner] = cutHole(o.geometry, cut); cut.dispose();
             if (outer === o.geometry) return; const g = mergeGeometries([ni(outer), ni(inner)]); if (g) { o.geometry.dispose(); o.geometry = g; } }); }
+      } else if (m.hingeOculta) { // Big/Flat (cl51): rolo da tampa preenchendo a calha, rente às costas; o eixo fica escondido dentro
+        const g = new THREE.CylinderGeometry(r + 0.33, r + 0.33, Lh - 0.3, 48); g.rotateZ(Math.PI / 2); g.translate(cx, y0, hz);
+        add(g, mT, idx, 'dobradica', 0, 0, 0); objs.push(product.children.at(-1));
       } else
       (m.hingePair ? [-W * (m.hingePair.x ?? 0.30), W * (m.hingePair.x ?? 0.30)] : [0]).forEach(c => {
         const pin = new THREE.CylinderGeometry(r * 0.38, r * 0.38, Lh - 0.6, 24); pin.rotateZ(Math.PI / 2); pin.translate(cx + c, y0, hz);
@@ -9790,7 +9793,7 @@ function godesOf(r) {
   if (/^Moon M com Visor/.test(n)) { const g = 0.022, half = k => [...Array(33)].map((_, i) => { const a = Math.PI * i / 32; return [0.5 * Math.cos(a), k * Math.max(g, 0.5 * Math.sin(a))]; });
     tr = { ar: 1, c: [half(1), half(-1).reverse()] }; }
   if (tr && /Classic Quarteto/.test(n)) tr = { ...tr, slot: [[-0.1, 0.5], [-0.1, -0.5], [0.1, -0.5], [0.1, 0.5]] };
-  if (tr && /6 \+ 1/.test(n)) tr = { ...tr, c: tr.c.map(c => c.map(([x, y]) => [-x, y])) }; // foto: o godê grande fica à direita
+  // cl51 (dona, foto FLAT-6+1: "o godê maior fica na esquerda"): sem o espelhamento antigo — a bandeja do desenho já tem o grande à esquerda
   return tr ? { rows, rect, cells: tr.c, ar: tr.ar, slot: tr.slot, grow: tr.grow, step: tr.step, mm: tr.mmTw ? tr.mmTw - 1 : mm, n: frameN(n) || undefined } : { rows, rect, mm };
 }
 // Tamanho da bandeja (godê) informado no catálogo, em mm, quando não há desenho dela
@@ -9935,7 +9938,12 @@ function incomProduct(r) {
       // Págs. 50/51: junções medidas no desenho; Elíptico tem anel largo e Cube, junta fina.
       const splits = { incomp_dispensadores_dispensing_cube: [0.55, 0.58], incomp_dispensadores_dispensing_eliptico: [0.5, 0.575] };
       let [f0, f1] = splits[r.k] || incomFrac(pr, [0.58, 0.63]); if (f1 < f0 + 0.01) f1 = f0 + 0.05;
-      if (r.t === 'bulb' && f1 - f0 < 0.11) f0 = f1 - 0.11; // aprovação cl47 (Bulb, fotos): o ombro (anel) é bem mais alto, ~11% da altura
+      // cl51 (Bulb: "anel cresceu muito, o dente é pra dentro"; Dispensing 15 conta-gotas: "ombro é mais alto, tem outro degrau"), medidos
+      // nas fotos BULB-1 e DISPENSING-15-1: Bulb — frasco até 48,5%, anel ~9,5% e a sobretampa a partir de 58%; Dispensing — anel de
+      // 56,8% a 65% e um degrau mais estreito por cima, dentro da sobretampa
+      const dcg = /^incomp_conta_gotas_dispensing/.test(r.k);
+      if (r.t === 'bulb') { f0 = 0.485; f1 = 0.58; }
+      if (dcg) { f0 = 0.568; f1 = 0.65; }
       // sobretampa de plástico transparente: casca de uma superfície só (cavada, a parede de dentro aparecia como
       // uma segunda linha; com o oco da válvula, como uma parede por dentro, igual às tampas maciças de Surlyn)
       const cap = P(twist ? 'Acionador' : 'Sobretampa', W, D, H * (1 - f1), { ...sh, ...(twist ? {} : { ...clear, casca: true }), rBot: 0.5, rTop: r.t === 'bulb' ? W / 2 * 0.95 : r.t === 'cgr' ? W * 0.3 : 2, _t: [f1, 1] });
@@ -9946,6 +9954,9 @@ function incomProduct(r) {
       const dlx = r.c === 'Deluxes' || /^Amsterdam Deluxe/.test(r.n);
       const v = dlx ? fitValveIn('spray', cap, Math.min(26, wIn)) : r.c === 'Conta-gotas' ? fitValveIn('contaGotas', cap, Math.min(22, wIn)) : fitValveIn('pumpDosadora', cap, Math.min(26.3, wIn));
       ms = [P('Frasco', W, D, H * f0, { ...sh, vol: true, rBot: rb, rTop: 1, ...(r.t === 'cgt' ? { taperB: 86 } : {}), _t: [0, f0] }), P('Anel', W, D, H * (f1 - f0), { ...sh, _t: [f0, f1] }), v, cap];
+      // cl51 (Amsterdam Deluxe 100: "base do spray tá alta e o spray tá pequeno", foto AMSTERDAM-DELUXE-100-1): mesma altura total,
+      // dividida como na foto — base ~39%, anel guia ~23% (72% da base de largura), atuador ~38%; vale para todos os Deluxe
+      if (dlx) { const T = v.h + (v.guideH || 0) + (v.actH || 0); Object.assign(v, { h: r1(T * 0.39), guideH: r1(T * 0.23), guideW: r1(v.W * 0.72), actH: r1(T * 0.38), actW: r1(v.W * 0.47) }); }
       if (r.c === 'Dispensadores' || dlx) {
         // P46–54: 20-410; Deluxes 100: 20-410, 200: 24-410. Não inclui On-Off/Twist.
         const standard = dlx && /200$/.test(r.n) ? '24/410' : '20/410';
@@ -9956,9 +9967,14 @@ function incomProduct(r) {
         Object.assign(v, { threadReceiver: descriptor, threadNeckUid: neck.uid, W: Math.max(v.W, neck.W + 2.6), D: Math.max(v.D, neck.W + 2.6) });
         ms.splice(1, 0, neck);
       }
-      // Bulb (aprovação cl47, fotos Bulb-preto e a branca): no alto do anel um dente um pouco mais largo, onde a sobretampa encaixa
-      if (r.t === 'bulb') { const ai = ms.findIndex(m => m.name === 'Anel');
-        if (ai >= 0) ms.splice(ai + 1, 0, P('Dente da sobretampa', r1(W + 1.4), D ? r1(D + 1.4) : null, 1.6, { ...sh, rTop: 0.5, rBot: 0.5, gap: -1.6 })); }
+      // Bulb/Dispensing conta-gotas (cl51): no alto do anel um dente PARA DENTRO (mais estreito), onde a sobretampa encaixa — ela desce
+      // por fora dele até o anel; o conta-gotas tem colar alto e borracha fina (fotos)
+      const dente = r.t === 'bulb' ? { n: 'Dente da sobretampa', w: r1(W - 2.6), h: 2.5 } : dcg ? { n: 'Degrau do ombro', w: r1(W * 0.86), h: r1(H * 0.04) } : null;
+      if (dente) { const ai = ms.findIndex(m => m.name === 'Anel');
+        if (ai >= 0) ms.splice(ai + 1, 0, P(dente.n, dente.w, D ? r1(D - (W - dente.w)) : null, dente.h, { ...sh, rTop: 0.4, rBot: 0, gap: 0 }));
+        cap.gap = -dente.h; }
+      if (r.t === 'bulb' && r.c === 'Conta-gotas') Object.assign(v, { W: r1(W * 0.58), D: r1(W * 0.58), h: r1(H * 0.18), actW: r1(W * 0.32), actH: r1(H * 0.19) });
+      if (dcg) Object.assign(v, { W: r1(W * 0.59), D: r1(W * 0.59), h: r1(H * 0.13), actW: r1(W * 0.34), actH: r1(H * 0.17) });
       break; }
     case 'onoff': { const [f] = incomFrac(pr, [0.62]), hc = H * (1 - f), dn = 4.4;
       // bico do acionador (lotion) saindo de lado no alto da capa, como na foto do catálogo
@@ -10229,10 +10245,9 @@ function incomProduct(r) {
     // Fotos p9–25: Frame e redondos usam um eixo central curto. P28–33: Flat tem dois apoios.
     if (/^Frame|^Moon|^Macaroon/.test(r.n)) ms.filter(m => m.hinge).forEach(m => { m.hingeWidth = 0.18; m.hingeBloco = true; }); // cl50: bloco inteiro num vão da base
     if (/^Flat/.test(r.n)) { const t = ms.find(m => m.name === 'Tampa'); if (t) {
-      // Foto da dona: Trio Retangular com eixo contínuo quase de fora a fora; não generalizar.
-      if (r.n === 'Flat Trio Retangular') t.hingeFull = true;
-      // Foto FLAT-DEZ (aprovação cl37): um eixo longo (~72% da largura) que corre numa calha recortada no fundo da base e da tampa
-      else t.hingeCalha = 0.72;
+      // cl51 (todas as Flat: "dobradiça é escondida, a tampa tem uma parte que abraça a dobradiça", 2ª foto): eixo dentro de uma calha
+      // de ~90% da largura, coberto por um rolo da própria tampa, rente às costas — por fora não aparece nó nem pino
+      Object.assign(t, { hingeCalha: 0.9, hingeOculta: true });
     } }
     ms.forEach((m, i) => { if (m.hinge && !m.caseLatch && ms[i - 1]?.dedo) m.snapFront = true; });
     if (/^(Frame|Classic)/.test(r.n)) {
@@ -10291,7 +10306,7 @@ function incomProduct(r) {
         Object.assign(b.dedo, { w: r1(t.snapWidth + 0.2), h: 3.2, d: 1 });
         if (/^Big (4|9)$/.test(r.n)) { delete b.rebaixo; b.canal = { inset: 3.2, w: 0.6, h: 1.3 }; // cl46 (Big 9): degrau bem maior — borda de fora mais baixa (era 0,6)
           // Aprovação cl37 (fotos BIG-4): produto quase no nível da divisória e duas dobradiças, junto aos cantos
-          if (b.godes) b.godes = { ...b.godes, fundo: 2.1 }; t.hingePair = { x: 0.4, w: 0.1 }; }
+          if (b.godes) b.godes = { ...b.godes, fundo: 2.1 }; Object.assign(t, { hingeCalha: 0.9, hingeOculta: true }); } // cl51: dobradiça escondida (era um par aparente)
         // Págs.28–33: encaixes estreitos junto ao eixo; proporções estimadas na foto
         // (largura ~2,3% do estojo), preservando a faixa sem espelho.
         if (/^Flat/.test(r.n)) { t.espBand = 0; t.espLatches = { w: r1(W * 0.023), h: 1.2, x: 0.26, depth: 0.5 };
