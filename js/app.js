@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION, ADDITION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-18.cl67';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-18.cl68';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -707,7 +707,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-18.cl67';
+const BUILD = '2026-11-18.cl68';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -7063,15 +7063,15 @@ function compactParts(product, L, S0) {
           const hole = new THREE.Path(); hole.absarc(0, 0, bore, 0, TAU, true); sh.holes.push(hole);
           const g = new THREE.ExtrudeGeometry(sh, { depth: len(p, q), bevelEnabled: false, curveSegments: 24 });
           g.deleteAttribute('uv'); g.rotateY(Math.PI / 2); g.translate(Math.min(p, q), y0, hz); return g; };
-        const X = f => W * f, e0 = X(c0), t0 = e0 + gv, t1 = X(c1), b0 = t1 + gs, b1 = X(c2), d0 = b1 + gs, dE = W / 2 - 0.4;
+        const X = f => W * f, dE = W / 2 - 0.4, Lc = Math.min(7, W * 0.1), b0 = dE - Lc, t1 = b0 - gs, t0 = t1 - Lc, rc = r + 0.5; // cl68/cl69: cilindro da ponta ~7 mm; a base quadrada com a mesma largura (seção e comprimento) // cl68: cilindro da ponta mais curto (~7 mm), a peça quadrada vai até ele
         // cl64 (dona: "acho que não tem pino no centro"): sem nó nem pino no centro. cl65 ("depois dessa base, tem um vão no
         // centro"): entre os dois nós da tampa, um canal vazio ao longo do eixo, cortado na tampa e na base
-        { const cc = W * c0 + gv - 0.4; cutsT.push(cyl(cx - cc, cx + cc, r + 0.3)); cutsB.push(cyl(cx - cc, cx + cc, r + 0.3)); }
+        { const cc = t0 - 0.4; cutsT.push(cyl(cx - cc, cx + cc, r + 0.3)); cutsB.push(cyl(cx - cc, cx + cc, r + 0.3)); }
         [-1, 1].forEach(sg => {
           const P = v => cx + sg * v;
           { // cl65 (dona: "tem uma base quadrada arredondada que segura o pino"): seção quadrada de cantos arredondados em volta do
             // eixo, com furo redondo. cl67: ela fica na BASE (a peça de fora é que é da tampa), senão nada girava
-            const q = r + 0.25, k = 0.55, sh = new THREE.Shape(); sh.moveTo(-q + k, -q); sh.lineTo(q - k, -q); sh.quadraticCurveTo(q, -q, q, -q + k);
+            const q = rc, k = 0.7, sh = new THREE.Shape(); sh.moveTo(-q + k, -q); sh.lineTo(q - k, -q); sh.quadraticCurveTo(q, -q, q, -q + k);
             sh.lineTo(q, q - k); sh.quadraticCurveTo(q, q, q - k, q); sh.lineTo(-q + k, q); sh.quadraticCurveTo(-q, q, -q, q - k);
             sh.lineTo(-q, -q + k); sh.quadraticCurveTo(-q, -q, -q + k, -q);
             const hole = new THREE.Path(); hole.absarc(0, 0, bore, 0, TAU, true); sh.holes.push(hole);
@@ -7081,20 +7081,14 @@ function compactParts(product, L, S0) {
           // cl67 (dona: "a parte de fora, que o pino é fixado, é apenas uma — hoje tem duas partes — um cilindro que é encaixado na
           // tampa"; recorte CASE-G-2): bloco da base + dente viram UM cilindro da tampa, da parede lateral até a dobra do pino,
           // ponta de fora arredondada rente à face lateral
-          const rc = r + 0.25;
           { const L = dE - b0, c = Math.min(rc * 0.6, 0.7), pts = [[0, 0], [rc, 0], [rc, L - c]];
             for (let i = 1; i <= 8; i++) { const a = i / 8 * Math.PI / 2; pts.push([rc - c + c * Math.cos(a), L - c + c * Math.sin(a)]); } pts.push([0, L]);
             const g = new THREE.LatheGeometry(pts.map(([a, b]) => new THREE.Vector2(a, b)), 48); g.deleteAttribute('uv');
             g.rotateZ(-sg * Math.PI / 2); g.translate(P(b0), y0, hz); add(g, mT, idx, 'dobradica', 0, 0, 0); objs.push(product.children.at(-1)); }
           add(cyl(P(t0 + 0.3), P(dE - 1), r * 0.38), mirrorMat, base.idx, 'pino', 0, 0, 0); // eixo interno, só desta ponta
-          { // cl66: pino metálico visível em L (descrição da foto) — horizontal por cima do cilindro, da parede lateral até a dobra,
-            // e a dobra de ~90° descendo no vão entre o cilindro e a base quadrada
-            const rw = 0.28, yT = y0 + rc + rw * 0.5, yB = y0 - rc + 0.3, zW = hz - 0.1, xE = P(b0 - gs / 2);
-            add(cyl(P(dE - 0.6), xE, rw).translate(0, yT - y0, zW - hz), mirrorMat, base.idx, 'pino_L', 0, 0, 0);
-            const v = new THREE.CylinderGeometry(rw, rw, yT - yB, 16); v.translate(xE, (yT + yB) / 2, zW); add(v, mirrorMat, base.idx, 'pino_L', 0, 0, 0);
-            const el = new THREE.SphereGeometry(rw, 16, 12); el.translate(xE, yT, zW); add(el, mirrorMat, base.idx, 'pino_L', 0, 0, 0); }
+          // cl68 (dona: "pino ficou para fora"): sem o L aparente por cima do cilindro — o pino corre dentro do eixo e só aparece no vão
           // tampa: cede ao giro da base quadrada; base: cede ao cilindro da tampa e tem o furo do pino na peça quadrada
-          cutsT.push(cyl(P(t0 - 0.2), P(t1 + gs / 2 - 0.02), Math.hypot(r + 0.25, r + 0.25) + 0.15));
+          cutsT.push(cyl(P(t0 - 0.2), P(t1 + gs / 2 - 0.02), Math.hypot(rc, rc) + 0.15));
           cutsB.push(cyl(P(t0 + 0.05), P(t1 - 0.05), bore));
           cutsB.push(cyl(P(b0 - gs / 2 + 0.02), P(W / 2 + 0.3), rc + 0.16));
         });
