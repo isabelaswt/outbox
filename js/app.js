@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION, ADDITION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-18.cl65';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-18.cl66';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -707,7 +707,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-18.cl65';
+const BUILD = '2026-11-18.cl66';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -7056,7 +7056,7 @@ function compactParts(product, L, S0) {
         // quero que fique exatamente igual"). Cinco nós no mesmo eixo, de fora para dentro em cada lado: dente da tampa (a parede
         // lateral desce em volta do eixo), nó da base na ponta, vão fino (passa luz) e nó da tampa; centro liso (cl64). A parede de trás da tampa é recortada sobre os nós da base, com folga que aparece como o vão em L da foto.
         // Medidas na foto (Case G, 71,9 mm): centro da base até 21,7%; nó da tampa 23,7–34,2%; nó da base da ponta até 45,6%.
-        const [c0, c1, c2] = m.hingeCase.length === 3 ? m.hingeCase : [0.217, 0.342, 0.456], gv = 1.4, gs = 0.4,
+        const [c0, c1, c2] = m.hingeCase.length === 3 ? m.hingeCase : [0.217, 0.342, 0.456], gv = 1.4, gs = 0.8,
           bore = r * 0.38 + 0.08, cutsT = [], cutsB = [], len = (p, q) => Math.abs(q - p), mid = (p, q) => (p + q) / 2;
         const cyl = (p, q, rr) => { const g = new THREE.CylinderGeometry(rr, rr, len(p, q), 48); g.rotateZ(Math.PI / 2); g.translate(mid(p, q), y0, hz); return g; };
         const tube = (p, q) => { const sh = new THREE.Shape(); sh.absarc(0, 0, r, 0, TAU, false);
@@ -7090,6 +7090,13 @@ function compactParts(product, L, S0) {
             const g = new THREE.LatheGeometry(pts.map(([a, b]) => new THREE.Vector2(a, b)), 48); g.deleteAttribute('uv');
             g.rotateZ(-sg * Math.PI / 2); g.translate(P(d0), y0, hz); add(g, mT, idx, 'dente_dobradica', 0, 0, 0); objs.push(product.children.at(-1)); }
           add(cyl(P(t0 + 0.3), P(b1), r * 0.38), mirrorMat, base.idx, 'pino', 0, 0, 0); // pino só do nó da tampa até o bloco da ponta
+          { // cl66 (dona, descrição da foto CASE-G-2: "pino metálico fino e prateado, visível em formato de L — um segmento horizontal
+            // e uma pequena dobra de ~90°"; dois mecanismos independentes, sem haste contínua): o L brilhante da foto corre por cima do
+            // bloco da base, rente à borda de trás, e dobra para baixo pela face de dentro do bloco, no vão até o nó da tampa
+            const rw = 0.28, yT = y0 + r + rw * 0.5, yB = y0 - r + 0.3, zW = hz - 0.1, xE = P(b0 - gs / 2);
+            add(cyl(P(b1 - 0.3), xE, rw).translate(0, yT - y0, zW - hz), mirrorMat, base.idx, 'pino_L', 0, 0, 0);
+            const v = new THREE.CylinderGeometry(rw, rw, yT - yB, 16); v.translate(xE, (yT + yB) / 2, zW); add(v, mirrorMat, base.idx, 'pino_L', 0, 0, 0);
+            const el = new THREE.SphereGeometry(rw, 16, 12); el.translate(xE, yT, zW); add(el, mirrorMat, base.idx, 'pino_L', 0, 0, 0); }
           // tampa: furo do pino no nó dela; vão sobre o nó da base da ponta, com folga maior (o vão em L que passa luz)
           cutsT.push(cyl(P(t0 + 0.05), P(t1 - 0.05), bore));
           cutsT.push(cyl(P(b0 - gs / 2), P(d0 - 0.02), Math.hypot(r + 1.2, r) + 0.3)); // entalhe da tampa sobre o bloco: gira livre e deixa o vão em L

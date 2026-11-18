@@ -1,4 +1,6 @@
-# Atualização Claude — 18/11/2026, cl62–cl65
+# Atualização Claude — 18/11/2026, cl62–cl66
+
+cl66: Case — pino metálico visível em L em cada ponta (sobre o bloco da base e dobrando no vão), dois mecanismos independentes. Próximo carimbo: cl67.
 
 cl65: Case — nó da tampa quadrado arredondado segurando o pino e canal vazio no centro (pedido da dona). Próximo carimbo: cl66.
 
