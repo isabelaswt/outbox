@@ -1,3 +1,7 @@
+# Atualização Claude — 18/11/2026, cl86
+
+Big 4/9: dobradiça real atrás (nós da base nas pontas, nó da tampa no meio, abas e pino). Próximo carimbo: cl87.
+
 # Atualização Claude — 18/11/2026, cl85
 
 Big 4/9: tampa gira na quina e encosta na base; cilindro atrás da junção, colado nas costas da base. Próximo carimbo: cl86.

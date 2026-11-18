@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION, ADDITION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-18.cl85';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-18.cl86';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -707,7 +707,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-18.cl85';
+const BUILD = '2026-11-18.cl86';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -7138,10 +7138,16 @@ function compactParts(product, L, S0) {
         // na altura da borda de fora, com o eixo na face de trás. As Flat seguem com o ressalto da rampa (cl58), sem as peças da cl81.
         // cl84 (dona: "o cilindro não deve aparecer, ele deve ser menor e escondido atrás, mesmo quando abre"): pino fino, logo atrás
         // das costas, na quina de trás da base
-        if (cn) { const rc = 0.45, Lc = W * 0.7, ya = yL, za = z; // eixo na quina de trás da base: a tampa gira rente, sem vão, e o pino vira um arredondado mínimo no canto
-          // cl85 (dona: "não pode estar afastado também, as duas partes se tocam, tampa e base, mas o cilindro fica atrás dessa junção"):
-          // a tampa gira na quina (encosta na base) e o cilindro fica colado nas costas da base, logo abaixo e atrás da junção
-          const cyl = new THREE.CylinderGeometry(rc, rc, Lc, 32); cyl.rotateZ(Math.PI / 2); cyl.translate(cx, ya - rc - 0.05, za - rc - 0.05); add(cyl, mB, base.idx, 'dobradica', 0, 0, 0);
+        // cl86 (dona: "está voando, precisamos que seja uma peça real"): dobradiça de verdade atrás da junção — eixo logo atrás das costas,
+        // na altura da divisão; nós da BASE nas pontas e nó da TAMPA no meio, no mesmo eixo, cada um preso à sua peça por uma aba.
+        // Aberta, a tampa gira em volta desse eixo; o pino de metal passa por dentro dos três nós.
+        if (cn) { const rc = 0.75, ya = yL, za = z - rc, gk = 0.2, Lk = W * 0.14, Lm = W * 0.36, xm = Lm / 2, xb0 = xm + gk, xb1 = xb0 + Lk;
+          const knuckle = (x0, x1) => { const g = new THREE.CylinderGeometry(rc, rc, x1 - x0, 32); g.rotateZ(Math.PI / 2); g.translate(cx + (x0 + x1) / 2, ya, za); return g; };
+          const web = (x0, x1, y0w, y1w) => new THREE.BoxGeometry(x1 - x0, y1w - y0w, rc + 0.3).translate(cx + (x0 + x1) / 2, (y0w + y1w) / 2, za + (rc + 0.3) / 2);
+          [[-xb1, -xb0], [xb0, xb1]].forEach(([a0, a1]) => { add(knuckle(a0, a1), mB, base.idx, 'dobradica', 0, 0, 0); add(web(a0, a1, ya - rc, ya - 0.02), mB, base.idx, 'dobradica', 0, 0, 0); });
+          add(knuckle(-xm, xm), mT, idx, 'dobradica', 0, 0, 0); objs.push(product.children.at(-1));
+          add(web(-xm, xm, ya + 0.02, ya + rc), mT, idx, 'dobradica', 0, 0, 0); objs.push(product.children.at(-1));
+          const pin = new THREE.CylinderGeometry(rc * 0.35, rc * 0.35, 2 * xb1 + 0.3, 20); pin.rotateZ(Math.PI / 2); pin.translate(cx, ya, za); add(pin, mirrorMat, base.idx, 'pino', 0, 0, 0);
           axis = { y: ya, z: za }; }
         const ridge = cn ? null : new THREE.ExtrudeGeometry(prof(a - gp, yb, yL + hn - gp, ch), { depth: dz - gp - 0.3, bevelEnabled: true, bevelThickness: 0.15, bevelSize: 0.15, bevelSegments: 2 });
         if (ridge) { ridge.deleteAttribute('uv'); ridge.translate(cx, 0, z + 0.15); add(ridge, mB, base.idx, 'dobradica', 0, 0, 0);
