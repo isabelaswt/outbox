@@ -1,3 +1,7 @@
+# Atualização Claude — 18/11/2026, cl83
+
+Big 4/9: dobradiça = cilindro discreto atrás (nada visível de frente), sem canal ao pé da bandeja, tampa e saia numa malha só. Flat sem as peças cinzas da cl81. Próximo carimbo: cl84.
+
 # Atualização Claude — 18/11/2026, cl82
 
 Big 4/9: dobradiça desce para a borda de fora (a tampa aberta começa na borda de trás, sem caixa embaixo). Próximo carimbo: cl83.
