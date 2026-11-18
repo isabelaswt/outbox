@@ -1,0 +1,129 @@
+{
+  "build": "2026-11-18.cdx33",
+  "model": "Incom Macaroon G (compactos)",
+  "closedDimensionsAndAxisPreserved": true,
+  "godeMirrorAndBaseUReturnPreserved": true,
+  "controlsUnchanged": [
+    "Incom Case M (compactos)",
+    "Incom Frame G com Visor (compactos)",
+    "Incom Moon Deck (compactos)"
+  ],
+  "legacyCdx32Migrated": true,
+  "noSeparateMovingCylinder": true,
+  "pinRemainsInternal": true,
+  "pinChecks": [
+    {
+      "name": "01_pino",
+      "tested": 5,
+      "occupied": 0,
+      "blocked": []
+    }
+  ],
+  "notchChecks": [
+    {
+      "name": "passagem",
+      "x": 0,
+      "z": -35.25,
+      "expectedClear": true,
+      "hits": 0
+    },
+    {
+      "name": "retorno",
+      "x": 0,
+      "z": -32.725,
+      "expectedClear": false,
+      "hits": 6
+    },
+    {
+      "name": "lado_esquerdo",
+      "x": -4.1212,
+      "z": -35.25,
+      "expectedClear": false,
+      "hits": 6
+    },
+    {
+      "name": "lado_direito",
+      "x": 4.1212,
+      "z": -35.25,
+      "expectedClear": false,
+      "hits": 6
+    }
+  ],
+  "poses": [
+    {
+      "angle": 0,
+      "invalid": 0,
+      "occupied": 0,
+      "tested": 3,
+      "collisions": []
+    },
+    {
+      "angle": 15,
+      "invalid": 0,
+      "occupied": 0,
+      "tested": 3,
+      "collisions": []
+    },
+    {
+      "angle": 30,
+      "invalid": 0,
+      "occupied": 0,
+      "tested": 3,
+      "collisions": []
+    },
+    {
+      "angle": 60,
+      "invalid": 0,
+      "occupied": 0,
+      "tested": 3,
+      "collisions": []
+    },
+    {
+      "angle": 90,
+      "invalid": 0,
+      "occupied": 0,
+      "tested": 3,
+      "collisions": []
+    },
+    {
+      "angle": 105,
+      "invalid": 0,
+      "occupied": 0,
+      "tested": 3,
+      "collisions": []
+    },
+    {
+      "angle": 120,
+      "invalid": 0,
+      "occupied": 0,
+      "tested": 3,
+      "collisions": []
+    },
+    {
+      "angle": 135,
+      "invalid": 0,
+      "occupied": 0,
+      "tested": 3,
+      "collisions": []
+    },
+    {
+      "angle": 180,
+      "invalid": 0,
+      "occupied": 0,
+      "tested": 3,
+      "collisions": []
+    }
+  ],
+  "animation": {
+    "openAngles": [
+      {
+        "name": "Tampa",
+        "angle": 105
+      }
+    ],
+    "closeError": 0,
+    "closed": true
+  },
+  "exportParts": 12,
+  "limits": "Detalhes proporcionais à foto, sem cotas de fabricação; conferência visual da dona pendente."
+}
