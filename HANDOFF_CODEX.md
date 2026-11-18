@@ -1,4 +1,6 @@
-# Atualização Claude — 18/11/2026, cl62–cl63
+# Atualização Claude — 18/11/2026, cl62–cl64
+
+cl64: Case sem nó/pino no centro (pedido da dona); dobradiça só nas pontas: dente da tampa, bloco da base, vão fino, nó da tampa. Próximo carimbo: cl65.
 
 cl62: aba do Moon sem listras (normais radiais na face de fora após a união do `joinTab`). cl63: dobradiça dos Case remontada pela foto CASE-G-2 — cinco nós (dente da tampa, bloco da base na ponta, nó da tampa, nó comprido da base no centro) com os vãos da foto; ver Registro do CODEX_REFINO. Próximo carimbo: cl64.
 

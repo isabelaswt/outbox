@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION, ADDITION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-18.cl63';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-18.cl64';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -707,7 +707,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-18.cl63';
+const BUILD = '2026-11-18.cl64';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -7054,8 +7054,7 @@ function compactParts(product, L, S0) {
             if (outer !== o.geometry) { const g = mergeGeometries([ni(outer), ni(inner)]); if (g) { o.geometry.dispose(); o.geometry = g; } } }); }
       } else if (m.hingeCase) { // Case — cl63, foto CASE-G-2 ampliada pela dona ("olha como é montada, tem alguns vãos que não temos;
         // quero que fique exatamente igual"). Cinco nós no mesmo eixo, de fora para dentro em cada lado: dente da tampa (a parede
-        // lateral desce em volta do eixo), nó da base na ponta, vão fino (passa luz), nó da tampa, vão largo e, no centro, um nó
-        // comprido da base. A parede de trás da tampa é recortada sobre os nós da base, com folga que aparece como o vão em L da foto.
+        // lateral desce em volta do eixo), nó da base na ponta, vão fino (passa luz) e nó da tampa; centro liso (cl64). A parede de trás da tampa é recortada sobre os nós da base, com folga que aparece como o vão em L da foto.
         // Medidas na foto (Case G, 71,9 mm): centro da base até 21,7%; nó da tampa 23,7–34,2%; nó da base da ponta até 45,6%.
         const [c0, c1, c2] = m.hingeCase.length === 3 ? m.hingeCase : [0.217, 0.342, 0.456], gv = 1.4, gs = 0.4,
           bore = r * 0.38 + 0.08, cutsT = [], cutsB = [], len = (p, q) => Math.abs(q - p), mid = (p, q) => (p + q) / 2;
@@ -7065,9 +7064,8 @@ function compactParts(product, L, S0) {
           const g = new THREE.ExtrudeGeometry(sh, { depth: len(p, q), bevelEnabled: false, curveSegments: 24 });
           g.deleteAttribute('uv'); g.rotateY(Math.PI / 2); g.translate(Math.min(p, q), y0, hz); return g; };
         const X = f => W * f, e0 = X(c0), t0 = e0 + gv, t1 = X(c1), b0 = t1 + gs, b1 = X(c2), d0 = b1 + gs, dE = W / 2 - 0.4;
-        add(tube(cx - e0, cx + e0), mB, base.idx, 'dobradica', 0, 0, 0); // nó comprido da base, no centro
-        cutsB.push(cyl(cx - e0 + 0.04, cx + e0 - 0.04, bore));
-        cutsT.push(cyl(cx - e0 - gv / 2, cx + e0 + gv / 2, r + 0.2)); // a tampa abre o vão sobre ele (o "rebaixo central")
+        // cl64 (dona, mesmo recorte: "acho que não tem pino no centro"): o centro é liso — sem nó da base nem rebaixo na tampa;
+        // as linhas verticais da foto são as pontas de dentro dos nós da tampa
         [-1, 1].forEach(sg => {
           const P = v => cx + sg * v;
           add(tube(P(t0), P(t1)), mT, idx, 'dobradica', 0, 0, 0); objs.push(product.children.at(-1));
@@ -7082,7 +7080,7 @@ function compactParts(product, L, S0) {
             for (let i = 1; i <= 8; i++) { const a = i / 8 * Math.PI / 2; pts.push([r - c + c * Math.cos(a), L - c + c * Math.sin(a)]); } pts.push([0, L]);
             const g = new THREE.LatheGeometry(pts.map(([a, b]) => new THREE.Vector2(a, b)), 48); g.deleteAttribute('uv');
             g.rotateZ(-sg * Math.PI / 2); g.translate(P(d0), y0, hz); add(g, mT, idx, 'dente_dobradica', 0, 0, 0); objs.push(product.children.at(-1)); }
-          add(cyl(P(e0 - 0.3), P(b1), r * 0.38), mirrorMat, base.idx, 'pino', 0, 0, 0);
+          add(cyl(P(t0 + 0.3), P(b1), r * 0.38), mirrorMat, base.idx, 'pino', 0, 0, 0); // pino só do nó da tampa até o bloco da ponta
           // tampa: furo do pino no nó dela; vão sobre o nó da base da ponta, com folga maior (o vão em L que passa luz)
           cutsT.push(cyl(P(t0 + 0.05), P(t1 - 0.05), bore));
           cutsT.push(cyl(P(b0 - gs / 2), P(d0 - 0.02), Math.hypot(r + 1.2, r) + 0.3)); // entalhe da tampa sobre o bloco: gira livre e deixa o vão em L
