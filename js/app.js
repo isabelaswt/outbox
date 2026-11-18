@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-17.cl32';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-17.cl33';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -707,7 +707,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-17.cl32';
+const BUILD = '2026-11-17.cl33';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -2923,7 +2923,9 @@ function moduleGeo(m0, y0, opts = {}) {
   if (!inset && m.topType === 'disc') { const [dg, dx] = discTopGeo(m, y0, ang, lo); g = mergeGeometries([g, dg]); extras.push(...dx); }
   // Linha de abertura: fenda escura de verdade no fundo do vinco (faixa fina logo
   // abaixo da superfície; só aparece onde a superfície afunda, no vinco).
-  if (!inset && !lo && !flipOpen && ms.groove > 0 && ms.grooveD > 0) {
+  // Em tampa transparente (vidro/PET) não: a faixa é um disco fechado e aparecia inteiro por dentro como um círculo escuro
+  // (dona: "esse escuro não deve acontecer"); o próprio vinco já marca a linha.
+  if (!inset && !lo && !flipOpen && ms.groove > 0 && ms.grooveD > 0 && !isGlass(ms.own ? ms.finish : S.finish)) {
     const yg = m.h - ms.groove, r0 = rings.reduce((best, r) => (Math.abs(r.ly - yg) < Math.abs(best.ly - yg) ? r : best), rings[0]);
     if (Math.abs(r0.ly - yg) < 0.2) {
       const band = [-0.16, 0.16].map(d => ({ ...r0, y: r0.y + d, ly: r0.ly + d, a: Math.max(r0.a - 0.04, 0.05), b: Math.max(r0.b - 0.04, 0.05) }));
