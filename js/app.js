@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-18.cl46';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-18.cl47';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -707,7 +707,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-18.cl46';
+const BUILD = '2026-11-18.cl47';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -9850,6 +9850,7 @@ function incomProduct(r) {
       // Págs. 50/51: junções medidas no desenho; Elíptico tem anel largo e Cube, junta fina.
       const splits = { incomp_dispensadores_dispensing_cube: [0.55, 0.58], incomp_dispensadores_dispensing_eliptico: [0.5, 0.575] };
       let [f0, f1] = splits[r.k] || incomFrac(pr, [0.58, 0.63]); if (f1 < f0 + 0.01) f1 = f0 + 0.05;
+      if (r.t === 'bulb' && f1 - f0 < 0.11) f0 = f1 - 0.11; // aprovação cl47 (Bulb, fotos): o ombro (anel) é bem mais alto, ~11% da altura
       // sobretampa de plástico transparente: casca de uma superfície só (cavada, a parede de dentro aparecia como
       // uma segunda linha; com o oco da válvula, como uma parede por dentro, igual às tampas maciças de Surlyn)
       const cap = P(twist ? 'Acionador' : 'Sobretampa', W, D, H * (1 - f1), { ...sh, ...(twist ? {} : { ...clear, casca: true }), rBot: 0.5, rTop: r.t === 'bulb' ? W / 2 * 0.95 : r.t === 'cgr' ? W * 0.3 : 2, _t: [f1, 1] });
@@ -9870,6 +9871,9 @@ function incomProduct(r) {
         Object.assign(v, { threadReceiver: descriptor, threadNeckUid: neck.uid, W: Math.max(v.W, neck.W + 2.6), D: Math.max(v.D, neck.W + 2.6) });
         ms.splice(1, 0, neck);
       }
+      // Bulb (aprovação cl47, fotos Bulb-preto e a branca): no alto do anel um dente um pouco mais largo, onde a sobretampa encaixa
+      if (r.t === 'bulb') { const ai = ms.findIndex(m => m.name === 'Anel');
+        if (ai >= 0) ms.splice(ai + 1, 0, P('Dente da sobretampa', r1(W + 1.4), D ? r1(D + 1.4) : null, 1.6, { ...sh, rTop: 0.5, rBot: 0.5, gap: -1.6 })); }
       break; }
     case 'onoff': { const [f] = incomFrac(pr, [0.62]), hc = H * (1 - f), dn = 4.4;
       // bico do acionador (lotion) saindo de lado no alto da capa, como na foto do catálogo
@@ -10251,6 +10255,9 @@ function incomProduct(r) {
   // Largura e vão inferior estimados pela foto. On-Off não mostra cartucho separado.
   const refillPhoto = {
     incomp_dispensadores_dispensing_15: [0.68, 0.1, false],
+    // aprovação cl47 (Dispensing 15 conta-gotas): cápsula refil de fundo bem curvo e muita massa de SAN embaixo (parece vidro)
+    incomp_conta_gotas_dispensing_15: [0.62, 0.15, false, 0.5],
+    incomp_conta_gotas_dispensing_30: [0.7, 0.12, false, 0.5],
     incomp_dispensadores_dispensing_30: [0.76, 0.08, false], // foto: coluna ~75% da largura
     incomp_dispensadores_dispensing_60: [0.82, 0.08, false], // foto da dona: coluna ~83%
     incomp_dispensadores_dispensing_cube: [0.8, 0.045, true],
@@ -10258,8 +10265,8 @@ function incomProduct(r) {
     incomp_dispensadores_dispensing_quadrado: [0.70, 0.06, false] // foto da dona: coluna ~70%
   }[r.k];
   if (refillPhoto) {
-    const [fw, ff, squareRefill] = refillPhoto, fr = ms[0], floor = r2(H * ff), hr = r2(fr.h - floor);
-    const rw = r1(W * fw), rd = r1((r.D ?? W) * fw), wall = r1(Math.min(rw, rd) * 0.035), rb = r1(Math.min(rw, rd) * (squareRefill ? 0.12 : 0.35));
+    const [fw, ff, squareRefill, roundK] = refillPhoto, fr = ms[0], floor = r2(H * ff), hr = r2(fr.h - floor);
+    const rw = r1(W * fw), rd = r1((r.D ?? W) * fw), wall = r1(Math.min(rw, rd) * 0.035), rb = r1(Math.min(rw, rd) * (squareRefill ? 0.12 : roundK ?? 0.35));
     const shape = squareRefill ? sq(0.18) : {}, side = squareRefill ? { sides: 4, sideR: 0.18 } : {};
     // Foto Dispensing 30: só a casca grossa e a coluna do produto aparecem — a cavidade encosta no refil (folga 0,4 mm),
     // senão eram quatro paredes à vista; sem o fundo grosso extra do SAN (a casca já tem o piso da cavidade).
