@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-18.cl55';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-18.cl56';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -707,7 +707,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-18.cl55';
+const BUILD = '2026-11-18.cl56';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -6949,7 +6949,9 @@ function compactParts(product, L, S0) {
           [[objs[0], cutsT], [bObjs[0], cutsB]].forEach(([o, cs]) => { const cut = mergeGeometries(cs.map(ni)); const [outer, inner] = cutHole(o.geometry, cut); cut.dispose();
             if (outer === o.geometry) return; const g = mergeGeometries([ni(outer), ni(inner)]); if (g) { o.geometry.dispose(); o.geometry = g; } }); }
       } else if (m.hingeOculta) { // Big/Flat (cl51): rolo da tampa preenchendo a calha, rente às costas; o eixo fica escondido dentro
-        const g = new THREE.CylinderGeometry(r + 0.33, r + 0.33, Lh - 0.3, 48); g.rotateZ(Math.PI / 2); g.translate(cx, y0, hz);
+        // cl56 (Big 4: "não aparece como cilindro; as laterais têm um vão e encaixam na base na parte central", foto 2): faixa reta da
+        // tampa (caixa de cantos pouco arredondados) na parte central da calha; nas pontas fica o vão da calha
+        const bw = Lh * 0.9 - 0.3, bh = 2 * r + 0.66, g = new RoundedBoxGeometry(bw, bh, bh, 3, Math.min(0.6, r * 0.35)); g.translate(cx, y0, hz);
         add(g, mT, idx, 'dobradica', 0, 0, 0); objs.push(product.children.at(-1));
       } else
       (m.hingePair ? [-W * (m.hingePair.x ?? 0.30), W * (m.hingePair.x ?? 0.30)] : [0]).forEach(c => {
