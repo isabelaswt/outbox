@@ -101,6 +101,18 @@ Fotos: `assets/revisao/fotos/moon-p/1.jpg` (aberto de cima), `moon-eco/2.jpg` (f
    - O vão da base é um entalhe na parede, aberto em cima.
    - Precisa de um corte de perfil (de lado) que mostre a aba girando por dentro do entalhe sem sobrar volume.
 
+### ⚠️ Foto ampliada da dona: É ESTE o mecanismo (Flat aberta, junção entre tampa e base)
+Arquivo: `assets/revisao/ref-dona/flat-dobradica-ampliada.png`. Ela mandou depois da cl57 dizendo "não é isso da dobradiça ainda, é isso que estou falando".
+
+Como lemos a foto (a confirmar com a dona antes de modelar):
+- **Na borda de trás da tampa**, as **pontas** (os cantos, à esquerda na foto) descem até a linha de divisão. No **centro**, a borda é **recortada para cima**. Na passagem entre as duas alturas há um **degrau curto com chanfro**: é a "rampa que desce e sobe".
+- **Na borda de trás da base** acontece o contrário: as pontas ficam na altura normal e o **centro sobe** como um bloco ao longo de quase toda a largura. Esse bloco entra no recorte da tampa.
+  - As pontas da tampa "abraçam" as extremidades desse bloco, e o eixo passa por dentro: "as laterais têm um vão e depois encaixam na base na parte central".
+- A **peça translúcida no meio** liga a tampa e a base. Ela é o encaixe de fechamento perto do eixo (`espLatches`); não é a dobradiça.
+- **Portanto:** não há cilindro, rolo nem faixa aparente. A dobradiça aparece como um **recorte em degrau na tampa** casado com um **ressalto central na base**, ambos com a parede preta lisa.
+- **O que está no ar (cl57) não bate com isso:** a cl57 tem uma faixa da tampa num rebaixo trapezoidal da base. O desenho é o inverso, porque o centro alto é da BASE e o recorte é da TAMPA.
+- Provavelmente o mesmo desenho vale para todas as Flat e as Big (a dona usou a mesma frase em todas).
+
 ### Moon Deck (dois andares)
 - **Pedido:** "bug ao fechar/abrir".
 - **Resposta na cl50:** a tampa gira presa ao andar do meio (`setHinge` com `under`), em ângulo absoluto e com o eixo carregado junto. O andar do meio segue a tampa depois de 60° (`segue: { de: 60, max: 45 }`).
