@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-18.cl52';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-18.cl53';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -707,7 +707,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-18.cl52';
+const BUILD = '2026-11-18.cl53';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -6929,13 +6929,15 @@ function compactParts(product, L, S0) {
         [-1, 1].forEach(sg => {
           const xa = cx + sg * W * fa, xb = cx + sg * W * fb, xc = cx + sg * W * fc, mid = (p, q) => (p + q) / 2, len = (p, q) => Math.abs(q - p);
           const cyl = (p, q, rr) => { const g = new THREE.CylinderGeometry(rr, rr, len(p, q), 40); g.rotateZ(Math.PI / 2); g.translate(mid(p, q), y0, hz); return g; };
-          const xbB = xb - sg * gp / 2, xbT = xb + sg * gp / 2;
-          add(cyl(xa, xbB, r), mB, base.idx, 'dobradica', 0, 0, 0);
-          add(new RoundedBoxGeometry(len(xa, xbB), r + 0.6, blk - 0.7 * r, 2, Math.min(0.5, r * 0.4)), mB, base.idx, 'dobradica', mid(xa, xbB), y0 + r - (r + 0.6) / 2, hz + (blk - 0.7 * r) / 2);
-          add(cyl(xbT, xc, r), mT, idx, 'dobradica', 0, 0, 0); objs.push(product.children.at(-1));
+          // cl53 ("o buraco das dobradiças é nas pontas"): nó da tampa por dentro (fa–fb) e o da base, no ressalto, nas pontas (fb–canto);
+          // o recorte da tampa onde o ressalto entra fica então nas pontas, aberto até o canto
+          const xbT = xb - sg * gp / 2, xbB = xb + sg * gp / 2;
+          add(cyl(xa, xbT, r), mT, idx, 'dobradica', 0, 0, 0); objs.push(product.children.at(-1));
+          add(cyl(xbB, xc, r), mB, base.idx, 'dobradica', 0, 0, 0);
+          add(new RoundedBoxGeometry(len(xbB, xc), r + 0.6, blk - 0.7 * r, 2, Math.min(0.5, r * 0.4)), mB, base.idx, 'dobradica', mid(xbB, xc), y0 + r - (r + 0.6) / 2, hz + (blk - 0.7 * r) / 2);
           add(cyl(xa + sg * 0.3, xc - sg * 0.3, r * 0.38), mirrorMat, base.idx, 'pino', 0, 0, 0);
-          cutsT.push(new THREE.BoxGeometry(len(xa, xbB) + 0.5, r + 0.9, blk + 1.3).translate(mid(xa, xbB), y0 + (r + 0.9) / 2 - 0.05, z + (blk + 1.3) / 2 - 1));
-          cutsB.push(new THREE.BoxGeometry(len(xbT, xc) + 2, r + 0.3, 2 * r + 1.4).translate(mid(xbT, xc) + sg, y0 - (r + 0.3) / 2 + 0.05, z + r - 0.3));
+          cutsT.push(new THREE.BoxGeometry(len(xbB, xc) + 2.5, r + 0.9, blk + 1.3).translate(mid(xbB, xc) + sg, y0 + (r + 0.9) / 2 - 0.05, z + (blk + 1.3) / 2 - 1));
+          cutsB.push(new THREE.BoxGeometry(len(xa, xbT) + 0.4, r + 0.3, 2 * r + 1.4).translate(mid(xa, xbT), y0 - (r + 0.3) / 2 + 0.05, z + r - 0.3));
         });
         // cl50 (Case M All Crystal: "rebaixo bem no centro da tampa, perto da dobradiça, a casca fica mais fina ali"): entre os dois
         // nós da base, a parede de trás da tampa é rebaixada por fora (~31% da largura, foto CASE-M-9)
@@ -9910,7 +9912,7 @@ function incomProduct(r) {
       // tampa oca (casca) e base com rebaixo do godê; abertura para o dedo na frente, metade na borda
       // de cima da base e metade na de baixo da tampa
       // Desenho cotado Big 4/9 da dona: n=20 e curvatura=0,035 ajustados ao traço; W/D oficiais preservados.
-      const s0 = /^Big (4|9)$/.test(r.n) ? { n: 20, planBow: 0.035 } : r.t === 'cr' ? {} : frameN(r.n) ? { n: frameN(r.n), planBow: 0.09 } : sq(r.t === 'cqr' ? 0.22 : 0.04), hb = H * 0.55, ht = H * 0.45, nw = r1(Math.min(22, Math.min(W, D) * 0.32));
+      const s0 = /^Big (4|9)$/.test(r.n) ? { n: 20, planBow: 0.035 } : r.t === 'cr' ? {} : frameN(r.n) ? { n: 8, planBow: 0.07 } : sq(r.t === 'cqr' ? 0.22 : 0.04), hb = H * 0.55, ht = H * 0.45, nw = r1(Math.min(22, Math.min(W, D) * 0.32));
       // paleta: abertura retangular larga (~42% da frente) só na base, logo abaixo da tampa, como no desenho
       // a dobradiça sai 0,3 do raio para trás: a caixa perde isso na profundidade e o total bate com o catálogo
       const Dc = r2(D - 0.3 * clamp(Math.min(hb, ht) * 0.22, 1.1, 2.2)), pal = r.c === 'Paletas' && r.t !== 'cr', dB = pal ? { rect: true, top: true, w: r1(W * 0.42), h: r1(Math.min(4.5, hb * 0.58)), d: 2.4 } : { rect: true, top: true, arc: r.t === 'cr', w: nw, h: r1(Math.min(3.2, hb * 0.42)), d: 1.6 }; // desenho: entalhe retangular só na base (redondo: acompanha a curva)
@@ -10291,7 +10293,7 @@ function incomProduct(r) {
       // Foto fechada do Quinteto: moldura mais larga; proporção estimada na imagem, não cota.
       if (t && r.n === 'Frame G Quinteto') t.visorBorder = r1(W * 0.14);
       // Fotos de cima, tampa fechada (FRAME-G-2, FRAME-M-FECHADO, Frame P): moldura de 17% (G, M) e 19,5% (P) da largura
-      else if (t && t.visor && /^Frame/.test(r.n)) t.visorBorder = r1(W * (/^Frame P/.test(r.n) ? 0.195 : 0.17));
+      else if (t && t.visor && /^Frame/.test(r.n)) t.visorBorder = r1(W * (/^Frame P/.test(r.n) ? 0.195 : /Quinteto/.test(r.n) ? 0.2 : 0.17)); // cl53 (Quinteto: "borda do visor parece menor")
     }
     ms.forEach(m => { if (/Crystal/i.test(r.n) && /Base|Tampa/.test(m.name)) Object.assign(m, clear, m.name === 'Tampa' ? { espelho: false } : {});
       else if (/^Case [GM]$/.test(r.n) && m.name === 'Tampa') m.espelho = true; });
