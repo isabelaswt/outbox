@@ -1,4 +1,6 @@
-# Atualização Claude — 18/11/2026, cl62–cl70
+# Atualização Claude — 18/11/2026, cl62–cl71
+
+cl71 (Case, confirmado pela dona "é isso mesmo"): cilindro da base em cada ponta, numa forma só com ela, aflorando na lateral com o pino; engate da tampa = peça quadrada de dentro com nervura até o espelho; vão no centro. Próximo carimbo: cl72.
 
 cl70: Case — eixo dentro da tampa, cilindro aflorando como círculo na lateral, rebaixo arredondado na borda de trás da base. Próximo carimbo: cl71.
 
