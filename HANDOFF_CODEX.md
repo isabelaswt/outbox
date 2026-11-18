@@ -2,11 +2,11 @@
 
 ## ATUALIZAÇÃO MAIS RECENTE — 17/11/2026, fim da sessão Claude (ler primeiro)
 
-Versão no ar: **`2026-11-18.cl47`** (`main`). Duas sessões Claude trabalharam em paralelo na mesma pasta (a "fork" fez os aplicadores do Petit, cl5–cl17). Antes de commitar: `git fetch` + `git log HEAD..origin/main`; push por SSH `git@github.com:isabelaswt/outbox.git`; carimbo em 3 lugares (BUILD e import `incom.js?v=` em `js/app.js`, `?v=` de css/js em `index.html`). Próximo carimbo: **cl48**. Registro de cada envio na seção 8 do CODEX_REFINO.md.
+Versão no ar: **`2026-11-18.cl48`** (`main`). Duas sessões Claude trabalharam em paralelo na mesma pasta (a "fork" fez os aplicadores do Petit, cl5–cl17). Antes de commitar: `git fetch` + `git log HEAD..origin/main`; push por SSH `git@github.com:isabelaswt/outbox.git`; carimbo em 3 lugares (BUILD e import `incom.js?v=` em `js/app.js`, `?v=` de css/js em `index.html`). Próximo carimbo: **cl49**. Registro de cada envio na seção 8 do CODEX_REFINO.md.
 
-### PENDENTE AGORA (2026-11-18, versão no ar cl47)
-cl40–cl47 resolveram tudo o que estava em "ajustar" (Case, Classic, Frame, Macaroon; fillets dos Moon estendidos a todos os compactos/paletas; segunda camada do Moon Deck abrindo junto) e marcaram "feito". Regra da dona: ir fazendo sem perguntar e aplicar cada pedido em lote aos produtos irmãos. Próximo passo: ler de novo `api/revisao.php?a=list` e trabalhar o que voltar em "ajustar". Login: aba do navegador do app em outbox.swtool.co logada pela dona.
-Próximo carimbo: cl48.
+### PENDENTE AGORA (2026-11-18, versão no ar cl48)
+cl40–cl48 resolveram tudo o que estava em "ajustar" (Case, Classic, Frame, Macaroon; fillets dos Moon estendidos a todos os compactos/paletas; segunda camada do Moon Deck abrindo junto) e marcaram "feito". Regra da dona: ir fazendo sem perguntar e aplicar cada pedido em lote aos produtos irmãos. Próximo passo: ler de novo `api/revisao.php?a=list` e trabalhar o que voltar em "ajustar". Login: aba do navegador do app em outbox.swtool.co logada pela dona.
+Próximo carimbo: cl49.
 Atenção: o Flat Dez leva ~3 s para montar (godês por contorno cortados com `pocketCut`); se ficar lento, reduzir os pontos de `cOut` (120) ou os anéis.
 
 ### Aprovação Incom (revisao.html) — fluxo de trabalho a partir do cl34

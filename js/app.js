@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-18.cl47';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-18.cl48';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -707,7 +707,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-18.cl47';
+const BUILD = '2026-11-18.cl48';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -2086,7 +2086,12 @@ function sprayGeo(m, y0, { lo = false } = {}) {
     // Conta-gotas: bulbo de borracha com topo em domo. De botão (Flacon Botão, Julie): colar alto e liso e um
     // botão cilíndrico de topo reto saindo dele, como na foto do catálogo
     if (m.botao) head.push(ring(m.actW, m.actH, top - 0.5, { rBot: 0.4, rTop: Math.min(2, m.actW * 0.16) }));
-    else head.push(ring(m.actW, m.actH, top - 0.5, { rBot: 1.5, rTop: m.actW / 2, bulge: -6, bulgePos: 30 }));
+    else { // aprovação cl48 (fotos Flacon, "para todos conta-gotas"): a borracha abre larga na base, afina, tem um dente e depois o bulbo
+      const R = m.actW / 2, H = m.actH, Rb = Math.min(R, H * 0.45), y = v => top - 0.5 + v, pts = [[0, 0], [R * 1.22, 0], [R * 1.22, H * 0.05]];
+      for (let i = 1; i <= 6; i++) { const u = i / 6; pts.push([R * 1.22 - R * 0.3 * Math.sin(u * Math.PI / 2), H * 0.05 + H * 0.09 * (1 - Math.cos(u * Math.PI / 2))]); } // abre na base e fecha
+      pts.push([R * 1.06, H * 0.16], [R * 1.06, H * 0.2], [R * 0.9, H * 0.22], [Rb, H * 0.34], [Rb, H - Rb]); // dente, depois o corpo do bulbo
+      for (let i = 1; i <= 12; i++) { const a = i / 12 * Math.PI / 2; pts.push([Rb * Math.cos(a), H - Rb + Rb * Math.sin(a)]); }
+      const g = new THREE.LatheGeometry(pts.map(([a, b]) => new THREE.Vector2(a, y(b))), lo ? 32 : 72); g.deleteAttribute('uv'); head.push(g); }
   } else if (m.sprayType === 'bico') {
     // Bico dosador alto: virola frisada, ombro cônico, corpo superior frisado e ponteira longa.
     const yS = top - 0.05, shoulderH = Math.max(5.2, m.W * 0.2), baseW = m.W * 0.92;
@@ -9890,8 +9895,8 @@ function incomProduct(r) {
       let tb = (Pp.find(q => q[0] > f + 0.05 && q[1] < cw * 0.85) || [f + (1 - f) * 0.45])[0], bw = wAt(tb + 0.02, 0.95) || 0.42;
       // Fotos do site (fundo cinza), px: [frasco, tampa, botão] de altura e larguras tampa/botão ÷ frasco.
       // O desenho dava tampa estreita e frasco curto; a foto manda nas proporções (medidas totais seguem W/H).
-      const fb = { 'Flacon 15 Botão': [300, 205, 42, 1, 0.72, 1.5], 'Flacon 30 Botão': [305, 195, 42, 0.76, 0.54, W * 0.18] }[r.n];
-      let rT = W * 0.18;
+      const fb = { 'Flacon 15 Botão': [300, 205, 42, 1, 0.72, 1.5], 'Flacon 30 Botão': [305, 195, 42, 0.76, 0.54, W * 0.3] }[r.n]; // cl48: ombro do Flacon 30 mais arredondado (foto)
+      let rT = /^Flacon 30/.test(r.n) ? W * 0.3 : W * 0.18;
       if (fb) { const t = fb[0] + fb[1] + fb[2]; f = fb[0] / t; tb = (fb[0] + fb[1]) / t; cw = fb[3]; bw = fb[4]; rT = fb[5]; }
       ms = [P('Frasco', W, D, H * f, { vol: true, rBot: 2, rTop: rT, _t: [0, f] }),
         M('contaGotas', { ...(b ? { botao: true, ridges: 0 } : {}), name: b ? 'Conta-gotas de botão' : 'Conta-gotas', W: r1(W * cw), D: r1(W * cw), h: r2(H * (tb - f)), actW: r1(W * bw), actH: r2(H * (1 - tb) + 0.5) })]; // +0,5: o conta-gotas encaixa 0,5 mm no gargalo
