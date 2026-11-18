@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-17.cl34';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-18.cl35';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -707,7 +707,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-17.cl34';
+const BUILD = '2026-11-18.cl35';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -6626,7 +6626,7 @@ function compactParts(product, L, S0) {
         // Recorte complementar real na base; largura e folgas estimadas nas fotos, sem simular flexão.
         const a = base.m.dedo, R = bb.max.z - cz, curve = !!m.aba,
           yB = curve ? y0 - m.aba.down : base.y0 + base.m.h - a.h + 0.3,
-          tw = curve ? m.aba.w * 0.7 : (m.snapWidth ?? Math.min(a.w * 0.7, w * 0.18)), inner = curve ? R - m.aba.d + 0.2 : m.snapFlat ? R - 0.66 : R - a.d - 0.7;
+          tw = curve ? m.aba.w * 0.7 : (m.snapWidth ?? Math.min(a.w * 0.7, w * 0.18)), inner = curve ? R - m.aba.d + 0.2 : m.snapFlat ? R - (m.snapInset ?? 0.66) : R - a.d - 0.7;
         let tooth, socket, channel;
         if (curve) {
           tooth = arcSlab(inner - 0.45, inner + 0.08, tw / R, 0.35); tooth.translate(cx, yB + 0.2, cz);
@@ -6664,7 +6664,7 @@ function compactParts(product, L, S0) {
             bottom = pal ? base.y0 + base.m.h - a.h : yB - 0.05,
             height = base.y0 + base.m.h + 1 - bottom;
           // Paletas: mesma largura e fundo da abertura do dedo, sem segunda cavidade central.
-          channel = new THREE.BoxGeometry(pal ? a.w : tw + 0.3, height, depth)
+          channel = new THREE.BoxGeometry(pal && !m.snapInset ? a.w : tw + 0.3, height, depth) // Classic: clip estreito, o canal só em volta dele
             .translate(cx, bottom + height / 2, cz + rear + depth / 2);
           if (pal) { socket.dispose(); socket = null; }
         }
@@ -6724,7 +6724,7 @@ function compactParts(product, L, S0) {
       // Mesmo contorno da tampa, inclusive os cantos. O retângulo plano antigo vazava pela moldura.
       let sh;
       if (se) sh = seShape(w / 2 - ins, d / 2 - ins, m.n, 256, m.planBow);
-      else if (round) { sh = new THREE.Shape(); sh.absarc(0, 0, Math.min(w, d) / 2 - ins, 0, TAU, false); }
+      else if (round) { sh = new THREE.Shape(); sh.absarc(0, 0, m.espR ? Math.min(w, d) / 2 * m.espR : Math.min(w, d) / 2 - ins, 0, TAU, false); }
       else { sh = new THREE.Shape(); const A = m.W / 2 * (w - 2 * ins) / w, B = m.D / 2 * (d - 2 * ins - db) / d;
         for (let j = 0; j <= 256; j++) { const [x, z] = polyPt(A, B, m.sides, m.sideR, TAU * j / 256); j ? sh.lineTo(x, z) : sh.moveTo(x, z); } sh.closePath(); }
       const g = new THREE.ExtrudeGeometry(sh, { depth: 0.3, bevelEnabled: false, curveSegments: 24 }); g.deleteAttribute('uv');
@@ -9980,7 +9980,8 @@ function incomProduct(r) {
       // com bordinha fina embaixo. Rebaixo de 0,5 mm (não vaza). Proporções medidas na foto, sem cota no catálogo.
       // A língua interna do fecho mantém a altura do encaixe (latchRoof).
       t.caseLatchSimple = true; t.latchRoof = Math.min(2.4, t.h * 0.45);
-      t.dedo = { rect: true, panel: true, w: r1(t.W * 0.41), h: r1(t.h - (t.rTop || 1.2) - 0.5), lip: 0.6, d: 0.5 }; } }
+      // t.W é % da largura (o 100 do modelo), a aba é em mm: com t.W saía 41 mm = 57% da frente (a dona: "aba maior que a real").
+      t.dedo = { rect: true, panel: true, w: r1(W * 0.41), h: r1(t.h - (t.rTop || 1.2) - 0.5), lip: 0.6, d: 0.5 }; } }
     // Fotos p9–25: Frame e redondos usam um eixo central curto. P28–33: Flat tem dois apoios.
     if (/^Frame|^Moon|^Macaroon/.test(r.n)) ms.filter(m => m.hinge).forEach(m => { m.hingeWidth = 0.18; });
     if (/^Flat/.test(r.n)) { const t = ms.find(m => m.name === 'Tampa'); if (t) {
@@ -9992,8 +9993,12 @@ function incomProduct(r) {
     if (/^(Frame|Classic)/.test(r.n)) {
       const t = ms.find(m => m.name === 'Tampa'), b = ms.find(m => m.name === 'Base');
       if (t && b?.dedo) { t.snapFlat = true; t.snapConform = !t.sides; t.snapWidth = r1(b.dedo.w - 0.2); b.fechoRebaixo = true; }
+      // Classic (foto aberta CLASSIC-UNO-2, aprovação cl34): o clip da tampa ocupa ~38% do rebaixo da base, não ele inteiro
+      if (t && b?.dedo && /^Classic/.test(r.n)) { t.snapWidth = r1(b.dedo.w * 0.38); t.snapInset = r2(b.dedo.d + 0.1); } // fechado (CLASSIC-FECHADO): o clip fica no fundo do rebaixo, não rente à frente
       // Foto fechada do Quinteto: moldura mais larga; proporção estimada na imagem, não cota.
       if (t && r.n === 'Frame G Quinteto') t.visorBorder = r1(W * 0.14);
+      // Fotos de cima, tampa fechada (FRAME-G-2, FRAME-M-FECHADO, Frame P): moldura de 17% (G, M) e 19,5% (P) da largura
+      else if (t && t.visor && /^Frame/.test(r.n)) t.visorBorder = r1(W * (/^Frame P/.test(r.n) ? 0.195 : 0.17));
     }
     ms.forEach(m => { if (/Crystal/i.test(r.n) && /Base|Tampa/.test(m.name)) Object.assign(m, clear, m.name === 'Tampa' ? { espelho: false } : {});
       else if (/^Case [GM]$/.test(r.n) && m.name === 'Tampa') m.espelho = true; });
@@ -10024,7 +10029,7 @@ function incomProduct(r) {
     // da peça de baixo (Moon Deck: o andar do meio)
     if (r.t === 'cr') ms.forEach((t, i) => { const u = ms[i - 1]; // cada peça que abre (tampa, andar do meio do Moon Deck)
       if (t.hinge && !t.aba && u?.dedo) t.aba = { w: r1(u.dedo.w - 0.8), d: u.dedo.d, down: r1(u.dedo.h - 0.3) }; });
-    if (/Macaroon/.test(r.n)) { const t = ms.find(m => m.name === 'Tampa'), b = ms.find(m => m.name === 'Base'); if (t) Object.assign(t, { rTop: r1(t.h * 0.95), mirrorLip: true });
+    if (/Macaroon/.test(r.n)) { const t = ms.find(m => m.name === 'Tampa'), b = ms.find(m => m.name === 'Base'); if (t) Object.assign(t, { rTop: r1(t.h * 0.95), espR: 0.62 }); // foto aberta: por dentro a tampa é côncava (casca da cúpula), espelho redondo menor no fundo dela
       if (b) Object.assign(b, { rBot: r1(b.h * 0.6) }); } } // foto: fundo da base arredondado também (o "macaron" fechado)
   // fotos: conta-gotas, dispensadores e deluxes em frasco transparente com o conteúdo aparecendo (pipeta/pescante
   // à vista); colares lisos. Págs. 50/51: Cube opaco e Elíptico transparente, ambos com sobretampa própria.
