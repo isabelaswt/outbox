@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-18.cl38';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-18.cl39';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -707,7 +707,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-18.cl38';
+const BUILD = '2026-11-18.cl39';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -6649,7 +6649,7 @@ function compactParts(product, L, S0) {
       // rente à superfície e na mesma curva (desenho do Moon Deck/Moon Eco), não um bloco saltado
       const a = m.aba, R = bb.max.z - cz;
       // a.rc: aba de cantos redondos que sobe até cobrir o arredondado da borda da tampa (sem vinco entre a aba e a tampa)
-      const g = a.rc ? roundTab(R - a.d + 0.2, R - 0.02, a.w, a.down + (m.rBot || 0) + 0.1, a.rc) : arcSlab(R - a.d + 0.2, R - 0.02, a.w / R, a.down + 0.05);
+      const g = a.rc ? roundTab(R - a.d + 0.2, R - 0.004, a.w, a.down + (m.rBot || 0) * 0.7, a.rc) : arcSlab(R - a.d + 0.2, R - 0.02, a.w / R, a.down + 0.05); // rente à parede e terminando dentro do arredondado da borda da tampa: continuação dela, sem friso
       add(g, objs[0].material, idx, 'aba', cx, y0 - a.down, cz);
     }
     if (m.snapFront) {
@@ -9590,7 +9590,8 @@ function godesOf(r) {
   const mm = TRAY_MM[r.k];
   // Case G/M (desenho e foto): a base é só uma placa fina; o godê redondo fica em cima, saltado, num colar
   // Moon M All Crystal (foto): mesmo princípio, godê em cima da base de cristal (Ø ~56, medido na foto)
-  if (/^Case|^Moon M All Crystal/.test(n)) return { rows: [1], rect: false, mm: mm ?? 56, relevo: /^Case G/.test(n) ? 4.5 : 4.8, rente: /^Case/.test(n) };
+  if (/^Case/.test(n)) return { rows: [1], rect: false, mm: mm ?? 56, relevo: /^Case G/.test(n) ? 4.5 : 4.8, rente: true };
+  if (/^Moon M All Crystal/.test(n)) return { rows: [1], rect: false, mm: 52 }; // cl39: o produto fica para dentro da base, com degrau (não saltado)
   let tr = /Quinteto/.test(n) ? { c: QUINTETO, ar: 1 } : INCOM_TRAYS[r.k] ?? (/^Frame G/.test(n) ? INCOM_TRAYS.incomp_compactos_frame_g_tampa_fechada : undefined); // com Visor: mesma bandeja do Tampa Fechada
   // Classic Quarteto: entre as duas colunas de godês, o espaço do aplicador (cavidade funda, desenho da bandeja)
   // Flat Duo (foto, medida no catálogo): bandeja 1 de 60,4 × 44,4 à esquerda e bandeja 2 menor (~38 × 42) à direita
@@ -9729,7 +9730,7 @@ function incomProduct(r) {
       // Case G/M (desenho): base é uma placa fina (~24% da altura) e a tampa funda cobre o godê saltado; o rebaixo
       // do dedo fica na borda de baixo da tampa
       if (/^Case|^Moon M All Crystal/.test(r.n)) { const hb = r1(H * (/^Moon/.test(r.n) ? 0.47 : 0.24)) /* Moon M All Crystal (aprovação cl35): base quase da altura da tampa */, ht = r2(H - hb), Dc = r2(D - 0.3 * 1.1), moon = /^Moon/.test(r.n);
-        ms = [P('Base', W, Dc, hb, { ...s0, rBot: 0.8, rTop: 0.5, godes: godesOf(r), ...(moon ? { dedo: { rect: true, top: true, arc: true, w: nw, h: r1(hb * 0.6), d: 1.4 } } : {}) }),
+        ms = [P('Base', W, Dc, hb, { ...s0, rBot: 0.8, rTop: 0.5, godes: godesOf(r), ...(moon ? { dedo: { rect: true, top: true, arc: true, w: nw, h: r1(hb * 0.6), d: 1.4 }, rebaixo: { inset: 3, h: 0.8 } } : {}) }),
           P('Tampa', W, Dc, ht, { ...s0, rBot: 0.5, rTop: moon ? 2 : 1.2, hinge: true, abre: 0, oco: true, espelho: false, ...(moon ? { aba: { w: r1(nw - 0.8), d: 1.4, down: r1(hb * 0.6 - 0.3) } } : { dedo: { rect: true, bottom: true, w: nw, h: r1(ht * 0.7), d: 1 } }) })]; break; }
       ms = [P('Base', W, Dc, hb, { ...s0, rBot: r.t === 'cr' ? 1.5 : 1, rTop: 0.6, godes: godesOf(r), dedo: dB }),
         P('Tampa', W, Dc, ht, { ...s0, rBot: 0.6, rTop: r.t === 'cr' ? 2 : 1.2, hinge: true, abre: 0, oco: true, visor: VISOR_RE.test(r.n), espelho: !VISOR_RE.test(r.n) && !/Crystal|^Case/i.test(r.n), })]; break; }
@@ -10064,11 +10065,13 @@ function incomProduct(r) {
     // encaixando no rebaixo da base
     if (/^Moon/.test(r.n) && !/Deck/.test(r.n)) { const t = ms.find(m => m.name === 'Tampa'), b = ms.find(m => m.name === 'Base');
       const mm = /^Moon P/.test(r.n) ? 26.4 : /^Moon (Eco|G)/.test(r.n) && !/Quarteto/.test(r.n) ? 58.3 : undefined; // bandejas Jorba 09F / Moon P; Moon M (Claris) sem medida
-      if (b?.godes && !b.godes.relevo) b.godes = { ...b.godes, ...(mm ? { mm } : {}), fundo: /^Moon P/.test(r.n) ? 2.8 : /^Moon M Tampa Fechada/.test(r.n) ? 0.3 : 3.6 }; if (t) t.visorFino = true; /* foto fechada: janela quase do tamanho da tampa */
+      if (b?.godes && !b.godes.relevo) b.godes = { ...b.godes, ...(mm ? { mm } : {}), fundo: /^Moon P/.test(r.n) ? 2.8 : /^Moon M Tampa Fechada/.test(r.n) ? 2 : /^Moon (G Quarteto|M com Visor)/.test(r.n) ? 2.3 : 3.6 }; // cl39: produto quase rente (0,3–0,6 abaixo da borda) onde a dona pediu if (t) t.visorFino = true; /* foto fechada: janela quase do tamanho da tampa */
       // Aprovação cl35 (fotos fechadas MOON-G, MOON-P): a aba é bem maior — ~58% da frente (P ~55%), desce ~78% da base (P ~88%),
       // cantos de baixo arredondados e sem vinco com a tampa. Moldura do visor medida nas fotos de cima: G 11%, M 10,7%, P 15,7%, Eco 8,6%.
-      if (b?.dedo) Object.assign(b.dedo, { w: r1(W * (/^Moon P/.test(r.n) ? 0.55 : 0.58)), h: r1(b.h * (/^Moon P/.test(r.n) ? 0.88 : 0.78)), rc: 1.2 });
-      if (t && b?.dedo) t.aba = { w: r1(b.dedo.w - 0.3), d: b.dedo.d, down: r1(b.dedo.h - 0.3), rc: 1.2 };
+      // cl39 (2ª volta): abinha mais baixa (~62% da base); Eco: aba e cavidade menores e bem mais redondas
+      const eco = /^Moon Eco/.test(r.n);
+      if (b?.dedo) Object.assign(b.dedo, { w: r1(W * (eco ? 0.48 : /^Moon P/.test(r.n) ? 0.55 : 0.58)), h: r1(b.h * (eco ? 0.55 : 0.62)), rc: eco ? 2.6 : 1.4 });
+      if (t && b?.dedo) t.aba = { w: r1(b.dedo.w - 0.3), d: b.dedo.d, down: r1(b.dedo.h - 0.3), rc: b.dedo.rc };
       const vb = { 'Moon G com Visor': 0.11, 'Moon G Quarteto': 0.11, 'Moon M com Visor': 0.107, 'Moon P': 0.157, 'Moon Eco': 0.086 }[r.n];
       if (t?.visor && vb) t.visorBorder = r1(W * vb); }
     // Foto ampliada da dona: patamar interno rebaixado, nunca elevado sobre a borda externa.
