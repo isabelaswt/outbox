@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION, ADDITION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-18.cdx33';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-18.cl60';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -707,7 +707,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-18.cdx33';
+const BUILD = '2026-11-18.cl60';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -7055,19 +7055,26 @@ function compactParts(product, L, S0) {
             const g = new THREE.ExtrudeGeometry(sh, { depth: len(p, q), bevelEnabled: false, curveSegments: 24 });
             g.deleteAttribute('uv'); g.rotateY(Math.PI / 2); g.translate(Math.min(p, q), y0, hz); return g; };
           const xbT = xb - sg * gp / 2, xbB = xb + sg * gp / 2;
+          // cl60 (dona, fotos CASE-G-2 de cima e CASE-G-1 de lado: "tem um dente na tampa que faz parte da dobradiça"): a ponta
+          // não é aberta — a parede lateral da tampa desce em volta do eixo como um dente (~2 mm com a quina) e fecha o nó da base
+          // por fora; o nó da base fica entre o dente e o nó de dentro da tampa
+          const tL = Math.min(1.4, W * 0.02), xcB = xc - sg * (tL + gp / 2), xtT = xc - sg * tL;
           add(tube(xa, xbT), mT, idx, 'dobradica', 0, 0, 0); objs.push(product.children.at(-1));
-          add(tube(xbB, xc), mB, base.idx, 'dobradica', 0, 0, 0);
-          // Apoio na própria base, à frente do eixo; não pode tampar o alojamento do pino.
-          const dz = r + 0.8, front = hz + bore + 0.12;
-          add(new RoundedBoxGeometry(len(xbB, xc), r + 0.6, dz, 2, Math.min(0.4, r * 0.3)),
-            mB, base.idx, 'apoio_dobradica', mid(xbB, xc), y0 + (r - 0.6) / 2, front + dz / 2);
-          add(cyl(xa + sg * 0.3, xc - sg * 0.3, r * 0.38), mirrorMat, base.idx, 'pino', 0, 0, 0);
-          // A tampa abraça o nó externo da base com um recorte circular aberto até a ponta.
+          add(tube(xbB, xcB), mB, base.idx, 'dobradica', 0, 0, 0);
+          { const L = W / 2 - 0.4 - Math.abs(xtT - cx), c = Math.min(r * 0.6, 0.7), pts = [[0, 0], [r, 0], [r, L - c]];
+            for (let i = 1; i <= 8; i++) { const a = i / 8 * Math.PI / 2; pts.push([r - c + c * Math.cos(a), L - c + c * Math.sin(a)]); } pts.push([0, L]);
+            const g = new THREE.LatheGeometry(pts.map(([a, b]) => new THREE.Vector2(a, b)), 48); g.deleteAttribute('uv');
+            g.rotateZ(-sg * Math.PI / 2); g.translate(xtT, y0, hz); // vai rente à face lateral (foto de lado), borda de fora arredondada como a quina
+            add(g, mT, idx, 'dente_dobradica', 0, 0, 0); } objs.push(product.children.at(-1));
+          // cl60 (dona: "essa estrutura não existe"): sem o apoio em bloco à frente do nó da base (cdx29)
+          add(cyl(xa + sg * 0.3, xcB, r * 0.38), mirrorMat, base.idx, 'pino', 0, 0, 0);
+          // A tampa abraça o nó externo da base com um recorte circular até o dente da ponta.
           // Cortadores com intervalos separados evitam sobreposição no CSG.
-          cutsT.push(cyl(xbB - sg * 0.06, cx + sg * (W / 2 + 0.3), r + 0.16));
+          cutsT.push(cyl(xbB - sg * 0.06, xtT, r + 0.16));
           cutsT.push(cyl(xa - sg * 0.05, xbT + sg * 0.05, bore));
           cutsB.push(cyl(xa - sg * 0.12, xbT + sg * 0.06, r + 0.16));
-          cutsB.push(cyl(xbB - sg * 0.04, xc + sg * 0.15, bore));
+          cutsB.push(cyl(xbB - sg * 0.04, xcB, bore));
+          cutsB.push(cyl(xcB + sg * 0.02, cx + sg * (W / 2 + 0.3), r + 0.16)); // a base cede lugar ao dente
         });
         // Rebaixo central da casca preservado; a correção é só da família Case.
         { const rw = 2 * W * (fa - 0.025), rd = 0.7, rh = m.h - (m.rTop || 1) - 0.4;

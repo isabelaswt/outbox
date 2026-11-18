@@ -1,3 +1,7 @@
+# Atualização Claude — 18/11/2026, cl60
+
+Case (todos): dente da tampa nas pontas da dobradiça (parede lateral desce em volta do eixo, fechando o nó da base por fora) e sem o apoio em bloco da cdx29 (a dona disse que não existe). Próximo carimbo: cl61. Macaroon cdx33 segue aguardando a dona; Moon/Classic aprovados intocados. PDF: a dona disse que não precisa gerar.
+
 # Atualização Codex — 18/11/2026, cdx33
 
 Macaroon: pedido da dona de mostrar só a haste lisa, sem dobradiça cilíndrica aparente. Raiz da haste e alojamento do pino modelados numa única peça com furo interno; olhal cilíndrico externo removido, apoios laterais com topo baixo sob o aro. Pino permanece interno, com o mesmo eixo e movimento da cdx32. Preserva ponte curta, desvio em U, godê e espelho. Migra a configuração padrão cdx32 nos projetos anteriores. Referência: assets/revisao/ref-dona/macaroon-haste-sem-cilindro.png. Testes: nove poses, retorno fechado, animação, export e migração da cdx32; eixo e dimensões preservados. Godê, espelho, U da base e três controles (Case M, Frame G com Visor, Moon Deck) idênticos à cdx32. Relatório tools/conferencia/validacao-cdx33.json. Conferência visual da dona continua pendente.
