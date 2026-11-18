@@ -1,3 +1,7 @@
+# Atualização Claude — 18/11/2026, cl103
+
+Big 4/9: aba de abertura com espaço para o dedo embaixo; fillet 0,35 nas quinas da junção tampa/base. Próximo carimbo: cl104.
+
 # Atualização Claude — 18/11/2026, cl102
 
 Big 4/9: aba de fechamento ~3× mais alta; dobradiça macho e fêmea (recuo no meio da base, língua da tampa, pino cruzando). Próximo carimbo: cl103.

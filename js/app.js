@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION, ADDITION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-18.cl102';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-18.cl103';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -707,7 +707,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-18.cl102';
+const BUILD = '2026-11-18.cl103';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -6787,6 +6787,9 @@ function compactParts(product, L, S0) {
         const inO = seO(iw / 2, id / 2), outO = seO((w + 10) / 2, (d + 10) / 2), f = Math.min(1, c.h * 0.6), prof = [[inO, 0, top - c.h]];
         for (let i = 0; i <= 8; i++) { const a = i / 8 * Math.PI / 2; prof.push([inO, -f + f * Math.cos(a), top - f + f * Math.sin(a)]); }
         prof.push([inO, -f, top + 2], [outO, 0, top + 2], [outO, 0, top - c.h]);
+        // cl103: quina de fora da borda rebaixada arredondada (0,35) — junto com a borda da saia, a divisão tampa/base aparece
+        { const rr = 0.35, e0 = c.inset; prof.push([inO, e0 + 1, top - c.h - rr]);
+          for (let i = 0; i <= 6; i++) { const a = i / 6 * Math.PI / 2; prof.push([inO, e0 - rr + rr * Math.cos(a), top - c.h - rr + rr * Math.sin(a)]); } }
         edgeCut = sweepCut(prof, cx, cz);
         if (c.groove !== false) grooveCut = shapeRing(iw + 2 * c.w, id + 2 * c.w, iw, id, c.h + 0.5 + 2, top - c.h - 0.5); // cl83 (dona: "malha ruim"): nas Big o canal ao pé da bandeja riscava a parede — sem canal
       }
@@ -7263,8 +7266,14 @@ function compactParts(product, L, S0) {
         let saia = null;
         if (cn) { const bl = localBox(bObjs), bw = bl.max.x - bl.min.x, bd = bl.max.z - bl.min.z, bcz = (bl.max.z + bl.min.z) / 2,
             ow = bw / 2, od = bd / 2, iw = (bw - 2 * cn.inset) / 2 + cn.w, id = (bd - 2 * cn.inset) / 2 + cn.w;
-          const sh = seShape(ow, od, base.m.n, 256, base.m.planBow); sh.holes.push(new THREE.Path(seShape(iw, id, base.m.n, 256, base.m.planBow).getPoints(128).reverse()));
-          const g = new THREE.ExtrudeGeometry(sh, { depth: cn.h + 0.45, bevelEnabled: false, curveSegments: 32 }); g.deleteAttribute('uv'); g.rotateX(-Math.PI / 2);
+          // cl103 (dona: "ter algum fillet pequeno para mostrar que são duas partes, a tampa e a base"): a borda de baixo da saia é arredondada
+          // (bevel 0,35 com o contorno recuado do mesmo tanto — por fora a parede continua no mesmo lugar)
+          // só o pé é arredondado: um anel baixo com bevel embaixo + o resto reto como antes (o bevel no topo deixava uma linha na tampa)
+          const fb = 0.35, ring = (o, i2) => { const sh = seShape(ow - o, od - o, base.m.n, 256, base.m.planBow); sh.holes.push(new THREE.Path(seShape(iw + i2, id + i2, base.m.n, 256, base.m.planBow).getPoints(128).reverse())); return sh; };
+          const foot = new THREE.ExtrudeGeometry(ring(fb, fb), { depth: 0.05, bevelEnabled: true, bevelSize: fb, bevelThickness: fb, bevelSegments: 4, curveSegments: 32 });
+          foot.translate(0, 0, fb); // de 0 a 2fb+0,05 acima do pé
+          const wallS = new THREE.ExtrudeGeometry(ring(0, 0), { depth: cn.h + 0.45 - fb, bevelEnabled: false, curveSegments: 32 }); wallS.translate(0, 0, fb);
+          const g = mergeGeometries([flatPN(foot), flatPN(wallS)]); foot.dispose(); wallS.dispose(); g.rotateX(-Math.PI / 2);
           g.translate(cx, y0 - cn.h, bcz);
           // cl83 (dona: "a tampa é uma coisa só"): a saia entra na MESMA malha da tampa (pé reto, encosta exato embaixo dela) e as normais
           // são refeitas com vinco — sem faixa nem linha clara na emenda. (União CSG deixava lascas nas paredes coincidentes.)
@@ -10674,7 +10683,7 @@ function incomProduct(r) {
         Object.assign(b.dedo, { w: r1(t.snapWidth + 0.2), h: 3.2, d: 1 });
         if (/^Big (4|9)$/.test(r.n)) { delete b.rebaixo; b.canal = { inset: 3.2, w: 0.6, h: 2.6, groove: false }; t.rBot = 0; /* cl83 (dona: "porque tem uma faixa? a tampa é uma coisa só"): sem arredondado embaixo, a tampa continua reta na saia */ /* cl81 ("altura da paleta está diferente", foto BIG-4): degrau 1,3 → 2,6, tampa com saia */ // cl46 (Big 9): degrau bem maior — borda de fora mais baixa (era 0,6)
           // Aprovação cl37 (fotos BIG-4): produto quase no nível da divisória e duas dobradiças, junto aos cantos
-          b.dedo.h = 6.4; /* cl102 (dona: "aumentar aba de fechamento em 3 vezes a altura", foto PALETA-BIG-FECHADA): com o degrau de 2,6 a aba aparecia ~1 mm abaixo da divisão; agora desce ~3,5 mm (≈2/3 da frente da base) */ if (b.godes) b.godes = { ...b.godes, fundo: 2.1, mgK: 0.118 }; /* cl84 (dona: "o nosso [godê] parece que tá maior, com menos borda"): moldura da bandeja mais larga, godês menores */ Object.assign(t, { hingeCalha: 0.9, hingeOculta: true }); } // cl51: dobradiça escondida (era um par aparente)
+          b.dedo.h = 6.4; t.snapDown = 0.73; /* cl103 (dona: "diminuir aba de abertura para ficar espaço para abrir", foto): a aba ocupa a metade de cima do rebaixo e sobra ~2 mm livre embaixo para o dedo */ /* cl102 (dona: "aumentar aba de fechamento em 3 vezes a altura", foto PALETA-BIG-FECHADA): com o degrau de 2,6 a aba aparecia ~1 mm abaixo da divisão; agora desce ~3,5 mm (≈2/3 da frente da base) */ if (b.godes) b.godes = { ...b.godes, fundo: 2.1, mgK: 0.118 }; /* cl84 (dona: "o nosso [godê] parece que tá maior, com menos borda"): moldura da bandeja mais larga, godês menores */ Object.assign(t, { hingeCalha: 0.9, hingeOculta: true }); } // cl51: dobradiça escondida (era um par aparente)
         // Págs.28–33: encaixes estreitos junto ao eixo; proporções estimadas na foto
         // (largura ~2,3% do estojo), preservando a faixa sem espelho.
         if (/^Flat/.test(r.n)) { t.espBand = 0; t.espLatches = { w: r1(W * 0.023), h: 1.2, x: 0.26, depth: 0.5 };
