@@ -1,3 +1,7 @@
+# Atualização Claude — 18/11/2026, cl101
+
+Moon Deck: nós de dobradiça do andar do meio (base + andar) com pino interno; bloco da tampa fundido à tampa. Próximo carimbo: cl102.
+
 # Atualização Claude — 18/11/2026, cl100
 
 Moon Deck: rebaixo da base do tamanho do bloco da dobradiça (eixo da tampa junto das costas); pino escondido. Próximo carimbo: cl101.

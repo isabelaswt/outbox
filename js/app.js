@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION, ADDITION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-18.cl100';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-18.cl101';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -707,7 +707,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-18.cl100';
+const BUILD = '2026-11-18.cl101';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -7126,8 +7126,21 @@ function compactParts(product, L, S0) {
         // para trás ao abrir, e a parte de cima de trás entrava até 2,4 mm na parede de trás da base. Eixo na quina de CIMA e de trás do andar
         // (como uma tampa comum): girando, tudo vai para a frente e para cima, e nada entra na base. Sem bloco nem entalhe, pino rente à quina.
         if (nest) { axis = { y: y0 + m.h - 0.05, z: z + 0.02 };
-          const pinN = new THREE.CylinderGeometry(0.3, 0.3, Lb, 20); pinN.rotateZ(Math.PI / 2); pinN.translate(cx, axis.y - 0.35, axis.z + 0.35); add(pinN, mirrorMat, base.idx, 'pino', 0, 0, 0); }
-        else { add(new RoundedBoxGeometry(Lb, hb + hu, t, 3, Math.min(0.5, Lb * 0.08)), mT, idx, 'dobradica', cx, y0 + (hu - hb) / 2, z0 + t / 2); objs.push(product.children.at(-1));
+          // cl101 (dona: "ficou voando com o pino voando também, precisa estar conectado"): nós de verdade no eixo do andar, dos dois lados do
+          // bloco da tampa — o de dentro preso ao andar (gira com ele), o de fora preso à parede da base; pino só dentro dos nós
+          const kr = 0.6, k0 = Lb / 2 + 0.9, kL = Math.max(2.2, Lb * 0.22), gk = 0.15;
+          [-1, 1].forEach(sg => {
+            const kn = (a, b, mat, owner, nm, mine) => { const g = new THREE.CylinderGeometry(kr, kr, b - a, 28); g.rotateZ(Math.PI / 2); g.translate(cx + sg * (a + b) / 2, axis.y - 0.1, axis.z + 0.15);
+              add(g, mat, owner, nm, 0, 0, 0); if (mine) objs.push(product.children.at(-1)); };
+            kn(k0, k0 + kL, mT, idx, 'dobradica', true); kn(k0 + kL + gk, k0 + 2 * kL + gk, mB, base.idx, 'dobradica', false);
+            const pn = new THREE.CylinderGeometry(0.22, 0.22, 2 * kL + gk - 0.4, 16); pn.rotateZ(Math.PI / 2); pn.translate(cx + sg * (k0 + kL + gk / 2), axis.y - 0.1, axis.z + 0.15); add(pn, mirrorMat, base.idx, 'pino', 0, 0, 0); }); }
+        else { if (base.m.gap < 0 && !THUMB_LITE) { // cl101: no Deck o bloco é fundido à tampa (entra 1,2 mm nela) — peça só, não fica solto ao abrir
+            const g = new RoundedBoxGeometry(Lb, hb + 1.2, t, 3, Math.min(0.5, Lb * 0.08)); g.translate(cx, y0 + (1.2 - hb) / 2, z0 + t / 2); const body = objs[0]; let ok = false;
+            try { body.updateMatrix(); g.applyMatrix4(body.matrix.clone().invert()); const ev = new Evaluator(); ev.attributes = ['position', 'normal']; ev.useGroups = false;
+              const out = ev.evaluate(new Brush(flatPN(body.geometry)), new Brush(flatPN(g)), ADDITION).geometry; out.userData = { ...body.geometry.userData }; body.geometry.dispose(); body.geometry = out; ok = true;
+            } catch (e) { console.warn('Bloco do Deck:', e); body.updateMatrix(); g.applyMatrix4(body.matrix); }
+            if (!ok) { add(g, mT, idx, 'dobradica', 0, 0, 0); objs.push(product.children.at(-1)); } else g.dispose(); }
+          else { add(new RoundedBoxGeometry(Lb, hb + hu, t, 3, Math.min(0.5, Lb * 0.08)), mT, idx, 'dobradica', cx, y0 + (hu - hb) / 2, z0 + t / 2); objs.push(product.children.at(-1)); }
           axis = { y: y0 - hb + t / 2, z: base.m.gap < 0 ? z + 0.3 : z0 + t / 2 }; // cl100 (dona: "diminuir o rebaixo… para ficarem do mesmo tamanho"): sobre andar encaixado (Deck), eixo junto das costas — a borda da tampa só desce dentro da largura do bloco
           const pk = base.m.gap < 0, pr = pk ? 0.18 : r * 0.3; // cl100: no Deck o eixo fica junto das costas — pino fino e curto, só dentro do bloco
           const pin = new THREE.CylinderGeometry(pr, pr, pk ? Lb - 0.8 : Lb + 2 * gp + 0.4, 24); pin.rotateZ(Math.PI / 2); pin.translate(cx, axis.y, pk ? Math.max(axis.z, z0 + pr + 0.05) : axis.z); add(pin, mirrorMat, base.idx, 'pino', 0, 0, 0); }
