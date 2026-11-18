@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION, ADDITION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-18.cl61';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-18.cl62';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -707,7 +707,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-18.cl61';
+const BUILD = '2026-11-18.cl62';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -6602,8 +6602,9 @@ function compactParts(product, L, S0) {
   const add = (geo, mat, idx, name, x, y, z) => { const o = new THREE.Mesh(geo, mat); o.position.set(x, y, z); o.userData.idx = idx; o.name = `${String(idx + 1).padStart(2, '0')}_${name}`; o.castShadow = o.receiveShadow = true; product.add(o); };
   // A aba é continuação da casca, não uma segunda chapa sobreposta (friso na junção).
   // União em cache: câmera/cor não refazem a operação booleana.
-  const joinTab = (geo, objs, m, idx, x, y, z, y0) => {
+  const joinTab = (geo, objs, m, idx, x, y, z, y0, radR, radSpan = Math.PI) => {
     const body = objs.find(o => o.userData.main) || objs[0]; body.updateMatrix();
+    const cL = new THREE.Vector3(x, 0, z).applyMatrix4(body.matrix.clone().invert()); // centro da planta, no espaço da casca
     geo.translate(x, y, z); geo.applyMatrix4(body.matrix.clone().invert());
     const old = body.geometry;
     try {
@@ -6619,6 +6620,12 @@ function compactParts(product, L, S0) {
         if (!THUMB_LITE && m.dedo) { const cut = dedoGeo(out, m.dedo, y0, m.h); if (cut !== out) out.dispose(); out = cut; }
         if (!out?.attributes.position.count) throw new Error('União da aba vazia');
         const g = toCreasedNormals(out, THREE.MathUtils.degToRad(38));
+        // cl60 (dona: "problema com malha da aba de Moon"): a face de fora da aba curva sai da união em colunas finas com
+        // normais quebradas (listras verticais); ali a normal é a radial exata do cilindro — só a luz muda, a forma não
+        if (radR > 0 && !THUMB_LITE) { const P = g.attributes.position, N = g.attributes.normal;
+          for (let i = 0; i < P.count; i++) { const dx = P.getX(i) - cL.x, dz = P.getZ(i) - cL.z, rr = Math.hypot(dx, dz);
+            if (Math.abs(rr - radR) < 0.03 && Math.abs(Math.atan2(dx, dz)) <= radSpan && (N.getX(i) * dx + N.getZ(i) * dz) / rr > 0.5) N.setXYZ(i, dx / rr, 0, dz / rr); }
+          N.needsUpdate = true; }
         g.userData = { ...old.userData }; if (g !== out) out.dispose(); a.dispose(); b.dispose(); return g;
       });
       body.geometry = joined; if (joined !== old) old.dispose(); geo.dispose();
@@ -6800,7 +6807,7 @@ function compactParts(product, L, S0) {
       const a = m.aba, R = bb.max.z - cz;
       // a.rc: aba de cantos redondos que sobe até cobrir o arredondado da borda da tampa (sem vinco entre a aba e a tampa)
       const g = a.rc ? roundTab(R - a.d + 0.2, R - 0.06, a.w, a.down + radii(m).rB, a.rc) : arcSlab(R - a.d + 0.2, R - 0.06, a.w / R, a.down + radii(m).rB); // rente à parede e terminando dentro do arredondado da borda da tampa: continuação dela, sem friso
-      joinTab(g, objs, m, idx, cx, y0 - a.down, cz, y0);
+      joinTab(g, objs, m, idx, cx, y0 - a.down, cz, y0, a.rc || !m.sides ? R - 0.06 : 0, a.w / 2 / (R - 0.06) + 0.01);
     }
     if (m.snapFront) {
       const base = L.find(e => e.idx === idx - 1), bObjs = base ? mine(base.idx) : [];
