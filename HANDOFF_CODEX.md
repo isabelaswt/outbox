@@ -1,4 +1,6 @@
-# Atualização Claude — 18/11/2026, cl62–cl74
+# Atualização Claude — 18/11/2026, cl62–cl75
+
+cl75: Case — pino até o fim do furo do cilindro. Próximo carimbo: cl76.
 
 cl74: Case — vão da tampa em volta do cilindro ainda maior (1,0/0,9 mm). Próximo carimbo: cl75.
 

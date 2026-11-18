@@ -181,6 +181,7 @@ Pendências conhecidas (precisam de dado ou de decisão; não invente):
 
 **Registro** (o mais novo em cima):
 
+- 2026-11-18, Claude, `2026-11-18.cl75`: **Case (todos)** — dona: "pino chegar até o final do furo do cilindro". O pino vai até a boca do furo na ponta do cilindro (0,05 mm antes da face), não mais recuado 0,6 mm.
 - 2026-11-18, Claude, `2026-11-18.cl74`: **Case (todos)** — dona: "aumentar mais o vão, principalmente em cima, olha como dá para ver o outro lado" (recorte CASE-G-2). Folga da tampa em volta do cilindro da base: 1,0 mm por dentro e 0,9 mm na lateral (eram 0,6/0,45); o vão atravessa e mostra o outro lado.
 - 2026-11-18, Claude, `2026-11-18.cl73`: **Case (todos)** — dona: "ter um vão maior em cima do cilindro para a peça não tocar no cilindro". Folga da tampa em volta do cilindro da base: 0,45 mm na parede lateral (era 0,12) e 0,6 mm por dentro (era 0,4).
 - 2026-11-18, Claude, `2026-11-18.cl72`: **Case (todos)** — render da quina enviado pela dona + "as peças não estão juntas". Cilindros das pontas unidos à malha da base por CSG (ADDITION, depois dos cortes), uma forma só, sem emenda; ponta com borda arredondada (0,6) e furo do pino (pino recuado 0,6 mm), como na foto da lateral; na parede lateral da tampa a abertura vira só um contorno fino (rc + 0,12), sem o buraco escuro; a abertura maior (vão atrás do cilindro) fica só por dentro.
