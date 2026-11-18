@@ -1,4 +1,6 @@
-# Atualização Claude — 18/11/2026, cl62–cl73
+# Atualização Claude — 18/11/2026, cl62–cl74
+
+cl74: Case — vão da tampa em volta do cilindro ainda maior (1,0/0,9 mm). Próximo carimbo: cl75.
 
 cl73: Case — vão maior da tampa em cima do cilindro. Próximo carimbo: cl74.
 
