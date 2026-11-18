@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION, ADDITION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-18.cl99';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-18.cl100';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -707,7 +707,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-18.cl99';
+const BUILD = '2026-11-18.cl100';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -7128,8 +7128,9 @@ function compactParts(product, L, S0) {
         if (nest) { axis = { y: y0 + m.h - 0.05, z: z + 0.02 };
           const pinN = new THREE.CylinderGeometry(0.3, 0.3, Lb, 20); pinN.rotateZ(Math.PI / 2); pinN.translate(cx, axis.y - 0.35, axis.z + 0.35); add(pinN, mirrorMat, base.idx, 'pino', 0, 0, 0); }
         else { add(new RoundedBoxGeometry(Lb, hb + hu, t, 3, Math.min(0.5, Lb * 0.08)), mT, idx, 'dobradica', cx, y0 + (hu - hb) / 2, z0 + t / 2); objs.push(product.children.at(-1));
-          axis = { y: y0 - hb + t / 2, z: z0 + t / 2 };
-          const pin = new THREE.CylinderGeometry(r * 0.3, r * 0.3, Lb + 2 * gp + 0.4, 24); pin.rotateZ(Math.PI / 2); pin.translate(cx, axis.y, axis.z); add(pin, mirrorMat, base.idx, 'pino', 0, 0, 0); }
+          axis = { y: y0 - hb + t / 2, z: base.m.gap < 0 ? z + 0.3 : z0 + t / 2 }; // cl100 (dona: "diminuir o rebaixo… para ficarem do mesmo tamanho"): sobre andar encaixado (Deck), eixo junto das costas — a borda da tampa só desce dentro da largura do bloco
+          const pk = base.m.gap < 0, pr = pk ? 0.18 : r * 0.3; // cl100: no Deck o eixo fica junto das costas — pino fino e curto, só dentro do bloco
+          const pin = new THREE.CylinderGeometry(pr, pr, pk ? Lb - 0.8 : Lb + 2 * gp + 0.4, 24); pin.rotateZ(Math.PI / 2); pin.translate(cx, axis.y, pk ? Math.max(axis.z, z0 + pr + 0.05) : axis.z); add(pin, mirrorMat, base.idx, 'pino', 0, 0, 0); }
         if (!nest && !THUMB_LITE) { const ni = x => { const g = x.index ? x.toNonIndexed() : x; for (const k in g.attributes) if (k !== 'position' && k !== 'normal') g.deleteAttribute(k); return g; };
           const cutB = ni(new RoundedBoxGeometry(Lb + 2 * gp, hb + gp + 2, t + 2.4 + gp + vao, 2, 0.3).translate(cx, y0 - hb - gp + (hb + gp + 2) / 2, z - 2 + (t + 2.4 + gp + vao) / 2));
           const cutT = ni(new RoundedBoxGeometry(Lb + 2 * gp, hu + gp + 1, t + 2.4, 2, 0.3).translate(cx, y0 - 1 + (hu + gp + 1) / 2, z - 2 + (t + 2.4) / 2));
@@ -7141,12 +7142,7 @@ function compactParts(product, L, S0) {
           // dobradiça (medido: ±9 mm, 3 mm de fundo, no meio da espessura). Área livre: fenda no topo dessa parede, por dentro da espessura
           // (sobra 0,3 mm de casca por fora e por dentro), com cantos arredondados
           if (base.m.gap < 0) { const gb = L.find(e => e.idx === base.idx - 1), gObjs = gb ? mine(gb.idx) : [];
-            if (gObjs.length) { const gTop = gb.y0 + gb.m.h, gbb = localBox(gObjs.slice(0, 1)), gcz = (gbb.min.z + gbb.max.z) / 2, Ro = (gbb.max.x - gbb.min.x) / 2,
-                sw = Math.min(W * 0.3, 22), span = sw / 2 / Ro, r1 = Ro - 0.3, r0 = Ro - 2.3, sh = new THREE.Shape();
-              // anel em arco seguindo a costa redonda (shape no plano x/−z: as costas ficam em +90°)
-              sh.absarc(cx, -gcz, r1, Math.PI / 2 - span, Math.PI / 2 + span, false); sh.absarc(cx, -gcz, r0, Math.PI / 2 + span, Math.PI / 2 - span, true); sh.closePath();
-              const slot = new THREE.ExtrudeGeometry(sh, { depth: 6.6, bevelEnabled: true, bevelSize: 0.25, bevelThickness: 0.4, bevelSegments: 3, curveSegments: 48 });
-              slot.deleteAttribute('uv'); slot.rotateX(-Math.PI / 2); slot.translate(0, gTop - 5.6, 0); cuts.push([gObjs[0], ni(slot)]); } }
+            if (gObjs.length) cuts.push([gObjs[0], cutB.clone()]); } // cl100: o rebaixo da base de fora é o mesmo entalhe do bloco (largura da dobradiça), não mais a fenda larga em arco
           if (!nest && !(m.n > 2)) { const R = Math.hypot(y0 - axis.y, axis.z - z) + 0.35, yTopR = y0 + 0.05, sh = new THREE.Shape(), A = [];
             const aS = Math.PI - Math.asin(Math.min(1, (yTopR - axis.y) / R)), aE = Math.atan2(y0 - axis.y, z - axis.z) + (Math.max(m.abreAberto ?? 105, 105) + 6) * Math.PI / 180;
             // só o caminho da quina de trás da tampa: do ponto onde o arco cruza a divisão até onde ela para aberta

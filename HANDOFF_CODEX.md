@@ -1,3 +1,7 @@
+# Atualização Claude — 18/11/2026, cl100
+
+Moon Deck: rebaixo da base do tamanho do bloco da dobradiça (eixo da tampa junto das costas); pino escondido. Próximo carimbo: cl101.
+
 # Atualização Claude — 18/11/2026, cl99
 
 Moon Deck: andar do meio gira pela quina de cima (não entra mais na base); fenda em arco no topo da parede de trás da base para a tampa. Próximo carimbo: cl100.
