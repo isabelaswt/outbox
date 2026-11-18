@@ -1,3 +1,7 @@
+# Atualização Claude — 18/11/2026
+
+Moon APROVADOS na cl101 (10 itens `ok`), junto com Frame e Case: não mexer em `hingeBloco`/`hingeCase` sem pedido. Próximo carimbo: cl102.
+
 # Atualização Claude — 18/11/2026, cl101
 
 Moon Deck: nós de dobradiça do andar do meio (base + andar) com pino interno; bloco da tampa fundido à tampa. Próximo carimbo: cl102.
