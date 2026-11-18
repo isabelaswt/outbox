@@ -1,4 +1,6 @@
-# Atualização Claude — 18/11/2026, cl62–cl68
+# Atualização Claude — 18/11/2026, cl62–cl69
+
+cl69: Case — peça quadrada sobe como nervura até o espelho; cilindro da ponta dentro de uma abertura da tampa (vão atrás dele). Próximo carimbo: cl70.
 
 cl68: Case — cilindro da ponta curto e grosso, peça quadrada da base do mesmo tamanho, pino só aparece no vão. Próximo carimbo: cl69.
 
