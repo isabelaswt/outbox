@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-18.cl36';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-18.cl37';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -707,7 +707,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-18.cl36';
+const BUILD = '2026-11-18.cl37';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -6531,7 +6531,7 @@ function compactParts(product, L, S0) {
     const bb = localBox(objs), w = bb.max.x - bb.min.x, d = bb.max.z - bb.min.z, cx = (bb.max.x + bb.min.x) / 2, cz = (bb.max.z + bb.min.z) / 2;
     const se = !m.sides && m.n > 2, round = !m.sides && !se, mg = Math.max(3.5, Math.min(w, d) * 0.09); // se: superelipse (Frame)
     if (m.godes) {
-      const { rows, rect } = m.godes, top = y0 + m.h - (m.rebaixo?.h || 0), one = rows.length === 1 && rows[0] === 1, wells = [];
+      const { rows, rect } = m.godes, top = y0 + m.h - (m.rebaixo?.h || 0), one = rows.length === 1 && rows[0] === 1, wells = []; let stepCut = null;
       let aw = round && !one ? Math.min(w, d) * 0.68 : w - 2 * mg, ad = round && !one ? Math.min(w, d) * 0.68 : d - 2 * mg;
       if (m.godes.relevo) { // Case: godê assentado em cima da placa, dentro de um colar baixo da própria base
         // Foto Case enviada pela dona: colar, borda da latinha e produto no mesmo nível.
@@ -6566,11 +6566,14 @@ function compactParts(product, L, S0) {
         // godê único do Frame: superelipse limpa (o contorno lido do desenho vinha ondulado)
         const cells = seN && m.godes.cells.length === 1 ? [Array.from({ length: 96 }, (_, i) => sp(0.5, 0.5, seN, -i / 96 * Math.PI * 2))] : m.godes.cells.map(fit);
         const rimTop = top - WD + GH - 0.35, rimBot = m.godes.lata ? Math.max(y0 + 1, rimTop - LATA_H) : top - WD; // cristal: latinha inteira
+        const gr = m.godes.grow || 0, st = m.godes.step; // grow: godês maiores (vão menor) que no desenho; step: segunda cavidade com degrau
         cells.forEach((c, j) => {
-          wells.push(ext(c, 0.05, top + 2 - rimBot, rimBot));
+          const s0 = st && st.j === j ? st.inset : 0;
+          if (s0) stepCut = ext(c, 0.05 - gr, top + 2 - (top - st.d), top - st.d); // degrau: corte à parte (dois cortes sobrepostos na mesma malha falhavam)
+          wells.push(ext(c, 0.05 - gr + s0, top + 2 - rimBot, rimBot));
           // foto (Flat Dez): o pó enche a bandeja quase até a borda; aro de metal fino em volta
-          add(ext(c, 0.12, rimTop - rimBot, rimBot), m.godes.lata ? godeLata : godeRim, idx, 'bandeja', 0, 0, 0);
-          add(ext(c, 0.35, GH - 0.1, top - WD), godeCor(j, m.godes.cells.length), idx, 'gode', 0, 0, 0);
+          add(ext(c, 0.12 - gr + s0, rimTop - rimBot, rimBot), m.godes.lata ? godeLata : godeRim, idx, 'bandeja', 0, 0, 0);
+          add(ext(c, 0.35 - gr + s0, GH - 0.1, top - WD), godeCor(j, m.godes.cells.length), idx, 'gode', 0, 0, 0);
         });
         if (m.godes.slot) { const SD = r1(Math.min(m.h - 1.6, 5)); wells.push(ext(m.godes.slot, 0.2, SD + 2, top - SD)); } // espaço do aplicador: só a cavidade
       } else {
@@ -6621,7 +6624,7 @@ function compactParts(product, L, S0) {
         grooveCut = shapeRing(iw + 2 * c.w, id + 2 * c.w, iw, id, c.h * 1.5 + 2, top - c.h * 1.5);
       }
       const allWells = wells.length > 1 ? mergeGeometries(wells.map(ni)) : wells[0];
-      if (!THUMB_LITE) for (const cut of [allWells, recessCut, edgeCut, grooveCut].filter(Boolean)) objs.forEach(o => { const [outer, inner] = cutHole(o.geometry, cut); if (outer === o.geometry) return;
+      if (!THUMB_LITE) for (const cut of [allWells, stepCut, recessCut, edgeCut, grooveCut].filter(Boolean)) objs.forEach(o => { const [outer, inner] = cutHole(o.geometry, cut); if (outer === o.geometry) return;
         const gg = mergeGeometries([ni(outer), ni(inner)]); if (gg) { o.geometry.dispose(); o.geometry = gg; } });
     }
     if (m.visor && m.oco) { // placa transparente da janela, por dentro do teto
@@ -6770,17 +6773,24 @@ function compactParts(product, L, S0) {
     const base = L.find(e => e.idx === idx - 1), bObjs = base ? mine(base.idx) : [];
     if (bObjs.length) {
       // Case p3–5 e foto ampliada: duas articulações curtas a ~30% do centro, não um eixo longo central.
-      const r = clamp(Math.min(base.m.h, m.h) * 0.22, 1.1, 2.2), Lh = m.hingeFull ? W * 0.94 : m.hingePair ? W * (m.hingePair.w ?? 0.11) : Math.min(W * (m.hingeWidth ?? (m.sides ? 0.4 : 0.32)), m.sides ? 44 : 24), g3 = Lh / 3, gap = m.hingePair ? 0.15 : 0.35;
-      const kn = (c, x0, x1) => { const g = new THREE.CylinderGeometry(r, r, x1 - x0, 40); g.rotateZ(Math.PI / 2); g.translate(cx + c + (x0 + x1) / 2, y0, z + r * 0.7); return g; };
+      const r = clamp(Math.min(base.m.h, m.h) * 0.22, 1.1, 2.2), Lh = m.hingeCalha ? W * m.hingeCalha : m.hingeFull ? W * 0.94 : m.hingePair ? W * (m.hingePair.w ?? 0.11) : Math.min(W * (m.hingeWidth ?? (m.sides ? 0.4 : 0.32)), m.sides ? 44 : 24), g3 = Lh / 3, gap = m.hingePair ? 0.15 : 0.35;
+      const hz = m.hingeCalha ? z + r + 0.35 : z + r * 0.7; // calha: o eixo fica para dentro, num recorte do fundo da base e da tampa
+      const kn = (c, x0, x1) => { const g = new THREE.CylinderGeometry(r, r, x1 - x0, 40); g.rotateZ(Math.PI / 2); g.translate(cx + c + (x0 + x1) / 2, y0, hz); return g; };
       const mB = bObjs[0].material, mT = objs[0].material;
+      if (m.hingeCalha && !THUMB_LITE) { const ni = x => { const g = x.index ? x.toNonIndexed() : x; for (const k in g.attributes) if (k !== 'position' && k !== 'normal') g.deleteAttribute(k); return g; };
+        const cut = new THREE.BoxGeometry(Lh + 0.6, 2 * r + 0.8, 2 * r + 1.6); cut.translate(cx, y0, z + r + 0.35 - 0.4);
+        [objs[0], bObjs[0]].forEach(o => { const [outer, inner] = cutHole(o.geometry, cut); if (outer === o.geometry) return; const g = mergeGeometries([ni(outer), ni(inner)]); if (g) { o.geometry.dispose(); o.geometry = g; } });
+        cut.dispose(); }
       (m.hingePair ? [-W * (m.hingePair.x ?? 0.30), W * (m.hingePair.x ?? 0.30)] : [0]).forEach(c => {
-        const pin = new THREE.CylinderGeometry(r * 0.38, r * 0.38, Lh - 0.6, 24); pin.rotateZ(Math.PI / 2); pin.translate(cx + c, y0, z + r * 0.7);
-        add(kn(c, -Lh / 2, -g3 / 2 - gap), mB, base.idx, 'dobradica', 0, 0, 0); add(kn(c, g3 / 2 + gap, Lh / 2), mB, base.idx, 'dobradica', 0, 0, 0);
+        const pin = new THREE.CylinderGeometry(r * 0.38, r * 0.38, Lh - 0.6, 24); pin.rotateZ(Math.PI / 2); pin.translate(cx + c, y0, hz);
+        const gm = m.hingeCalha ? Lh * 0.78 : g3; // calha (foto): nós curtos da base nas pontas, o da tampa corre quase o eixo todo
+        add(kn(c, -Lh / 2, -gm / 2 - gap), mB, base.idx, 'dobradica', 0, 0, 0); add(kn(c, gm / 2 + gap, Lh / 2), mB, base.idx, 'dobradica', 0, 0, 0);
         add(pin, m.hingeFull ? mT : mirrorMat, base.idx, 'pino', 0, 0, 0);
-        add(kn(c, -g3 / 2, g3 / 2), mT, idx, 'dobradica', 0, 0, 0); objs.push(product.children.at(-1));
+        add(kn(c, -gm / 2, gm / 2), mT, idx, 'dobradica', 0, 0, 0); objs.push(product.children.at(-1));
       });
     }
-    objs.forEach(o => { o.userData.hinge = { y0, z: z + (bObjs.length ? clamp(Math.min(base.m.h, m.h) * 0.22, 1.1, 2.2) * 0.7 : 0), p: o.position.clone(), q: o.quaternion.clone() }; });
+    const rH = bObjs.length ? clamp(Math.min(base.m.h, m.h) * 0.22, 1.1, 2.2) : 0;
+    objs.forEach(o => { o.userData.hinge = { y0, z: z + (m.hingeCalha && rH ? rH + 0.35 : rH * 0.7), p: o.position.clone(), q: o.quaternion.clone() }; });
     if (ang > 0) setHinge(objs, ang);
   });
   if (!aberto) { // fechado em pé sobre a tampa (Petit): monta como aberto (gargalo para cima) e vira o conjunto
@@ -9578,7 +9588,12 @@ function godesOf(r) {
   let tr = /Quinteto/.test(n) ? { c: QUINTETO, ar: 1 } : INCOM_TRAYS[r.k] ?? (/^Frame G/.test(n) ? INCOM_TRAYS.incomp_compactos_frame_g_tampa_fechada : undefined); // com Visor: mesma bandeja do Tampa Fechada
   // Classic Quarteto: entre as duas colunas de godês, o espaço do aplicador (cavidade funda, desenho da bandeja)
   // Flat Duo (foto, medida no catálogo): bandeja 1 de 60,4 × 44,4 à esquerda e bandeja 2 menor (~38 × 42) à direita
-  if (/^Flat Duo/.test(n)) tr = { ar: 104 / 44.4, mmTw: 104, c: [[[-0.5, 0.5], [-0.5, -0.5], [0.0808, -0.5], [0.0808, 0.5]], [[0.1317, 0.473], [0.1317, -0.473], [0.5, -0.473], [0.5, 0.473]]] };
+  // Aprovação cl37 (foto FLAT-DUO-1): godês bem mais juntos — o da esquerda ~55% e o da direita ~43% da bandeja, vão de ~2,5 mm;
+  // o da direita é uma segunda cavidade com degrau em volta (a borda dele parece mais larga)
+  if (/^Flat Duo/.test(n)) tr = { ar: 104 / 44.4, mmTw: 104, step: { j: 1, inset: 1.6, d: 0.9 }, c: [[[-0.5, 0.48], [-0.5, -0.48], [0.05, -0.48], [0.05, 0.48]], [[0.074, 0.5], [0.074, -0.5], [0.5, -0.5], [0.5, 0.5]]] };
+  // Fotos FLAT-DEZ e FLAT-SEXTETO: godês mais juntos que no desenho (vão ~1,6 mm no Dez, ~3,3 no Sexteto) e, no Sexteto, mais borda dos lados (~7%)
+  if (tr && /^Flat Dez/.test(n)) tr = { ...tr, mmTw: 106.5, grow: 0.45 };
+  if (tr && /^Flat Sexteto/.test(n)) tr = { ...tr, mmTw: 103, grow: 0.3 };
   // Classic Duo (foto de cima do site, CLASSIC-DUO-1): godê da esquerda ~53% e o da direita ~38% da bandeja, vão de ~9%,
   // quase a profundidade toda; bandeja ~58 × 54 mm medida na foto pela largura de 69,1 mm do catálogo.
   if (/^Classic Duo/.test(n)) tr = { ar: 1.07, mmTw: 58, c: [[[-0.5, 0.5], [-0.5, -0.5], [0.032, -0.5], [0.032, 0.5]], [[0.123, 0.5], [0.123, -0.5], [0.5, -0.5], [0.5, 0.5]]] };
@@ -9587,7 +9602,7 @@ function godesOf(r) {
     tr = { ar: 1, c: [half(1), half(-1).reverse()] }; }
   if (tr && /Classic Quarteto/.test(n)) tr = { ...tr, slot: [[-0.1, 0.5], [-0.1, -0.5], [0.1, -0.5], [0.1, 0.5]] };
   if (tr && /6 \+ 1/.test(n)) tr = { ...tr, c: tr.c.map(c => c.map(([x, y]) => [-x, y])) }; // foto: o godê grande fica à direita
-  return tr ? { rows, rect, cells: tr.c, ar: tr.ar, slot: tr.slot, mm: tr.mmTw ? tr.mmTw - 1 : mm, n: frameN(n) || undefined } : { rows, rect, mm };
+  return tr ? { rows, rect, cells: tr.c, ar: tr.ar, slot: tr.slot, grow: tr.grow, step: tr.step, mm: tr.mmTw ? tr.mmTw - 1 : mm, n: frameN(n) || undefined } : { rows, rect, mm };
 }
 // Tamanho da bandeja (godê) informado no catálogo, em mm, quando não há desenho dela
 const TRAY_MM = { incomp_compactos_case_g: 58.3, incomp_compactos_case_m: 41.1, incomp_compactos_case_m_all_crystal: 41.1, incomp_compactos_classic_uno: 52.8,
@@ -10014,7 +10029,8 @@ function incomProduct(r) {
     if (/^Flat/.test(r.n)) { const t = ms.find(m => m.name === 'Tampa'); if (t) {
       // Foto da dona: Trio Retangular com eixo contínuo quase de fora a fora; não generalizar.
       if (r.n === 'Flat Trio Retangular') t.hingeFull = true;
-      else t.hingePair = { x: 0.26, w: 0.07 };
+      // Foto FLAT-DEZ (aprovação cl37): um eixo longo (~72% da largura) que corre numa calha recortada no fundo da base e da tampa
+      else t.hingeCalha = 0.72;
     } }
     ms.forEach((m, i) => { if (m.hinge && !m.caseLatch && ms[i - 1]?.dedo) m.snapFront = true; });
     if (/^(Frame|Classic)/.test(r.n)) {
@@ -10045,12 +10061,14 @@ function incomProduct(r) {
     // Foto ampliada da dona: patamar interno rebaixado, nunca elevado sobre a borda externa.
     // Profundidade estimada na foto; alturas externas do catálogo preservadas.
     if (r.c === 'Paletas') { const t = ms.find(m => m.name === 'Tampa'), b = ms.find(m => m.name === 'Base');
-      if (t && b) { b.rebaixo = { inset: /^Flat/.test(r.n) ? 4 : 3.2, h: 0.6 }; b.fechoRebaixo = true;
+      if (t && b) { b.rebaixo = /^Flat/.test(r.n) ? { inset: 2, h: 0.3 } : { inset: 3.2, h: 0.6 }; b.fechoRebaixo = true; // Flat (aprovação cl37): o patamar é bem raso na foto
         // Pedido da dona: abertura frontal acompanha a aba, sem sobra lateral visível.
         // Fotos da dona: aba larga e reta; abertura baixa da mesma largura. Dimensões internas estimadas.
         t.snapFlat = true; t.snapWidth = r1(W * (/^Flat/.test(r.n) ? 0.42 : 0.29));
         Object.assign(b.dedo, { w: r1(t.snapWidth + 0.2), h: 3.2, d: 1 });
-        if (/^Big (4|9)$/.test(r.n)) { delete b.rebaixo; b.canal = { inset: 3.2, w: 0.6, h: 0.6 }; }
+        if (/^Big (4|9)$/.test(r.n)) { delete b.rebaixo; b.canal = { inset: 3.2, w: 0.6, h: 0.6 };
+          // Aprovação cl37 (fotos BIG-4): produto quase no nível da divisória e duas dobradiças, junto aos cantos
+          if (b.godes) b.godes = { ...b.godes, fundo: 2.1 }; t.hingePair = { x: 0.4, w: 0.1 }; }
         // Págs.28–33: encaixes estreitos junto ao eixo; proporções estimadas na foto
         // (largura ~2,3% do estojo), preservando a faixa sem espelho.
         if (/^Flat/.test(r.n)) { t.espBand = 0; t.espLatches = { w: r1(W * 0.023), h: 1.2, x: 0.26, depth: 0.5 };
