@@ -1,3 +1,7 @@
+# Atualização Claude — 18/11/2026, cl99
+
+Moon Deck: andar do meio gira pela quina de cima (não entra mais na base); fenda em arco no topo da parede de trás da base para a tampa. Próximo carimbo: cl100.
+
 # Atualização Claude — 18/11/2026, cl98
 
 Moon (redondos): área livre em arco na quina de trás da peça de baixo, no caminho da tampa ao abrir. Frame intacto. Próximo carimbo: cl99.

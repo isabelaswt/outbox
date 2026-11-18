@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION, ADDITION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-18.cl98';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-18.cl99';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -707,7 +707,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-18.cl98';
+const BUILD = '2026-11-18.cl99';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -7122,17 +7122,31 @@ function compactParts(product, L, S0) {
         // preso à base, eixo junto da divisão. Com o eixo no pé do bloco, o fundo do andar afundava na parede da base ao abrir e a
         // borda dela cortava o godê em linha reta.
         const nest = m.gap < 0;
-        if (nest) add(new RoundedBoxGeometry(Lb, hb + hu, t, 3, Math.min(0.5, Lb * 0.08)), mB, base.idx, 'dobradica', cx, y0 + (hu - hb) / 2, z0 + t / 2);
-        else { add(new RoundedBoxGeometry(Lb, hb + hu, t, 3, Math.min(0.5, Lb * 0.08)), mT, idx, 'dobradica', cx, y0 + (hu - hb) / 2, z0 + t / 2); objs.push(product.children.at(-1)); }
-        axis = { y: nest ? y0 - Math.min(r * 0.6, hb * 0.3) : y0 - hb + t / 2, z: z0 + t / 2 };
-        const pin = new THREE.CylinderGeometry(r * 0.3, r * 0.3, Lb + 2 * gp + 0.4, 24); pin.rotateZ(Math.PI / 2); pin.translate(cx, axis.y, axis.z); add(pin, mirrorMat, base.idx, 'pino', 0, 0, 0);
-        if (!THUMB_LITE) { const ni = x => { const g = x.index ? x.toNonIndexed() : x; for (const k in g.attributes) if (k !== 'position' && k !== 'normal') g.deleteAttribute(k); return g; };
+        // cl99 (dona: "não resolveu", Moon Deck de lado): o andar encaixado girava num eixo na divisão de BAIXO dele — tudo acima do eixo anda
+        // para trás ao abrir, e a parte de cima de trás entrava até 2,4 mm na parede de trás da base. Eixo na quina de CIMA e de trás do andar
+        // (como uma tampa comum): girando, tudo vai para a frente e para cima, e nada entra na base. Sem bloco nem entalhe, pino rente à quina.
+        if (nest) { axis = { y: y0 + m.h - 0.05, z: z + 0.02 };
+          const pinN = new THREE.CylinderGeometry(0.3, 0.3, Lb, 20); pinN.rotateZ(Math.PI / 2); pinN.translate(cx, axis.y - 0.35, axis.z + 0.35); add(pinN, mirrorMat, base.idx, 'pino', 0, 0, 0); }
+        else { add(new RoundedBoxGeometry(Lb, hb + hu, t, 3, Math.min(0.5, Lb * 0.08)), mT, idx, 'dobradica', cx, y0 + (hu - hb) / 2, z0 + t / 2); objs.push(product.children.at(-1));
+          axis = { y: y0 - hb + t / 2, z: z0 + t / 2 };
+          const pin = new THREE.CylinderGeometry(r * 0.3, r * 0.3, Lb + 2 * gp + 0.4, 24); pin.rotateZ(Math.PI / 2); pin.translate(cx, axis.y, axis.z); add(pin, mirrorMat, base.idx, 'pino', 0, 0, 0); }
+        if (!nest && !THUMB_LITE) { const ni = x => { const g = x.index ? x.toNonIndexed() : x; for (const k in g.attributes) if (k !== 'position' && k !== 'normal') g.deleteAttribute(k); return g; };
           const cutB = ni(new RoundedBoxGeometry(Lb + 2 * gp, hb + gp + 2, t + 2.4 + gp + vao, 2, 0.3).translate(cx, y0 - hb - gp + (hb + gp + 2) / 2, z - 2 + (t + 2.4 + gp + vao) / 2));
           const cutT = ni(new RoundedBoxGeometry(Lb + 2 * gp, hu + gp + 1, t + 2.4, 2, 0.3).translate(cx, y0 - 1 + (hu + gp + 1) / 2, z - 2 + (t + 2.4) / 2));
           // cl98 (dona: "a moon deck tá com sobreposição na dobradiça, acho que tem que ter uma área livre"): o eixo fica baixo e recuado, e ao abrir
           // a borda de trás da tampa varre a quina de trás da peça de baixo — rebaixo em arco (setor em volta do eixo, atrás dele e abaixo da
           // divisão) ao longo das costas. Só nos redondos (Moon); o Frame aprovado não muda.
           const cuts = [[bObjs[0], cutB]];
+          // cl99: tampa sobre andar ENCAIXADO (Moon Deck) — aberta, a borda de trás dela desce na parede de trás da BASE de fora, perto da
+          // dobradiça (medido: ±9 mm, 3 mm de fundo, no meio da espessura). Área livre: fenda no topo dessa parede, por dentro da espessura
+          // (sobra 0,3 mm de casca por fora e por dentro), com cantos arredondados
+          if (base.m.gap < 0) { const gb = L.find(e => e.idx === base.idx - 1), gObjs = gb ? mine(gb.idx) : [];
+            if (gObjs.length) { const gTop = gb.y0 + gb.m.h, gbb = localBox(gObjs.slice(0, 1)), gcz = (gbb.min.z + gbb.max.z) / 2, Ro = (gbb.max.x - gbb.min.x) / 2,
+                sw = Math.min(W * 0.3, 22), span = sw / 2 / Ro, r1 = Ro - 0.3, r0 = Ro - 2.3, sh = new THREE.Shape();
+              // anel em arco seguindo a costa redonda (shape no plano x/−z: as costas ficam em +90°)
+              sh.absarc(cx, -gcz, r1, Math.PI / 2 - span, Math.PI / 2 + span, false); sh.absarc(cx, -gcz, r0, Math.PI / 2 + span, Math.PI / 2 - span, true); sh.closePath();
+              const slot = new THREE.ExtrudeGeometry(sh, { depth: 6.6, bevelEnabled: true, bevelSize: 0.25, bevelThickness: 0.4, bevelSegments: 3, curveSegments: 48 });
+              slot.deleteAttribute('uv'); slot.rotateX(-Math.PI / 2); slot.translate(0, gTop - 5.6, 0); cuts.push([gObjs[0], ni(slot)]); } }
           if (!nest && !(m.n > 2)) { const R = Math.hypot(y0 - axis.y, axis.z - z) + 0.35, yTopR = y0 + 0.05, sh = new THREE.Shape(), A = [];
             const aS = Math.PI - Math.asin(Math.min(1, (yTopR - axis.y) / R)), aE = Math.atan2(y0 - axis.y, z - axis.z) + (Math.max(m.abreAberto ?? 105, 105) + 6) * Math.PI / 180;
             // só o caminho da quina de trás da tampa: do ponto onde o arco cruza a divisão até onde ela para aberta
