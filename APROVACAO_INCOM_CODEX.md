@@ -1,8 +1,12 @@
 # Aprovação Incom: o que é, como trabalhar e até onde chegamos
 
-Escrito em 18/11/2026 pela sessão Claude, que publicou da cl40 à cl57. É a passagem para o Codex.
+Escrito em 18/11/2026 pela sessão Claude, que publicou da cl40 à cl59. É a passagem para o Codex.
 
 Situação: a dona acha que **não estamos acertando as dobradiças**. Ela quer que o Codex tente entender o mecanismo melhor. As seções 4 e 5 contam cada tentativa e a resposta dela.
+
+**Estado no fecho desta sessão (cl59): 13 aprovados (`ok`), 16 `feito` esperando a revisão da dona e 11 em `ajustar`.**
+- **Linha Moon inteira APROVADA** pela dona depois da cl59. Ela disse "melhor, aprovar essa linha" e os 10 Moon foram marcados `ok`. **Não mexer no `hingeBloco` dos Moon.** Frame e Macaroon usam o mesmo código, então qualquer mudança neles tem que ser condicionada à família.
+- **Flat/Big:** dobradiça refeita na cl58 pela foto ampliada (recorte da tampa + ressalto central da base). Os itens estão `feito`; falta a dona conferir.
 
 Versão no ar: **`2026-11-18.cl59`**. Próximo carimbo: **cl60**.
 
@@ -140,12 +144,12 @@ Fotos: `assets/revisao/fotos/paleta-flat-dez/1–2.jpg`, `big-4/2.jpg` e catálo
    - **Atenção:** as outras Flat (6+1, Duo, Sexteto, Trio Redondo, Trio Retangular) estão em `ajustar` com o mesmo texto, mas o comentário foi feito na cl52. A cl57 já aplica a rampa a todas, então falta conferir e responder.
    - **Dúvida:** a rampa pode ser o desenho do recorte em L/trapézio que aparece na frente, no desenho do catálogo (p028). Talvez o mesmo perfil exista atrás. Vale pedir à dona uma foto de trás.
 
-## 5. Lista em `ajustar` no fim desta sessão (17 itens)
+## 5. Lista em `ajustar` no fim desta sessão (11 itens, cl59)
 
-**Dobradiças:**
-- **Case G e irmãos:** o lugar do pino é redondo e mais curto (seção 4).
-- **Frame G com Visor:** "quando abre totalmente a caixa fica exposta" (seção 4).
-- **Flat 6+1, Duo, Sexteto, Trio Redondo, Trio Retangular:** rampa. Já está na cl57; conferir e responder.
+**Dobradiça:**
+- **Case G (e irmãos, em lote):** "o lugar onde vai o pino é redondo, não quadrado, e é mais curto". Os recortes do `hingeCase` ainda são `BoxGeometry`; devem ser redondos, acompanhando o nó, e mais curtos (seção 4).
+
+(O Frame G com Visor e as Flat 6+1, Duo, Sexteto, Trio Redondo e Trio Retangular foram respondidos como `feito` na cl58 e aguardam a dona.)
 
 **Conta-gotas e frascos** (`incomProduct`, `case 'cg'` ~9935 e `case 'flacon'` ~10003; a borracha fica em `sprayGeo`, `m.sprayType === 'gotas'` ~2085):
 - **Bulb e Dispensing 30:** "veja a silhueta do conta-gotas… ele vai abrindo para baixo, como um sino, depois disso tem um respiro embaixo". A borracha deve abrir em sino para baixo, com uma folga sob ela, entre a borracha e o colar.
