@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION, ADDITION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-18.cl79';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-18.cl80';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -707,7 +707,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-18.cl79';
+const BUILD = '2026-11-18.cl80';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -7045,7 +7045,7 @@ function compactParts(product, L, S0) {
         // sentado num entalhe da borda de trás da base e subindo até a tampa, que tem o entalhe dela por cima dele; o pino passa no
         // alto do bloco. Aberta, o bloco fica à vista ligando base e tampa (não há cortes compridos na tampa — cl55 desfeito).
         // hingeBloco.w/.vao: largura (fração) e quanto o entalhe da base entra a mais (Macaroon, cl53)
-        const hk = typeof m.hingeBloco === 'object' ? m.hingeBloco : {}, Lb = Math.min(W * (hk.w ?? 0.16), 13), hb = clamp(base.m.h * 0.8, 1.5, 6),
+        const hk = typeof m.hingeBloco === 'object' ? m.hingeBloco : {}, Lb = Math.min(W * (hk.w ?? 0.16), 13), hb = clamp(base.m.h * 0.6, 1.5, 6), /* cl80 (dona: "aumentou demais a distância"): 80% → 60% */
           hu = 0, t = 2 * r + 0.4, gp = 0.45, z0 = z + 0.25, vao = hk.vao ?? 0; // cl59 ("isso não é degrau, é reto"): sem entalhe na tampa — o bloco
         // vai rente até a divisão e a borda de trás da tampa passa reta por cima dele
         // cl78 (dona, fotos do Moon aberto: "a dobradiça tem mais altura, não é colada na base"): o bloco é da TAMPA, mais alto (80% da

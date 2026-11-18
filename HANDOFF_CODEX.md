@@ -1,4 +1,6 @@
-# Atualização Claude — 18/11/2026, cl78–cl79
+# Atualização Claude — 18/11/2026, cl78–cl80
+
+cl80: bloco do Moon/Frame com 60% da base (ponte mais curta). Próximo carimbo: cl81.
 
 cl79: visor dos Frame com a forma de dentro do desenho da dona (visorN 8, visorBow 0,08). Próximo carimbo: cl80.
 
