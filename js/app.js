@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-18.cl51';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-18.cl52';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -707,7 +707,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-18.cl51';
+const BUILD = '2026-11-18.cl52';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -2085,11 +2085,14 @@ function sprayGeo(m, y0, { lo = false } = {}) {
   } else if (m.sprayType === 'gotas') {
     // Conta-gotas: bulbo de borracha com topo em domo. De botão (Flacon Botão, Julie): colar alto e liso e um
     // botão cilíndrico de topo reto saindo dele, como na foto do catálogo
-    if (m.botao) head.push(ring(m.actW, m.actH, top - 0.5, { rBot: 0.4, rTop: Math.min(2, m.actW * 0.16) }));
+    if (m.botao) head.push(ring(m.actW, m.actH, top - 0.5, { rBot: 0.4, rTop: Math.min(m.actH * 0.45, m.actW * 0.38) })); // cl52: "topo do conta-gotas é curvo"
     else { // aprovação cl48 (fotos Flacon, "para todos conta-gotas"): a borracha abre larga na base, afina, tem um dente e depois o bulbo
-      const R = m.actW / 2, H = m.actH, Rb = Math.min(R, H * 0.45), y = v => top - 0.5 + v, pts = [[0, 0], [R * 1.22, 0], [R * 1.22, H * 0.05]];
-      for (let i = 1; i <= 6; i++) { const u = i / 6; pts.push([R * 1.22 - R * 0.3 * Math.sin(u * Math.PI / 2), H * 0.05 + H * 0.09 * (1 - Math.cos(u * Math.PI / 2))]); } // abre na base e fecha
-      pts.push([R * 1.06, H * 0.16], [R * 1.06, H * 0.2], [R * 0.9, H * 0.22], [Rb, H * 0.34], [Rb, H - Rb]); // dente, depois o corpo do bulbo
+      // cl52 (Flacon 15 Bulbo: "muito gordo, dente estranho"; fotos FLACON-15/30-BULBO abertas): a borracha não passa da largura da
+      // base — saia curta na boca, uma cintura leve (o "dente") e o corpo um pouco mais fino com topo em domo
+      const R = m.actW / 2, H = m.actH, Rb = Math.min(R * 0.84, H * 0.4), y = v => top - 0.5 + v, pts = [[0, 0], [R, 0], [R, H * 0.16]];
+      for (let i = 1; i <= 6; i++) { const u = i / 6; pts.push([R - (R - R * 0.78) * Math.sin(u * Math.PI / 2), H * 0.16 + H * 0.07 * (1 - Math.cos(u * Math.PI / 2))]); }
+      for (let i = 1; i <= 6; i++) { const u = i / 6; pts.push([R * 0.78 + (Rb - R * 0.78) * Math.sin(u * Math.PI / 2), H * 0.23 + H * 0.09 * u]); }
+      pts.push([Rb, H - Rb]);
       for (let i = 1; i <= 12; i++) { const a = i / 12 * Math.PI / 2; pts.push([Rb * Math.cos(a), H - Rb + Rb * Math.sin(a)]); }
       const g = new THREE.LatheGeometry(pts.map(([a, b]) => new THREE.Vector2(a, y(b))), lo ? 32 : 72); g.deleteAttribute('uv'); head.push(g); }
   } else if (m.sprayType === 'bico') {
@@ -6905,8 +6908,14 @@ function compactParts(product, L, S0) {
         cut.dispose(); }
       if (m.hingeBloco) { // Moon, Frame, Macaroon (aprovação cl50, fotos MOON-P/MOON-ECO/FRAME-P/MACAROON): a dobradiça é um bloco
         // inteiro da tampa, que desce num vão recortado na parede de trás da base (fechado, o bloco preenche o vão)
-        const Lb = Math.min(W * (m.hingeWidth ?? 0.18), 22), hb = clamp(base.m.h * 0.55, 1.5, 5), t = 2 * r + 0.6, hu = Math.min(m.h * 0.5, hb), gp = 0.3;
-        add(new RoundedBoxGeometry(Lb, hb + hu, t + 0.4, 3, Math.min(0.6, Lb * 0.1)), mT, idx, 'dobradica', cx, y0 + (hu - hb) / 2, z - 0.4 + (t + 0.4) / 2); objs.push(product.children.at(-1));
+        // cl52 ("tá muito grande, um quadrado passando por cima do 3D, precisa ter um recorte nesse vão"): bloco mais estreito, rente ao
+        // contorno (não sobressai), e a tampa também ganha o recorte dos lados dele — ele fica dentro do vão, com folga em volta
+        const Lb = Math.min(W * 0.14, 12), hb = clamp(base.m.h * 0.55, 1.5, 5), t = 2 * r + 0.2, hu = clamp(m.h * 0.35, 1, 2.5), gp = 0.3, z0 = z + 0.25;
+        add(new RoundedBoxGeometry(Lb, hb + hu, t, 3, Math.min(0.5, Lb * 0.08)), mT, idx, 'dobradica', cx, y0 + (hu - hb) / 2, z0 + t / 2); objs.push(product.children.at(-1));
+        if (!THUMB_LITE) { const ni = x => { const g = x.index ? x.toNonIndexed() : x; for (const k in g.attributes) if (k !== 'position' && k !== 'normal') g.deleteAttribute(k); return g; };
+          const cutT = mergeGeometries([-1, 1].map(sg => ni(new THREE.BoxGeometry(gp + 0.01, hu + 0.1, t + 2.4).translate(cx + sg * (Lb + gp) / 2, y0 + hu / 2 - 0.05, z - 2 + (t + 2.4) / 2))));
+          const [o2, i2] = cutHole(objs[0].geometry, cutT); cutT.dispose();
+          if (o2 !== objs[0].geometry) { const g = mergeGeometries([ni(o2), ni(i2)]); if (g) { objs[0].geometry.dispose(); objs[0].geometry = g; } } }
         const pin = new THREE.CylinderGeometry(r * 0.35, r * 0.35, Lb + 2 * gp + 0.6, 24); pin.rotateZ(Math.PI / 2); pin.translate(cx, y0, hz); add(pin, mirrorMat, base.idx, 'pino', 0, 0, 0);
         if (!THUMB_LITE) { const ni = x => { const g = x.index ? x.toNonIndexed() : x; for (const k in g.attributes) if (k !== 'position' && k !== 'normal') g.deleteAttribute(k); return g; };
           const cut = ni(new RoundedBoxGeometry(Lb + 2 * gp, hb + gp + 2, t + 2.4, 2, 0.3).translate(cx, y0 - hb - gp + (hb + gp + 2) / 2, z - 2 + (t + 2.4) / 2));
@@ -9991,8 +10000,8 @@ function incomProduct(r) {
       let tb = (Pp.find(q => q[0] > f + 0.05 && q[1] < cw * 0.85) || [f + (1 - f) * 0.45])[0], bw = wAt(tb + 0.02, 0.95) || 0.42;
       // Fotos do site (fundo cinza), px: [frasco, tampa, botão] de altura e larguras tampa/botão ÷ frasco.
       // O desenho dava tampa estreita e frasco curto; a foto manda nas proporções (medidas totais seguem W/H).
-      const fb = { 'Flacon 15 Botão': [300, 205, 42, 1, 0.72, 1.5], 'Flacon 30 Botão': [305, 195, 42, 0.76, 0.54, W * 0.3] }[r.n]; // cl48: ombro do Flacon 30 mais arredondado (foto)
-      let rT = /^Flacon 30/.test(r.n) ? W * 0.3 : W * 0.18;
+      const fb = { 'Flacon 15 Botão': [300, 205, 42, 1, 0.72, 1.5], 'Flacon 30 Botão': [305, 195, 42, 0.76, 0.54, W * 0.4] }[r.n]; // cl52: "ombro é mais arredondado ainda" // cl48: ombro do Flacon 30 mais arredondado (foto)
+      let rT = /^Flacon 30/.test(r.n) ? W * 0.4 : W * 0.18; // cl52 (Flacon 30 Bulbo: "ombro mais redondo em cima")
       if (fb) { const t = fb[0] + fb[1] + fb[2]; f = fb[0] / t; tb = (fb[0] + fb[1]) / t; cw = fb[3]; bw = fb[4]; rT = fb[5]; }
       ms = [P('Frasco', W, D, H * f, { vol: true, rBot: 2, rTop: rT, _t: [0, f] }),
         M('contaGotas', { ...(b ? { botao: true, ridges: 0 } : {}), name: b ? 'Conta-gotas de botão' : 'Conta-gotas', W: r1(W * cw), D: r1(W * cw), h: r2(H * (tb - f)), actW: r1(W * bw), actH: r2(H * (1 - tb) + 0.5) })]; // +0,5: o conta-gotas encaixa 0,5 mm no gargalo
@@ -10005,7 +10014,12 @@ function incomProduct(r) {
             ringH: 0, ringW: 0, embed: 0, neckFillet: 0, exposedNeck: true, tuboAberto: true });
         const descriptor = { W: neck.W, h: neck.h, pitch: neck.pitch, turns: neck.turns, threadD: neck.threadD, ringH: neck.ringH };
         Object.assign(v, { threadReceiver: descriptor, threadNeckUid: neck.uid, threadThrough: true, W: Math.max(v.W, r1(neck.W + 2.6)), D: Math.max(v.D, r1(neck.W + 2.6)) });
-        ms.splice(1, 0, neck); }
+        ms.splice(1, 0, neck);
+        // cl52 (Flacon 30 Bulbo: "tem um respiro entre ombro e pescoço do conta-gotas; pescoço tem menos fillet em cima"): o colar
+        // fica ~1,2 mm acima do ombro (o gargalo aparece) e a quina de cima dele é quase viva; vale para os Flacon de bulbo
+        // cl52: o perfil do desenho deixava o ombro do Flacon 30 reto (o rTop nem era usado) — sem ele, ombro torneado de ~22% da largura
+        if (/^Flacon 30/.test(r.n)) { const fr = ms[0]; delete fr.prof; delete fr.W0; Object.assign(fr, { rTop: r1(W * 0.22), rTopW: 0 }); }
+        if (/^Flacon .*Bulbo/.test(r.n)) { const rg = 1.2; Object.assign(v, { gap: rg, h: r2(v.h - rg), rTop: 0.4 }); } }
       break; }
     case 'fr': case 'frr': case 'frsq': case 'frsqr': case 'frt': case 'frsh': case 'frap': case 'frflat': {
       const o = { fr: { rBot: 3, rTop: W * 0.15 }, frr: { rBot: W * 0.3, rTop: W * 0.15 }, frsq: { ...sq(0.06), rTop: 3, rBot: 3 }, // Chicago (foto): quinas de baixo arredondadas frsqr: { ...sq(0.2), rTop: 4 },
@@ -10361,7 +10375,7 @@ function incomProduct(r) {
     incomp_dispensadores_dispensing_15: [0.68, 0.1, false],
     // aprovação cl47 (Dispensing 15 conta-gotas): cápsula refil de fundo bem curvo e muita massa de SAN embaixo (parece vidro)
     incomp_conta_gotas_dispensing_15: [0.62, 0.15, false, 0.5],
-    incomp_conta_gotas_dispensing_30: [0.7, 0.12, false, 0.5],
+    incomp_conta_gotas_dispensing_30: [0.7, 0.07, false, 0.5], // cl52: "refil acabando antes do fundo"
     incomp_dispensadores_dispensing_30: [0.76, 0.08, false], // foto: coluna ~75% da largura
     incomp_dispensadores_dispensing_60: [0.82, 0.08, false], // foto da dona: coluna ~83%
     incomp_dispensadores_dispensing_cube: [0.8, 0.045, true],
