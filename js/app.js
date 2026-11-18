@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION, ADDITION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-18.cl72';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-18.cl73';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -707,7 +707,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-18.cl72';
+const BUILD = '2026-11-18.cl73';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -7093,8 +7093,8 @@ function compactParts(product, L, S0) {
             g.rotateZ(-sg * Math.PI / 2); g.translate(P(b0), YA, HZ); unionB.push(g); } // cl71: o cilindro é da BASE // cl69 (dona: "o cilindro é dentro da tampa"): peça da tampa, presa pela ponta à parede lateral
           add(cyl(P(t0 + 0.3), P(dE - 0.6), r * 0.38), mirrorMat, base.idx, 'pino', 0, 0, 0); // eixo interno, só desta ponta; aparece no vão e como ponto na face lateral do cilindro (foto da dona)
           // tampa: abertura em volta do cilindro da base (o vão atrás dele), sem atravessar a parede lateral; furo do pino na peça quadrada
-          cutsT.push(cyl(P(b0 - gs / 2 + 0.02), P(dE - 1.4), rc + 0.4)); // abertura da tampa em volta do cilindro da base (o vão atrás dele)
-          cutsT.push(cyl(P(dE - 1.4), P(W / 2 + 0.3), rc + 0.12)); // cl72: na parede lateral só um contorno fino em volta da ponta, sem o buraco escuro
+          cutsT.push(cyl(P(b0 - gs / 2 + 0.02), P(dE - 1.4), rc + 0.6)); // abertura da tampa em volta do cilindro da base (o vão atrás dele)
+          cutsT.push(cyl(P(dE - 1.4), P(W / 2 + 0.3), rc + 0.45)); // cl72: contorno em volta da ponta na lateral; cl73 (dona: "vão maior em cima do cilindro para a peça não tocar"): folga 0,45
           cutsT.push(cyl(P(t0 + 0.05), P(t1 - 0.05), bore));
           // base: cede ao giro da peça quadrada e do cilindro da tampa
           cutsB.push(cyl(P(t0 - 0.2), P(t1 + gs / 2 - 0.02), Math.hypot(rc, rc) + 0.15));

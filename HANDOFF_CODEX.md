@@ -1,4 +1,6 @@
-# Atualização Claude — 18/11/2026, cl62–cl72
+# Atualização Claude — 18/11/2026, cl62–cl73
+
+cl73: Case — vão maior da tampa em cima do cilindro. Próximo carimbo: cl74.
 
 cl72: Case — cilindros fundidos à base (união CSG), furo do pino na ponta, contorno fino na lateral da tampa. Próximo carimbo: cl73.
 
