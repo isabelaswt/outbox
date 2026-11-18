@@ -181,6 +181,7 @@ Pendências conhecidas (precisam de dado ou de decisão; não invente):
 
 **Registro** (o mais novo em cima):
 
+- 2026-11-18, Claude, `2026-11-18.cl76`: **Case (todos)** — dona, sobre a tira curva da parede de trás da tampa que sobrava por cima do cilindro: "não tem essa parte", "é redondo sim", "o que não quero é essa lingueta". O recorte da tampa em volta do cilindro segue redondo na frente e abre direto para as costas (caixa da divisão até o topo do recorte, do eixo para trás, num passe CSG separado), sem a lingueta.
 - 2026-11-18, Claude, `2026-11-18.cl75`: **Case (todos)** — dona: "pino chegar até o final do furo do cilindro". O pino vai até a boca do furo na ponta do cilindro (0,05 mm antes da face), não mais recuado 0,6 mm.
 - 2026-11-18, Claude, `2026-11-18.cl74`: **Case (todos)** — dona: "aumentar mais o vão, principalmente em cima, olha como dá para ver o outro lado" (recorte CASE-G-2). Folga da tampa em volta do cilindro da base: 1,0 mm por dentro e 0,9 mm na lateral (eram 0,6/0,45); o vão atravessa e mostra o outro lado.
 - 2026-11-18, Claude, `2026-11-18.cl73`: **Case (todos)** — dona: "ter um vão maior em cima do cilindro para a peça não tocar no cilindro". Folga da tampa em volta do cilindro da base: 0,45 mm na parede lateral (era 0,12) e 0,6 mm por dentro (era 0,4).

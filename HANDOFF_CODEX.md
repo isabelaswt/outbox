@@ -1,4 +1,6 @@
-# Atualização Claude — 18/11/2026, cl62–cl75
+# Atualização Claude — 18/11/2026, cl62–cl76
+
+cl76: Case — sem a lingueta da tampa sobre o cilindro (recorte redondo aberto para as costas). Próximo carimbo: cl77.
 
 cl75: Case — pino até o fim do furo do cilindro. Próximo carimbo: cl76.
 
