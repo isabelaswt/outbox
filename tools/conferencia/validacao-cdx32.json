@@ -1,0 +1,196 @@
+{
+  "build": "2026-11-18.cdx32",
+  "baseline": "2026-11-18.cdx31",
+  "model": "Incom Macaroon G (compactos)",
+  "closedDimensionsPreserved": true,
+  "closedMm": {
+    "W": 76,
+    "H": 23.700000762939453,
+    "D": 75.30000305175781
+  },
+  "controlsUnchanged": [
+    "Incom Case M (compactos)",
+    "Incom Frame G com Visor (compactos)",
+    "Incom Moon Deck (compactos)"
+  ],
+  "mirrorGodeAndSupportWallPreserved": true,
+  "legacyMacaroonMigrated": true,
+  "bridge": {
+    "w": 0.145,
+    "center": 0.62,
+    "bridge": true,
+    "compact": true
+  },
+  "hingeParts": [
+    {
+      "name": "01_dobradica",
+      "idx": 0,
+      "W": 1.9138002395629883,
+      "H": 3.8999996185302734,
+      "D": 3,
+      "axis": null
+    },
+    {
+      "name": "01_dobradica",
+      "idx": 0,
+      "W": 1.9138002395629883,
+      "H": 3.8999996185302734,
+      "D": 3,
+      "axis": null
+    },
+    {
+      "name": "02_dobradica",
+      "idx": 1,
+      "W": 6.832399845123291,
+      "H": 1.7999992370605469,
+      "D": 1.7999992370605469,
+      "axis": {
+        "y": 12.505,
+        "z": -36.35000152587891
+      }
+    },
+    {
+      "name": "02_aba_dobradica",
+      "idx": 1,
+      "W": 6.832399845123291,
+      "H": 3,
+      "D": 6.049221038818359,
+      "axis": {
+        "y": 12.505,
+        "z": -36.35000152587891
+      }
+    },
+    {
+      "name": "01_pino",
+      "idx": 0,
+      "W": 10.819999694824219,
+      "H": 0.5039997100830078,
+      "D": 0.503997802734375,
+      "axis": null
+    },
+    {
+      "name": "01_desvio_dobradica",
+      "idx": 0,
+      "W": 9.592399597167969,
+      "H": 2.1000003814697266,
+      "D": 5.250003814697266,
+      "axis": null
+    }
+  ],
+  "pinChecks": [
+    {
+      "name": "01_pino",
+      "tested": 5,
+      "occupied": 0,
+      "blocked": []
+    }
+  ],
+  "notchChecks": [
+    {
+      "name": "passagem",
+      "x": 0,
+      "z": -35.25,
+      "expectedClear": true,
+      "hits": 0
+    },
+    {
+      "name": "retorno",
+      "x": 0,
+      "z": -32.725,
+      "expectedClear": false,
+      "hits": 6
+    },
+    {
+      "name": "lado_esquerdo",
+      "x": -4.1212,
+      "z": -35.25,
+      "expectedClear": false,
+      "hits": 6
+    },
+    {
+      "name": "lado_direito",
+      "x": 4.1212,
+      "z": -35.25,
+      "expectedClear": false,
+      "hits": 6
+    }
+  ],
+  "poses": [
+    {
+      "angle": 0,
+      "invalid": 0,
+      "occupied": 0,
+      "tested": 6,
+      "collisions": []
+    },
+    {
+      "angle": 15,
+      "invalid": 0,
+      "occupied": 0,
+      "tested": 6,
+      "collisions": []
+    },
+    {
+      "angle": 30,
+      "invalid": 0,
+      "occupied": 0,
+      "tested": 6,
+      "collisions": []
+    },
+    {
+      "angle": 60,
+      "invalid": 0,
+      "occupied": 0,
+      "tested": 6,
+      "collisions": []
+    },
+    {
+      "angle": 90,
+      "invalid": 0,
+      "occupied": 0,
+      "tested": 6,
+      "collisions": []
+    },
+    {
+      "angle": 105,
+      "invalid": 0,
+      "occupied": 0,
+      "tested": 6,
+      "collisions": []
+    },
+    {
+      "angle": 120,
+      "invalid": 0,
+      "occupied": 0,
+      "tested": 6,
+      "collisions": []
+    },
+    {
+      "angle": 135,
+      "invalid": 0,
+      "occupied": 0,
+      "tested": 6,
+      "collisions": []
+    },
+    {
+      "angle": 180,
+      "invalid": 0,
+      "occupied": 0,
+      "tested": 6,
+      "collisions": []
+    }
+  ],
+  "animation": {
+    "openAngles": [
+      {
+        "name": "Tampa",
+        "angle": 105
+      }
+    ],
+    "closeError": 0,
+    "closed": true
+  },
+  "returnError": 0,
+  "exportParts": 13,
+  "limits": "Proporções estimadas pelas fotos/desenho, sem cotas de molde; amostras de passagem e poses não equivalem a simulação integral de colisão ou flexão. Aguardando conferência visual da dona."
+}
