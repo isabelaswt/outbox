@@ -2,14 +2,11 @@
 
 ## ATUALIZAÇÃO MAIS RECENTE — 17/11/2026, fim da sessão Claude (ler primeiro)
 
-Versão no ar: **`2026-11-18.cl39`** (`main`). Duas sessões Claude trabalharam em paralelo na mesma pasta (a "fork" fez os aplicadores do Petit, cl5–cl17). Antes de commitar: `git fetch` + `git log HEAD..origin/main`; push por SSH `git@github.com:isabelaswt/outbox.git`; carimbo em 3 lugares (BUILD e import `incom.js?v=` em `js/app.js`, `?v=` de css/js em `index.html`). Próximo carimbo: **cl40**. Registro de cada envio na seção 8 do CODEX_REFINO.md.
+Versão no ar: **`2026-11-18.cl40`** (`main`). Duas sessões Claude trabalharam em paralelo na mesma pasta (a "fork" fez os aplicadores do Petit, cl5–cl17). Antes de commitar: `git fetch` + `git log HEAD..origin/main`; push por SSH `git@github.com:isabelaswt/outbox.git`; carimbo em 3 lugares (BUILD e import `incom.js?v=` em `js/app.js`, `?v=` de css/js em `index.html`). Próximo carimbo: **cl41**. Registro de cada envio na seção 8 do CODEX_REFINO.md.
 
-### PENDENTE AGORA (deixado pela conta anterior, 2026-11-18, versão no ar cl39)
-Ler: numa aba logada no OUTBOX (Chrome com a extensão ou o navegador do app), `fetch('/api/revisao.php?a=list')`; responder com POST `api/revisao.php?a=set` {k, status:'feito', texto, build:'2026-11-18.clNN', autor:'Claude'}. Itens em "ajustar":
-- **Case G / M / M All Crystal**: fillet (concordância) entre o colar do produto e a placa da base — hoje está seco. Colar em `compactParts`, ramo `m.godes.relevo` (`add(col, …'colar')`): somar um anel em LatheGeometry com perfil côncavo (raio ~1 mm) no pé do colar.
-- **Classic Duo / Quarteto**: "tem uma bordinha rebaixada em toda paleta" — degrau rebaixado em volta (ver foto CLASSIC-QUARTETO-2 em _ref para decidir se é patamar interno `b.rebaixo` ou borda externa `b.canal`).
-- **Classic Uno**: "borda côncava antes do godê, praticamente metade da borda total" — corte em loft (retângulo arredondado) da borda até o godê, perfil côncavo, largura ~metade da borda (~3,6 mm), fundo ~1,2 mm; usar `stepCut` (corte à parte; dois cortes sobrepostos na mesma malha falham). Ramo `if (rect)` do godê único.
-Próximo carimbo: cl40.
+### PENDENTE AGORA (2026-11-18, versão no ar cl40)
+Os 12 itens que estavam em "ajustar" (Case G/M/M All Crystal, Classic Duo/Quarteto/Uno, Frame G com Visor/Quinteto/Tampa Fechada/M/P, Macaroon G) foram corrigidos na cl40 e marcados "feito" no revisao.php. Próximo passo: ler de novo `api/revisao.php?a=list` (a dona revisa os "feito" e aprova ou pede de novo) e trabalhar o que voltar em "ajustar". Login: o navegador do app (aba em outbox.swtool.co) precisa estar logado pela dona.
+Próximo carimbo: cl41.
 
 ### Aprovação Incom (revisao.html) — fluxo de trabalho a partir do cl34
 A dona avalia cada modelo em `https://outbox.swtool.co/revisao.html` (foto real × render ao vivo) e marca **Aprovar** ou **Ajustar** com comentário. Para trabalhar: ler `api/revisao.php?a=list` (precisa da sessão dela — pelo navegador dela, com permissão) e pegar os itens com status `ajustar`; corrigir, publicar e responder com POST `api/revisao.php?a=set` `{k, status: 'feito', texto: 'o que mudou', build: '<carimbo>', autor: 'Claude'}`. Ela revisa os `feito` e aprova ou pede de novo. Fotos novas: rodar `python3 tools/revisao/fotos.py` (lista em `tools/revisao/lista.json`, tirada de `window.OUTBOX.PRESETS`).

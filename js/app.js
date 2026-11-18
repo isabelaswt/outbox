@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-18.cl39';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-18.cl40';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -707,7 +707,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-18.cl39';
+const BUILD = '2026-11-18.cl40';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -6496,6 +6496,13 @@ function roundTab(R0, R1, L, h, rc) {
 function arcSlab(R0, R1, span, h) { const a0 = -Math.PI / 2 - span / 2, a1 = -Math.PI / 2 + span / 2, sh = new THREE.Shape();
   sh.absarc(0, 0, R1, a0, a1, false); sh.lineTo(R0 * Math.cos(a1), R0 * Math.sin(a1)); sh.absarc(0, 0, R0, a1, a0, true); sh.closePath();
   const g = new THREE.ExtrudeGeometry(sh, { depth: h, bevelEnabled: false, curveSegments: 48 }); g.deleteAttribute('uv'); g.rotateX(-Math.PI / 2); return g; }
+// Recorte de frente no contorno da aba (cantos de baixo arredondados), de z0 a z1: Frame (aprovação cl40)
+function frontTabCut(w, yb, yt, z0, z1, rc) {
+  const half = w / 2; rc = Math.max(0.2, Math.min(rc, half - 0.05, (yt - yb) - 0.05)); const sh = new THREE.Shape();
+  sh.moveTo(-half, yt); sh.lineTo(-half, yb + rc); sh.quadraticCurveTo(-half, yb, -half + rc, yb); sh.lineTo(half - rc, yb);
+  sh.quadraticCurveTo(half, yb, half, yb + rc); sh.lineTo(half, yt); sh.closePath();
+  const g = new THREE.ExtrudeGeometry(sh, { depth: z1 - z0, bevelEnabled: false, curveSegments: 16 }); g.deleteAttribute('uv'); g.translate(0, 0, z0); return g;
+}
 // Abertura para o dedo: concha oval cortada na borda da frente (em cima da base, embaixo da tampa)
 function dedoGeo(g, o, y0, h) {
   g.computeBoundingBox(); const b = g.boundingBox, zf = b.max.z, cx = (b.max.x + b.min.x) / 2;
@@ -6506,6 +6513,8 @@ function dedoGeo(g, o, y0, h) {
     else { cut = arcSlab(R - o.d, R + 1, o.w / R, o.h * 2 + 2); cut.translate(cx, o.bottom ? y0 - o.h - 2 : y0 + h - o.h, cz); }
   } else if (o.rect && o.panel) { // Case (foto fechada do site): painel central rebaixado na parede da tampa, da bordinha fina de baixo até perto do topo
     const hh = o.h - o.lip; cut = new RoundedBoxGeometry(o.w, hh, o.d * 2, 4, Math.min(0.4, o.d * 0.8)); cut.translate(cx, y0 + o.lip + hh / 2, zf);
+  } else if (o.rect && o.front) { // Frame (aprovação cl40): rebaixo no contorno da aba, só um pouco maior que ela, sem degrau
+    cut = frontTabCut(o.front.w, y0 + h - o.front.h, y0 + h + 2, zf - o.d, zf + 2, o.front.rc); cut.translate(cx, 0, 0);
   } else if (o.rect) { // paleta: rebaixo retangular largo na borda de cima da base, cantos arredondados (desenho do catálogo)
     cut = new RoundedBoxGeometry(o.w, o.h * 2 + 2, o.d * 2, 4, Math.min(1.2, o.d * 0.45)); cut.translate(cx, o.bottom ? y0 - 1 : y0 + h + 1, zf); // bottom: na borda de baixo (tampa do Case)
   } else { cut = new THREE.SphereGeometry(1, 64, 32); cut.scale(o.w / 2, o.h, o.d * 1.6); cut.translate(cx, y0 + (o.top ? h : 0), zf + o.d * 0.6); }
@@ -6540,6 +6549,11 @@ function compactParts(product, L, S0) {
         const sh = new THREE.Shape(); sh.absarc(0, 0, R + 1.4, 0, Math.PI * 2, false); const ho = new THREE.Path(); ho.absarc(0, 0, R + (rente ? -0.01 : 0.25), 0, Math.PI * 2, true); sh.holes.push(ho);
         const col = new THREE.ExtrudeGeometry(sh, { depth: hc, bevelEnabled: false, curveSegments: 72 }); col.deleteAttribute('uv'); col.rotateX(-Math.PI / 2);
         add(col, mat, idx, 'colar', cx, top - 0.01, cz);
+        // Aprovação (Case G/M/M All Crystal): concordância côncava (~1 mm) no pé do colar, colar e placa sem quina seca
+        const rf = Math.min(1, hc * 0.6), Rc = R + 1.4, fp = [];
+        for (let i = 0; i <= 12; i++) { const a = Math.PI * 1.5 - i / 12 * Math.PI / 2; fp.push(new THREE.Vector2(Rc + rf + rf * Math.cos(a), rf + rf * Math.sin(a))); }
+        const fil = new THREE.LatheGeometry(fp, 96); fil.deleteAttribute('uv');
+        add(fil, mat, idx, 'colar', cx, top - 0.02, cz);
         // latinha aberta em cima (parede fina + fundo): o pó aparece dentro dela, não coberto por um disco
         const lm = m.godes.lata ? godeLata : godeRim, rs = new THREE.Shape(); rs.absarc(0, 0, R, 0, Math.PI * 2, false); const rh = new THREE.Path(); rh.absarc(0, 0, R - 0.35, 0, Math.PI * 2, true); rs.holes.push(rh);
         const wall = new THREE.ExtrudeGeometry(rs, { depth: hg - 0.3, bevelEnabled: false, curveSegments: 96 }); wall.deleteAttribute('uv'); wall.rotateX(-Math.PI / 2);
@@ -6576,7 +6590,7 @@ function compactParts(product, L, S0) {
           add(ext(c, 0.35 - gr + s0, GH - 0.1, top - WD), godeCor(j, m.godes.cells.length), idx, 'gode', 0, 0, 0);
         });
         if (m.godes.concha && cells.length === 1) { // Macaroon: por dentro a base é uma concha — da borda desce em curva até o aro do godê
-          const Rp = TW / 2 + 0.05, Ro = Math.min(w, d) / 2 - 1.6, D = WD - GH + 0.6, P = [new THREE.Vector2(0, top - D)];
+          const Rp = TW / 2 + 0.05, Ro = Math.min(w, d) / 2 - 1.6, D = m.godes.conchaD ?? WD - GH + 0.6, P = [new THREE.Vector2(0, top - D)];
           for (let i = 0; i <= 16; i++) { const u = i / 16, r = Rp + (Ro - Rp) * u; P.push(new THREE.Vector2(r, top - D * (1 - u * u))); }
           P.push(new THREE.Vector2(Ro, top + 2), new THREE.Vector2(0, top + 2));
           if (Ro > Rp + 0.5) { stepCut = new THREE.LatheGeometry(P, 96); stepCut.translate(cx, 0, cz); }
@@ -6593,6 +6607,15 @@ function compactParts(product, L, S0) {
           wells.push(new RoundedBoxGeometry(cw - 0.4, top + 2 - rimBot, ch - 0.4, 4, 2).translate(x, (top + 2 + rimBot) / 2, z));
           add(new RoundedBoxGeometry(cw - 0.6, rimTop - rimBot, ch - 0.6, 4, Math.min(1.7, (rimTop - rimBot) / 2)), rimM, idx, 'bandeja', x, (rimTop + rimBot) / 2, z);
           add(new RoundedBoxGeometry(cw - 1.3, GH - 0.1, ch - 1.3, 4, 0.7), godeCor(k0 + j, nG), idx, 'gode', x, top - WD + (GH - 0.1) / 2, z);
+          if (one && m.godes.cove) { // Classic Uno (aprovação): borda côncava do aro até o godê, ~metade da borda, ~1,2 mm de fundo
+            const pw = cw - 0.4, pd = ch - 0.4, rc = 2, S = Math.max(0.8, (Math.min(w - pw, d - pd) / 2) * m.godes.cove), T = 1.2, sh = new THREE.Shape();
+            sh.moveTo(-pw / 2 + rc, -pd / 2); sh.lineTo(pw / 2 - rc, -pd / 2); sh.quadraticCurveTo(pw / 2, -pd / 2, pw / 2, -pd / 2 + rc);
+            sh.lineTo(pw / 2, pd / 2 - rc); sh.quadraticCurveTo(pw / 2, pd / 2, pw / 2 - rc, pd / 2); sh.lineTo(-pw / 2 + rc, pd / 2);
+            sh.quadraticCurveTo(-pw / 2, pd / 2, -pw / 2, pd / 2 - rc); sh.lineTo(-pw / 2, -pd / 2 + rc); sh.quadraticCurveTo(-pw / 2, -pd / 2, -pw / 2 + rc, -pd / 2);
+            // o chanfro do extrude é um quarto de elipse: na superfície a parede é vertical e no fundo vira plana (cova côncava)
+            const cv = new THREE.ExtrudeGeometry(sh, { depth: 3, bevelEnabled: true, bevelThickness: T, bevelSize: S, bevelSegments: 12, curveSegments: 8 });
+            cv.deleteAttribute('uv'); cv.rotateX(-Math.PI / 2); cv.translate(x, top, z); stepCut = cv;
+          }
         } else {
           const r = one && m.godes.mm ? m.godes.mm / 2 : (one ? Math.min(aw, ad) : Math.min(cw, ch)) / 2 - 0.5;
           wells.push(new THREE.CylinderGeometry(r + 0.3, r + 0.3, top + 2 - rimBot, 72).translate(x, (top + 2 + rimBot) / 2, z));
@@ -6697,7 +6720,8 @@ function compactParts(product, L, S0) {
             bottom = pal ? base.y0 + base.m.h - a.h : yB - 0.05,
             height = base.y0 + base.m.h + 1 - bottom;
           // Paletas: mesma largura e fundo da abertura do dedo, sem segunda cavidade central.
-          channel = new THREE.BoxGeometry(pal && !m.snapInset ? a.w : tw + 0.3, height, depth) // Classic: clip estreito, o canal só em volta dele
+          channel = a.front ? frontTabCut(a.front.w, base.y0 + base.m.h - a.front.h, base.y0 + base.m.h + 1, cz + rear, cz + R + 1, a.front.rc).translate(cx, 0, 0) // Frame: o canal tem o mesmo contorno do rebaixo (sem degrau/friso)
+            : new THREE.BoxGeometry(pal && !m.snapInset ? a.w : tw + 0.3, height, depth) // Classic: clip estreito, o canal só em volta dele
             .translate(cx, bottom + height / 2, cz + rear + depth / 2);
           if (pal) { socket.dispose(); socket = null; }
         }
@@ -6709,7 +6733,7 @@ function compactParts(product, L, S0) {
             const g = mergeGeometries([ni(outer), ni(innerSurface)]); if (g) { o.geometry.dispose(); o.geometry = g; }
           }); cut.dispose();
         }
-        if (!curve && base.m.fechoRebaixo) {
+        if (!curve && base.m.fechoRebaixo && !m.snapInset) { // Classic (aprovação): a fenda do clip é um furinho só — a lingueta no meio dela o dividia em dois
           // Ampliação enviada pela dona: lingueta horizontal na parte superior do rebaixo frontal de todas as paletas.
           // Altura/projeção estimadas na foto; permanece abaixo da borda, ligada à parede interna.
           const h = 0.7, depth = 1.1, z = inner - 0.6;
@@ -10049,9 +10073,18 @@ function incomProduct(r) {
       // Classic (CLASSIC-FECHADO / UNO-2, aprovação cl38): abertura do dedo maior (~36% da frente, ~65% da altura da base) e o clip
       // estreito todo para dentro, escondido na fenda do fundo do rebaixo
       if (t && b?.dedo && /^Classic/.test(r.n)) { Object.assign(b.dedo, { w: r1(W * 0.36), h: r1(b.h * 0.65) }); t.snapWidth = r1(b.dedo.w * 0.38); t.snapInset = r2(b.dedo.d + 0.7); }
+      // Aprovação (fotos CLASSIC-DUO-2 / CLASSIC-QUARTETO-2): bordinha rebaixada em toda a paleta — aro externo mais alto e os godês
+      // num patamar interno ~0,8 mm abaixo; largura do aro ~5,5% da frente, estimada na foto. Uno (CLASSIC-UNO-1): borda côncava
+      // do aro até o godê, com ~metade da borda
+      if (b?.godes && /^Classic (Duo|Quarteto)/.test(r.n)) b.rebaixo = { inset: r1(W * 0.055), h: 0.8 };
+      if (b?.godes && /^Classic Uno/.test(r.n)) b.godes = { ...b.godes, cove: 0.5 };
       // Frame (FRAME-FECHADO, FRAME-P-fechado, aprovação cl38): cavidade maior (~36% × 72% da base), abinha da largura dela, bem arredondada,
       // descendo ~60% da cavidade e subindo só até cobrir o arredondado da tampa — sem o friso na parede
       if (t && b?.dedo && /^Frame/.test(r.n)) { Object.assign(b.dedo, { w: r1(W * 0.36), h: r1(b.h * 0.72) }); Object.assign(t, { snapWidth: r1(b.dedo.w - 0.4), snapDown: 0.6, snapTop: r2((t.rBot || 0.6) + 0.1), snapRc: 2.4 }); }
+      // Aprovação cl40 (Frame G/M/P, Quinteto, Tampa Fechada): a parte de baixo (rebaixo na base) acompanha o contorno da aba,
+      // só levemente maior — 0,4 mm de cada lado e 0,6 mm abaixo (P: mais larga, 1 mm de cada lado) — e sem o degrau que fazia o friso
+      if (t && b?.dedo && /^Frame/.test(r.n)) { const ext = b.dedo.h * t.snapDown - 0.3, mx = /^Frame P/.test(r.n) ? 1 : 0.4;
+        b.dedo.front = { w: r2(t.snapWidth + 2 * mx), h: r2(ext + 0.6), rc: 2.4 + mx }; }
       // Foto fechada do Quinteto: moldura mais larga; proporção estimada na imagem, não cota.
       if (t && r.n === 'Frame G Quinteto') t.visorBorder = r1(W * 0.14);
       // Fotos de cima, tampa fechada (FRAME-G-2, FRAME-M-FECHADO, Frame P): moldura de 17% (G, M) e 19,5% (P) da largura
@@ -10106,7 +10139,8 @@ function incomProduct(r) {
       if (b) Object.assign(b, { rBot: r1(b.h * 0.6) });
       // aprovação cl38 (foto aberta MACAROON-G-1): por dentro a base é uma concha — desce em curva da borda até o godê; cavidade da
       // frente maior (~32% × 60% da base) e aba grande de cantos redondos
-      if (b?.godes) b.godes = { ...b.godes, concha: true };
+      // aprovação cl40: godê 0,5 mm mais baixo, no nível do fundo da concha na borda dele (a concha fica como estava)
+      if (b?.godes) { const f0 = r1(clamp(b.h - 2.5, 1.8, 3)); b.godes = { ...b.godes, concha: true, fundo: r1(f0 + 0.5), conchaD: r2(f0 - 1.2) }; }
       if (b?.dedo && t) { Object.assign(b.dedo, { w: r1(W * 0.32), h: r1(b.h * 0.6), rc: 1.5 }); t.aba = { w: r1(b.dedo.w - 0.3), d: b.dedo.d, down: r1(b.dedo.h * 0.6), rc: 1.5 }; } } } // foto: fundo da base arredondado também (o "macaron" fechado)
   // fotos: conta-gotas, dispensadores e deluxes em frasco transparente com o conteúdo aparecendo (pipeta/pescante
   // à vista); colares lisos. Págs. 50/51: Cube opaco e Elíptico transparente, ambos com sobretampa própria.
