@@ -1,3 +1,7 @@
+# Atualização Claude — 18/11/2026, cl77
+
+Frame: planta pelo desenho da dona (n 7,5, bow 0,10) e dobradiça em bloco inteiro (hingeBloco, como Moon), sem as 3 peças. Próximo carimbo: cl78.
+
 # Atualização Claude — 18/11/2026, cl62–cl76
 
 **Case APROVADO pela dona na cl76** — não mexer no ramo `hingeCase` sem pedido dela (como Moon/Classic). Revisão: 16 ok / 24 feito / 0 ajustar.

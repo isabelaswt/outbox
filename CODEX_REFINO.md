@@ -181,6 +181,7 @@ Pendências conhecidas (precisam de dado ou de decisão; não invente):
 
 **Registro** (o mais novo em cima):
 
+- 2026-11-18, Claude, `2026-11-18.cl77`: **Frame (todos)** — dona mandou o desenho da planta ("formato do frame é esse aqui") e a foto da dobradiça aberta ("dobradiça do frame é inteira, sem 3 pontos"). Planta: superelipse ajustada ao contorno dela — n 7,5 com `planBow` 0,10 (era n 8 / 0,07; erro de perfil 0,0003 contra 0,029). Dobradiça: o Frame volta ao bloco inteiro (`hingeBloco`, o dos Moon aprovados), sem o `hingeLeaf` de 3 peças da cdx30; Macaroon segue com o `hingeLeaf` próprio. Migração: Frame salvo com `hingeLeaf {w:0.16}` vira `hingeBloco`, e planta n 8/0,07 vira 7,5/0,10.
 - 2026-11-18, Claude: **dobradiça do Case APROVADA pela dona na cl76** ("aprovado"). Case G, Case M e Case M All Crystal marcados `ok` na revisão. Não mexer no ramo `hingeCase` de `compactParts` sem pedido dela.
 - 2026-11-18, Claude, `2026-11-18.cl76`: **Case (todos)** — dona, sobre a tira curva da parede de trás da tampa que sobrava por cima do cilindro: "não tem essa parte", "é redondo sim", "o que não quero é essa lingueta". O recorte da tampa em volta do cilindro segue redondo na frente e abre direto para as costas (caixa da divisão até o topo do recorte, do eixo para trás, num passe CSG separado), sem a lingueta.
 - 2026-11-18, Claude, `2026-11-18.cl75`: **Case (todos)** — dona: "pino chegar até o final do furo do cilindro". O pino vai até a boca do furo na ponta do cilindro (0,05 mm antes da face), não mais recuado 0,6 mm.

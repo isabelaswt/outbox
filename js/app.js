@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION, ADDITION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-18.cl76';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-18.cl77';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -707,7 +707,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-18.cl76';
+const BUILD = '2026-11-18.cl77';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -1252,9 +1252,12 @@ function normalize(s) {
   // Peças em malha (versão antiga da Draft) não existem mais.
   s.modules = (s.modules || []).filter(m => m.kind !== 'malha').map(m => ({ ...m, color: unpink(m.color) })).map(m => ({ ...BASE, uid: newUid(), ...m, ...(m.sprayType === 'pump' ? { sprayType: 'locao' } : m.sprayType === 'foamInc' ? { sprayType: 'foam' } : m.sprayType === 'foam' && m.actW > 20 ? { actW: 15, actH: 24, nozzleL: 2.6 } : {}) }));
   const savedMacaroon = s.modules.some(m => m.forn === 'Incom' && /MACAROON/i.test(m.ref || ''));
+  const savedFrame = s.modules.some(m => m.forn === 'Incom' && /FRAME/i.test(m.ref || ''));
   s.modules.forEach(m => {
     if (savedMacaroon && m.hingeLeaf?.w === 0.145 && m.hingeLeaf.center === 0.62 && m.hingeLeaf.compact && m.hingeLeaf.concealed == null) m.hingeLeaf = { ...m.hingeLeaf, concealed: true };
     if (savedMacaroon && m.hinge && ((m.hingeLeaf?.w === 0.09 && m.hingeLeaf.center == null) || (m.hingeLeaf?.w === 0.16 && m.hingeLeaf.center === 0.7 && m.hingeLeaf.bridge === true && !m.hingeLeaf.compact) || (!m.hingeLeaf && m.hingeBloco?.w === 0.09 && m.hingeBloco.vao === 3))) m.hingeLeaf = { w: 0.145, center: 0.62, bridge: true, compact: true, concealed: true };
+    if (savedFrame && m.hinge && m.hingeLeaf?.w === 0.16 && Object.keys(m.hingeLeaf).length === 1) { delete m.hingeLeaf; m.hingeBloco ??= true; } // cl77: Frame salvo com as 3 peças volta ao bloco inteiro
+    if (savedFrame && m.n === 8 && m.planBow === 0.07) { m.n = 7.5; m.planBow = 0.1; } // cl77: planta do Frame pelo desenho da dona
     // Case salvo na cl53–59: atualiza só as proporções antigas conhecidas, preservando edições próprias.
     if (m.hingeCase?.length === 3 && m.hingeCase[0] === 0.18 && m.hingeCase[1] === 0.31 && m.hingeCase[2] === 0.44) m.hingeCase = [0.26, 0.38];
     if (m.type === 'bisnaga') {
@@ -10089,7 +10092,7 @@ function incomProduct(r) {
       // tampa oca (casca) e base com rebaixo do godê; abertura para o dedo na frente, metade na borda
       // de cima da base e metade na de baixo da tampa
       // Desenho cotado Big 4/9 da dona: n=20 e curvatura=0,035 ajustados ao traço; W/D oficiais preservados.
-      const s0 = /^Big (4|9)$/.test(r.n) ? { n: 20, planBow: 0.035 } : r.t === 'cr' ? {} : frameN(r.n) ? { n: 8, planBow: 0.07 } : sq(r.t === 'cqr' ? 0.22 : 0.04), hb = H * 0.55, ht = H * 0.45, nw = r1(Math.min(22, Math.min(W, D) * 0.32));
+      const s0 = /^Big (4|9)$/.test(r.n) ? { n: 20, planBow: 0.035 } : r.t === 'cr' ? {} : frameN(r.n) ? { n: 7.5, planBow: 0.1 } : sq(r.t === 'cqr' ? 0.22 : 0.04), hb = H * 0.55, ht = H * 0.45, nw = r1(Math.min(22, Math.min(W, D) * 0.32));
       // paleta: abertura retangular larga (~42% da frente) só na base, logo abaixo da tampa, como no desenho
       // a dobradiça sai 0,3 do raio para trás: a caixa perde isso na profundidade e o total bate com o catálogo
       const Dc = r2(D - 0.3 * clamp(Math.min(hb, ht) * 0.22, 1.1, 2.2)), pal = r.c === 'Paletas' && r.t !== 'cr', dB = pal ? { rect: true, top: true, w: r1(W * 0.42), h: r1(Math.min(4.5, hb * 0.58)), d: 2.4 } : { rect: true, top: true, arc: r.t === 'cr', w: nw, h: r1(Math.min(3.2, hb * 0.42)), d: 1.6 }; // desenho: entalhe retangular só na base (redondo: acompanha a curva)
@@ -10447,7 +10450,9 @@ function incomProduct(r) {
     if (/^Frame|^Moon|^Macaroon/.test(r.n)) ms.filter(m => m.hinge).forEach(m => { m.hingeWidth = 0.18; m.hingeBloco = /^Macaroon/.test(r.n) ? { w: 0.09, vao: 3 } : true; }); // cl50: bloco inteiro num vão da base; cl53: Macaroon mais fino, com o recorte entrando na base
     // Fotos FRAME-G aberta e MACAROON-G lilás: a tampa tem uma aba própria chegando ao pino.
     // Espessuras/folgas proporcionais às fotos; não são cotas de fabricação.
-    if (/^Frame|^Macaroon/.test(r.n)) ms.filter(m => m.hinge).forEach(m => { m.hingeLeaf = /^Macaroon/.test(r.n) ? { w: 0.145, center: 0.62, bridge: true, compact: true, concealed: true } : { w: 0.16 }; });
+    // cl77 (dona, foto FRAME aberta de cima: "dobradiça do frame é inteira, sem 3 pontos"): o Frame volta ao bloco inteiro (hingeBloco, o dos Moon);
+    // só o Macaroon segue com a aba própria
+    if (/^Macaroon/.test(r.n)) ms.filter(m => m.hinge).forEach(m => { m.hingeLeaf = { w: 0.145, center: 0.62, bridge: true, compact: true, concealed: true }; });
     if (/^Flat/.test(r.n)) { const t = ms.find(m => m.name === 'Tampa'); if (t) {
       // cl51 (todas as Flat: "dobradiça é escondida, a tampa tem uma parte que abraça a dobradiça", 2ª foto): eixo dentro de uma calha
       // de ~90% da largura, coberto por um rolo da própria tampa, rente às costas — por fora não aparece nó nem pino
