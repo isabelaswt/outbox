@@ -181,6 +181,7 @@ Pendências conhecidas (precisam de dado ou de decisão; não invente):
 
 **Registro** (o mais novo em cima):
 
+- 2026-11-18, Claude, `2026-11-18.cl93`: **Macaroon** ("é isso, mas ele fica colocado mais abaixo"): eixo e aba 1 mm mais fundos (`dn`), com pescoço, fenda e rebaixo acompanhando.
 - 2026-11-18, Claude, `2026-11-18.cl92`: **Macaroon** — (1) "sim, volta" (moldura): U em volta do rebaixo, discreto (topo 0,3 abaixo da divisão), pontas de trás terminando antes das costas. (2) "quando o produto fica a 90° a aba da dobradiça fica na horizontal": Macaroon abre por padrão a 90° (`abreAberto` 90) — a aba fica deitada no rebaixo, como nas fotos.
 - 2026-11-18, Claude, `2026-11-18.cl91`: **Macaroon** ("o ângulo da dobradiça está errado, ele fica ligado à tampa, não são dois itens separados" / "olha como faz parte da tampa", fotos lilás): a peça passa a ser a continuação da parede de trás da tampa (fundida por CSG, normais originais). Fechada, desce por uma fenda na parede de trás da base, rente às costas; o eixo fica no alto dela, junto da divisão. Aberta, gira para a frente e deita num rebaixo em cima da borda (vista de cima parece em pé, na inclinação da tampa). Corte da fenda + rebaixo também na parede do godê.
 - 2026-11-18, Claude, `2026-11-18.cl90`: **Macaroon** ("malha ruim no macaron"): a união bloco+tampa não recalcula mais as normais (`toCreasedNormals` listrava a face, cortada pela CSG em triângulos finos); ficam as normais originais interpoladas pela união — face lisa.

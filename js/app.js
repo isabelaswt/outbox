@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION, ADDITION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-18.cl92';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-18.cl93';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -707,7 +707,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-18.cl92';
+const BUILD = '2026-11-18.cl93';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -6968,13 +6968,13 @@ function compactParts(product, L, S0) {
             const o = bObjs[0]; o.updateMatrix(); const p = o.geometry.attributes.position, v = new THREE.Vector3(); let zm = Infinity;
             for (let i = 0; i < p.count; i++) { v.fromBufferAttribute(p, i).applyMatrix4(o.matrix); if (Math.abs(v.x - cx) < 1.5 && v.y > y0 - 1.6 && v.y < y0 - 0.4) zm = Math.min(zm, v.z); }
             return Number.isFinite(zm) ? zm : bb.min.z; })(),
-          Lk = Math.max(3, Math.min(leafW * 0.85, base.m.h - 3)), ya = yT - tb / 2, za = zb + tb / 2;
+          dn = 1.0, Lk = Math.max(3, Math.min(leafW * 0.85, base.m.h - 4)), ya = yT - tb / 2 - dn, za = zb + tb / 2; // cl93 (dona: "é isso, mas ele fica colocado mais abaixo"): eixo e aba 1 mm mais fundos
         axis = { y: ya, z: za };
         // peça (coordenadas da tampa fechada): em pé, de ya (ponta redonda no eixo) descendo Lk, face de fora rente às costas
         const blk = new RoundedBoxGeometry(leafW, Lk + tb / 2, tb, 3, Math.min(0.75, tb / 2 - 0.02));
         blk.translate(cx, ya + tb / 2 - (Lk + tb / 2) / 2, za);
         // emenda com a parede de trás da tampa: um trecho da própria parede, da divisão até um pouco acima, para a peça sair dela
-        const neck = new RoundedBoxGeometry(leafW, 1.6, tb, 3, Math.min(0.6, tb / 2 - 0.02)); neck.translate(cx, yT + 0.5, za);
+        const neck = new RoundedBoxGeometry(leafW, 1.6 + dn, tb, 3, Math.min(0.6, tb / 2 - 0.02)); neck.translate(cx, yT + 0.5 - dn / 2, za);
         const lidAdd = [blk, neck];
         { const body = objs[0]; let ok = false;
           if (!THUMB_LITE) try { body.updateMatrix(); const inv = body.matrix.clone().invert(), ev = new Evaluator(); ev.attributes = ['position', 'normal']; ev.useGroups = false;
@@ -6988,8 +6988,8 @@ function compactParts(product, L, S0) {
           const ni = g => { const x = g.index ? g.toNonIndexed() : g; for (const k in x.attributes) if (k !== 'position' && k !== 'normal') x.deleteAttribute(k); return x; };
           const pw = leafW + 2 * gp, sinA = Math.sin(15 * Math.PI / 180);
           // fenda nas costas (peça fechada) + rebaixo em cima da borda (peça aberta, deitada para a frente)
-          const slot = new RoundedBoxGeometry(pw, Lk + gp + 1.2, tb + gp + 1.2, 2, 0.2); slot.translate(cx, yT - (Lk + gp) / 2 + 0.6, zb + (tb + gp) / 2 - 0.6);
-          const pFront = za + Lk + gp + 0.3, pBot = yT - tb - gp;
+          const slot = new RoundedBoxGeometry(pw, Lk + gp + 1.2 + dn, tb + gp + 1.2, 2, 0.2); slot.translate(cx, yT - (Lk + gp + dn) / 2 + 0.6, zb + (tb + gp) / 2 - 0.6);
+          const pFront = za + Lk + gp + 0.3, pBot = yT - tb - gp - dn;
           const pocket = new RoundedBoxGeometry(pw, yT + 2 - pBot, pFront - (zb - 0.5), 2, 0.25); pocket.translate(cx, (yT + 2 + pBot) / 2, (pFront + zb - 0.5) / 2);
           for (const o of bObjs.filter(o => !/_(gode|bandeja)$/.test(o.name))) for (const cut of [slot, pocket]) {
             const [outer, inner] = cutHole(o.geometry, ni(cut.clone())); if (outer === o.geometry) continue;
