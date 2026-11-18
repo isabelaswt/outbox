@@ -3,7 +3,7 @@
 Para cada modelo Incom do OUTBOX (lista em tools/revisao/lista.json, tirada de window.OUTBOX.PRESETS):
 - até 5 fotos do site Incom (_ref/incom/site/<slug>/, packshots de fundo liso primeiro), reduzidas;
 - a página do catálogo Incom 2026 onde o produto está.
-Saída: assets/revisao/fotos/<slug>/N.jpg, assets/revisao/catalogo/pNNN.jpg e assets/revisao/itens.json.
+Saída: assets/revisao/fotos/<slug>/N.jpg, assets/revisao/catalogo-hd/pNNN.jpg (2400 px, para dar zoom) e assets/revisao/itens.json.
 As originais ficam em _ref (fora do git); aqui vão só cópias leves.
 
 uso: python3 tools/revisao/fotos.py
@@ -76,11 +76,11 @@ def main():
                 dst = f'{OUT}/fotos/{s}/{i + 1}.jpg'; save(f, dst, 900); fs.append(os.path.relpath(dst, ROOT))
         pg = x.get('pg'); cat = None
         if pg:
-            dst = f'{OUT}/catalogo/p{pg:03d}.jpg'
+            dst = f'{OUT}/catalogo-hd/p{pg:03d}.jpg'
             if not os.path.exists(dst):
-                os.makedirs(os.path.dirname(dst), exist_ok=True); tmp = f'{OUT}/catalogo/_p'
-                subprocess.run(['pdftoppm', '-f', str(pg), '-l', str(pg), '-scale-to', '900', '-png', PDF, tmp], check=True)
-                png = glob.glob(f'{tmp}*.png')[0]; save(png, dst, 900); os.remove(png)
+                os.makedirs(os.path.dirname(dst), exist_ok=True); tmp = f'{OUT}/catalogo-hd/_p'
+                subprocess.run(['pdftoppm', '-f', str(pg), '-l', str(pg), '-scale-to', '2400', '-png', PDF, tmp], check=True)
+                png = glob.glob(f'{tmp}*.png')[0]; save(png, dst, 2400); os.remove(png)
             cat = os.path.relpath(dst, ROOT)
         itens.append({'k': x['n'], 'nome': re.sub(r'^Incom ', '', re.sub(r' \([^)]*\)$', '', x['n'])), 'linha': x['cat'], 'pg': pg,
                       'variante': x.get('variant') or '', 'site': slugs, 'fotos': fs, 'catalogo': cat})

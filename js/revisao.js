@@ -48,14 +48,42 @@ function renderList() {
   if (!box.children.length) box.append(el('div', 'empty', 'Nada aqui com esse filtro.'));
 }
 
+// ---------- foto: arrastar para mover, roda/pinça para aproximar, duplo clique alterna inteira / 2,5× ----------
+function panZoom(box, im) {
+  let z = 1, x = 0, y = 0;
+  const bar = el('div', 'zoomBar'), zl = el('button', 'z');
+  const set = (nz, px = 0, py = 0) => { // px,py: ponto (relativo ao centro da caixa) que fica parado
+    nz = Math.min(8, Math.max(1, nz)); x = px - (px - x) * nz / z; y = py - (py - y) * nz / z; z = nz;
+    im.style.transform = `translate(${x}px,${y}px) scale(${z})`; zl.textContent = Math.round(z * 100) + '%';
+  };
+  const inteira = () => { x = y = 0; z = 1; set(1); };
+  const centro = e => { const r = box.getBoundingClientRect(); return [e.clientX - r.left - r.width / 2, e.clientY - r.top - r.height / 2]; };
+  const b = (t, tip, f) => { const k = el('button', '', t); k.title = tip; k.onclick = ev => { ev.stopPropagation(); f(); }; return k; };
+  bar.append(b('−', 'Afastar', () => set(z / 1.5)), zl, b('+', 'Aproximar', () => set(z * 1.5)), b('Inteira', 'Ver a imagem inteira (duplo clique)', inteira));
+  bar.onpointerdown = e => e.stopPropagation(); bar.ondblclick = e => e.stopPropagation(); box.append(bar); set(1);
+  box.onwheel = e => { e.preventDefault(); set(z * Math.exp(-e.deltaY * (e.ctrlKey ? 0.01 : 0.0025)), ...centro(e)); };
+  box.ondblclick = e => z > 1 ? inteira() : set(2.5, ...centro(e));
+  const pts = new Map(); let pinch = 0;
+  box.onpointerdown = e => { box.setPointerCapture(e.pointerId); pts.set(e.pointerId, [e.clientX, e.clientY]); box.classList.add('drag'); };
+  box.onpointermove = e => {
+    const p = pts.get(e.pointerId); if (!p) return;
+    if (pts.size === 2) {
+      pts.set(e.pointerId, [e.clientX, e.clientY]); const [a, c] = [...pts.values()], d = Math.hypot(a[0] - c[0], a[1] - c[1]);
+      if (pinch) set(z * d / pinch, ...centro({ clientX: (a[0] + c[0]) / 2, clientY: (a[1] + c[1]) / 2 })); pinch = d; return;
+    }
+    x += e.clientX - p[0]; y += e.clientY - p[1]; pts.set(e.pointerId, [e.clientX, e.clientY]); set(z);
+  };
+  box.onpointerup = box.onpointercancel = e => { pts.delete(e.pointerId); pinch = 0; if (!pts.size) box.classList.remove('drag'); };
+}
+
 // ---------- produto selecionado ----------
 function renderFotos() {
   const imgs = [...sel.fotos.map(f => ({ src: f, lbl: 'Foto do site Incom' })), ...(sel.catalogo ? [{ src: sel.catalogo, lbl: `Catálogo Incom 2026 · p.${sel.pg}`, cat: true }] : [])];
   const big = $('#big'), th = $('#thumbs'); big.textContent = ''; th.textContent = ''; big.classList.remove('zoom');
   if (!imgs.length) { big.append(el('div', 'empty', 'Sem foto deste produto.')); return; }
   foto = Math.min(foto, imgs.length - 1);
-  const cur = imgs[foto], im = new Image(); im.src = cur.src; im.alt = cur.lbl; big.append(el('span', 'lbl', cur.lbl), im);
-  big.onclick = () => big.classList.toggle('zoom');
+  const cur = imgs[foto], im = new Image(); im.src = cur.src; im.alt = cur.lbl; im.draggable = false; big.append(el('span', 'lbl', cur.lbl), im);
+  panZoom(big, im);
   imgs.forEach((f, j) => { const b = el('button', j === foto ? 'on' : ''), t = new Image(); t.src = f.src; t.loading = 'lazy'; b.append(t); if (f.cat) b.append(el('span', 'cat', 'catálogo'));
     b.onclick = () => { foto = j; renderFotos(); }; th.append(b); });
   if (!sel.fotos.length) big.prepend(el('span', 'lbl', 'Sem foto no site — só a página do catálogo'));
@@ -114,7 +142,7 @@ $('#linha').onchange = e => { linha = e.target.value; renderList(); };
 
 // ---------- início ----------
 try {
-  const [lista, r] = await Promise.all([fetch('assets/revisao/itens.json?v=1').then(x => x.json()), api('revisao.php?a=list')]);
+  const [lista, r] = await Promise.all([fetch('assets/revisao/itens.json?v=2').then(x => x.json()), api('revisao.php?a=list')]);
   itens = lista; rev = r.itens || {};
 } catch (e) {
   const g = el('div', 'gate'), c = el('div');
