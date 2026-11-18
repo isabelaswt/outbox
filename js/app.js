@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-18.cl40';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-18.cl41';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -707,7 +707,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-18.cl40';
+const BUILD = '2026-11-18.cl41';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -6496,6 +6496,19 @@ function roundTab(R0, R1, L, h, rc) {
 function arcSlab(R0, R1, span, h) { const a0 = -Math.PI / 2 - span / 2, a1 = -Math.PI / 2 + span / 2, sh = new THREE.Shape();
   sh.absarc(0, 0, R1, a0, a1, false); sh.lineTo(R0 * Math.cos(a1), R0 * Math.sin(a1)); sh.absarc(0, 0, R0, a1, a0, true); sh.closePath();
   const g = new THREE.ExtrudeGeometry(sh, { depth: h, bevelEnabled: false, curveSegments: 48 }); g.deleteAttribute('uv'); g.rotateX(-Math.PI / 2); return g; }
+// Aprovação cl41 ("nada é muito duro nas paletas, todas têm fillets"): recorte com concordância — a quina viva de cima
+// vira curva de raio f e o fundo encontra a parede em curva de raio fb. outline(o) devolve o contorno deslocado o mm.
+const circOut = (R, N = 96) => o => Array.from({ length: N }, (_, i) => { const a = i / N * TAU; return [(R + o) * Math.cos(a), (R + o) * Math.sin(a)]; });
+const rrOut = (hw, hd, rr, K = 10) => o => { rr = Math.min(rr, hw, hd); const r = Math.max(0.01, rr + o), ax = hw - rr, az = hd - rr, P = [];
+  [[1, 1], [-1, 1], [-1, -1], [1, -1]].forEach(([sx, sz], q) => { for (let k = 0; k <= K; k++) { const a = (q + k / K) * Math.PI / 2; P.push([sx * ax + r * Math.cos(a), sz * az + r * Math.sin(a)]); } }); return P; };
+function pocketCut(outline, cx, cz, yb, yt, f, fb, up = 2) {
+  const H = Math.max(0.05, yt - yb); f = Math.max(0, Math.min(f, H * 0.6)); fb = Math.max(0, Math.min(fb, H - f - 0.02));
+  const rings = [], K = 6, ring = (o, y) => rings.push(outline(o).map(([x, z]) => [cx + x, y, cz + z]));
+  if (fb > 0.02) for (let i = 0; i <= K; i++) { const t = i / K * Math.PI / 2; ring(-fb + fb * Math.sin(t), yb + fb - fb * Math.cos(t)); } else ring(0, yb);
+  if (f > 0.02) for (let i = 0; i <= K; i++) { const t = i / K * Math.PI / 2; ring(f - f * Math.cos(t), yt - f + f * Math.sin(t)); } else ring(0, yt);
+  ring(f, yt + up);
+  return loftPts(rings);
+}
 // Recorte de frente no contorno da aba (cantos de baixo arredondados), de z0 a z1: Frame (aprovação cl40)
 function frontTabCut(w, yb, yt, z0, z1, rc) {
   const half = w / 2; rc = Math.max(0.2, Math.min(rc, half - 0.05, (yt - yb) - 0.05)); const sh = new THREE.Shape();
@@ -6522,6 +6535,8 @@ function dedoGeo(g, o, y0, h) {
   const ni = x => { const y = x.index ? x.toNonIndexed() : x; for (const k in y.attributes) if (k !== 'position' && k !== 'normal') y.deleteAttribute(k); return y; };
   return mergeGeometries([ni(outer), ni(inner)]) || g;
 }
+// Moon Deck (foto MOON-DECK-2, aprovação cl41): o andar do meio segue a tampa depois de 'de' graus, até 'max'
+const segueAng = (m, top) => clamp((top - m.segue.de) * (m.segue.k ?? 1), 0, m.segue.max);
 function setHinge(objs, ang) {
   objs.forEach(o => { const h = o.userData.hinge; if (!h) return; o.position.copy(h.p); o.quaternion.copy(h.q); o.updateMatrix();
     const T = new THREE.Matrix4().makeTranslation(0, h.y0, h.z).multiply(new THREE.Matrix4().makeRotationX(-clamp(ang, 0, 180) * Math.PI / 180)).multiply(new THREE.Matrix4().makeTranslation(0, -h.y0, -h.z));
@@ -6604,7 +6619,7 @@ function compactParts(product, L, S0) {
         // o godê (1,8 mm) assenta no fundo de um rebaixo mais fundo da base: fica sempre afundado, nunca rente
         const WD = godeFundo(m), GH = 1.8, rimTop = top - WD + GH - 0.35, rimBot = m.godes.lata ? Math.max(y0 + 1, rimTop - LATA_H) : top - WD, rimM = m.godes.lata ? godeLata : godeRim;
         if (rect) { // Classic Uno: o godê único também é quadrado (bandeja Jorba 110F)
-          wells.push(new RoundedBoxGeometry(cw - 0.4, top + 2 - rimBot, ch - 0.4, 4, 2).translate(x, (top + 2 + rimBot) / 2, z));
+          wells.push(pocketCut(rrOut((cw - 0.4) / 2, (ch - 0.4) / 2, 2), x, z, rimBot, top, Math.min(0.5, (top - rimBot) * 0.3), 0)); // cl41: boca do godê com concordância
           add(new RoundedBoxGeometry(cw - 0.6, rimTop - rimBot, ch - 0.6, 4, Math.min(1.7, (rimTop - rimBot) / 2)), rimM, idx, 'bandeja', x, (rimTop + rimBot) / 2, z);
           add(new RoundedBoxGeometry(cw - 1.3, GH - 0.1, ch - 1.3, 4, 0.7), godeCor(k0 + j, nG), idx, 'gode', x, top - WD + (GH - 0.1) / 2, z);
           if (one && m.godes.cove) { // Classic Uno (aprovação): borda côncava do aro até o godê, ~metade da borda, ~1,2 mm de fundo
@@ -6618,7 +6633,7 @@ function compactParts(product, L, S0) {
           }
         } else {
           const r = one && m.godes.mm ? m.godes.mm / 2 : (one ? Math.min(aw, ad) : Math.min(cw, ch)) / 2 - 0.5;
-          wells.push(new THREE.CylinderGeometry(r + 0.3, r + 0.3, top + 2 - rimBot, 72).translate(x, (top + 2 + rimBot) / 2, z));
+          wells.push(pocketCut(circOut(r + 0.3, 72), x, z, rimBot, top, Math.min(0.5, (top - rimBot) * 0.3), 0)); // cl41: boca do godê com concordância
           add(new THREE.CylinderGeometry(r, r, rimTop - rimBot, 72), rimM, idx, 'bandeja', x, (rimTop + rimBot) / 2, z);
           add(new THREE.CylinderGeometry(r - 0.34, r - 0.34, GH - 0.1, 72), godeCor(k0 + j, nG), idx, 'gode', x, top - WD + (GH - 0.1) / 2, z);
         }
@@ -6631,13 +6646,9 @@ function compactParts(product, L, S0) {
       let recessCut;
       if (m.rebaixo) { // Foto da dona: área interna rebaixada na paleta, com a borda externa mais alta.
         const st = m.rebaixo, iw = w - 2 * st.inset, id = d - 2 * st.inset,
-          rr = round ? Math.min(iw, id) / 2 - 0.01 : Math.min(6, Math.min(iw, id) * (m.sideR ?? 0.1) * 0.5 + 1), sh = new THREE.Shape(), // redondo (Moon Deck): o próprio círculo
-          x0 = -iw / 2, x1 = iw / 2, z0 = -id / 2, z1 = id / 2;
-        sh.moveTo(x0 + rr, z0); sh.lineTo(x1 - rr, z0); sh.quadraticCurveTo(x1, z0, x1, z0 + rr);
-        sh.lineTo(x1, z1 - rr); sh.quadraticCurveTo(x1, z1, x1 - rr, z1); sh.lineTo(x0 + rr, z1);
-        sh.quadraticCurveTo(x0, z1, x0, z1 - rr); sh.lineTo(x0, z0 + rr); sh.quadraticCurveTo(x0, z0, x0 + rr, z0);
-        sh.closePath(); const recess = new THREE.ExtrudeGeometry(sh, { depth: st.h + 2, bevelEnabled: false, curveSegments: 8 });
-        recess.deleteAttribute('uv'); recess.rotateX(-Math.PI / 2); recess.translate(cx, top, cz); recessCut = recess;
+          rr = Math.min(6, Math.min(iw, id) * (m.sideR ?? 0.1) * 0.5 + 1); // redondo (Moon Deck): o próprio círculo
+        // cl41: com concordância em cima (a quina da borda vira curva) e no fundo
+        recessCut = pocketCut(round ? circOut(Math.min(iw, id) / 2) : rrOut(iw / 2, id / 2, rr), cx, cz, top, top + st.h, Math.min(0.5, st.h * 0.6), Math.min(0.3, st.h * 0.35));
       }
       let edgeCut, grooveCut;
       if (m.canal) {
@@ -6791,9 +6802,11 @@ function compactParts(product, L, S0) {
         [-1, 1].forEach(k => add(new RoundedBoxGeometry(ew, eh, ed, 2, Math.min(0.4, eh / 3)), objs[0].material, idx, 'encaixe', cx + k * w * (e?.x ?? 0.3), yM - eh / 2, zb)); }
     }
   });
-  const aberto = !!S0?.aberto;
+  const aberto = !!S0?.aberto, topH = L.filter(e => e.m.hinge && !e.m.hidden).at(-1)?.m,
+    topAng = !topH ? 0 : topH.abre > 0 ? topH.abre : aberto ? (topH.abreAberto ?? 105) : 0;
   L.forEach(({ m, idx, y0 }) => {
-    const ang = m.abre > 0 ? m.abre : aberto ? (m.abreAberto ?? 105) : 0; // andar do meio (Moon Deck) fica fechado no Abrir: a tampa mostra o godê dele
+    // andar do meio (Moon Deck): aprovação cl41 — a partir de um ângulo da tampa ele abre junto (segueAng)
+    const ang = m.abre > 0 ? m.abre : m.segue && m !== topH ? segueAng(m, topAng) : aberto ? (m.abreAberto ?? 105) : 0;
     if (m.hidden || !m.hinge) return;
     const objs = mine(idx); if (!objs.length) return;
     // guarda a posição fechada e o eixo: o slider da barra gira a tampa sem remontar a peça
@@ -7599,6 +7612,7 @@ $('#openAng').oninput = e => { const v = +e.target.value;
   const tm = hingeTop(); if (tm) tm.abre = v; S.aberto = v > 0;
   const idx = new Set([S.modules.indexOf(tm)]);
   setHinge(product.children.filter(o => o.isMesh && idx.has(o.userData.idx)), v);
+  S.modules.forEach((m, i) => { if (m.segue && m !== tm && !(m.abre > 0)) setHinge(product.children.filter(o => o.isMesh && o.userData.idx === i), segueAng(m, v)); }); // andar do meio junto
   const b = $('#openBtn'); b.classList.toggle('on', v > 0); b.textContent = v > 0 ? 'Fechar' : 'Abrir'; renderFrame(); };
 $('#openAng').onchange = () => { busy(build); saveLocalSoon(); };
 $('#handBtn').onclick = () => { handOn = !handOn; applyHand(); };
@@ -9749,7 +9763,7 @@ function incomProduct(r) {
         // aprovação cl38 (fotos MOON-DECK): o andar do meio fica escondido dentro da base — por fora só aparecem base e tampa; a base
         // tem duas alturas (a borda de fora e o fundo, onde fica o godê de baixo, embaixo do andar do meio)
         ms = [P('Base', W, Dc, r1(h1 + h2), { ...s0, rBot: 1.5, rTop: 0.6, rebaixo: { inset: 2.8, h: h2 }, godes: godesOf(r), dedo: { ...dB, h: r1(Math.min(3, h1 * 0.4)) } }),
-          P('Andar do meio', r1(W - 6.2), r2(Dc - 6.2), h2, { ...s0, rBot: 0.4, rTop: 0.6, gap: -h2, hinge: true, abre: 0, abreAberto: 0, godes: godesOf(r) }),
+          P('Andar do meio', r1(W - 6.2), r2(Dc - 6.2), h2, { ...s0, rBot: 0.4, rTop: 0.6, gap: -h2, hinge: true, abre: 0, abreAberto: 0, segue: { de: 60, k: 1, max: 45 }, godes: godesOf(r) }), // segue: foto MOON-DECK-2, tampa ~105° e o andar do meio ~45°
           P('Tampa', W, Dc, h3, { ...s0, rBot: 0.6, rTop: 2, hinge: true, abre: 0, oco: true, espelho: true })]; break; }
       // Case G/M (desenho): base é uma placa fina (~24% da altura) e a tampa funda cobre o godê saltado; o rebaixo
       // do dedo fica na borda de baixo da tampa
@@ -10050,6 +10064,10 @@ function incomProduct(r) {
   // P3/4: Case G/M oferecem tampa fechada ou cristal e espelho opcional; padrão com espelho por pedido da dona.
   // Macaroon com a tampa em cúpula (a bola preta da foto)
   if (r.c === 'Compactos' || r.c === 'Paletas') { const clear = { own: true, finish: 'cristal', color: '#ffffff' }; // (paletas: só o degrau abaixo vale para elas)
+    // Aprovação cl41 (Moon, "nada é muito duro nas paletas, todas têm fillets, replicar para tudo"): as bordas de fora de base,
+    // andar do meio e tampa ganham arredondado de pelo menos ~0,9 mm (limitado a 30% da altura da peça)
+    ms.forEach(m => { if (!/^(Base|Tampa|Andar do meio)$/.test(m.name || '')) return; const k = r2(Math.min(0.9, Math.max(0.3, m.h * 0.3)));
+      m.rTop = Math.max(m.rTop || 0, k); m.rBot = Math.max(m.rBot || 0, k); });
     if (/^Case/.test(r.n)) { const t = ms.find(m => m.name === 'Tampa'); if (t) { Object.assign(t, { hingePair: { x: 0.30, w: 0.11 }, caseLatch: true });
       // Foto fechada do site (CASE-FECHADO-G-1) e retomada cdx28: painel central ~41% da frente, quase a parede inteira,
       // com bordinha fina embaixo. Rebaixo de 0,5 mm (não vaza). Proporções medidas na foto, sem cota no catálogo.
