@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION, ADDITION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-18.cl90';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-18.cl91';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -707,7 +707,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-18.cl90';
+const BUILD = '2026-11-18.cl91';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -6959,46 +6959,42 @@ function compactParts(product, L, S0) {
         const cut = new THREE.BoxGeometry(Lh + 0.6, 2 * r + 0.8, 2 * r + 1.6); cut.translate(cx, y0, z + r + 0.35 - 0.4);
         [objs[0], bObjs[0]].forEach(o => { const [outer, inner] = cutHole(o.geometry, cut); if (outer === o.geometry) return; const g = mergeGeometries([ni(outer), ni(inner)]); if (g) { o.geometry.dispose(); o.geometry = g; } });
         cut.dispose(); }
-      if (m.hingeLeaf?.compact && m.hingeLeaf.concealed) { // Macaroon — cl88 (dona, foto lilás ampliada: "resolver essa dobradiça")
-        // A peça da tampa é um BLOCO grosso de cantos arredondados. Fechada, fica deitada num rebaixo da borda de trás da base, rente ao
-        // topo; aberta, gira com a tampa e fica em pé dentro do rebaixo, de frente para quem olha. O rebaixo tem fundo (não é furo
-        // vazado) e uma moldura em U em volta; o pino é interno (atravessa a ponta do bloco e as paredes do rebaixo), sem apoios à mostra.
-        const hk = m.hingeLeaf, Lb = Math.min(W * hk.w, 13), leafW = Lb * 0.75, gp = 0.22, tb = 1.6, /* cl89 (dona: "fazer ele mais alto, não é tão pequeno"): mais largo e mais alto */
-          yT = y0, zb = (() => { // costas da base NA ALTURA DA JUNÇÃO (o Macaroon é abaulado: ali a parede fica mais para dentro que o contorno máximo)
+      if (m.hingeLeaf?.compact && m.hingeLeaf.concealed) { // Macaroon — cl91 (dona, fotos lilás: "o ângulo da dobradiça está errado, ele fica
+        // ligado à tampa, não são dois itens separados", "olha como faz parte da tampa"): a peça é a CONTINUAÇÃO DA PAREDE DE TRÁS DA TAMPA.
+        // Fechada, desce por uma fenda na parede de trás da base (rente às costas); o eixo fica no alto dela, junto da divisão. Aberta, gira
+        // para a frente e fica deitada num rebaixo em cima da borda da base — vista de cima (foto) parece em pé, na inclinação da tampa.
+        const hk = m.hingeLeaf, Lb = Math.min(W * hk.w, 13), leafW = Lb * 0.75, gp = 0.22, tb = 1.6, yT = y0,
+          zb = (() => { // costas da base na altura da junção (o Macaroon é abaulado)
             const o = bObjs[0]; o.updateMatrix(); const p = o.geometry.attributes.position, v = new THREE.Vector3(); let zm = Infinity;
             for (let i = 0; i < p.count; i++) { v.fromBufferAttribute(p, i).applyMatrix4(o.matrix); if (Math.abs(v.x - cx) < 1.5 && v.y > y0 - 1.6 && v.y < y0 - 0.4) zm = Math.min(zm, v.z); }
-            return Number.isFinite(zm) ? zm : bb.min.z; })(), za = zb + 0.95, ya = yT - tb / 2,
-          frontZ = (bb.min.z + bb.max.z) / 2 - base.m.D / 2 + 4.4, Lk = Math.max(2.2, Math.min(leafW * 0.85, frontZ + 3 - za - gp));
+            return Number.isFinite(zm) ? zm : bb.min.z; })(),
+          Lk = Math.max(3, Math.min(leafW * 0.85, base.m.h - 3)), ya = yT - tb / 2, za = zb + tb / 2;
         axis = { y: ya, z: za };
-        // bloco: em coordenadas da tampa fechada — deitado, de za−tb/2 (ponta redonda em volta do eixo) até za+Lk
-        const blk = new RoundedBoxGeometry(leafW, tb, Lk + tb / 2, 3, Math.min(0.75, tb / 2 - 0.02));
-        blk.translate(cx, ya, za + (Lk - tb / 2) / 2); const lidAdd = [blk];
-        // cl89 ("a transição não existe, ele encaixa na tampa como uma rampa"): do fim do bloco sobe uma rampa por dentro da tampa até o
-        // teto dela junto da parede de trás — aberta, o bloco continua na tampa sem degrau
-        { const zr0 = zb + 1.2, yR = y0 + Math.min(m.h * 0.45, 3.2), sh = new THREE.Shape();
-          sh.moveTo(za + Lk, y0 - 0.02); sh.lineTo(zr0, y0 - 0.02); sh.lineTo(zr0, yR); sh.quadraticCurveTo(zr0 + (za + Lk - zr0) * 0.35, yR, za + Lk, y0 - 0.02);
-          const rg = new THREE.ExtrudeGeometry(sh, { depth: leafW, bevelEnabled: true, bevelSize: 0.2, bevelThickness: 0.2, bevelSegments: 2, curveSegments: 16 });
-          rg.deleteAttribute('uv'); rg.translate(0, 0, -leafW / 2); rg.rotateY(Math.PI / 2); rg.translate(cx, 0, 0);
-          lidAdd.push(rg); }
-        // cl89 (dona: "não ter aresta, é um produto só"): bloco e rampa fundidos ao corpo da tampa (uma malha só, normais suavizadas)
+        // peça (coordenadas da tampa fechada): em pé, de ya (ponta redonda no eixo) descendo Lk, face de fora rente às costas
+        const blk = new RoundedBoxGeometry(leafW, Lk + tb / 2, tb, 3, Math.min(0.75, tb / 2 - 0.02));
+        blk.translate(cx, ya + tb / 2 - (Lk + tb / 2) / 2, za);
+        // emenda com a parede de trás da tampa: um trecho da própria parede, da divisão até um pouco acima, para a peça sair dela
+        const neck = new RoundedBoxGeometry(leafW, 1.6, tb, 3, Math.min(0.6, tb / 2 - 0.02)); neck.translate(cx, yT + 0.5, za);
+        const lidAdd = [blk, neck];
         { const body = objs[0]; let ok = false;
           if (!THUMB_LITE) try { body.updateMatrix(); const inv = body.matrix.clone().invert(), ev = new Evaluator(); ev.attributes = ['position', 'normal']; ev.useGroups = false;
             let out = flatPN(body.geometry); for (const g of lidAdd) { g.applyMatrix4(inv); const r2 = ev.evaluate(new Brush(out), new Brush(flatPN(g)), ADDITION).geometry; out.dispose(); out = r2; }
-            // cl90 (dona: "malha ruim no macaron"): sem refazer normais — a união corta a face em triângulos finos e o vinco recalculado
-            // listrava o bloco; as normais originais (interpoladas pela união) sombreiam liso
-            out.userData = { ...body.geometry.userData }; body.geometry.dispose(); body.geometry = out; ok = true;
-          } catch (e) { console.warn('Bloco da dobradiça (Macaroon):', e); body.updateMatrix(); lidAdd.forEach(g => g.applyMatrix4(body.matrix)); }
+            out.userData = { ...body.geometry.userData }; body.geometry.dispose(); body.geometry = out; ok = true; // normais originais: sem listras (cl90)
+          } catch (e) { console.warn('Peça da dobradiça (Macaroon):', e); body.updateMatrix(); lidAdd.forEach(g => g.applyMatrix4(body.matrix)); }
           if (!ok) lidAdd.forEach(g => { add(g, mT, idx, 'dobradica', 0, 0, 0); objs.push(product.children.at(-1)); }); else lidAdd.forEach(g => g.dispose()); }
-        const pinR = 0.28, pin = new THREE.CylinderGeometry(pinR, pinR, leafW - 0.5, 24); /* dentro do bloco: não aparece no vão */ pin.rotateZ(Math.PI / 2); pin.translate(cx, ya, za);
+        const pinR = 0.28, pin = new THREE.CylinderGeometry(pinR, pinR, leafW - 0.5, 24); /* dentro da peça */ pin.rotateZ(Math.PI / 2); pin.translate(cx, ya, za);
         add(pin, mirrorMat, base.idx, 'pino', 0, 0, 0);
         if (!THUMB_LITE) {
           const ni = g => { const x = g.index ? g.toNonIndexed() : g; for (const k in x.attributes) if (k !== 'position' && k !== 'normal') x.deleteAttribute(k); return x; };
-          const pw = leafW + 2 * gp, pBot = yT - tb - 0.15, pFront = za + Lk + gp, pBack = zb - 1;
-          // rebaixo com fundo, aberto atrás (a ponta do bloco gira ali)
-          const cutB = new RoundedBoxGeometry(pw, yT + 1 - pBot, pFront - pBack, 2, 0.2); cutB.translate(cx, (yT + 1 + pBot) / 2, (pFront + pBack) / 2);
-          const [outer, inner] = cutHole(bObjs[0].geometry, ni(cutB)); cutB.dispose();
-          if (outer !== bObjs[0].geometry) { const g = mergeGeometries([ni(outer), ni(inner)]); if (g) { bObjs[0].geometry.dispose(); bObjs[0].geometry = g; } }
-          // cl89 (dona: "isso não existe", recorte das pontas da moldura): sem moldura em U — o próprio rebaixo da borda faz o contorno
+          const pw = leafW + 2 * gp, sinA = Math.sin(15 * Math.PI / 180);
+          // fenda nas costas (peça fechada) + rebaixo em cima da borda (peça aberta, deitada para a frente)
+          const slot = new RoundedBoxGeometry(pw, Lk + gp + 1.2, tb + gp + 1.2, 2, 0.2); slot.translate(cx, yT - (Lk + gp) / 2 + 0.6, zb + (tb + gp) / 2 - 0.6);
+          const pFront = za + Lk + gp + 0.3, pBot = yT - tb - gp;
+          const pocket = new RoundedBoxGeometry(pw, yT + 2 - pBot, pFront - (zb - 0.5), 2, 0.25); pocket.translate(cx, (yT + 2 + pBot) / 2, (pFront + zb - 0.5) / 2);
+          for (const o of bObjs.filter(o => !/_(gode|bandeja)$/.test(o.name))) for (const cut of [slot, pocket]) {
+            const [outer, inner] = cutHole(o.geometry, ni(cut.clone())); if (outer === o.geometry) continue;
+            const g = mergeGeometries([ni(outer), ni(inner)]); if (g) { o.geometry.dispose(); o.geometry = g; } }
+          slot.dispose(); pocket.dispose();
         }
       } else if (m.hingeLeaf) { // Frame/Macaroon (fotos abertas): aba fina da tampa articulada entre dois apoios da base.
         // Opção só destas famílias; hingeBloco dos Moon aprovados não muda.

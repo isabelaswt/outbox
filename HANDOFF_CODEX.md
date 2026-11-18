@@ -1,3 +1,7 @@
+# Atualização Claude — 18/11/2026, cl91
+
+Macaroon: peça da dobradiça = continuação da parede de trás da tampa; fechada numa fenda das costas da base, aberta deitada num rebaixo da borda. Próximo carimbo: cl92.
+
 # Atualização Claude — 18/11/2026, cl90
 
 Macaroon: malha do bloco da dobradiça lisa (sem recalcular normais após a CSG). Próximo carimbo: cl91.
