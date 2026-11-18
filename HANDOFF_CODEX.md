@@ -1,5 +1,7 @@
 # Atualização Claude — 18/11/2026, cl62–cl76
 
+**Case APROVADO pela dona na cl76** — não mexer no ramo `hingeCase` sem pedido dela (como Moon/Classic). Revisão: 16 ok / 24 feito / 0 ajustar.
+
 cl76: Case — sem a lingueta da tampa sobre o cilindro (recorte redondo aberto para as costas). Próximo carimbo: cl77.
 
 cl75: Case — pino até o fim do furo do cilindro. Próximo carimbo: cl76.
