@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION, ADDITION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-18.cl62';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-18.cl63';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -707,7 +707,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-18.cl62';
+const BUILD = '2026-11-18.cl63';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -7052,45 +7052,45 @@ function compactParts(product, L, S0) {
           const cutT = ni(new RoundedBoxGeometry(Lb + 2 * gp, hu + gp + 1, t + 2.4, 2, 0.3).translate(cx, y0 - 1 + (hu + gp + 1) / 2, z - 2 + (t + 2.4) / 2));
           cutT.dispose(); [[bObjs[0], cutB]].forEach(([o, cut]) => { const [outer, inner] = cutHole(o.geometry, cut); cut.dispose();
             if (outer !== o.geometry) { const g = mergeGeometries([ni(outer), ni(inner)]); if (g) { o.geometry.dispose(); o.geometry = g; } } }); }
-      } else if (m.hingeCase) { // Case: CASE-M-4/8/9 e pedido da dona (cl53): alojamento redondo e mais curto nas pontas.
-        // Proporções das duas articulações medidas nas fotos; diâmetro/folga do pino sem cota industrial.
-        const rcK = Math.max(0.5, (m.sideR ?? 0.04) * Math.min(W, bb.max.z - bb.min.z) / 2 + 0.3),
-          [fa, fb] = m.hingeCase, fc = 0.5 - rcK / W, gp = 0.15, bore = r * 0.38 + 0.08, cutsT = [], cutsB = [];
+      } else if (m.hingeCase) { // Case — cl63, foto CASE-G-2 ampliada pela dona ("olha como é montada, tem alguns vãos que não temos;
+        // quero que fique exatamente igual"). Cinco nós no mesmo eixo, de fora para dentro em cada lado: dente da tampa (a parede
+        // lateral desce em volta do eixo), nó da base na ponta, vão fino (passa luz), nó da tampa, vão largo e, no centro, um nó
+        // comprido da base. A parede de trás da tampa é recortada sobre os nós da base, com folga que aparece como o vão em L da foto.
+        // Medidas na foto (Case G, 71,9 mm): centro da base até 21,7%; nó da tampa 23,7–34,2%; nó da base da ponta até 45,6%.
+        const [c0, c1, c2] = m.hingeCase.length === 3 ? m.hingeCase : [0.217, 0.342, 0.456], gv = 1.4, gs = 0.4,
+          bore = r * 0.38 + 0.08, cutsT = [], cutsB = [], len = (p, q) => Math.abs(q - p), mid = (p, q) => (p + q) / 2;
+        const cyl = (p, q, rr) => { const g = new THREE.CylinderGeometry(rr, rr, len(p, q), 48); g.rotateZ(Math.PI / 2); g.translate(mid(p, q), y0, hz); return g; };
+        const tube = (p, q) => { const sh = new THREE.Shape(); sh.absarc(0, 0, r, 0, TAU, false);
+          const hole = new THREE.Path(); hole.absarc(0, 0, bore, 0, TAU, true); sh.holes.push(hole);
+          const g = new THREE.ExtrudeGeometry(sh, { depth: len(p, q), bevelEnabled: false, curveSegments: 24 });
+          g.deleteAttribute('uv'); g.rotateY(Math.PI / 2); g.translate(Math.min(p, q), y0, hz); return g; };
+        const X = f => W * f, e0 = X(c0), t0 = e0 + gv, t1 = X(c1), b0 = t1 + gs, b1 = X(c2), d0 = b1 + gs, dE = W / 2 - 0.4;
+        add(tube(cx - e0, cx + e0), mB, base.idx, 'dobradica', 0, 0, 0); // nó comprido da base, no centro
+        cutsB.push(cyl(cx - e0 + 0.04, cx + e0 - 0.04, bore));
+        cutsT.push(cyl(cx - e0 - gv / 2, cx + e0 + gv / 2, r + 0.2)); // a tampa abre o vão sobre ele (o "rebaixo central")
         [-1, 1].forEach(sg => {
-          const xa = cx + sg * W * fa, xb = cx + sg * W * fb, xc = cx + sg * W * fc,
-            mid = (p, q) => (p + q) / 2, len = (p, q) => Math.abs(q - p);
-          const cyl = (p, q, rr) => { const g = new THREE.CylinderGeometry(rr, rr, len(p, q), 48);
-            g.rotateZ(Math.PI / 2); g.translate(mid(p, q), y0, hz); return g; };
-          // Nó anular: o pino atravessa um furo real, em vez de atravessar o cilindro maciço antigo.
-          const tube = (p, q) => { const sh = new THREE.Shape(); sh.absarc(0, 0, r, 0, TAU, false);
+          const P = v => cx + sg * v;
+          add(tube(P(t0), P(t1)), mT, idx, 'dobradica', 0, 0, 0); objs.push(product.children.at(-1));
+          { // nó da base na ponta = bloco (foto: topo plano e frente reta, à frente do eixo), costas redondas e furo redondo do pino
+            const ext = 1.2, k = 0.35, sh = new THREE.Shape(); sh.moveTo(0, -r); sh.lineTo(-(r + ext) + k, -r); sh.quadraticCurveTo(-(r + ext), -r, -(r + ext), -r + k);
+            sh.lineTo(-(r + ext), r - k); sh.quadraticCurveTo(-(r + ext), r, -(r + ext) + k, r); sh.lineTo(0, r); sh.absarc(0, 0, r, Math.PI / 2, -Math.PI / 2, true);
             const hole = new THREE.Path(); hole.absarc(0, 0, bore, 0, TAU, true); sh.holes.push(hole);
-            const g = new THREE.ExtrudeGeometry(sh, { depth: len(p, q), bevelEnabled: false, curveSegments: 24 });
-            g.deleteAttribute('uv'); g.rotateY(Math.PI / 2); g.translate(Math.min(p, q), y0, hz); return g; };
-          const xbT = xb - sg * gp / 2, xbB = xb + sg * gp / 2;
-          // cl60 (dona, fotos CASE-G-2 de cima e CASE-G-1 de lado: "tem um dente na tampa que faz parte da dobradiça"): a ponta
-          // não é aberta — a parede lateral da tampa desce em volta do eixo como um dente (~2 mm com a quina) e fecha o nó da base
-          // por fora; o nó da base fica entre o dente e o nó de dentro da tampa
-          const tL = Math.min(1.4, W * 0.02), xcB = xc - sg * (tL + gp / 2), xtT = xc - sg * tL;
-          add(tube(xa, xbT), mT, idx, 'dobradica', 0, 0, 0); objs.push(product.children.at(-1));
-          add(tube(xbB, xcB), mB, base.idx, 'dobradica', 0, 0, 0);
-          { const L = W / 2 - 0.4 - Math.abs(xtT - cx), c = Math.min(r * 0.6, 0.7), pts = [[0, 0], [r, 0], [r, L - c]];
+            const g = new THREE.ExtrudeGeometry(sh, { depth: len(b0, b1), bevelEnabled: true, bevelThickness: 0.2, bevelSize: 0.2, bevelSegments: 2, curveSegments: 24 });
+            g.deleteAttribute('uv'); g.translate(0, 0, 0.2); g.scale(1, 1, (len(b0, b1) - 0.4) / len(b0, b1)); g.rotateY(Math.PI / 2); g.translate(Math.min(P(b0), P(b1)), y0, hz);
+            add(g, mB, base.idx, 'dobradica', 0, 0, 0); }
+          { const L = dE - d0, c = Math.min(r * 0.6, 0.7), pts = [[0, 0], [r, 0], [r, L - c]]; // dente: borda de fora arredondada como a quina
             for (let i = 1; i <= 8; i++) { const a = i / 8 * Math.PI / 2; pts.push([r - c + c * Math.cos(a), L - c + c * Math.sin(a)]); } pts.push([0, L]);
             const g = new THREE.LatheGeometry(pts.map(([a, b]) => new THREE.Vector2(a, b)), 48); g.deleteAttribute('uv');
-            g.rotateZ(-sg * Math.PI / 2); g.translate(xtT, y0, hz); // vai rente à face lateral (foto de lado), borda de fora arredondada como a quina
-            add(g, mT, idx, 'dente_dobradica', 0, 0, 0); } objs.push(product.children.at(-1));
-          // cl60 (dona: "essa estrutura não existe"): sem o apoio em bloco à frente do nó da base (cdx29)
-          add(cyl(xa + sg * 0.3, xcB, r * 0.38), mirrorMat, base.idx, 'pino', 0, 0, 0);
-          // A tampa abraça o nó externo da base com um recorte circular até o dente da ponta.
-          // Cortadores com intervalos separados evitam sobreposição no CSG.
-          cutsT.push(cyl(xbB - sg * 0.06, xtT, r + 0.16));
-          cutsT.push(cyl(xa - sg * 0.05, xbT + sg * 0.05, bore));
-          cutsB.push(cyl(xa - sg * 0.12, xbT + sg * 0.06, r + 0.16));
-          cutsB.push(cyl(xbB - sg * 0.04, xcB, bore));
-          cutsB.push(cyl(xcB + sg * 0.02, cx + sg * (W / 2 + 0.3), r + 0.16)); // a base cede lugar ao dente
+            g.rotateZ(-sg * Math.PI / 2); g.translate(P(d0), y0, hz); add(g, mT, idx, 'dente_dobradica', 0, 0, 0); objs.push(product.children.at(-1)); }
+          add(cyl(P(e0 - 0.3), P(b1), r * 0.38), mirrorMat, base.idx, 'pino', 0, 0, 0);
+          // tampa: furo do pino no nó dela; vão sobre o nó da base da ponta, com folga maior (o vão em L que passa luz)
+          cutsT.push(cyl(P(t0 + 0.05), P(t1 - 0.05), bore));
+          cutsT.push(cyl(P(b0 - gs / 2), P(d0 - 0.02), Math.hypot(r + 1.2, r) + 0.3)); // entalhe da tampa sobre o bloco: gira livre e deixa o vão em L
+          // base: cede lugar ao nó da tampa e ao dente; furo do pino no nó da ponta
+          cutsB.push(cyl(P(t0 - gv / 2 + 0.06), P(t1 + gs / 2 - 0.02), r + 0.16));
+          cutsB.push(cyl(P(b0 + 0.04), P(b1 - 0.04), bore));
+          cutsB.push(cyl(P(d0 - gs / 2 + 0.02), P(W / 2 + 0.3), r + 0.16));
         });
-        // Rebaixo central da casca preservado; a correção é só da família Case.
-        { const rw = 2 * W * (fa - 0.025), rd = 0.7, rh = m.h - (m.rTop || 1) - 0.4;
-          cutsT.push(new RoundedBoxGeometry(rw, rh + 1, 2 * rd, 2, 0.3).translate(cx, y0 + (rh - 1) / 2, z)); }
         if (!THUMB_LITE) { const ni = x => { const g = x.index ? x.toNonIndexed() : x; for (const k in g.attributes) if (k !== 'position' && k !== 'normal') g.deleteAttribute(k); return g; };
           [[objs[0], cutsT], [bObjs[0], cutsB]].forEach(([o, cs]) => { const cut = mergeGeometries(cs.map(ni)); const [outer, inner] = cutHole(o.geometry, cut); cut.dispose();
             if (outer === o.geometry) return; const g = mergeGeometries([ni(outer), ni(inner)]); if (g) { o.geometry.dispose(); o.geometry = g; } }); }
@@ -10418,7 +10418,7 @@ function incomProduct(r) {
     // andar do meio e tampa ganham arredondado de pelo menos ~0,9 mm (limitado a 30% da altura da peça)
     ms.forEach(m => { if (!/^(Base|Tampa|Andar do meio)$/.test(m.name || '')) return; const k = r2(Math.min(1.4, Math.max(0.3, m.h * 0.35))); // cl45: "mais fillet, é arredondado mesmo"
       m.rTop = Math.max(m.rTop || 0, k); m.rBot = Math.max(m.rBot || 0, k); });
-    if (/^Case/.test(r.n)) { const t = ms.find(m => m.name === 'Tampa'); if (t) { Object.assign(t, { hingePair: { x: 0.30, w: 0.11 }, hingeCase: [0.26, 0.38], caseLatch: true });
+    if (/^Case/.test(r.n)) { const t = ms.find(m => m.name === 'Tampa'); if (t) { Object.assign(t, { hingePair: { x: 0.30, w: 0.11 }, hingeCase: [0.217, 0.342, 0.456], caseLatch: true });
       // Foto fechada do site (CASE-FECHADO-G-1) e retomada cdx28: painel central ~41% da frente, quase a parede inteira,
       // com bordinha fina embaixo. Rebaixo de 0,5 mm (não vaza). Proporções medidas na foto, sem cota no catálogo.
       // A língua interna do fecho mantém a altura do encaixe (latchRoof).

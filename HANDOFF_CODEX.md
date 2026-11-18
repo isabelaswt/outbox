@@ -1,3 +1,7 @@
+# Atualização Claude — 18/11/2026, cl62–cl63
+
+cl62: aba do Moon sem listras (normais radiais na face de fora após a união do `joinTab`). cl63: dobradiça dos Case remontada pela foto CASE-G-2 — cinco nós (dente da tampa, bloco da base na ponta, nó da tampa, nó comprido da base no centro) com os vãos da foto; ver Registro do CODEX_REFINO. Próximo carimbo: cl64.
+
 # Atualização Claude — 18/11/2026, cl61
 
 Conta-gotas: borracha em sino com respiro no pé (todos de bulbo), botão com topo em domo (Flacon Botão, Julie), ombros/fundos dos Flacon 15/30 Bulbo, refil do Dispensing 15/30 até o fundo da cavidade, spray dos Deluxe reproporcionado pela foto (mais baixo e encorpado). Os 10 itens marcados "feito" na revisão. Próximo carimbo: cl62.
