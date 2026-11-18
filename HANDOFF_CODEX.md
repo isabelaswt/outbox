@@ -1,3 +1,7 @@
+# Atualização Claude — 18/11/2026, cl96
+
+Macaroon: aba encosta no teto abaulado da tampa e a junção tem concordância (curva). Próximo carimbo: cl97.
+
 # Atualização Claude — 18/11/2026, cl95
 
 Macaroon: tampa encosta na base a 90° e a aba nasce do teto de dentro da tampa. Próximo carimbo: cl96.

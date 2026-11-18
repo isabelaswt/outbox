@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION, ADDITION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-18.cl95';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-18.cl96';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -707,7 +707,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-18.cl95';
+const BUILD = '2026-11-18.cl96';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -6975,13 +6975,30 @@ function compactParts(product, L, S0) {
         axis = { y: ya, z: za };
         // peça (coordenadas da tampa fechada): em pé, de ya (ponta redonda no eixo) descendo Lk, face de fora rente às costas
         // cl94: aba e pescoço numa peça reta só, da parede da tampa (yT+1,3) até a ponta da aba — sem emenda entre os dois
-        const yTop = (() => { // cl95 (dona: "tocando na tampa"): o pescoço sobe até o teto de dentro da tampa naquele ponto (antes terminava no vazio)
-            const o = objs[0]; o.updateMatrix(); const p = o.geometry.attributes.position, v = new THREE.Vector3(); let ym = Infinity;
-            for (let i = 0; i < p.count; i++) { v.fromBufferAttribute(p, i).applyMatrix4(o.matrix); if (Math.abs(v.x - cx) < leafW / 2 && Math.abs(v.z - za) < tb / 2 + 0.3 && v.y > yT + 0.2) ym = Math.min(ym, v.y); }
-            return Number.isFinite(ym) ? ym + 0.5 : yT + 1.3; })(), yBot = ya - Lk, blk = new RoundedBoxGeometry(leafW, yTop - yBot, tb, 3, Math.min(0.75, tb / 2 - 0.02));
+        const F = 1.0, ceil = (() => { // cl96 (dona: "parece que ainda não toca"): teto de dentro da tampa sobre a aba — por dentro ela é abaulada,
+            // então o teto sobe da face de trás para a da frente. Por faixa de z: o mais baixo é o teto (dentro) e o mais alto, a casca de fora
+            const o = objs[0]; o.updateMatrix(); const p = o.geometry.attributes.position, v = new THREE.Vector3(), lo = new Map(), hi = new Map();
+            for (let i = 0; i < p.count; i++) { v.fromBufferAttribute(p, i).applyMatrix4(o.matrix);
+              if (Math.abs(v.x - cx) < leafW / 2 + F + 0.5 && Math.abs(v.z - za) < tb / 2 + F + 0.4 && v.y > yT + 0.2) { const k = Math.round(v.z * 5);
+                lo.set(k, Math.min(lo.get(k) ?? Infinity, v.y)); hi.set(k, Math.max(hi.get(k) ?? -Infinity, v.y)); } }
+            const inner = [...lo.entries()].filter(([k]) => Math.abs(k / 5 - za) < tb / 2 + 0.6).map(([, y]) => y), outer = [...hi.values()];
+            return inner.length ? [Math.min(...inner), Math.max(...inner), Math.min(...outer)] : [yT + 1, yT + 1.5, yT + 4]; })(),
+          yTop = Math.min(ceil[1] + 0.45, ceil[2] - 0.6) /* não passa da casca de fora (fechado furava o ombro da tampa) */, yBot = ya - Lk, blk = new RoundedBoxGeometry(leafW, yTop - yBot, tb, 3, Math.min(0.75, tb / 2 - 0.02));
         blk.translate(cx, (yTop + yBot) / 2, za);
         // emenda com a parede de trás da tampa: um trecho da própria parede, da divisão até um pouco acima, para a peça sair dela
-        const lidAdd = [blk];
+        // concordância da junção (dona: "quando tocar, quero que suavize a junção"): a aba abre em curva até encontrar o teto
+        const fillet = (() => { const y0f = ceil[0] - 0.6, H = yTop - y0f, K = 10, N = 64, r0 = Math.min(0.75, tb / 2 - 0.02);
+          const ring = (o, y) => { const hw = leafW / 2 + o, hd = tb / 2 + o, rr = r0 + o, pts = [];
+            for (let q = 0; q < 4; q++) { const sx = q === 0 || q === 3 ? 1 : -1, sz = q < 2 ? 1 : -1, a0 = q * Math.PI / 2;
+              for (let k = 0; k < N / 4; k++) { const a = a0 + k / (N / 4) * Math.PI / 2; pts.push([cx + sx * (hw - rr) + Math.cos(a) * rr, y, za + sz * (hd - rr) + Math.sin(a) * rr]); } }
+            return pts; };
+          const rings = []; for (let k = 0; k <= K; k++) { const t = k / K; rings.push(ring(F * t * t, y0f + H * t)); }
+          const pos = [], tri = (a, b, c) => pos.push(...a, ...b, ...c);
+          for (let k = 0; k < K; k++) for (let n = 0; n < N; n++) { const a = rings[k][n], b = rings[k][(n + 1) % N], c = rings[k + 1][(n + 1) % N], d = rings[k + 1][n]; tri(a, c, b); tri(a, d, c); }
+          const cb = [cx, y0f, za], ct = [cx, yTop, za];
+          for (let n = 0; n < N; n++) { tri(cb, rings[0][n], rings[0][(n + 1) % N]); tri(ct, rings[K][(n + 1) % N], rings[K][n]); }
+          const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.computeVertexNormals(); return g; })();
+        const lidAdd = [blk, fillet];
         { const body = objs[0]; let ok = false;
           if (!THUMB_LITE) try { body.updateMatrix(); const inv = body.matrix.clone().invert(), ev = new Evaluator(); ev.attributes = ['position', 'normal']; ev.useGroups = false;
             let out = flatPN(body.geometry); for (const g of lidAdd) { g.applyMatrix4(inv); const r2 = ev.evaluate(new Brush(out), new Brush(flatPN(g)), ADDITION).geometry; out.dispose(); out = r2; }
