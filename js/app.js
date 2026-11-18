@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION, ADDITION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-18.cl84';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-18.cl85';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -707,7 +707,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-18.cl84';
+const BUILD = '2026-11-18.cl85';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -7139,7 +7139,9 @@ function compactParts(product, L, S0) {
         // cl84 (dona: "o cilindro não deve aparecer, ele deve ser menor e escondido atrás, mesmo quando abre"): pino fino, logo atrás
         // das costas, na quina de trás da base
         if (cn) { const rc = 0.45, Lc = W * 0.7, ya = yL, za = z; // eixo na quina de trás da base: a tampa gira rente, sem vão, e o pino vira um arredondado mínimo no canto
-          const cyl = new THREE.CylinderGeometry(rc, rc, Lc, 32); cyl.rotateZ(Math.PI / 2); cyl.translate(cx, ya, za); add(cyl, mB, base.idx, 'dobradica', 0, 0, 0);
+          // cl85 (dona: "não pode estar afastado também, as duas partes se tocam, tampa e base, mas o cilindro fica atrás dessa junção"):
+          // a tampa gira na quina (encosta na base) e o cilindro fica colado nas costas da base, logo abaixo e atrás da junção
+          const cyl = new THREE.CylinderGeometry(rc, rc, Lc, 32); cyl.rotateZ(Math.PI / 2); cyl.translate(cx, ya - rc - 0.05, za - rc - 0.05); add(cyl, mB, base.idx, 'dobradica', 0, 0, 0);
           axis = { y: ya, z: za }; }
         const ridge = cn ? null : new THREE.ExtrudeGeometry(prof(a - gp, yb, yL + hn - gp, ch), { depth: dz - gp - 0.3, bevelEnabled: true, bevelThickness: 0.15, bevelSize: 0.15, bevelSegments: 2 });
         if (ridge) { ridge.deleteAttribute('uv'); ridge.translate(cx, 0, z + 0.15); add(ridge, mB, base.idx, 'dobradica', 0, 0, 0);

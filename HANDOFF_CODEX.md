@@ -1,3 +1,7 @@
+# Atualização Claude — 18/11/2026, cl85
+
+Big 4/9: tampa gira na quina e encosta na base; cilindro atrás da junção, colado nas costas da base. Próximo carimbo: cl86.
+
 # Atualização Claude — 18/11/2026, cl84
 
 Big 4/9: pino fino na quina de trás (invisível de frente, aberta ou fechada); godês menores com moldura mais larga (`godes.mgK` 0,118). Próximo carimbo: cl85.
