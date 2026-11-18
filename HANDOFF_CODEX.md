@@ -1,3 +1,7 @@
+# Atualização Claude — 18/11/2026, cl89
+
+Macaroon: bloco da dobradiça maior, fundido à tampa com rampa (sem aresta), sem moldura em U, pino escondido. Próximo carimbo: cl90.
+
 # Atualização Claude — 18/11/2026, cl88
 
 Macaroon: dobradiça em bloco arredondado da tampa num rebaixo com fundo e moldura em U (foto lilás), pino interno. Próximo carimbo: cl89.
