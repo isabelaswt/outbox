@@ -1,3 +1,7 @@
+# Atualização Claude — 18/11/2026, cl90
+
+Macaroon: malha do bloco da dobradiça lisa (sem recalcular normais após a CSG). Próximo carimbo: cl91.
+
 # Atualização Claude — 18/11/2026, cl89
 
 Macaroon: bloco da dobradiça maior, fundido à tampa com rampa (sem aresta), sem moldura em U, pino escondido. Próximo carimbo: cl90.

@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION, ADDITION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-18.cl89';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-18.cl90';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -707,7 +707,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-18.cl89';
+const BUILD = '2026-11-18.cl90';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -6984,8 +6984,9 @@ function compactParts(product, L, S0) {
         { const body = objs[0]; let ok = false;
           if (!THUMB_LITE) try { body.updateMatrix(); const inv = body.matrix.clone().invert(), ev = new Evaluator(); ev.attributes = ['position', 'normal']; ev.useGroups = false;
             let out = flatPN(body.geometry); for (const g of lidAdd) { g.applyMatrix4(inv); const r2 = ev.evaluate(new Brush(out), new Brush(flatPN(g)), ADDITION).geometry; out.dispose(); out = r2; }
-            const gg = toCreasedNormals(out, THREE.MathUtils.degToRad(55)); gg.userData = { ...body.geometry.userData }; if (gg !== out) out.dispose();
-            body.geometry.dispose(); body.geometry = gg; ok = true;
+            // cl90 (dona: "malha ruim no macaron"): sem refazer normais — a união corta a face em triângulos finos e o vinco recalculado
+            // listrava o bloco; as normais originais (interpoladas pela união) sombreiam liso
+            out.userData = { ...body.geometry.userData }; body.geometry.dispose(); body.geometry = out; ok = true;
           } catch (e) { console.warn('Bloco da dobradiça (Macaroon):', e); body.updateMatrix(); lidAdd.forEach(g => g.applyMatrix4(body.matrix)); }
           if (!ok) lidAdd.forEach(g => { add(g, mT, idx, 'dobradica', 0, 0, 0); objs.push(product.children.at(-1)); }); else lidAdd.forEach(g => g.dispose()); }
         const pinR = 0.28, pin = new THREE.CylinderGeometry(pinR, pinR, leafW - 0.5, 24); /* dentro do bloco: não aparece no vão */ pin.rotateZ(Math.PI / 2); pin.translate(cx, ya, za);
