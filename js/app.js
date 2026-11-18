@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-18.cl48';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-18.cl49';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -707,7 +707,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-18.cl48';
+const BUILD = '2026-11-18.cl49';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -6686,6 +6686,15 @@ function compactParts(product, L, S0) {
         recessCut = pocketCut(round ? circOut(Math.min(iw, id) / 2) : rrOut(iw / 2, id / 2, rr), cx, cz, top, top + st.h, Math.min(0.9, st.h * 0.8), Math.min(0.3, st.h * 0.2));
       }
       let edgeCut, grooveCut;
+      if (m.patamar) { // Classic Duo/Quarteto (aprovação cl49: "o relevo da estrutura dos godês é para cima"): a moldura dos godês
+        // fica no alto e a borda de fora desce h, com a quina do patamar arredondada e concordância no pé
+        const st = m.patamar, iw = w - 2 * st.inset, id = d - 2 * st.inset, rr = Math.min(6, Math.min(iw, id) * (m.sideR ?? 0.1) * 0.5 + 1),
+          inO = rrOut(iw / 2, id / 2, rr), outO = rrOut((w + 10) / 2, (d + 10) / 2, rr + 5), f = Math.min(0.9, st.h * 0.75), fb = Math.min(0.3, st.h * 0.2), yb = top - st.h, prof = [];
+        for (let i = 0; i <= 6; i++) { const t = i / 6 * Math.PI / 2; prof.push([inO, fb - fb * Math.sin(t), yb + fb - fb * Math.cos(t)]); }
+        for (let i = 1; i <= 8; i++) { const a = i / 8 * Math.PI / 2; prof.push([inO, -f + f * Math.cos(a), top - f + f * Math.sin(a)]); }
+        prof.push([inO, -f, top + 2], [outO, 0, top + 2], [outO, 0, yb]);
+        edgeCut = sweepCut(prof, cx, cz);
+      }
       if (m.canal) {
         // Big, foto completa da dona: bandeja central, canal fino e borda externa discretamente mais baixa.
         // Desnível de 0,6 mm por pedido da dona; largura do canal estimada na foto.
@@ -6864,6 +6873,25 @@ function compactParts(product, L, S0) {
         const cut = new THREE.BoxGeometry(Lh + 0.6, 2 * r + 0.8, 2 * r + 1.6); cut.translate(cx, y0, z + r + 0.35 - 0.4);
         [objs[0], bObjs[0]].forEach(o => { const [outer, inner] = cutHole(o.geometry, cut); if (outer === o.geometry) return; const g = mergeGeometries([ni(outer), ni(inner)]); if (g) { o.geometry.dispose(); o.geometry = g; } });
         cut.dispose(); }
+      if (m.hingeCase) { // Case (aprovação cl49, fotos CASE-M-4/8/9): de cada lado, nó da base por dentro (~18–31% do centro), num ressalto
+        // atrás da base, e nó da tampa por fora até perto da borda (~44%); a tampa tem o recorte onde o ressalto da base entra
+        // e a base o recorte onde desce o nó da tampa; pino de metal corrido pelos dois nós
+        const [fa, fb, fc] = m.hingeCase, gp = 0.15, cutsT = [], cutsB = [], blk = 2 * r + 0.8;
+        [-1, 1].forEach(sg => {
+          const xa = cx + sg * W * fa, xb = cx + sg * W * fb, xc = cx + sg * W * fc, mid = (p, q) => (p + q) / 2, len = (p, q) => Math.abs(q - p);
+          const cyl = (p, q, rr) => { const g = new THREE.CylinderGeometry(rr, rr, len(p, q), 40); g.rotateZ(Math.PI / 2); g.translate(mid(p, q), y0, hz); return g; };
+          const xbB = xb - sg * gp / 2, xbT = xb + sg * gp / 2;
+          add(cyl(xa, xbB, r), mB, base.idx, 'dobradica', 0, 0, 0);
+          add(new RoundedBoxGeometry(len(xa, xbB), r + 0.6, blk - 0.7 * r, 2, Math.min(0.5, r * 0.4)), mB, base.idx, 'dobradica', mid(xa, xbB), y0 + r - (r + 0.6) / 2, hz + (blk - 0.7 * r) / 2);
+          add(cyl(xbT, xc, r), mT, idx, 'dobradica', 0, 0, 0); objs.push(product.children.at(-1));
+          add(cyl(xa + sg * 0.3, xc - sg * 0.3, r * 0.38), mirrorMat, base.idx, 'pino', 0, 0, 0);
+          cutsT.push(new THREE.BoxGeometry(len(xa, xbB) + 0.5, r + 0.9, blk + 1.3).translate(mid(xa, xbB), y0 + (r + 0.9) / 2 - 0.05, z + (blk + 1.3) / 2 - 1));
+          cutsB.push(new THREE.BoxGeometry(len(xbT, xc) + 0.4, r + 0.3, 2 * r + 1.4).translate(mid(xbT, xc), y0 - (r + 0.3) / 2 + 0.05, z + r - 0.3));
+        });
+        if (!THUMB_LITE) { const ni = x => { const g = x.index ? x.toNonIndexed() : x; for (const k in g.attributes) if (k !== 'position' && k !== 'normal') g.deleteAttribute(k); return g; };
+          [[objs[0], cutsT], [bObjs[0], cutsB]].forEach(([o, cs]) => { const cut = mergeGeometries(cs.map(ni)); const [outer, inner] = cutHole(o.geometry, cut); cut.dispose();
+            if (outer === o.geometry) return; const g = mergeGeometries([ni(outer), ni(inner)]); if (g) { o.geometry.dispose(); o.geometry = g; } }); }
+      } else
       (m.hingePair ? [-W * (m.hingePair.x ?? 0.30), W * (m.hingePair.x ?? 0.30)] : [0]).forEach(c => {
         const pin = new THREE.CylinderGeometry(r * 0.38, r * 0.38, Lh - 0.6, 24); pin.rotateZ(Math.PI / 2); pin.translate(cx + c, y0, hz);
         const gm = m.hingeCalha ? Lh * 0.78 : g3; // calha (foto): nós curtos da base nas pontas, o da tampa corre quase o eixo todo
@@ -10139,7 +10167,7 @@ function incomProduct(r) {
     // andar do meio e tampa ganham arredondado de pelo menos ~0,9 mm (limitado a 30% da altura da peça)
     ms.forEach(m => { if (!/^(Base|Tampa|Andar do meio)$/.test(m.name || '')) return; const k = r2(Math.min(1.4, Math.max(0.3, m.h * 0.35))); // cl45: "mais fillet, é arredondado mesmo"
       m.rTop = Math.max(m.rTop || 0, k); m.rBot = Math.max(m.rBot || 0, k); });
-    if (/^Case/.test(r.n)) { const t = ms.find(m => m.name === 'Tampa'); if (t) { Object.assign(t, { hingePair: { x: 0.30, w: 0.11 }, caseLatch: true });
+    if (/^Case/.test(r.n)) { const t = ms.find(m => m.name === 'Tampa'); if (t) { Object.assign(t, { hingePair: { x: 0.30, w: 0.11 }, hingeCase: [0.18, 0.31, 0.44], caseLatch: true });
       // Foto fechada do site (CASE-FECHADO-G-1) e retomada cdx28: painel central ~41% da frente, quase a parede inteira,
       // com bordinha fina embaixo. Rebaixo de 0,5 mm (não vaza). Proporções medidas na foto, sem cota no catálogo.
       // A língua interna do fecho mantém a altura do encaixe (latchRoof).
@@ -10165,7 +10193,10 @@ function incomProduct(r) {
       // Aprovação (fotos CLASSIC-DUO-2 / CLASSIC-QUARTETO-2): bordinha rebaixada em toda a paleta — aro externo mais alto e os godês
       // num patamar interno ~0,8 mm abaixo; largura do aro ~5,5% da frente, estimada na foto. Uno (CLASSIC-UNO-1): borda côncava
       // do aro até o godê, com ~metade da borda
-      if (b?.godes && /^Classic (Duo|Quarteto)/.test(r.n)) b.rebaixo = { inset: r1(W * 0.055), h: 0.8 };
+      // cl49 (dona, Classic Duo: "o relevo da estrutura dos godês é para cima, não para baixo"): é o contrário — a moldura dos godês
+      // fica 0,8 mm acima da borda de fora. A tampa (oca) assenta na borda e o patamar entra nela; a tampa cresce 0,8 para a altura bater
+      if (b?.godes && t && /^Classic (Duo|Quarteto)/.test(r.n)) { const ph = 0.8; b.patamar = { inset: r1(W * 0.055), h: ph };
+        t.gap = -ph; t.h = r1(t.h + ph); if (b.dedo) b.dedo.h = r1(b.dedo.h + ph); }
       if (b?.godes && /^Classic Uno/.test(r.n)) b.godes = { ...b.godes, cove: 0.5 };
       // Frame (FRAME-FECHADO, FRAME-P-fechado, aprovação cl38): cavidade maior (~36% × 72% da base), abinha da largura dela, bem arredondada,
       // descendo ~60% da cavidade e subindo só até cobrir o arredondado da tampa — sem o friso na parede
