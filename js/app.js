@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-18.cl42';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-18.cl43';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -707,7 +707,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-18.cl42';
+const BUILD = '2026-11-18.cl43';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -6603,7 +6603,10 @@ function compactParts(product, L, S0) {
         cells.forEach((c, j) => {
           const s0 = st && st.j === j ? st.inset : 0;
           if (s0) stepCut = ext(c, 0.05 - gr, top + 2 - (top - st.d), top - st.d); // degrau: corte à parte (dois cortes sobrepostos na mesma malha falhavam)
-          wells.push(ext(c, 0.05 - gr + s0, top + 2 - rimBot, rimBot));
+          // aprovação cl43 (Classic Duo/Quarteto: "a própria estrutura do godê precisa de um fillet"; vale para todo godê por contorno):
+          // boca do godê com concordância — o contorno é o mesmo do desenho, deslocado para fora só no arredondado de cima
+          const cOut = o => shapeOf(c, 0.05 - gr + s0 - o).getSpacedPoints(120).slice(0, -1).map(v => [v.x, -v.y]);
+          wells.push(s0 ? ext(c, 0.05 - gr + s0, top + 2 - rimBot, rimBot) : pocketCut(cOut, cx, cz, rimBot, top, Math.min(0.5, (top - rimBot) * 0.3), 0));
           // foto (Flat Dez): o pó enche a bandeja quase até a borda; aro de metal fino em volta
           add(ext(c, 0.12 - gr + s0, rimTop - rimBot, rimBot), m.godes.lata ? godeLata : godeRim, idx, 'bandeja', 0, 0, 0);
           add(ext(c, 0.35 - gr + s0, GH - 0.1, top - WD), godeCor(j, m.godes.cells.length), idx, 'gode', 0, 0, 0);
