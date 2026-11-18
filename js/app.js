@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION, ADDITION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-18.cl80';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-18.cl81';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -707,7 +707,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-18.cl80';
+const BUILD = '2026-11-18.cl81';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -6435,6 +6435,7 @@ function godeCor(j, n) {
 }
 const godeMat = new THREE.MeshStandardMaterial({ color: '#d2bea6', roughness: 0.96 }), godeRim = new THREE.MeshStandardMaterial({ color: '#bdb0a0', roughness: 0.45 });
 const mirrorMat = new THREE.MeshStandardMaterial({ color: '#ffffff', metalness: 1, roughness: 0.04 });
+const hingeMat = new THREE.MeshStandardMaterial({ color: '#d4d4d2', metalness: 0.55, roughness: 0.32 }); // cl81: peça da dobradiça das Big/Flat (cinza claro acetinado, foto)
 function localBox(objs) { const bb = new THREE.Box3(); objs.forEach(o => { o.updateMatrix(); o.geometry.computeBoundingBox(); bb.union(o.geometry.boundingBox.clone().applyMatrix4(o.matrix)); }); return bb; }
 // Tampa de compacto oca por baixo: parede de 1,8 mm e teto de 1,4 mm (era um bloco maciço)
 const OCO = { wall: 1.8, top: 1.4 };
@@ -7051,8 +7052,13 @@ function compactParts(product, L, S0) {
         // cl78 (dona, fotos do Moon aberto: "a dobradiça tem mais altura, não é colada na base"): o bloco é da TAMPA, mais alto (80% da
         // base), descendo num entalhe da base com folga em volta; o eixo fica perto do pé dele — aberta, o bloco deita e faz a ponte
         // entre a borda da base e a tampa, como na foto
-        add(new RoundedBoxGeometry(Lb, hb + hu, t, 3, Math.min(0.5, Lb * 0.08)), mT, idx, 'dobradica', cx, y0 + (hu - hb) / 2, z0 + t / 2); objs.push(product.children.at(-1));
-        axis = { y: y0 - hb + t / 2, z: z0 + t / 2 };
+        // cl81 (dona: "vazando o moon deck"): andar ENCAIXADO dentro da base (gap < 0, andar do meio do Deck) volta ao bloco da cl77 —
+        // preso à base, eixo junto da divisão. Com o eixo no pé do bloco, o fundo do andar afundava na parede da base ao abrir e a
+        // borda dela cortava o godê em linha reta.
+        const nest = m.gap < 0;
+        if (nest) add(new RoundedBoxGeometry(Lb, hb + hu, t, 3, Math.min(0.5, Lb * 0.08)), mB, base.idx, 'dobradica', cx, y0 + (hu - hb) / 2, z0 + t / 2);
+        else { add(new RoundedBoxGeometry(Lb, hb + hu, t, 3, Math.min(0.5, Lb * 0.08)), mT, idx, 'dobradica', cx, y0 + (hu - hb) / 2, z0 + t / 2); objs.push(product.children.at(-1)); }
+        axis = { y: nest ? y0 - Math.min(r * 0.6, hb * 0.3) : y0 - hb + t / 2, z: z0 + t / 2 };
         const pin = new THREE.CylinderGeometry(r * 0.3, r * 0.3, Lb + 2 * gp + 0.4, 24); pin.rotateZ(Math.PI / 2); pin.translate(cx, axis.y, axis.z); add(pin, mirrorMat, base.idx, 'pino', 0, 0, 0);
         if (!THUMB_LITE) { const ni = x => { const g = x.index ? x.toNonIndexed() : x; for (const k in g.attributes) if (k !== 'position' && k !== 'normal') g.deleteAttribute(k); return g; };
           const cutB = ni(new RoundedBoxGeometry(Lb + 2 * gp, hb + gp + 2, t + 2.4 + gp + vao, 2, 0.3).translate(cx, y0 - hb - gp + (hb + gp + 2) / 2, z - 2 + (t + 2.4 + gp + vao) / 2));
@@ -7125,13 +7131,29 @@ function compactParts(product, L, S0) {
         // ("a rampa que desce e sobe"). O eixo corre escondido dentro do ressalto.
         const e = Math.max(4, W * 0.05), a = W / 2 - e, hn = clamp(m.h * 0.45, 1.8, 2 * r + 1), dz = 2 * r + 1, ch = Math.min(0.8, hn * 0.4), gp = 0.25;
         const prof = (A, yb, yt, c) => { const sh = new THREE.Shape(); sh.moveTo(-A, yb); sh.lineTo(A, yb); sh.lineTo(A, yt - c); sh.lineTo(A - c, yt); sh.lineTo(-(A - c), yt); sh.lineTo(-A, yt - c); sh.closePath(); return sh; };
-        const ridge = new THREE.ExtrudeGeometry(prof(a - gp, y0 - 0.6, y0 + hn - gp, ch), { depth: dz - gp - 0.3, bevelEnabled: true, bevelThickness: 0.15, bevelSize: 0.15, bevelSegments: 2 });
+        const cn = base.m.canal, yb = cn ? y0 - cn.h - 0.1 : y0 - 0.6; // cl81: com o degrau maior (Big), o ressalto nasce na borda de fora rebaixada
+        const ridge = new THREE.ExtrudeGeometry(prof(a - gp, yb, y0 + hn - gp, ch), { depth: dz - gp - 0.3, bevelEnabled: true, bevelThickness: 0.15, bevelSize: 0.15, bevelSegments: 2 });
         ridge.deleteAttribute('uv'); ridge.translate(cx, 0, z + 0.15); add(ridge, mB, base.idx, 'dobradica', 0, 0, 0);
         axis = { y: y0 + (hn - gp) / 2, z: z + dz / 2 };
+        // cl81 (dona: "dobradiça não chegou, ela não aparece", foto ampliada): logo depois do degrau de cada ponta aparece a peça da
+        // dobradiça, cinza clara, cruzando a divisão — metade na base (fica) e metade na tampa (gira com ela), saliente na face de dentro
+        const kw = clamp(W * 0.028, 1.8, 3), kx = a - gp - Math.max(2.5, W * 0.038) - kw / 2, kd = 0.9, kz = z + dz - 0.15 - kd / 2 + 0.45;
+        [-kx, kx].forEach(sx => {
+          add(new RoundedBoxGeometry(kw, axis.y - (y0 - 1.6), kd, 2, 0.25), hingeMat, base.idx, 'dobradica_peca', cx + sx, (axis.y + y0 - 1.6) / 2, kz);
+          add(new RoundedBoxGeometry(kw, y0 + hn + 1.2 - axis.y - 0.2, kd, 2, 0.25), hingeMat, idx, 'dobradica_peca', cx + sx, (y0 + hn + 1.2 + axis.y + 0.2) / 2, kz); objs.push(product.children.at(-1));
+        });
+        // cl81 (dona: "altura da paleta está diferente", foto BIG-4): a bandeja fica bem acima da borda de fora; a tampa desce numa
+        // saia até essa borda, contornando a bandeja com folga, e fecha sem fresta
+        let saia = null;
+        if (cn) { const bl = localBox(bObjs), bw = bl.max.x - bl.min.x, bd = bl.max.z - bl.min.z, bcz = (bl.max.z + bl.min.z) / 2,
+            ow = bw / 2, od = bd / 2, iw = (bw - 2 * cn.inset) / 2 + cn.w, id = (bd - 2 * cn.inset) / 2 + cn.w;
+          const sh = seShape(ow, od, base.m.n, 256, base.m.planBow); sh.holes.push(new THREE.Path(seShape(iw, id, base.m.n, 256, base.m.planBow).getPoints(128).reverse()));
+          const g = new THREE.ExtrudeGeometry(sh, { depth: cn.h + 0.3, bevelEnabled: false, curveSegments: 32 }); g.deleteAttribute('uv'); g.rotateX(-Math.PI / 2);
+          g.translate(cx, y0 - cn.h, bcz); add(g, mT, idx, 'saia', 0, 0, 0); saia = product.children.at(-1); objs.push(saia); }
         if (!THUMB_LITE) { const ni = x => { const g = x.index ? x.toNonIndexed() : x; for (const k in g.attributes) if (k !== 'position' && k !== 'normal') g.deleteAttribute(k); return g; };
-          const cut = new THREE.ExtrudeGeometry(prof(a, y0 - 1, y0 + hn, ch), { depth: dz + 1, bevelEnabled: false }); cut.translate(cx, 0, z - 1);
-          const [outer, inner] = cutHole(objs[0].geometry, cut); cut.dispose();
-          if (outer !== objs[0].geometry) { const g = mergeGeometries([ni(outer), ni(inner)]); if (g) { objs[0].geometry.dispose(); objs[0].geometry = g; } } }
+          const cut = new THREE.ExtrudeGeometry(prof(a, cn ? yb - 0.5 : y0 - 1, y0 + hn, ch), { depth: dz + 1, bevelEnabled: false }); cut.translate(cx, 0, z - 1);
+          [objs[0], saia].filter(Boolean).forEach(o => { const [outer, inner] = cutHole(o.geometry, cut);
+            if (outer !== o.geometry) { const g = mergeGeometries([ni(outer), ni(inner)]); if (g) { o.geometry.dispose(); o.geometry = g; } } }); cut.dispose(); }
       } else
       (m.hingePair ? [-W * (m.hingePair.x ?? 0.30), W * (m.hingePair.x ?? 0.30)] : [0]).forEach(c => {
         const pin = new THREE.CylinderGeometry(r * 0.38, r * 0.38, Lh - 0.6, 24); pin.rotateZ(Math.PI / 2); pin.translate(cx + c, y0, hz);
@@ -10517,7 +10539,7 @@ function incomProduct(r) {
         // Fotos da dona: aba larga e reta; abertura baixa da mesma largura. Dimensões internas estimadas.
         t.snapFlat = true; t.snapWidth = r1(W * (/^Flat/.test(r.n) ? 0.42 : 0.29));
         Object.assign(b.dedo, { w: r1(t.snapWidth + 0.2), h: 3.2, d: 1 });
-        if (/^Big (4|9)$/.test(r.n)) { delete b.rebaixo; b.canal = { inset: 3.2, w: 0.6, h: 1.3 }; // cl46 (Big 9): degrau bem maior — borda de fora mais baixa (era 0,6)
+        if (/^Big (4|9)$/.test(r.n)) { delete b.rebaixo; b.canal = { inset: 3.2, w: 0.6, h: 2.6 }; /* cl81 ("altura da paleta está diferente", foto BIG-4): degrau 1,3 → 2,6, tampa com saia */ // cl46 (Big 9): degrau bem maior — borda de fora mais baixa (era 0,6)
           // Aprovação cl37 (fotos BIG-4): produto quase no nível da divisória e duas dobradiças, junto aos cantos
           if (b.godes) b.godes = { ...b.godes, fundo: 2.1 }; Object.assign(t, { hingeCalha: 0.9, hingeOculta: true }); } // cl51: dobradiça escondida (era um par aparente)
         // Págs.28–33: encaixes estreitos junto ao eixo; proporções estimadas na foto

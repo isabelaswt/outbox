@@ -1,3 +1,7 @@
+# Atualização Claude — 18/11/2026, cl81
+
+Moon Deck: andar do meio encaixado volta ao eixo da cl77 (não afunda na base). Big/Flat: peça da dobradiça visível nas pontas. Big 4/9: degrau 2,6 e tampa com saia. Próximo carimbo: cl82.
+
 # Atualização Claude — 18/11/2026, cl78–cl80
 
 Frame APROVADO na cl80 (5 itens `ok`): não mexer em planta, visor nem `hingeBloco` sem pedido.
