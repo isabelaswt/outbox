@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION, ADDITION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-19.cl135';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-19.cl136';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -707,7 +707,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-19.cl135';
+const BUILD = '2026-11-19.cl136';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -7447,11 +7447,12 @@ function incomDispensingGeo(g, m, y0) {
     // de frente o contorno de uma peça de revolução é a borda da parede (reta); por isso o topo plano na altura da borda e, por cima, um
     // recorte em sorriso que atravessa de frente a trás (calha em x) — de frente aparece a curva, como a do prato
     P.splice(0, P.length, ...P.filter(q => q.y < rimB - 0.05)); P.push(new THREE.Vector2(Math.min(a, wallAt(rimB) - 0.7), rimB), new THREE.Vector2(0, rimB));
-    let bg = new THREE.LatheGeometry(P, 128);
-    { const sh = new THREE.Shape(); sh.moveTo(-a - 1, rimB + 3); for (let i = 0; i <= 64; i++) { const x = -a - 1 + (2 * a + 2) * i / 64; sh.lineTo(x, Math.min(rimB + 0.02, yTopB(Math.min(a, Math.abs(x))))); } sh.lineTo(a + 1, rimB + 3); sh.closePath();
+    let bg = new THREE.LatheGeometry(P, 256);
+    { const sh = new THREE.Shape(); sh.moveTo(-a - 1, rimB + 3); for (let i = 0; i <= 200; i++) { const x = -a - 1 + (2 * a + 2) * i / 200; sh.lineTo(x, Math.min(rimB + 0.02, yTopB(Math.min(a, Math.abs(x))))); } sh.lineTo(a + 1, rimB + 3); sh.closePath();
       const cut = new THREE.ExtrudeGeometry(sh, { depth: 2 * a + 4, bevelEnabled: false, curveSegments: 4 }); cut.deleteAttribute("uv"); cut.translate(0, 0, -a - 2);
       bg.deleteAttribute('uv'); const [o1, i1] = cutHole(bg, cut); if (o1 !== bg) { const gg = mergeGeometries([o1, i1]); if (gg) bg = gg; } } bg.deleteAttribute('uv'); bg.computeVertexNormals(); if (ox) bg.translate(ox, 0, 0);
-    const out = mergeLoose([g, pg]); out.userData = { ...(g.userData || {}), massa: bg }; return out; }
+    // cl136 (dona: "prefiro só deixar a mais escura"): sai a curva clara do prato (superfície na casca); fica só o sorriso do bloco de vidro
+    const out = m.comPrato ? mergeLoose([g, pg]) : g; if (!m.comPrato) pg.dispose(); out.userData = { ...(g.userData || {}), massa: bg }; return out; }
   if (c) {
     const floor = c.floor, h = m.h - floor + 1;
     // cl123 (dona: "ficou ruim, não é melhor modelar uma curva embaixo?"; foto do Dispensing): parede justa no refil e o piso é uma

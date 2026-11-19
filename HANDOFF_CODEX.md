@@ -1,4 +1,6 @@
-# Atualização Claude — 19/11/2026, cl135
+# Atualização Claude — 19/11/2026, cl136
+
+- **cl136** — Dispensing 15/30 conta-gotas, dona ("prefiro só deixar a mais escura"): sai a curva clara do prato (a superfície unida à casca; volta com `m.comPrato`); fica só o sorriso do topo do bloco de vidro. Malha do bloco mais fina (lathe 256, recorte 200 pontos). Em 3/4 o topo do bloco aparece como uma lâmina curva (é a calha atravessada que faz a curva aparecer de frente).
 
 - **cl135** — Dispensing 15/30 conta-gotas, dona ("essa curva tem que ser em cima da outra"): o sorriso do topo do bloco encosta logo abaixo do prato — 0,7 mm (`m.massaGap`; com 0,05–0,35 aparecia um serrilhado marrom da refração do refil na fresta). Com o recorte atravessado da cl134 o bloco não cobre a ponta do refil.
 
