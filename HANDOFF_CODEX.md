@@ -1,4 +1,6 @@
-# Atualização Claude — 19/11/2026, cl134
+# Atualização Claude — 19/11/2026, cl135
+
+- **cl135** — Dispensing 15/30 conta-gotas, dona ("essa curva tem que ser em cima da outra"): o sorriso do topo do bloco encosta logo abaixo do prato — 0,7 mm (`m.massaGap`; com 0,05–0,35 aparecia um serrilhado marrom da refração do refil na fresta). Com o recorte atravessado da cl134 o bloco não cobre a ponta do refil.
 
 - **cl134** — Dispensing 15/30 conta-gotas, dona ("ficou uma faixa reta e outra curva de novo, elas duas precisam ser curvas"): o topo do bloco maciço virou um segundo sorriso, paralelo ao prato e descido min(d + 0,2) para a borda dele ficar abaixo da ponta do refil. Como de frente uma peça de revolução mostra a borda da parede (reta), o bloco tem topo plano na altura da borda e um recorte em sorriso que atravessa de frente a trás (calha em x, `cutHole` com ExtrudeGeometry) — de frente aparecem as duas curvas.
 

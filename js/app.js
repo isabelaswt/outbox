@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION, ADDITION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-19.cl134';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-19.cl135';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -707,7 +707,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-19.cl134';
+const BUILD = '2026-11-19.cl135';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -7443,7 +7443,7 @@ function incomDispensingGeo(g, m, y0) {
     // seguindo a curva até a parede, o bloco cobria a ponta)
     // cl134 (dona: "ficou uma faixa reta e outra curva, elas duas precisam ser curvas"): o topo do bloco é um segundo sorriso, paralelo ao
     // prato e descido o bastante para a borda dele ficar abaixo da ponta do refil (sem cobri-la)
-    const gB = Math.min(d + 0.2, Math.max(0.3, yR - d - (yb + rc) - 0.6)), yTopB = x => yc(x) - gB, rimB = yTopB(a);
+    const gB = m.massaGap ?? 0.7 /* cl135 (dona: "essa curva tem que ser em cima da outra"): o sorriso do bloco encosta logo abaixo do prato */, yTopB = x => yc(x) - gB, rimB = yTopB(a);
     // de frente o contorno de uma peça de revolução é a borda da parede (reta); por isso o topo plano na altura da borda e, por cima, um
     // recorte em sorriso que atravessa de frente a trás (calha em x) — de frente aparece a curva, como a do prato
     P.splice(0, P.length, ...P.filter(q => q.y < rimB - 0.05)); P.push(new THREE.Vector2(Math.min(a, wallAt(rimB) - 0.7), rimB), new THREE.Vector2(0, rimB));
