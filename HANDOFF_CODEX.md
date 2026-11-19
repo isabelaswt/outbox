@@ -1,4 +1,6 @@
-# Atualização Claude — 18/11/2026, cl130
+# Atualização Claude — 18/11/2026, cl131
+
+- **cl131** — Dispensing 15/30 conta-gotas, dona ("isso não ficou bom ainda, essa linha reta tá esquisita"; "parece que sai do vidro a curva"; "conseguimos deixar mais com cara de massa de vidro?"): o prato abaulado da cl129 fica 0,7 mm dentro da parede (a = W/2 − 0,7; antes passava do vidro com a refração) e ganhou um BLOCO maciço de vidro à parte embaixo (`g.userData.massa` → malha "massa" com material próprio, espessura de refração 0,4·W, topo 0,05 mm abaixo do prato, quina de baixo acompanhando a da casca) — a refração grossa fica só no bloco, a casca segue fina (refil sem contorno dobrado). Testados e descartados: só a metade da frente do prato (cortava de lado), topo do bloco em elipse (sumia a curva), curva em cristal por cima (cortada de lado).
 
 - **cl130** — Flat (todas), dona ("Aplicar as 3", da comparação com a foto nova da Flat Dez aberta e a fechada): (1) rasgo da frente (`dedo`) 1 mm → 2,4 mm de fundo e altura 3,2 → 60% da base (foto aberta: ocupa quase toda a frente; largura 42% já batia); (2) degrau em volta do painel dos godês (`rebaixo`) inset 2 → 2,4 e altura 0,3 → 0,8 mm (aparece como borda na foto); (3) a aba da tampa já tinha a largura do rasgo — na foto fechada ela enche o rasgo inteiro, e como a altura dela segue a do rasgo, agora desce junto. Conferido fechado de frente (aba rente) e aberto de lado.
 
