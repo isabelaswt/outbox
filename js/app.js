@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION, ADDITION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-19.cl137';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-19.cl138';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -707,7 +707,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-19.cl137';
+const BUILD = '2026-11-19.cl138';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -10485,6 +10485,9 @@ function incomProduct(r) {
         cap.gap = -dente.h; }
       // cl137 (aprovação, Bulb dispensador: "a válvula precisa ser mais alta, tudo fica mais alto, quase chega no topo"; fotos DISPENSING-BULB):
       // colar da válvula ~58% mais alto e acionador 50% mais alto — o bico fica logo abaixo do topo da sobretampa
+      // cl138 (aprovação, Amsterdam Deluxe 100: "o spray tá baixo, precisa ficar mais alto"; foto): colar ×1,5 e acionador ×1,4 — o spray
+      // chega perto do topo da sobretampa
+      if (r.n === 'Amsterdam Deluxe 100' && v) Object.assign(v, { h: r1(v.h * 1.5), actH: r1(v.actH * 1.4) });
       if (r.t === 'bulb' && r.c === 'Dispensadores') Object.assign(v, { h: r1(v.h * 1.58), actH: r1(v.actH * 1.5), headH: r1(v.headH * 1.29) });
       if (r.t === 'bulb' && r.c === 'Conta-gotas') Object.assign(v, { W: r1(W * 0.58), D: r1(W * 0.58), h: r1(H * 0.18), actW: r1(W * 0.32), actH: r1(H * 0.19) });
       if (dcg) { Object.assign(v, { W: r1(W * 0.64), D: r1(W * 0.64), h: r1(H * 0.13), actW: r1(W * 0.34), actH: r1(H * 0.17), friso: 0.6 }); /* cl119 (fotos Dispensing 15/30): colar ~64% do corpo com friso embaixo; o anel passa um pouco do corpo */
@@ -10879,7 +10882,9 @@ function incomProduct(r) {
     else if (fr && /Frasco em PET/.test(r.mat)) Object.assign(fr, { fundoGrosso: true, fundo: r1(H * 0.025), fundoR: 2 }); // PET (fotos Sydney, Flacon, Deluxes): fundo pesado ~2,5% (4% ficou pesado)
     // cl137 (aprovação: Flacon 15/30 Botão "contagotas ser arredondado no final, fazer outro tipo"; Sydney "conta gotas redondo"):
     // pipeta de tubo reto com a ponta em meia-esfera (foto Flacon 15 Botão fundo-cinza_03)
-    if (/^Flacon (15|30) Botão$|^Sydney$/.test(r.n)) ms.forEach(m => { if (m.type === 'contaGotas') m.pipTip = 'redonda'; });
+    if (/^Flacon (15|30) Botão$|^Sydney$|^Julie$/.test(r.n)) ms.forEach(m => { if (m.type === 'contaGotas') m.pipTip = 'redonda'; }); // cl138: Julie também ("contagotas redondo")
+    // cl138 (aprovação, Sydney: "a borracha do conta-gotas tá meio baixa, aumentar levemente a altura"; foto SYDNEY-60): borracha +12%
+    if (r.n === 'Sydney') ms.forEach(m => { if (m.type === 'contaGotas') m.actH = r1(m.actH * 1.12); });
     // cl137 (dona, Julie: "como fica aberto? não consigo ver"): no Abrir o conta-gotas sai do frasco e deita ao lado, com a pipeta (fotos abertas)
     ms.forEach(m => { if (m.type === 'contaGotas') m.capa = true; });
     ms.forEach(m => { if (m.type === 'contaGotas') { m.ridges = 0;
