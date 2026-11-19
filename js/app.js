@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION, ADDITION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-18.cl128';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-18.cl129';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -707,7 +707,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-18.cl128';
+const BUILD = '2026-11-18.cl129';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -7424,6 +7424,13 @@ function compactParts(product, L, S0) {
 // Espessuras/folgas são parâmetros de visualização estimados, não cotas de fabricação.
 function incomDispensingGeo(g, m, y0) {
   const c = m.incomRefillCavity;
+  // cl129 (dona: "não ter a estrutura que segura o refil, fica sobreposta, quero só o refil, a casca e o fundo abaulado"): sem cavidade
+  // cortada (a superfície dela refratava como um segundo contorno do refil) — a casca fica só a superfície de fora e o fundo é um prato
+  // abaulado em sorriso, de parede a parede, logo abaixo do refil
+  if (c?.prato) { const { a, d, y } = c.prato, Rs = (a * a + d * d) / (2 * d), P = [];
+    for (let i = 0; i <= 48; i++) { const x = a * i / 48; P.push(new THREE.Vector2(x, y0 + y - d + Rs - Math.sqrt(Rs * Rs - x * x))); }
+    const pg = new THREE.LatheGeometry(P, 128); pg.deleteAttribute('uv'); if (m.ox) pg.translate(m.ox, 0, 0);
+    return mergeLoose([g, pg]); }
   if (c) {
     const floor = c.floor, h = m.h - floor + 1;
     // cl123 (dona: "ficou ruim, não é melhor modelar uma curva embaixo?"; foto do Dispensing): parede justa no refil e o piso é uma
@@ -7593,7 +7600,7 @@ function buildInto(product, S, explodeAmt = 0) {
     // ficava de vidro, ampliando o gargalo por dentro (flip top do Wall — dona: "refração muito grande para plástico").
     // Vidro/cristal maciço (tampas de perfume) continuam grossos.
     const petCap = !m0.vol && /^pet/.test(finM);
-    const thick = !isGlass(finM) || overcap || m0.oco || m0.casca ? undefined : petCap ? 1.5 : r1(!m0.vol ? (ocaV ? clamp(Math.min(m.W, m.D) * 0.12, 3, 6) : clamp(Math.min(m.W, m.D) * 0.35, 4, 18)) : clamp(Math.min(m.W, m.D) * 0.3, 4, 30));
+    const thick = m0.incomRefillCavity?.prato && isGlass(finM) ? 0.5 /* cl129: casca do Dispensing — refração fina, sem segundo contorno do refil */ : !isGlass(finM) || overcap || m0.oco || m0.casca ? undefined : petCap ? 1.5 : r1(!m0.vol ? (ocaV ? clamp(Math.min(m.W, m.D) * 0.12, 3, 6) : clamp(Math.min(m.W, m.D) * 0.35, 4, 18)) : clamp(Math.min(m.W, m.D) * 0.3, 4, 30));
     const own = ms.own ? ms : S, cheio = m0.vol && m0.liq && isFrost(finM) ? (m0.liqColor || '#ffffff') : false; // cor do conteúdo: tinge de leve a base jateada
     const inteira = !!m0.furo && isGlass(finM);
     const look = own.difus != null || own.ior != null || cheio || inteira ? { dif: own.difus, ior: own.ior, cheio, inteira } : null;
@@ -10877,10 +10884,9 @@ function incomProduct(r) {
       // cl126 (dona: "quero uma curva na parte de baixo do frasco, independente do refil"; "ela não sobe e cria uma parede, ela acaba
       // embaixo"): a cavidade fica colada no refil e some (0,2 mm menor, mesmo fundo redondo) e a curva é o FUNDO DO FRASCO — calota larga
       // (84% da largura) côncava por baixo, que aparece através do bloco e termina no pé
-      // cl127/cl128 (dona: "a curva é ao contrário"; "isso! parede do lado não existe, apenas fundo"): cavidade colada no refil (some) e,
-      // embaixo da ponta dele, só a lâmina curva em sorriso de parede a parede (meio mais baixo, 1 mm abaixo da ponta)
-      incomRefillCavity: roundK ? (() => { const dB = r1(Math.min(W, r.D ?? W) * 0.13);
-        return { W: r1(rw - 0.2), D: r1(rd - 0.2), floor: r2(floor + 0.1), rBot: r1(rb - 0.1), ...side, lens: { a: r1(Math.min(W, r.D ?? W) / 2 - 0.5), d: dB, t: 1.1, y: r2(floor - 1 + dB) }, punt: { d: 0.35, a: 0.9 } }; })()
+      // cl127–cl129 (dona: "a curva é ao contrário"; "parede do lado não existe, apenas fundo"; "quero só o refil, a casca e o fundo
+      // abaulado"): sem cavidade — só o prato abaulado em sorriso (meio 1 mm abaixo da ponta do refil, de parede a parede)
+      incomRefillCavity: roundK ? (() => { const dB = r1(Math.min(W, r.D ?? W) * 0.13); return { prato: { a: r1(Math.min(W, r.D ?? W) / 2 - 0.15), d: dB, y: r2(floor - 1 + dB) } }; })()
         : { W: r1(rw + 0.4), D: r1(rd + 0.4), floor: r2(floor * 0.65), rBot: r1(rb), ...side, punt: { d: r1(Math.min(2, floor * 0.3)), a: r1(Math.min(W, r.D ?? W) * 0.34) } } }); // cl60 (Dispensing 15 conta-gotas: "refil está acabando antes do fundo"): na cápsula de fundo curvo a cavidade acompanha o refil até embaixo
     const refill = P('Refil PET', rw, rd, hr, { ...clear, ...shape, h: hr, vol: true, casca: true, apoio: false, // conteúdo no refil (cheio, tom de base)
       liq: true, liqType: 'cremoso', liqLevel: 94, liqColor: corDe(BASE_CORES, r.n),
