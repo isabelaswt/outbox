@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION, ADDITION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-18.cl108';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-18.cl109';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -707,7 +707,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-18.cl108';
+const BUILD = '2026-11-18.cl109';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -7277,7 +7277,9 @@ function compactParts(product, L, S0) {
           const trapDn = (ab, yT, yB, z0b, z1b, bv) => { const sh = new THREE.Shape();
             sh.moveTo(-hw(ab, yB), yB); sh.lineTo(hw(ab, yB), yB); sh.lineTo(hw(ab, yT), yT); sh.lineTo(-hw(ab, yT), yT); sh.closePath();
             const g = new THREE.ExtrudeGeometry(sh, { depth: z1b - z0b - 2 * bv, bevelEnabled: bv > 0, bevelThickness: bv, bevelSize: bv, bevelSegments: 2 }); g.deleteAttribute('uv'); g.translate(cx, 0, z0b + bv); return g; };
-          const macho = trapDn(half, yL + 0.3, yL - D, z, zIn - gq, 0.12), recuo = trapDn(half + gq, yL + 1, yL - D - gq, z - 1, zIn + 1.5, 0);
+          // cl109 (dona: "tirar essa parte, não preciso" — o bloco alto que ficava em pé aberta — e "essa parte que sobra fica na tampa, não na base"):
+          // o macho continua na tampa, mas raso — só a espessura da parede de trás (T) —, e a base só tem o encaixe dele
+          const T = 1.8, macho = trapDn(half, yL + 0.3, yL - D, z, z + T, 0.12), recuo = trapDn(half + gq, yL + 1, yL - D - gq, z - 1, z + T + gq, 0);
           if (!THUMB_LITE) { const ni = x => { const g = x.index ? x.toNonIndexed() : x; for (const a in g.attributes) if (a !== 'position' && a !== 'normal') g.deleteAttribute(a); return g; };
             const bo = bObjs[0]; bo.updateMatrix(); recuo.applyMatrix4(bo.matrix.clone().invert()); const [outer, inner] = cutHole(bo.geometry, recuo); recuo.dispose();
             if (outer !== bo.geometry) { const g = mergeGeometries([ni(outer), ni(inner)]); if (g) { g.userData = { ...bo.geometry.userData }; bo.geometry.dispose(); bo.geometry = g; } }

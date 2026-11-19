@@ -1,4 +1,6 @@
-# Atualização Claude — 18/11/2026, cl108
+# Atualização Claude — 18/11/2026, cl109
+
+- **cl109** — Flat (todas), dona (print do bloco em pé com a paleta aberta: "tirar essa parte, não preciso"; "essa parte que sobra fica na tampa, não na base"): o macho --\\___/-- continua na TAMPA, mas raso — só T = 1,8 mm, a parede de trás — em vez de ir até a face de dentro da borda; a base só tem o encaixe dele (folga 0,22). Aberta, não sobra bloco em pé na frente do espelho.
 
 - **cl108** — Flat (todas), dona: "é exatamente isso só que para baixo, a rampa está para cima e elas precisam ficar para baixo": o trapézio da cl107 virado. A TAMPA desce no meio num macho --\\___/-- (meia-largura W·0,325 em cima, rampas de max(2,4; W·0,035), fundo ~0,3·h da base), unido à tampa por CSG; a BASE tem o recuo do mesmo desenho (folga 0,22), aberto atrás para o macho sair ao abrir. Eixo no pé do macho (yL−D+0,45), 0,45 para dentro das costas; pinos r 0,25 nas quinas de baixo das rampas, entrando na base. Fechada, a emenda --\\___/-- aparece nas costas como linha fina.
 
