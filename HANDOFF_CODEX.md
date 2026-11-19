@@ -1,4 +1,6 @@
-# Atualização Claude — 18/11/2026, cl125
+# Atualização Claude — 18/11/2026, cl126
+
+- **cl126** — Dispensing 15/30 conta-gotas, dona ("você fez a mesma coisa, quero uma curva na parte de baixo do frasco, independente do refil"; "ela não sobe e cria uma parede, ela acaba embaixo"): a curva saiu da cavidade do refil e foi para o FUNDO DO FRASCO — calota côncava por baixo de 84% da largura (`punt` a = 0,42·W, d = min(metade do piso, 0,13·W)), que aparece em arco através do bloco e termina no pé; a cavidade do refil fica colada nele (0,2 mm menor, mesmo fundo redondo) e não aparece. A tigela (`bowl`) continua disponível no código, sem uso.
 
 - **cl125** — Dispensing 15/30 conta-gotas, dona ("não é isso, não quero essa parede do frasco de fora perto do refil, só quero uma curva embaixo mostrando esse peso da base"): a cavidade fica colada no refil (0,2 mm MENOR — a parede some dentro do contorno dele, sem linha em volta) e só embaixo da ponta redonda abre a tigela curva (`bowl.d` = rb + 1,6, aro no começo da ponta): a meia-lua de acrílico entre a ponta do refil e a tigela é a única curva à vista, sobre o bloco maciço.
 
