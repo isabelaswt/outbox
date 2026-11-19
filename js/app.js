@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION, ADDITION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-18.cl118';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-18.cl119';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -707,7 +707,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-18.cl118';
+const BUILD = '2026-11-18.cl119';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -1970,6 +1970,7 @@ function sprayGeo(m, y0, { lo = false } = {}) {
     // e não uma luva até o topo
     collar = ring(m.W - 0.8, Math.min(m.neckH, m.h), y0, { rBot: 0, rTop: 0.4 }); // a rosca (incolor) fica na tampa
   } else collar = ring(m.W, m.h, y0, { rBot: 0.6, rTop: m.collarR, ridges: m.ridges, ridgeD: m.ridgeD, ...(m.collarTaper ? { taper: m.collarTaper } : {}) }); // colar cônico (dosadora)
+  if (m.sprayType === 'gotas' && m.friso > 0) collar = mergeGeometries([collar, ring(m.W + 2 * m.friso, Math.min(1.2, m.h * 0.08), y0, { rBot: 0, rTop: 0.3 })]); // cl119 (fotos Dispensing 15/30): frisinho na base do colar
   const top = y0 + m.h, head = [], holes = [];
   // A haste nasce dentro da virola: em virola de domo, a borda dela não fica solta acima da curva.
   const sink = Math.max(1, Math.min(m.h - 0.5, m.collarR || 0));
@@ -2099,13 +2100,15 @@ function sprayGeo(m, y0, { lo = false } = {}) {
       // lados retos e o topo INTEIRO em domo baixo (superelipse, ~18% da largura de altura), não só a quina arredondada
       // cl104 ("deixar os vértices mais aparentes, é mais duro, não arredondado"): lado reto até uma ARESTA viva e, acima dela, a
       // calota esférica baixa (ponto repetido na aresta = normal partida, sem sombreado arredondando a quina)
-      const R = m.actW / 2, H = m.actH, dH = Math.min(m.actW * 0.15, H * 0.4), Rs = (R * R + dH * dH) / (2 * dH), pts = [[0, 0], [R - 0.2, 0], [R, 0.2], [R, H - dH], [R, H - dH]];
+      const R = m.actW / 2, H = m.actH, dH = Math.min(m.actW * 0.09, H * 0.3), /* cl119 (fotos Flacon 15/30 Botão e Julie): domo mais baixo, aparece mais lateral reta do botão */ Rs = (R * R + dH * dH) / (2 * dH), pts = [[0, 0], [R - 0.2, 0], [R, 0.2], [R, H - dH], [R, H - dH]];
       for (let i = 1; i <= 16; i++) { const x = R * (1 - i / 16); pts.push([x, H - Rs + Math.sqrt(Rs * Rs - x * x)]); }
       head.push(lathe(pts)); }
     else { // cl60 (Bulb, Dispensing 30, Flacon 15 Bulbo: "veja a silhueta do conta-gotas, ele vai abrindo para baixo, como um sino,
       // depois disso tem um respiro embaixo"; fotos Sydney 60, Bulb vermelho, Dispensing 15 preto): corpo cilíndrico com topo em
       // domo; no terço de baixo abre em sino (curva côncava) até a largura da base; no pé, antes do colar, um anel mais estreito (respiro)
-      const R = m.actW / 2, H = m.actH, Rb = Math.min(R * 0.86, H * 0.4), gH = Math.min(1.5, H * 0.07), Rg = R * 0.82, bH = H * 0.32, /* cl104 (Sydney: "fazer essa entrada embaixo do conta-gotas"): respiro mais alto, aparece entre o sino e o colar */
+      // cl119 (fotos Sydney, Dispensing, Flacon Bulbo, ampliadas): o sino começa mais alto (~45% da borracha) e abre até ~60% da largura do
+      // colar (o corpo fica igual); m.sino liga isso — o Bulb (aprovado) segue como estava
+      const R0 = m.actW / 2, H = m.actH, Rb = Math.min(R0 * 0.86, H * 0.4), R = m.sino ? Math.max(R0, Math.min(Rb / 0.72, m.W * 0.3)) : R0, gH = Math.min(1.5, H * 0.07), Rg = R0 * 0.82, bH = H * (m.sino ? 0.45 : 0.32), /* cl104 (Sydney: "fazer essa entrada embaixo do conta-gotas"): respiro mais alto, aparece entre o sino e o colar */
         pts = [[0, 0], [Rg, 0], [Rg, gH], [R - 0.25, gH], [R, gH + 0.25]];
       for (let i = 1; i <= 10; i++) { const u = i / 10; pts.push([Rb + (R - Rb) * (1 - u) * (1 - u), gH + 0.25 + bH * u]); }
       pts.push([Rb, H - Rb]);
@@ -6956,7 +6959,7 @@ function compactParts(product, L, S0) {
     const base = L.find(e => e.idx === idx - 1), bObjs = base ? mine(base.idx) : []; let axis = null; // axis: eixo próprio (Big/Flat, cl58)
     if (bObjs.length) {
       // Case p3–5 e foto ampliada: duas articulações curtas a ~30% do centro, não um eixo longo central.
-      const r = clamp(Math.min(base.m.h, m.h) * 0.22, 1.1, 2.2), Lh = m.hingeCalha ? W * m.hingeCalha : m.hingeFull ? W * 0.94 : m.hingePair ? W * (m.hingePair.w ?? 0.11) : Math.min(W * (m.hingeWidth ?? (m.sides ? 0.4 : 0.32)), m.sides ? 44 : 24), g3 = Lh / 3, gap = m.hingePair ? 0.15 : 0.35;
+      const r = clamp(Math.min(base.m.h, m.h) * 0.22, 1.1, 2.2) * (m.hingeBarra ? 0.7 : 1) /* cl119 (dona, Classic: "mais fino") */, Lh = m.hingeCalha ? W * m.hingeCalha : m.hingeFull ? W * 0.94 : m.hingePair ? W * (m.hingePair.w ?? 0.11) : Math.min(W * (m.hingeWidth ?? (m.sides ? 0.4 : 0.32)), m.sides ? 44 : 24), g3 = Lh / 3, gap = m.hingePair ? 0.15 : 0.35;
       const hz = m.hingeBarra ? z /* cl115 (dona: "isso tem que ficar na junção da tampa com a base, não na base"): a barra fica no eixo, na quina de trás */ : m.hingeCalha ? z + r + 0.35 : z + r * 0.7; // calha: o eixo fica para dentro, num recorte do fundo da base e da tampa
       const kn = (c, x0, x1) => { const g = new THREE.CylinderGeometry(r, r, x1 - x0, 40); g.rotateZ(Math.PI / 2); g.translate(cx + c + (x0 + x1) / 2, y0, hz); return g; };
       const mB = bObjs[0].material, mT = objs[0].material;
@@ -6965,9 +6968,10 @@ function compactParts(product, L, S0) {
           redondo no eixo (r + 0,3, a barra gira dentro sem encostar); as pontas arredondadas da calha são da BASE e seguram o pino.
           A tampa ganha a folga em volta dessas pontas (mesmo cilindro do eixo, então nada bate ao girar) */
           const cyl = (len, rr, x) => { const g = new THREE.CylinderGeometry(rr, rr, len, 48); g.rotateZ(Math.PI / 2); g.deleteAttribute('uv'); g.translate(cx + x, y0, z); return g; };
-          const eB = r + 0.15 + r * 1.1 + r, lidCuts = [-1, 1].map(sg => cyl(eB + 0.4, r + 0.3, sg * (Lh / 2 + eB / 2)));
+          /* cl119 (dona: "buraco menor e acompanhando o cilindro"): a folga da tampa é uma cápsula justa (r + 0,2) no formato da ponta, sem sobra reta */
+          const rc = r + 0.2, eL = r * 1.1, x0 = Lh / 2 - rc, x1 = Lh / 2 + 0.15 + eL + r + 0.2, lidCuts = [-1, 1].map(sg => { const g = new THREE.CapsuleGeometry(rc, x1 - x0 - 2 * rc, 12, 48); g.rotateZ(Math.PI / 2); g.deleteAttribute('uv'); g.translate(cx + sg * (x0 + x1) / 2, y0, z); return g; });
           lidCuts.forEach(lc => { const o = objs[0], [outer, inner] = cutHole(o.geometry, lc); if (outer !== o.geometry) { const g = mergeGeometries([ni(outer), ni(inner)]); if (g) { o.geometry.dispose(); o.geometry = g; } } lc.dispose(); });
-          cut = cyl(Lh + 0.3, r + 0.3, 0); }
+          cut = cyl(Lh + 0.3, r + 0.2, 0); }
         else { cut = new THREE.BoxGeometry(Lh + 0.6, 2 * r + 0.8, 2 * r + 1.6); cut.translate(cx, y0, z + r + 0.35 - 0.4); }
         (m.hingeBarra ? [bObjs[0]] : [objs[0], bObjs[0]]).forEach(o => { const [outer, inner] = cutHole(o.geometry, cut); /* cl116 (dona, Classic aberta: "voando"): a barra é presa à tampa — a calha só corta a base */ if (outer === o.geometry) return; const g = mergeGeometries([ni(outer), ni(inner)]); if (g) { o.geometry.dispose(); o.geometry = g; } });
         cut.dispose(); }
@@ -10412,7 +10416,8 @@ function incomProduct(r) {
         if (ai >= 0) ms.splice(ai + 1, 0, P(dente.n, dente.w, D ? r1(D - (W - dente.w)) : null, dente.h, { ...sh, rTop: 0.4, rBot: 0, gap: 0 }));
         cap.gap = -dente.h; }
       if (r.t === 'bulb' && r.c === 'Conta-gotas') Object.assign(v, { W: r1(W * 0.58), D: r1(W * 0.58), h: r1(H * 0.18), actW: r1(W * 0.32), actH: r1(H * 0.19) });
-      if (dcg) Object.assign(v, { W: r1(W * 0.59), D: r1(W * 0.59), h: r1(H * 0.13), actW: r1(W * 0.34), actH: r1(H * 0.17) });
+      if (dcg) { Object.assign(v, { W: r1(W * 0.64), D: r1(W * 0.64), h: r1(H * 0.13), actW: r1(W * 0.34), actH: r1(H * 0.17), friso: 0.6 }); /* cl119 (fotos Dispensing 15/30): colar ~64% do corpo com friso embaixo; o anel passa um pouco do corpo */
+        const an = ms.find(m => m.name === 'Anel'); if (an) { an.W = r1(W + 0.8); if (an.D) an.D = r1(an.D + 0.8); } }
       break; }
     case 'onoff': { const [f] = incomFrac(pr, [0.62]), hc = H * (1 - f), dn = 4.4;
       // bico do acionador (lotion) saindo de lado no alto da capa, como na foto do catálogo
@@ -10432,6 +10437,7 @@ function incomProduct(r) {
       const fb = { 'Flacon 15 Botão': [300, 205, 42, 1, 0.72, 1.5], 'Flacon 30 Botão': [305, 195, 42, 0.76, 0.54, W * 0.4] }[r.n]; // cl52: "ombro é mais arredondado ainda" // cl48: ombro do Flacon 30 mais arredondado (foto)
       let rT = /^Flacon 30/.test(r.n) ? W * 0.4 : W * 0.18; // cl52 (Flacon 30 Bulbo: "ombro mais redondo em cima")
       if (fb) { const t = fb[0] + fb[1] + fb[2]; f = fb[0] / t; tb = (fb[0] + fb[1]) / t; cw = fb[3]; bw = fb[4]; rT = fb[5]; }
+      if (r.n === 'Sydney') f += 0.035; // cl119 (foto Sydney 60): o colar é ~4 mm mais baixo, o frasco começa mais alto
       ms = [P('Frasco', W, D, H * f, { vol: true, rBot: 2, rTop: rT, _t: [0, f] }),
         M('contaGotas', { ...(b ? { botao: true, ridges: 0 } : {}), name: b ? 'Conta-gotas de botão' : 'Conta-gotas', W: r1(W * cw), D: r1(W * cw), h: r2(H * (tb - f)), actW: r1(W * bw), actH: r2(H * (1 - tb) + 0.5) })]; // +0,5: o conta-gotas encaixa 0,5 mm no gargalo
       // Rosca: Julie 20-410 (ficha da frasnaga Julie, mesmo frasco); Flacon 15/30 — as fotos abertas do site mostram o
@@ -10453,7 +10459,8 @@ function incomProduct(r) {
         // (o 15 seguia o perfil do desenho, de ombro em quina); fundo levemente arredondado nos dois
         if (r.n === 'Flacon 30 Bulbo') Object.assign(ms[0], { rTop: r1(W * 0.17), rBot: r1(W * 0.08) });
         if (r.n === 'Flacon 15 Bulbo') { const fr = ms[0]; delete fr.prof; delete fr.W0; Object.assign(fr, { rTop: r1(W * 0.1), rTopW: 0, rBot: r1(W * 0.06) }); }
-        if (/^Flacon .*Bulbo/.test(r.n)) { const rg = 1.2; Object.assign(v, { gap: rg, h: r2(v.h - rg), rTop: 0.4 }); } }
+        if (/^Flacon .*Bulbo/.test(r.n)) { const rg = 1.2; Object.assign(v, { gap: rg, h: r2(v.h - rg), rTop: 0.4 }); }
+        if (/^Flacon/.test(r.n)) ms[0].rBot = r1(W * 0.12); } // cl119 (fotos de fundo cinza dos 4 Flacon): quina de baixo ~2× mais redonda
       break; }
     case 'fr': case 'frr': case 'frsq': case 'frsqr': case 'frt': case 'frsh': case 'frap': case 'frflat': {
       const o = { fr: { rBot: 3, rTop: W * 0.15 }, frr: { rBot: W * 0.3, rTop: W * 0.15 }, frsq: { ...sq(0.06), rTop: 3, rBot: 3 }, // Chicago (foto): quinas de baixo arredondadas frsqr: { ...sq(0.2), rTop: 4 },
@@ -10801,7 +10808,8 @@ function incomProduct(r) {
     ms.forEach(m => { if (m.type === 'contaGotas') { m.ridges = 0;
       // cl104 (Julie: "aumentar diâmetro do botão levemente", "é mais duro, não arredondado"; Sydney: "aumentar levemente a borracha"):
       // botão +10% de diâmetro e colar de quina viva; bulbo de borracha +12% de largura. Vale para todos os conta-gotas da linha
-      if (m.botao) Object.assign(m, { actW: r1(Math.min(m.W - 3, m.actW * 1.1)), collarR: 0.35 }); else m.actW = r1(Math.min(m.W - 3, m.actW * 1.12)); } });
+      if (m.botao) Object.assign(m, { actW: r1(Math.min(m.W - 3, m.actW * (r.n === 'Julie' ? 1.1 : 1))), collarR: 0.35 }); /* cl119 (fotos Flacon Botão): o botão do Flacon é ~72% do colar, o +10% fica só no Julie */
+      else { m.actW = r1(Math.min(m.W - 3, m.actW * 1.12)); if (r.t !== 'bulb') m.sino = true; } } });
     // Julie p43: frasco PE opaco na foto e na lista de materiais; demais PET/SAN preservados.
     if (r.c === 'Conta-gotas' && r.n === 'Julie' && fr) Object.assign(fr, { own: true, color: BEIGE, finish: 'fosco' });
     // Deluxes, págs. 57–62: saia lisa na foto principal e nos detalhes spray/dosadora.
