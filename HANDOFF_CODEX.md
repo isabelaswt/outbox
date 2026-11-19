@@ -1,4 +1,6 @@
-# Atualização Claude — 18/11/2026, cl120
+# Atualização Claude — 18/11/2026, cl121
+
+- **cl121** — Dispensing (todos com refil: conta-gotas 15/30 e dispensadores), dona (print dos Dispensing ao lado das fotos: "sinto que o chão dos 3ds tá ruim, precisa ter esse peso de vidro no chão"): a casca de SAN passou do material PET (película fina, bloco leitoso) para `vidro` (cor #f5f8fb, espessura padrão 4 — com 0,45·W o refil inchava na refração), quina de baixo rBot min(2,2; 7% da largura) e fundo de baixo côncavo (`incomRefillCavity.punt`: calota de 30% do piso até 2 mm de fundo, raio 34% da largura); fundo maciço dos conta-gotas medido nas fotos pela altura do corpo: Dispensing 15 0,15 → 0,195 (~35%), Dispensing 30 0,07 → 0,11.
 
 - **cl120** — Godês por contorno (Flat, Big, Classic e todo `cells`), dona (print da Flat com "linhas"): (1) a concordância da boca de cada godê (até 1,8) era maior que metade da parede até o vizinho (Flat Dez ~0,9, Big 9 ~1,2): os dois cortes se sobrepunham no meio da parede e o corte único deixava costura escura e serrilhada — agora f ≤ metade da parede − 0,3 (`halfGap`, distância mínima entre contornos vizinhos), e a parede fica com topo; (2) a bandeja do godê estava 0,07 mm afastada da parede do rebaixo (risco escuro tracejado na borda da pastilha): inset 0,12 → 0,04 nos `cells` e RoundedBox cw − 0,42 no godê quadrado. Redondos (Moon, Case) sem mudança.
 
