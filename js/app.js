@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION, ADDITION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-19.cl138';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-19.cl139';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -707,7 +707,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-19.cl138';
+const BUILD = '2026-11-19.cl139';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -10908,12 +10908,12 @@ function incomProduct(r) {
   // Págs. 47–51/54: refil independente; casca externa não contém líquido.
   // Largura e vão inferior estimados pela foto. On-Off não mostra cartucho separado.
   const refillPhoto = {
-    incomp_dispensadores_dispensing_15: [0.68, 0.1, false],
+    incomp_dispensadores_dispensing_15: [0.68, 0.1, false, 0.5], // cl139 (pente fino, fotos): refil de ponta redonda e o mesmo fundo de vidro maciço dos conta-gotas (irmãos)
     // aprovação cl47 (Dispensing 15 conta-gotas): cápsula refil de fundo bem curvo e muita massa de SAN embaixo (parece vidro)
     incomp_conta_gotas_dispensing_15: [0.62, 0.086, false, 0.5], // cl123: no zoom da foto, do fundo do refil à base ~0,33 da largura
     incomp_conta_gotas_dispensing_30: [0.7, 0.043, false, 0.5], // cl52: "refil acabando antes do fundo"; cl123: zoom da foto, fundo do refil à base ~0,23 da largura
-    incomp_dispensadores_dispensing_30: [0.76, 0.08, false], // foto: coluna ~75% da largura
-    incomp_dispensadores_dispensing_60: [0.82, 0.08, false], // foto da dona: coluna ~83%
+    incomp_dispensadores_dispensing_30: [0.76, 0.08, false, 0.5], // foto: coluna ~75% da largura; cl139: fundo de vidro maciço como nos conta-gotas
+    incomp_dispensadores_dispensing_60: [0.82, 0.08, false, 0.5], // foto da dona: coluna ~83%; cl139: fundo de vidro maciço como nos conta-gotas
     incomp_dispensadores_dispensing_cube: [0.8, 0.045, true],
     incomp_dispensadores_dispensing_eliptico: [0.78, 0.045, false],
     incomp_dispensadores_dispensing_quadrado: [0.70, 0.06, false] // foto da dona: coluna ~70%

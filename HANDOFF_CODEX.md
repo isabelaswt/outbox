@@ -1,4 +1,6 @@
-# Atualização Claude — 19/11/2026, cl138
+# Atualização Claude — 19/11/2026, cl139
+
+- **cl139** — Pente fino (renders de todos os produtos que mudaram desde a última aprovação, ao lado das fotos): Dispensing 15/30/60 da linha **dispensadores** estavam com o fundo antigo (refil quase até o chão, sem o bloco de vidro), enquanto os irmãos conta-gotas já tinham o fundo aprovado — agora `roundK` 0,5 nos três: refil de ponta redonda, prato/bloco maciço com a curva escura (mesmo caminho do conta-gotas). Pisos mantidos (medidos nas fotos: fundo do refil → base ≈ 0,32 da largura). Cube/Quadrado (refil quadrado) e Elíptico (sem foto) seguem como estavam.
 
 - **cl138** — Aprovação: Julie ("contagotas redondo") com a pipeta de tubo reto e ponta redonda (`pipTip: 'redonda'`, como Flacon Botão/Sydney); Sydney ("a borracha do conta-gotas tá meio baixa, aumentar levemente a altura") borracha +12% (`actH`); Amsterdam Deluxe 100 ("o spray tá baixo, precisa ficar mais alto") colar da válvula ×1,5 e acionador ×1,4 — chega perto do topo da sobretampa (foto).
 
