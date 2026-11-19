@@ -1,4 +1,6 @@
-# Atualização Claude — 18/11/2026, cl115
+# Atualização Claude — 18/11/2026, cl116
+
+- **cl116** — (1) Classic, dona ("voando" + "faça o mecanismo certo, imagina que tem um pino ali"): a calha da `hingeBarra` corta só a base (a barra fica presa à tampa, sem vão em volta) e um pino r·0,32 atravessa a barra toda e entra 1,5 mm nas paredes da base nas pontas da calha. (2) Deluxe (todos), dona no Amsterdam Deluxe 100: "colar precisa ser mais alto, fazer o mesmo dente interno que você fez no bulb para prender a tampa": anel +60% (tirado do alto do frasco) e o Dente da sobretampa (W−2,6 × 2,5) como no Bulb, sobretampa com gap −2,5. (3) Dispensing 15/30 conta-gotas, dona: "deixar o refil mais alto, tá acabando antes, parede acompanhar": refil +85% da altura do anel, entrando nele (anel gap −e, cavidade incomRefillCavity passante no anel), líquido 99%. Lição repetida: comentário `//` no meio da linha comentou o resto (cutHole) — usar sempre `/* */`.
 
 - **cl115** — Classic, dona (print da barra deitada em cima da base com a paleta aberta): "isso tem que ficar na junção da tampa com a base, não na base": com `hingeBarra` a barra fica centrada no eixo (hz = costas, y = divisão), igual ao giro da cl114; a calha (recorte na base e na tampa) acompanha. Fechada a barra fica na emenda das costas; aberta gira no lugar, sem sobreposição.
 

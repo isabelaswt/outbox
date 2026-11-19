@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION, ADDITION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-18.cl115';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-18.cl116';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -707,7 +707,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-18.cl115';
+const BUILD = '2026-11-18.cl116';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -6962,7 +6962,7 @@ function compactParts(product, L, S0) {
       const mB = bObjs[0].material, mT = objs[0].material;
       if (m.hingeCalha && !m.hingeOculta && !THUMB_LITE) { const ni = x => { const g = x.index ? x.toNonIndexed() : x; for (const k in g.attributes) if (k !== 'position' && k !== 'normal') g.deleteAttribute(k); return g; };
         const cut = new THREE.BoxGeometry(Lh + 0.6, 2 * r + 0.8, 2 * r + 1.6); cut.translate(cx, y0, m.hingeBarra ? z : z + r + 0.35 - 0.4);
-        [objs[0], bObjs[0]].forEach(o => { const [outer, inner] = cutHole(o.geometry, cut); if (outer === o.geometry) return; const g = mergeGeometries([ni(outer), ni(inner)]); if (g) { o.geometry.dispose(); o.geometry = g; } });
+        (m.hingeBarra ? [bObjs[0]] : [objs[0], bObjs[0]]).forEach(o => { const [outer, inner] = cutHole(o.geometry, cut); /* cl116 (dona, Classic aberta: "voando"): a barra é presa à tampa — a calha só corta a base */ if (outer === o.geometry) return; const g = mergeGeometries([ni(outer), ni(inner)]); if (g) { o.geometry.dispose(); o.geometry = g; } });
         cut.dispose(); }
       if (m.hingeLeaf?.compact && m.hingeLeaf.concealed) { // Macaroon — cl91 (dona, fotos lilás: "o ângulo da dobradiça está errado, ele fica
         // ligado à tampa, não são dois itens separados", "olha como faz parte da tampa"): a peça é a CONTINUAÇÃO DA PAREDE DE TRÁS DA TAMPA.
@@ -7355,6 +7355,9 @@ function compactParts(product, L, S0) {
       } else
       if (m.hingeBarra) { // cl113 (dona: "o classic é uma barra única de dobradiça, não dividida em vários"): um só cilindro, preso à tampa
         add(kn(0, -Lh / 2, Lh / 2), mT, idx, 'dobradica', 0, 0, 0); objs.push(product.children.at(-1));
+        // cl116 (dona: "faça o mecanismo certo, imagina que tem um pino ali"): a barra (presa à tampa, sem calha na tampa) gira num pino que
+        // atravessa a barra toda e entra ~1,5 mm nas paredes da base, nas duas pontas da calha
+        const pin = new THREE.CylinderGeometry(r * 0.32, r * 0.32, Lh + 3, 24); pin.rotateZ(Math.PI / 2); pin.translate(cx, y0, hz); add(pin, mirrorMat, base.idx, 'pino', 0, 0, 0);
       } else
       (m.hingePair ? [-W * (m.hingePair.x ?? 0.30), W * (m.hingePair.x ?? 0.30)] : [0]).forEach(c => {
         const pin = new THREE.CylinderGeometry(r * 0.38, r * 0.38, Lh - 0.6, 24); pin.rotateZ(Math.PI / 2); pin.translate(cx + c, y0, hz);
@@ -10390,7 +10393,10 @@ function incomProduct(r) {
       }
       // Bulb/Dispensing conta-gotas (cl51): no alto do anel um dente PARA DENTRO (mais estreito), onde a sobretampa encaixa — ela desce
       // por fora dele até o anel; o conta-gotas tem colar alto e borracha fina (fotos)
-      const dente = r.t === 'bulb' ? { n: 'Dente da sobretampa', w: r1(W - 2.6), h: 2.5 } : dcg ? { n: 'Degrau do ombro', w: r1(W * 0.86), h: r1(H * 0.04) } : null;
+      // cl116 (dona, Amsterdam Deluxe 100: "colar precisa ser mais alto, fazer o mesmo dente interno que você fez no bulb para prender a tampa"):
+      // nos Deluxe o anel cresce ~60% (tirado do alto do frasco, a altura total fica) e ganha o dente para dentro onde a sobretampa encaixa
+      if (dlx) { const an = ms.find(m => m.name === 'Anel'), fr0 = ms[0]; if (an && fr0) { const e = r1(an.h * 0.6); an.h = r2(an.h + e); fr0.h = r2(fr0.h - e); } }
+      const dente = r.t === 'bulb' || dlx ? { n: 'Dente da sobretampa', w: r1(W - 2.6), h: 2.5 } : dcg ? { n: 'Degrau do ombro', w: r1(W * 0.86), h: r1(H * 0.04) } : null;
       if (dente) { const ai = ms.findIndex(m => m.name === 'Anel');
         if (ai >= 0) ms.splice(ai + 1, 0, P(dente.n, dente.w, D ? r1(D - (W - dente.w)) : null, dente.h, { ...sh, rTop: 0.4, rBot: 0, gap: 0 }));
         cap.gap = -dente.h; }
@@ -10823,6 +10829,12 @@ function incomProduct(r) {
       liq: true, liqType: 'cremoso', liqLevel: 94, liqColor: corDe(BASE_CORES, r.n),
       gap: r2(floor - fr.h), rBot: rb, rTop: 0.5, incomRefillCavity: { W: r1(rw - 2 * wall), D: r1(rd - 2 * wall), floor: wall, rBot: Math.max(0, rb - wall), ...side } });
     ms.splice(1, 0, refill);
+    // cl116 (dona, Dispensing 15/30 conta-gotas: "deixar o refil mais alto, tá acabando antes, parede acompanhar"; fotos: o refil sobe até
+    // o anel e continua por trás dele): o refil cresce ~85% da altura do anel para dentro dele, o anel ganha a mesma cavidade e o
+    // líquido vai até em cima
+    { const an = ms.find(m => m.name === 'Anel'); if (an && /^incomp_conta_gotas_dispensing/.test(r.k)) { const e = r2(an.h * 0.85);
+      Object.assign(refill, { h: r2(refill.h + e), liqLevel: 99 }); an.gap = r2((an.gap || 0) - e);
+      an.incomRefillCavity = { W: r1(rw + 0.4), D: r1(rd + 0.4), floor: -1, rBot: 0, ...side }; } }
     ms.forEach(m => { if (m.kind === 'spray') Object.assign(m, { pesc: false, mola: false }); });
   }
   // frascos transparentes nas fotos (os brancos opacos — Apple Blow, Bulb Blow, Wall — ficam como estão)
