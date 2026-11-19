@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION, ADDITION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-19.cl139';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-19.cl140';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -707,7 +707,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-19.cl139';
+const BUILD = '2026-11-19.cl140';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -1325,8 +1325,14 @@ function normalize(s) {
 // ───────────────────────── geometria ─────────────────────────
 // Seção superelipse: n=2 é oval; n alto tende ao retângulo arredondado.
 function sp(a, b, n, th, bow = 0) {
-  const c = Math.cos(th), s = Math.sin(th), e = 2 / n,
-    x = Math.sign(c) * Math.pow(Math.abs(c), e), z = Math.sign(s) * Math.pow(Math.abs(s), e);
+  const c = Math.cos(th), s = Math.sin(th), e = 2 / n;
+  let x, z;
+  if (n >= 12) {
+    // cl140 (pente fino, Big fechada): com n 20 o parâmetro clássico põe quase nenhum ponto nas faces — a frente virava duas retas
+    // de ~30 mm com um bico no meio, e a aba (que segue a curva de verdade) cruzava a casca, deixando frestas. Aqui o ângulo é o polar:
+    // os pontos ficam espalhados por igual nas faces. Mesma curva (|x|^n + |z|^n = 1), só outra amostragem; n < 12 não muda.
+    const r = Math.pow(Math.pow(Math.abs(c), n) + Math.pow(Math.abs(s), n), -1 / n); x = c * r; z = s * r;
+  } else { x = Math.sign(c) * Math.pow(Math.abs(c), e); z = Math.sign(s) * Math.pow(Math.abs(s), e); }
   // Planta Big: lados convexos contínuos, independentes do raio dos cantos. Demais peças preservadas.
   return [a * x * (1 - bow * z * z), b * z * (1 - bow * x * x)];
 }
@@ -6838,7 +6844,7 @@ function compactParts(product, L, S0) {
         // Fotos abertas p6–33: a língua trava na parede da base, abaixo do rebaixo do dedo.
         // Recorte complementar real na base; largura e folgas estimadas nas fotos, sem simular flexão.
         const a = base.m.dedo, R = bb.max.z - cz, curve = !!m.aba,
-          yB = curve ? y0 - m.aba.down : base.y0 + base.m.h - a.h * (m.snapDown ?? 1) + 0.3, // snapDown: a aba desce só parte do rebaixo (Frame: o fundo da cavidade aparece)
+          yB = curve ? y0 - m.aba.down : m.snapLen != null ? y0 - m.snapLen : base.y0 + base.m.h - a.h * (m.snapDown ?? 1) + 0.3, // snapDown: a aba desce só parte do rebaixo (Frame: o fundo da cavidade aparece)
           tw = curve ? m.aba.w * 0.7 : (m.snapWidth ?? Math.min(a.w * 0.7, w * 0.18)), inner = curve ? R - m.aba.d + 0.2 : m.snapFlat ? R - (m.snapInset ?? 0.66) : R - a.d - 0.7;
         let tooth, socket, channel;
         if (curve) {
@@ -6861,7 +6867,7 @@ function compactParts(product, L, S0) {
               const p = stem.attributes.position, A = w / 2, B = d / 2;
               for (let j = 0; j < p.count; j++) { const x = Math.min(A - 0.0001, Math.abs(p.getX(j))); let lo = 0, hi = Math.PI / 2;
                 // Mesmo contorno abaulado da casca (planBow), inclusive nas laterais da aba.
-                for (let k = 0; k < 28; k++) { const mid = (lo + hi) / 2; if (sp(A, B, m.n, mid, m.planBow || 0)[0] > x) lo = mid; else hi = mid; }
+                for (let k = 0; k < 64; k++) { const mid = (lo + hi) / 2; if (sp(A, B, m.n, mid, m.planBow || 0)[0] > x) lo = mid; else hi = mid; } // cl140: com n alto (Big, n 20) 28 passos deixavam ~±6 mm retos no meio da aba e a curva da tampa furava ela (frestas)
                 p.setZ(j, p.getZ(j) + sp(A, B, m.n, (lo + hi) / 2, m.planBow || 0)[1] - B); }
               p.needsUpdate = true; stem.computeVertexNormals();
             }
@@ -10792,7 +10798,7 @@ function incomProduct(r) {
       // Classic (foto aberta CLASSIC-UNO-2, aprovação cl34): o clip da tampa ocupa ~38% do rebaixo da base, não ele inteiro
       // Classic (CLASSIC-FECHADO / UNO-2, aprovação cl38): abertura do dedo maior (~36% da frente, ~65% da altura da base) e o clip
       // estreito todo para dentro, escondido na fenda do fundo do rebaixo
-      if (t && b?.dedo && /^Classic/.test(r.n)) { Object.assign(b.dedo, { w: r1(W * 0.36), h: r1(b.h * 0.65) }); t.snapWidth = r1(b.dedo.w * 0.38); t.snapInset = r2(b.dedo.d + 0.7); }
+      if (t && b?.dedo && /^Classic/.test(r.n)) { Object.assign(b.dedo, { w: r1(W * 0.36), h: r1(b.h * 0.65) }); t.snapWidth = r1(b.dedo.w * 0.38); t.snapInset = r2(b.dedo.d + 0.7); t.snapLen = 1.2; } // cl140 (pente fino, foto CLASSIC-DUO-2 aberta): o clip é um bloquinho rente à boca da tampa — passava ~7,7 mm dela e, aberto, parecia um fio saindo da tampa
       // Aprovação (fotos CLASSIC-DUO-2 / CLASSIC-QUARTETO-2): bordinha rebaixada em toda a paleta — aro externo mais alto e os godês
       // num patamar interno ~0,8 mm abaixo; largura do aro ~5,5% da frente, estimada na foto. Uno (CLASSIC-UNO-1): borda côncava
       // do aro até o godê, com ~metade da borda
@@ -10845,7 +10851,7 @@ function incomProduct(r) {
         Object.assign(b.dedo, /^Flat/.test(r.n) ? { w: r1(t.snapWidth + 0.2), h: r1(b.h * 0.6), d: 2.4 } : { w: r1(t.snapWidth + 0.2), h: 3.2, d: 1 }); // cl130 (fotos da Flat Dez aberta e fechada): o rasgo da frente desce ~60% da base e é fundo (escuro); a aba da tampa enche ele
         if (/^Big (4|9)$/.test(r.n)) { delete b.rebaixo; b.canal = { inset: 3.2, w: 0.6, h: 2.6, groove: false }; t.rBot = 0; /* cl83 (dona: "porque tem uma faixa? a tampa é uma coisa só"): sem arredondado embaixo, a tampa continua reta na saia */ /* cl81 ("altura da paleta está diferente", foto BIG-4): degrau 1,3 → 2,6, tampa com saia */ // cl46 (Big 9): degrau bem maior — borda de fora mais baixa (era 0,6)
           // Aprovação cl37 (fotos BIG-4): produto quase no nível da divisória e duas dobradiças, junto aos cantos
-          b.dedo.h = 6.4; t.snapDown = 0.73; /* cl103 (dona: "diminuir aba de abertura para ficar espaço para abrir", foto): a aba ocupa a metade de cima do rebaixo e sobra ~2 mm livre embaixo para o dedo */ /* cl102 (dona: "aumentar aba de fechamento em 3 vezes a altura", foto PALETA-BIG-FECHADA): com o degrau de 2,6 a aba aparecia ~1 mm abaixo da divisão; agora desce ~3,5 mm (≈2/3 da frente da base) */ if (b.godes) b.godes = { ...b.godes, fundo: 2.1, mgK: 0.118 }; /* cl84 (dona: "o nosso [godê] parece que tá maior, com menos borda"): moldura da bandeja mais larga, godês menores */ Object.assign(t, { hingeCalha: 0.9, hingeOculta: true }); } // cl51: dobradiça escondida (era um par aparente)
+          b.dedo.h = 6.4; t.snapDown = 0.73; /* cl103 (dona: "diminuir aba de abertura para ficar espaço para abrir", foto): a aba ocupa a metade de cima do rebaixo e sobra ~2 mm livre embaixo para o dedo */ /* cl102 (dona: "aumentar aba de fechamento em 3 vezes a altura", foto PALETA-BIG-FECHADA): com o degrau de 2,6 a aba aparecia ~1 mm abaixo da divisão; agora desce ~3,5 mm (≈2/3 da frente da base) */ if (b.godes) b.godes = { ...b.godes, fundo: 2.1, mgK: 0.118 }; /* cl84 (dona: "o nosso [godê] parece que tá maior, com menos borda"): moldura da bandeja mais larga, godês menores */ Object.assign(t, { hingeCalha: 0.9, hingeOculta: true }); t.snapConform = true; /* cl140 (pente fino, Big fechada): a frente é abaulada (planBow) e a aba plana deixava a curva furar a aba — duas frestas escuras; a aba agora segue o abaulado, como na Frame */ } // cl51: dobradiça escondida (era um par aparente)
         // Págs.28–33: encaixes estreitos junto ao eixo; proporções estimadas na foto
         // (largura ~2,3% do estojo), preservando a faixa sem espelho.
         if (/^Flat/.test(r.n)) { t.espBand = 0; t.espLatches = { w: r1(W * 0.023), h: 1.2, x: 0.26, depth: 0.5 };
