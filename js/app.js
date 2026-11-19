@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION, ADDITION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-18.cl129';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-18.cl130';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -707,7 +707,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-18.cl129';
+const BUILD = '2026-11-18.cl130';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -10796,11 +10796,11 @@ function incomProduct(r) {
     // Foto ampliada da dona: patamar interno rebaixado, nunca elevado sobre a borda externa.
     // Profundidade estimada na foto; alturas externas do catálogo preservadas.
     if (r.c === 'Paletas') { const t = ms.find(m => m.name === 'Tampa'), b = ms.find(m => m.name === 'Base');
-      if (t && b) { b.rebaixo = /^Flat/.test(r.n) ? { inset: 2, h: 0.3 } : { inset: 3.2, h: 0.6 }; b.fechoRebaixo = true; // Flat (aprovação cl37): o patamar é bem raso na foto
+      if (t && b) { b.rebaixo = /^Flat/.test(r.n) ? { inset: 2.4, h: 0.8 } : { inset: 3.2, h: 0.6 }; b.fechoRebaixo = true; // Flat (aprovação cl37): o patamar é raso na foto; cl130 (foto da Flat Dez aberta): o degrau em volta dos godês aparece — 0,3 → 0,8 mm
         // Pedido da dona: abertura frontal acompanha a aba, sem sobra lateral visível.
         // Fotos da dona: aba larga e reta; abertura baixa da mesma largura. Dimensões internas estimadas.
         t.snapFlat = true; t.snapWidth = r1(W * (/^Flat/.test(r.n) ? 0.42 : 0.29));
-        Object.assign(b.dedo, { w: r1(t.snapWidth + 0.2), h: 3.2, d: 1 });
+        Object.assign(b.dedo, /^Flat/.test(r.n) ? { w: r1(t.snapWidth + 0.2), h: r1(b.h * 0.6), d: 2.4 } : { w: r1(t.snapWidth + 0.2), h: 3.2, d: 1 }); // cl130 (fotos da Flat Dez aberta e fechada): o rasgo da frente desce ~60% da base e é fundo (escuro); a aba da tampa enche ele
         if (/^Big (4|9)$/.test(r.n)) { delete b.rebaixo; b.canal = { inset: 3.2, w: 0.6, h: 2.6, groove: false }; t.rBot = 0; /* cl83 (dona: "porque tem uma faixa? a tampa é uma coisa só"): sem arredondado embaixo, a tampa continua reta na saia */ /* cl81 ("altura da paleta está diferente", foto BIG-4): degrau 1,3 → 2,6, tampa com saia */ // cl46 (Big 9): degrau bem maior — borda de fora mais baixa (era 0,6)
           // Aprovação cl37 (fotos BIG-4): produto quase no nível da divisória e duas dobradiças, junto aos cantos
           b.dedo.h = 6.4; t.snapDown = 0.73; /* cl103 (dona: "diminuir aba de abertura para ficar espaço para abrir", foto): a aba ocupa a metade de cima do rebaixo e sobra ~2 mm livre embaixo para o dedo */ /* cl102 (dona: "aumentar aba de fechamento em 3 vezes a altura", foto PALETA-BIG-FECHADA): com o degrau de 2,6 a aba aparecia ~1 mm abaixo da divisão; agora desce ~3,5 mm (≈2/3 da frente da base) */ if (b.godes) b.godes = { ...b.godes, fundo: 2.1, mgK: 0.118 }; /* cl84 (dona: "o nosso [godê] parece que tá maior, com menos borda"): moldura da bandeja mais larga, godês menores */ Object.assign(t, { hingeCalha: 0.9, hingeOculta: true }); } // cl51: dobradiça escondida (era um par aparente)

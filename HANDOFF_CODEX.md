@@ -1,4 +1,6 @@
-# Atualização Claude — 18/11/2026, cl129
+# Atualização Claude — 18/11/2026, cl130
+
+- **cl130** — Flat (todas), dona ("Aplicar as 3", da comparação com a foto nova da Flat Dez aberta e a fechada): (1) rasgo da frente (`dedo`) 1 mm → 2,4 mm de fundo e altura 3,2 → 60% da base (foto aberta: ocupa quase toda a frente; largura 42% já batia); (2) degrau em volta do painel dos godês (`rebaixo`) inset 2 → 2,4 e altura 0,3 → 0,8 mm (aparece como borda na foto); (3) a aba da tampa já tinha a largura do rasgo — na foto fechada ela enche o rasgo inteiro, e como a altura dela segue a do rasgo, agora desce junto. Conferido fechado de frente (aba rente) e aberto de lado.
 
 - **cl129** — Dispensing 15/30 conta-gotas, dona ("não ter a estrutura que segura o refil, fica sobreposta, quero só o refil, a casca e o fundo abaulado"; "não pode ter essa separação"; "ainda tem sobreposição, não?"): sem cavidade cortada no bloco (a superfície dela refratava como um segundo contorno do refil) e sem a lâmina da cl128 (faixa/serrilhado) — o frasco é só a casca de fora + um prato abaulado em sorriso (`incomRefillCavity.prato`: superfície única em torno, de parede a parede, meio 1 mm abaixo da ponta do refil, d = 0,13·W) unido à casca; refração da casca fina (`thick` 0,5) para o refil não aparecer duas vezes.
 
