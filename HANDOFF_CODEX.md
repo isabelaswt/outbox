@@ -1,4 +1,6 @@
-# Atualização Claude — 18/11/2026, cl112
+# Atualização Claude — 18/11/2026, cl113
+
+- **cl113** — Classic (Duo, Quarteto, Uno), dona: "o classic é uma barra única de dobradiça, não dividida em vários" + "tem uma calha para essa dobradiça": novo `hingeBarra` — no ramo genérico, em vez dos 3 nós (base-tampa-base) e pino, um só cilindro de comprimento Lh preso à tampa; e `hingeCalha = min(0,32; 24/W)` para o recorte da calha na base e na tampa (o mesmo da calha genérica), com o eixo para dentro.
 
 - **cl112** — Flat (todas), dona respondeu "calha reta" + "rampa nos apoios" e mandou foto de cima (Trio Redondo: calha longa e estreita na borda de trás, apoios curtos perto das pontas): calha de pontas RETAS (k = 0) e mais comprida (meia-largura W·0,42), profundidade em z cD = clamp(face de dentro − 0,8; 2,4; 3,3), aberta atrás; a peça da tampa dentro dela é reta e fina (T = 1,8, sem inclinação); os dois apoios (x = ±0,73·meia-largura, largura max(3; W·0,04)) ocupam a profundidade da calha, costas rentes, e têm o topo em RAMPA descendo para a frente (de 0,25 abaixo da borda até 0,5 acima do fundo). Pino único atravessando os apoios.
 

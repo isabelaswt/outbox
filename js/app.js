@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION, ADDITION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-18.cl112';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-18.cl113';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -707,7 +707,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-18.cl112';
+const BUILD = '2026-11-18.cl113';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -7353,6 +7353,9 @@ function compactParts(product, L, S0) {
           [objs[0], saia].filter(Boolean).forEach(o => { const [outer, inner] = cutHole(o.geometry, cut);
             if (outer !== o.geometry) { const g = mergeGeometries([ni(outer), ni(inner)]); if (g) { o.geometry.dispose(); o.geometry = g; } } }); cut.dispose(); }
       } else
+      if (m.hingeBarra) { // cl113 (dona: "o classic é uma barra única de dobradiça, não dividida em vários"): um só cilindro, preso à tampa
+        add(kn(0, -Lh / 2, Lh / 2), mT, idx, 'dobradica', 0, 0, 0); objs.push(product.children.at(-1));
+      } else
       (m.hingePair ? [-W * (m.hingePair.x ?? 0.30), W * (m.hingePair.x ?? 0.30)] : [0]).forEach(c => {
         const pin = new THREE.CylinderGeometry(r * 0.38, r * 0.38, Lh - 0.6, 24); pin.rotateZ(Math.PI / 2); pin.translate(cx + c, y0, hz);
         const gm = m.hingeCalha ? Lh * 0.78 : g3; // calha (foto): nós curtos da base nas pontas, o da tampa corre quase o eixo todo
@@ -10683,6 +10686,7 @@ function incomProduct(r) {
       Object.assign(t, { hingeCalha: 0.9, hingeOculta: true });
     } }
     ms.forEach((m, i) => { if (m.hinge && !m.caseLatch && ms[i - 1]?.dedo) m.snapFront = true; });
+    if (/^Classic/.test(r.n)) { const t = ms.find(m => m.name === 'Tampa'); if (t) Object.assign(t, { hingeBarra: true, hingeCalha: r2(Math.min(0.32, 24 / W)) }); } // cl113: barra única ("o classic é uma barra única") dentro de uma calha ("tem uma calha para essa dobradiça")
     if (/^(Frame|Classic)/.test(r.n)) {
       const t = ms.find(m => m.name === 'Tampa'), b = ms.find(m => m.name === 'Base');
       if (t && b?.dedo) { t.snapFlat = true; t.snapConform = !t.sides; t.snapWidth = r1(b.dedo.w - 0.2); b.fechoRebaixo = true; }
