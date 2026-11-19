@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION, ADDITION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-19.cl136';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-19.cl137';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -707,7 +707,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-19.cl136';
+const BUILD = '2026-11-19.cl137';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -2402,7 +2402,12 @@ function pescanteGeo(m, yBot, yTop) {
     // suave, ponta fina curta e uma bolinha arredondada na ponta.
     const R = m.pescD / 2;
     let y0;
-    if (m.pipTip === 'afunilada') {
+    if (m.pipTip === 'redonda') {
+      // cl137 (Flacon 15 Botão, dona: "conta-gotas arredondado no final, fazer outro tipo"; foto fundo-cinza_03): tubo reto de vidro, mesmo
+      // diâmetro até o fim, fechado numa meia-esfera (o furinho fica no meio da ponta)
+      push(yBot, 0.25); for (let i = 1; i <= 12; i++) { const a = (i / 12) * Math.PI / 2; push(yBot + R - R * Math.cos(a), Math.max(0.25, R * Math.sin(a))); }
+      y0 = yBot + R;
+    } else if (m.pipTip === 'afunilada') {
       // ponta afunilada: tubo reto que afina num cone longo até uma ponta fina e reta (aberta)
       const rt = Math.max(0.55, R * 0.4), Lt = Math.max(2, R * 1.1), Lc = Math.max(6, R * 4.5);
       push(yBot, rt * 0.85); push(yBot + 0.3, rt); push(yBot + Lt, rt);
@@ -7418,6 +7423,8 @@ function compactParts(product, L, S0) {
     objs.forEach(o => o.applyMatrix4(T));
     const b2 = localBox(objs), dx = rest.max.x + 6 - b2.min.x, dy = rest.min.y - b2.min.y;
     objs.forEach(o => { o.position.x += dx; o.position.y += dy; o.updateMatrixWorld(true); });
+    // pipeta fora do frasco (conta-gotas tirado): o material de "dentro do frasco" (multiplicar) some no fundo claro — vira vidro à vista
+    objs.forEach(o => { if (/_pipeta$/.test(o.name) && o.renderOrder === 18) o.material = new THREE.MeshPhysicalMaterial({ color: '#eef3f4', roughness: 0.04, transmission: 1, thickness: 1.2, ior: 1.5, clearcoat: 1, specularIntensity: 1 }); });
   });
 }
 // Exclusivo dos Dispensing: cavidade aberta para cartucho e rebaixo frontal do Twist.
@@ -8589,7 +8596,7 @@ const MF = [
     K(['tipW', 'Aplicador: largura da ponta', 3, 14, 0.1, 'mm', m => m.pesc && m.sprayType === 'gloss']),
     K(['tipCurve', 'Aplicador: curva da ponta', -4, 4, 0.1, 'mm', m => m.pesc && m.sprayType === 'gloss']),
     K(['tipColor', 'Aplicador: cor da ponta', 'color', 0, 0, 0, m => m.pesc && m.sprayType === 'gloss']),
-    K(['pipTip', 'Ponta do conta-gotas', 'select', [['bolinha', 'Com bolinha'], ['afunilada', 'Afunilada']], m => m.pesc && m.sprayType === 'gotas']),
+    K(['pipTip', 'Ponta do conta-gotas', 'select', [['bolinha', 'Com bolinha'], ['afunilada', 'Afunilada'], ['redonda', 'Tubo reto, ponta redonda']], m => m.pesc && m.sprayType === 'gotas']),
     K(['pescD', m => `${pescName(m)}: diâmetro`, 2, 10, 0.1, 'mm', m => m.pesc]),
     K(['pescGap', m => `${pescName(m)}: folga do fundo`, 0, 20, 0.5, 'mm', m => m.pesc]),
     K(['pescCurve', m => `${pescName(m)}: curva no pé (− esquerda)`, -40, 40, 0.5, 'mm', m => m.pesc]),
@@ -10476,6 +10483,9 @@ function incomProduct(r) {
       if (dente) { const ai = ms.findIndex(m => m.name === 'Anel');
         if (ai >= 0) ms.splice(ai + 1, 0, P(dente.n, dente.w, D ? r1(D - (W - dente.w)) : null, dente.h, { ...sh, rTop: 0.4, rBot: 0, gap: 0 }));
         cap.gap = -dente.h; }
+      // cl137 (aprovação, Bulb dispensador: "a válvula precisa ser mais alta, tudo fica mais alto, quase chega no topo"; fotos DISPENSING-BULB):
+      // colar da válvula ~58% mais alto e acionador 50% mais alto — o bico fica logo abaixo do topo da sobretampa
+      if (r.t === 'bulb' && r.c === 'Dispensadores') Object.assign(v, { h: r1(v.h * 1.58), actH: r1(v.actH * 1.5), headH: r1(v.headH * 1.29) });
       if (r.t === 'bulb' && r.c === 'Conta-gotas') Object.assign(v, { W: r1(W * 0.58), D: r1(W * 0.58), h: r1(H * 0.18), actW: r1(W * 0.32), actH: r1(H * 0.19) });
       if (dcg) { Object.assign(v, { W: r1(W * 0.64), D: r1(W * 0.64), h: r1(H * 0.13), actW: r1(W * 0.34), actH: r1(H * 0.17), friso: 0.6 }); /* cl119 (fotos Dispensing 15/30): colar ~64% do corpo com friso embaixo; o anel passa um pouco do corpo */
         const an = ms.find(m => m.name === 'Anel'); if (an) { an.W = r1(W + 0.8); if (an.D) an.D = r1(an.D + 0.8); } }
@@ -10521,7 +10531,8 @@ function incomProduct(r) {
         if (r.n === 'Flacon 30 Bulbo') Object.assign(ms[0], { rTop: r1(W * 0.17), rBot: r1(W * 0.08) });
         if (r.n === 'Flacon 15 Bulbo') { const fr = ms[0]; delete fr.prof; delete fr.W0; Object.assign(fr, { rTop: r1(W * 0.1), rTopW: 0, rBot: r1(W * 0.06) }); }
         if (/^Flacon .*Bulbo/.test(r.n)) { const rg = 1.2; Object.assign(v, { gap: rg, h: r2(v.h - rg), rTop: 0.4 }); }
-        if (/^Flacon/.test(r.n)) ms[0].rBot = r1(W * 0.12); } // cl119 (fotos de fundo cinza dos 4 Flacon): quina de baixo ~2× mais redonda
+        if (/^Flacon/.test(r.n)) ms[0].rBot = r1(W * 0.12);
+        } // cl119 (fotos de fundo cinza dos 4 Flacon): quina de baixo ~2× mais redonda
       break; }
     case 'fr': case 'frr': case 'frsq': case 'frsqr': case 'frt': case 'frsh': case 'frap': case 'frflat': {
       const o = { fr: { rBot: 3, rTop: W * 0.15 }, frr: { rBot: W * 0.3, rTop: W * 0.15 }, frsq: { ...sq(0.06), rTop: 3, rBot: 3 }, // Chicago (foto): quinas de baixo arredondadas frsqr: { ...sq(0.2), rTop: 4 },
@@ -10866,6 +10877,11 @@ function incomProduct(r) {
     // o conteúdo fica numa coluna acima dele. Medida na foto do Dispensing 15, sem cota de molde.
     if (fr && /Frasco em SAN/.test(r.mat)) Object.assign(fr, { fundoGrosso: true, fundo: r1(H * 0.05), fundoR: 2 }); // a dona achou 10% pesado demais
     else if (fr && /Frasco em PET/.test(r.mat)) Object.assign(fr, { fundoGrosso: true, fundo: r1(H * 0.025), fundoR: 2 }); // PET (fotos Sydney, Flacon, Deluxes): fundo pesado ~2,5% (4% ficou pesado)
+    // cl137 (aprovação: Flacon 15/30 Botão "contagotas ser arredondado no final, fazer outro tipo"; Sydney "conta gotas redondo"):
+    // pipeta de tubo reto com a ponta em meia-esfera (foto Flacon 15 Botão fundo-cinza_03)
+    if (/^Flacon (15|30) Botão$|^Sydney$/.test(r.n)) ms.forEach(m => { if (m.type === 'contaGotas') m.pipTip = 'redonda'; });
+    // cl137 (dona, Julie: "como fica aberto? não consigo ver"): no Abrir o conta-gotas sai do frasco e deita ao lado, com a pipeta (fotos abertas)
+    ms.forEach(m => { if (m.type === 'contaGotas') m.capa = true; });
     ms.forEach(m => { if (m.type === 'contaGotas') { m.ridges = 0;
       // cl104 (Julie: "aumentar diâmetro do botão levemente", "é mais duro, não arredondado"; Sydney: "aumentar levemente a borracha"):
       // botão +10% de diâmetro e colar de quina viva; bulbo de borracha +12% de largura. Vale para todos os conta-gotas da linha

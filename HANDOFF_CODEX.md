@@ -1,4 +1,6 @@
-# Atualização Claude — 19/11/2026, cl136
+# Atualização Claude — 19/11/2026, cl137
+
+- **cl137** — (1) Flacon 15/30 Botão e Sydney, aprovação ("contagotas ser arredondado no final, fazer outro tipo de contagotas"; "conta gotas redondo"): pipeta nova `pipTip: 'redonda'` — tubo reto de vidro, mesmo diâmetro até o fim, fechado em meia-esfera (foto Flacon 15 Botão fundo-cinza_03); também na lista do inspetor ("Tubo reto, ponta redonda"). (2) Conta-gotas (todos), dona (Julie: "como fica aberto? não consigo ver"): no Abrir o conta-gotas sai do frasco e deita ao lado (`capa: true`) e a pipeta vira vidro à vista (o material "dentro do frasco" sumia no fundo claro). (3) Bulb dispensador, aprovação ("a válvula precisa ser mais alta, tudo fica mais alto, quase chega no topo"): colar da válvula ×1,58, acionador ×1,5, cabeça ×1,29 — o bico fica logo abaixo do topo da sobretampa (fotos DISPENSING-BULB).
 
 - **cl136** — Dispensing 15/30 conta-gotas, dona ("prefiro só deixar a mais escura"): sai a curva clara do prato (a superfície unida à casca; volta com `m.comPrato`); fica só o sorriso do topo do bloco de vidro. Malha do bloco mais fina (lathe 256, recorte 200 pontos). Em 3/4 o topo do bloco aparece como uma lâmina curva (é a calha atravessada que faz a curva aparecer de frente).
 
