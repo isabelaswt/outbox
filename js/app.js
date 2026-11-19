@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION, ADDITION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-18.cl127';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-18.cl128';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -707,7 +707,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-18.cl127';
+const BUILD = '2026-11-18.cl128';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -7437,6 +7437,13 @@ function incomDispensingGeo(g, m, y0) {
     if (cut) { const [outer, inner] = cutHole(g, cut); if (outer !== g) g = mergeLoose([outer, inner]); }
     // cl121 (dona: "precisa ter esse peso de vidro no chão"; cl44: "base bem curva, embaixo se vê bastante massa no SAN"): fundo de
     // baixo côncavo (calota rasa), como no acrílico injetado das fotos — a curva aparece através do bloco e dá o peso do vidro
+    // cl128 (dona: "parede do lado não existe, apenas fundo"): a curva é uma lâmina fina em sorriso, de parede a parede, solta no bloco —
+    // sem parede subindo dos lados (a cavidade do refil fica colada nele e não aparece)
+    if (c.lens) { const { a, d, t, y } = c.lens, Rs = (a * a + d * d) / (2 * d), yb = x => y0 + y - d + Rs - Math.sqrt(Rs * Rs - x * x), P = [];
+      for (let i = 0; i <= 40; i++) { const x = a * i / 40; P.push(new THREE.Vector2(x, yb(x))); }
+      for (let i = 40; i >= 0; i--) { const x = a * i / 40; P.push(new THREE.Vector2(x, yb(x) + t)); }
+      const lg = new THREE.LatheGeometry(P, 128); lg.deleteAttribute('uv'); if (m.ox) lg.translate(m.ox, 0, 0);
+      const [outer, inner] = cutHole(g, lg); if (outer !== g) g = mergeLoose([outer, inner]); lg.dispose(); }
     if (c.punt) { const { d, a } = c.punt, Rs = (a * a + d * d) / (2 * d), sp = new THREE.SphereGeometry(Rs, 96, 48); sp.deleteAttribute('uv');
       sp.translate(m.ox || 0, y0 + d - Rs, 0); const [outer, inner] = cutHole(g, sp); if (outer !== g) g = mergeLoose([outer, inner]); sp.dispose(); }
   }
@@ -9802,6 +9809,9 @@ const MAT_PRESETS = [
     { n: 'Cristal pesado', color: '#f4f8f7', finish: 'vidro', ior: 1.9 }, { n: 'Rosa jateado', color: '#e3a9ad', finish: 'vidroFosco' },
   ]],
   ['Plástico', [
+    // cl128 (dona: "não tenho acrílico cristal na minha library, colocar"): o SAN do Dispensing (vidro grosso claro, o do print da revisão)
+    // e o acabamento Acrílico cristal (transparência por camadas, linhas das quinas)
+    { n: 'Acrílico SAN', color: '#f5f8fb', finish: 'vidro' }, { n: 'Acrílico cristal', color: '#f5f8fb', finish: 'cristal' },
     { n: 'PET cristal', color: '#eef3f2', finish: 'pet' }, { n: 'PET âmbar', color: '#a8641f', finish: 'pet' },
     { n: 'PET azul', color: '#7fa7cf', finish: 'pet' }, { n: 'PET semi-fosco', color: '#f1f1ee', finish: 'petSemi' },
     { n: 'PET fosco', color: '#e8e6e1', finish: 'petFosco' }, { n: 'PP branco', color: '#f3f1ec', finish: 'acetinado' },
@@ -10860,17 +10870,17 @@ function incomProduct(r) {
     // senão eram quatro paredes à vista; sem o fundo grosso extra do SAN (a casca já tem o piso da cavidade).
     // cl121 (dona, Dispensing ao lado da foto: "o chão dos 3ds tá ruim, precisa ter esse peso de vidro no chão"): a casca de SAN é um bloco
     // grosso — material de vidro (espessura que refrata e escurece as bordas, não a película fina do PET) e quina de baixo arredondada
-    Object.assign(fr, { finish: 'cristal', color: '#f5f8fb', rBot: r1(Math.min(2.2, W * 0.07)), vol: false, liq: false, bpesc: false, casca: true, apoio: false, fundoGrosso: false,
+    Object.assign(fr, { finish: 'vidro', color: '#f5f8fb', rBot: r1(Math.min(2.2, W * 0.07)), vol: false, liq: false, bpesc: false, casca: true, apoio: false, fundoGrosso: false,
       // cl122 (dona: "acho que tem que modelar esse fundo mesmo"; fotos ampliadas do fundo): a cavidade é um copo ~1 mm mais largo que o
       // refil, de fundo chato com canto arredondado (~35% do raio) — a ponta redonda do refil fica logo acima e o piso do copo aparece como
       // uma elipse; embaixo, bloco maciço de fundo reto, só com a marquinha de injeção no centro
       // cl126 (dona: "quero uma curva na parte de baixo do frasco, independente do refil"; "ela não sobe e cria uma parede, ela acaba
       // embaixo"): a cavidade fica colada no refil e some (0,2 mm menor, mesmo fundo redondo) e a curva é o FUNDO DO FRASCO — calota larga
       // (84% da largura) côncava por baixo, que aparece através do bloco e termina no pé
-      // cl127 (dona: "ainda não"): curva no sentido da foto — o PISO de dentro do frasco é um sorriso de parede a parede (meio mais
-      // baixo), logo abaixo da ponta do refil; a parede de dentro fica rente à de fora (1,5 mm) e some no contorno, sem formar parede
-      incomRefillCavity: roundK ? (() => { const cw = r1(Math.min(W, r.D ?? W) - 3), dB = r1(Math.min(W, r.D ?? W) * 0.13);
-        return { W: cw, D: r.D ? r1(r.D - 3) : cw, floor: r2(floor - 1 + dB), bowl: { d: dB }, rBot: 0, ...side, punt: { d: 0.35, a: 0.9 } }; })()
+      // cl127/cl128 (dona: "a curva é ao contrário"; "isso! parede do lado não existe, apenas fundo"): cavidade colada no refil (some) e,
+      // embaixo da ponta dele, só a lâmina curva em sorriso de parede a parede (meio mais baixo, 1 mm abaixo da ponta)
+      incomRefillCavity: roundK ? (() => { const dB = r1(Math.min(W, r.D ?? W) * 0.13);
+        return { W: r1(rw - 0.2), D: r1(rd - 0.2), floor: r2(floor + 0.1), rBot: r1(rb - 0.1), ...side, lens: { a: r1(Math.min(W, r.D ?? W) / 2 - 0.5), d: dB, t: 1.1, y: r2(floor - 1 + dB) }, punt: { d: 0.35, a: 0.9 } }; })()
         : { W: r1(rw + 0.4), D: r1(rd + 0.4), floor: r2(floor * 0.65), rBot: r1(rb), ...side, punt: { d: r1(Math.min(2, floor * 0.3)), a: r1(Math.min(W, r.D ?? W) * 0.34) } } }); // cl60 (Dispensing 15 conta-gotas: "refil está acabando antes do fundo"): na cápsula de fundo curvo a cavidade acompanha o refil até embaixo
     const refill = P('Refil PET', rw, rd, hr, { ...clear, ...shape, h: hr, vol: true, casca: true, apoio: false, // conteúdo no refil (cheio, tom de base)
       liq: true, liqType: 'cremoso', liqLevel: 94, liqColor: corDe(BASE_CORES, r.n),
@@ -11270,8 +11280,12 @@ function loadState(s, name) {
   // lado a lado da tela ficava grudado em todo modelo aberto).
   S = normalize(structuredClone({ wall: S.wall, bg: S.bg, side: [], ...s, wallAuto: s.wallAuto ?? (s.wall == null || s.wall === 1.2) })); // modelo sem parede própria: automática pelo material
   if (name) { S.file = name; if (!S.side.length) S.name = name; } // arquivo = tudo o que está nele (todos os produtos)
+  // cl128 (dona: "quero que essa luz seja padrão ao abrir um arquivo" — a da tela de revisão): todo arquivo abre com a luz Estúdio do app
+  // (sem HDRI, giro/intensidade/contraste no padrão) e o fundo claro da revisão; depois de aberto dá para trocar e salvar em Minhas luzes
+  S.scene = { ...(S.scene || {}), luz: 'studio', hdrName: undefined, luzRot: 0, luzInt: 100, luzCon: 50, luzAlt: 0, luzKey: 100, luzFill: 100, luzSoft: 50, bgGrad: 'nenhum' };
+  S.bg = '#f1f0ed';
   store.set('shape.openGroups', {}); // produto aberto: grupos de controles começam fechados
-  sel = 0; renderAll(); build(); openFrontOrtho(); setTimeout(offerCatalogUpdate, 300);
+  sel = 0; renderAll(); applySceneLight(); build(); openFrontOrtho(); setTimeout(offerCatalogUpdate, 300);
 }
 // Projeto aberto ou novo: sempre de frente e ortográfica
 function openFrontOrtho() { cam = ortho; $('#orthoBtn')?.classList.add('on'); fit('front'); }
