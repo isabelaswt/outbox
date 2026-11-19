@@ -1,4 +1,6 @@
-# Atualização Claude — 18/11/2026, cl116
+# Atualização Claude — 18/11/2026, cl117
+
+- **cl117** — Classic (Duo, Quarteto, Uno), dona (print do Classic aberto ao lado da foto: "pino não pode aparecer, a calha é maior e arredondada nas pontas"): o pino da `hingeBarra` fica todo dentro da barra (Lh − 1, nada para fora); a calha da base vira um oblongo visto de cima (pontas em meia-lua, ExtrudeGeometry de um stadium), Lh + 1,4 de comprimento, 2r + 3,2 de profundidade e 2r + 1,2 de altura; a barra cresceu para min(0,44·W, 30 mm) (foto: ~45% da largura). Conferido de lado aberto: a tampa não entra na base.
 
 - **cl116** — (1) Classic, dona ("voando" + "faça o mecanismo certo, imagina que tem um pino ali"): a calha da `hingeBarra` corta só a base (a barra fica presa à tampa, sem vão em volta) e um pino r·0,32 atravessa a barra toda e entra 1,5 mm nas paredes da base nas pontas da calha. (2) Deluxe (todos), dona no Amsterdam Deluxe 100: "colar precisa ser mais alto, fazer o mesmo dente interno que você fez no bulb para prender a tampa": anel +60% (tirado do alto do frasco) e o Dente da sobretampa (W−2,6 × 2,5) como no Bulb, sobretampa com gap −2,5. (3) Dispensing 15/30 conta-gotas, dona: "deixar o refil mais alto, tá acabando antes, parede acompanhar": refil +85% da altura do anel, entrando nele (anel gap −e, cavidade incomRefillCavity passante no anel), líquido 99%. Lição repetida: comentário `//` no meio da linha comentou o resto (cutHole) — usar sempre `/* */`.
 

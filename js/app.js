@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION, ADDITION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-18.cl116';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-18.cl117';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -707,7 +707,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-18.cl116';
+const BUILD = '2026-11-18.cl117';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -6961,7 +6961,11 @@ function compactParts(product, L, S0) {
       const kn = (c, x0, x1) => { const g = new THREE.CylinderGeometry(r, r, x1 - x0, 40); g.rotateZ(Math.PI / 2); g.translate(cx + c + (x0 + x1) / 2, y0, hz); return g; };
       const mB = bObjs[0].material, mT = objs[0].material;
       if (m.hingeCalha && !m.hingeOculta && !THUMB_LITE) { const ni = x => { const g = x.index ? x.toNonIndexed() : x; for (const k in g.attributes) if (k !== 'position' && k !== 'normal') g.deleteAttribute(k); return g; };
-        const cut = new THREE.BoxGeometry(Lh + 0.6, 2 * r + 0.8, 2 * r + 1.6); cut.translate(cx, y0, m.hingeBarra ? z : z + r + 0.35 - 0.4);
+        let cut; if (m.hingeBarra) { /* cl117 (dona, foto do Classic aberto: "a calha é maior e arredondada nas pontas"): vista de cima a calha é um oblongo
+          (pontas em meia-lua), um pouco mais longa e mais funda que a barra */ const Lc = Lh + 1.4, wc = 2 * r + 3.2, hc = 2 * r + 1.2, rc = wc / 2, sh = new THREE.Shape();
+          sh.moveTo(-Lc / 2 + rc, -rc); sh.lineTo(Lc / 2 - rc, -rc); sh.absarc(Lc / 2 - rc, 0, rc, -Math.PI / 2, Math.PI / 2, false); sh.lineTo(-Lc / 2 + rc, rc); sh.absarc(-Lc / 2 + rc, 0, rc, Math.PI / 2, Math.PI * 1.5, false);
+          cut = new THREE.ExtrudeGeometry(sh, { depth: hc, bevelEnabled: false, curveSegments: 20 }); cut.rotateX(-Math.PI / 2); cut.deleteAttribute('uv'); cut.translate(cx, y0 - hc / 2, z); }
+        else { cut = new THREE.BoxGeometry(Lh + 0.6, 2 * r + 0.8, 2 * r + 1.6); cut.translate(cx, y0, z + r + 0.35 - 0.4); }
         (m.hingeBarra ? [bObjs[0]] : [objs[0], bObjs[0]]).forEach(o => { const [outer, inner] = cutHole(o.geometry, cut); /* cl116 (dona, Classic aberta: "voando"): a barra é presa à tampa — a calha só corta a base */ if (outer === o.geometry) return; const g = mergeGeometries([ni(outer), ni(inner)]); if (g) { o.geometry.dispose(); o.geometry = g; } });
         cut.dispose(); }
       if (m.hingeLeaf?.compact && m.hingeLeaf.concealed) { // Macaroon — cl91 (dona, fotos lilás: "o ângulo da dobradiça está errado, ele fica
@@ -7355,9 +7359,9 @@ function compactParts(product, L, S0) {
       } else
       if (m.hingeBarra) { // cl113 (dona: "o classic é uma barra única de dobradiça, não dividida em vários"): um só cilindro, preso à tampa
         add(kn(0, -Lh / 2, Lh / 2), mT, idx, 'dobradica', 0, 0, 0); objs.push(product.children.at(-1));
-        // cl116 (dona: "faça o mecanismo certo, imagina que tem um pino ali"): a barra (presa à tampa, sem calha na tampa) gira num pino que
-        // atravessa a barra toda e entra ~1,5 mm nas paredes da base, nas duas pontas da calha
-        const pin = new THREE.CylinderGeometry(r * 0.32, r * 0.32, Lh + 3, 24); pin.rotateZ(Math.PI / 2); pin.translate(cx, y0, hz); add(pin, mirrorMat, base.idx, 'pino', 0, 0, 0);
+        // cl116 (dona: "faça o mecanismo certo, imagina que tem um pino ali"): a barra gira num pino. cl117 (dona: "pino não pode aparecer"):
+        // o pino fica todo dentro da barra, sem ponta para fora
+        const pin = new THREE.CylinderGeometry(r * 0.32, r * 0.32, Lh - 1, 24); pin.rotateZ(Math.PI / 2); pin.translate(cx, y0, hz); add(pin, mirrorMat, base.idx, 'pino', 0, 0, 0);
       } else
       (m.hingePair ? [-W * (m.hingePair.x ?? 0.30), W * (m.hingePair.x ?? 0.30)] : [0]).forEach(c => {
         const pin = new THREE.CylinderGeometry(r * 0.38, r * 0.38, Lh - 0.6, 24); pin.rotateZ(Math.PI / 2); pin.translate(cx + c, y0, hz);
@@ -10692,7 +10696,7 @@ function incomProduct(r) {
       Object.assign(t, { hingeCalha: 0.9, hingeOculta: true });
     } }
     ms.forEach((m, i) => { if (m.hinge && !m.caseLatch && ms[i - 1]?.dedo) m.snapFront = true; });
-    if (/^Classic/.test(r.n)) { const t = ms.find(m => m.name === 'Tampa'); if (t) Object.assign(t, { hingeBarra: true, hingeCalha: r2(Math.min(0.32, 24 / W)) }); } // cl113: barra única ("o classic é uma barra única") dentro de uma calha ("tem uma calha para essa dobradiça")
+    if (/^Classic/.test(r.n)) { const t = ms.find(m => m.name === 'Tampa'); if (t) Object.assign(t, { hingeBarra: true, hingeCalha: r2(Math.min(0.44, 30 / W)) }); } /* cl117: calha maior (foto: ~45% da largura) */ // cl113: barra única ("o classic é uma barra única") dentro de uma calha ("tem uma calha para essa dobradiça")
     if (/^(Frame|Classic)/.test(r.n)) {
       const t = ms.find(m => m.name === 'Tampa'), b = ms.find(m => m.name === 'Base');
       if (t && b?.dedo) { t.snapFlat = true; t.snapConform = !t.sides; t.snapWidth = r1(b.dedo.w - 0.2); b.fechoRebaixo = true; }
