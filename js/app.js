@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION, ADDITION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-18.cl122';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-18.cl123';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -707,7 +707,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-18.cl122';
+const BUILD = '2026-11-18.cl123';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -7426,7 +7426,13 @@ function incomDispensingGeo(g, m, y0) {
   const c = m.incomRefillCavity;
   if (c) {
     const floor = c.floor, h = m.h - floor + 1;
-    const cut = moduleGeo({ ...BASE, kind: 'giro', ...polyFit({ W: c.W, D: c.D, sides: c.sides || 0, sideR: c.sideR || 0 }),
+    // cl123 (dona: "ficou ruim, não é melhor modelar uma curva embaixo?"; foto do Dispensing): parede justa no refil e o piso é uma
+    // tigela rasa (calota esférica, mais aberta que a ponta do refil) — entre os dois fica a meia-lua de acrílico da foto
+    // bowl.aB: a tigela abre além da parede do refil (na foto a curva vai quase até a parede de fora); bowl.s: degrau suave de volta à parede justa
+    const cut = c.bowl ? (() => { const a = c.W / 2, aB = Math.max(a, c.bowl.aB || a), d = c.bowl.d, Rs = (aB * aB + d * d) / (2 * d), yR = y0 + floor, yT = y0 + m.h + 1, P = [];
+      for (let i = 0; i <= 32; i++) { const x = aB * i / 32; P.push(new THREE.Vector2(x, yR - d + Rs - Math.sqrt(Rs * Rs - x * x))); }
+      if (aB > a + 0.05) for (let i = 1; i <= 8; i++) { const t = i / 8; P.push(new THREE.Vector2(aB - (aB - a) * (1 - Math.cos(t * Math.PI / 2)), yR + (c.bowl.s || 1.5) * Math.sin(t * Math.PI / 2))); }
+      P.push(new THREE.Vector2(a, yT), new THREE.Vector2(0, yT)); const g2 = new THREE.LatheGeometry(P, 96); g2.deleteAttribute('uv'); if (m.ox) g2.translate(m.ox, 0, 0); return g2; })() : moduleGeo({ ...BASE, kind: 'giro', ...polyFit({ W: c.W, D: c.D, sides: c.sides || 0, sideR: c.sideR || 0 }),
       h, rBot: c.rBot || 0, rTop: 0, apoio: false }, y0 + floor, { lo: true });
     if (cut) { const [outer, inner] = cutHole(g, cut); if (outer !== g) g = mergeLoose([outer, inner]); }
     // cl121 (dona: "precisa ter esse peso de vidro no chão"; cl44: "base bem curva, embaixo se vê bastante massa no SAN"): fundo de
@@ -10838,8 +10844,8 @@ function incomProduct(r) {
   const refillPhoto = {
     incomp_dispensadores_dispensing_15: [0.68, 0.1, false],
     // aprovação cl47 (Dispensing 15 conta-gotas): cápsula refil de fundo bem curvo e muita massa de SAN embaixo (parece vidro)
-    incomp_conta_gotas_dispensing_15: [0.62, 0.15, false, 0.5], // cl122: medido na foto, do fundo do refil à base ~0,45 da largura
-    incomp_conta_gotas_dispensing_30: [0.7, 0.085, false, 0.5], // cl52: "refil acabando antes do fundo"; cl122: do fundo do refil à base ~0,38 da largura (foto)
+    incomp_conta_gotas_dispensing_15: [0.62, 0.086, false, 0.5], // cl123: no zoom da foto, do fundo do refil à base ~0,33 da largura
+    incomp_conta_gotas_dispensing_30: [0.7, 0.043, false, 0.5], // cl52: "refil acabando antes do fundo"; cl123: zoom da foto, fundo do refil à base ~0,23 da largura
     incomp_dispensadores_dispensing_30: [0.76, 0.08, false], // foto: coluna ~75% da largura
     incomp_dispensadores_dispensing_60: [0.82, 0.08, false], // foto da dona: coluna ~83%
     incomp_dispensadores_dispensing_cube: [0.8, 0.045, true],
@@ -10858,8 +10864,8 @@ function incomProduct(r) {
       // cl122 (dona: "acho que tem que modelar esse fundo mesmo"; fotos ampliadas do fundo): a cavidade é um copo ~1 mm mais largo que o
       // refil, de fundo chato com canto arredondado (~35% do raio) — a ponta redonda do refil fica logo acima e o piso do copo aparece como
       // uma elipse; embaixo, bloco maciço de fundo reto, só com a marquinha de injeção no centro
-      incomRefillCavity: { W: r1(rw + (roundK ? 1.2 : 0.4)), D: r1(rd + (roundK ? 1.2 : 0.4)), floor: r2(roundK ? floor - 0.6 : floor * 0.65), rBot: r1(roundK ? (rw + 1.2) / 2 * 0.35 : rb), ...side,
-        punt: roundK ? { d: 0.35, a: 0.9 } : { d: r1(Math.min(2, floor * 0.3)), a: r1(Math.min(W, r.D ?? W) * 0.34) } } }); // cl60 (Dispensing 15 conta-gotas: "refil está acabando antes do fundo"): na cápsula de fundo curvo a cavidade acompanha o refil até embaixo
+      incomRefillCavity: roundK ? { W: r1(rw + 0.4), D: r1(rd + 0.4), floor: r2(floor + rb * 0.35), bowl: { d: r2(rb * 0.35 + 1), aB: r1(Math.min(W, r.D ?? W) * 0.4), s: r1(rb * 0.25) }, rBot: 0, ...side, punt: { d: 0.35, a: 0.9 } }
+        : { W: r1(rw + 0.4), D: r1(rd + 0.4), floor: r2(floor * 0.65), rBot: r1(rb), ...side, punt: { d: r1(Math.min(2, floor * 0.3)), a: r1(Math.min(W, r.D ?? W) * 0.34) } } }); // cl60 (Dispensing 15 conta-gotas: "refil está acabando antes do fundo"): na cápsula de fundo curvo a cavidade acompanha o refil até embaixo
     const refill = P('Refil PET', rw, rd, hr, { ...clear, ...shape, h: hr, vol: true, casca: true, apoio: false, // conteúdo no refil (cheio, tom de base)
       liq: true, liqType: 'cremoso', liqLevel: 94, liqColor: corDe(BASE_CORES, r.n),
       gap: r2(floor - fr.h), rBot: rb, rTop: 0.5, incomRefillCavity: { W: r1(rw - 2 * wall), D: r1(rd - 2 * wall), floor: wall, rBot: Math.max(0, rb - wall), ...side } });
