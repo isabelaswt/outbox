@@ -1,4 +1,6 @@
-# Atualização Claude — 18/11/2026, cl123
+# Atualização Claude — 18/11/2026, cl124
+
+- **cl124** — Dispensing 15/30 conta-gotas, dona ("não ter contato com a parede onde fica o refil, imagina que é tipo um copo e o refil fica flutuando ali"): a cavidade virou um copo 2,6 mm mais largo que o refil (folga ~1,3 mm em volta) com fundo curvo (`bowl.d` = 0,6·rb + 1,3; aro 0,6·rb acima da ponta do refil), sem a aba larga/degrau da cl123 — o refil não encosta nas paredes nem no fundo.
 
 - **cl123** — Dispensing 15/30 conta-gotas, dona (print do 15 ao lado da foto: "ficou ruim, não é melhor modelar uma curva embaixo?"): o copo de parede reta da cl122 saiu; a cavidade é justa no refil (+0,4) e embaixo vira uma tigela rasa (`incomRefillCavity.bowl`: cortador em torno — calota esférica de aba 40% da largura, aro 0,35·rb acima da ponta do refil, fundo 1 mm abaixo dela, e um degrau suave de 0,25·rb de volta à parede justa), como a curva larga das fotos em volta da ponta do refil. Refil desce até a medida do zoom da foto (fundo do refil → base ≈ 0,33 da largura no 15 e 0,23 no 30): piso 0,15 → 0,086 e 0,085 → 0,043 (a medida da cl122 tinha pego a sombra do refil dentro do bloco).
 
