@@ -1,4 +1,6 @@
-# Atualização Claude — 18/11/2026, cl117
+# Atualização Claude — 18/11/2026, cl118
+
+- **cl118** — Classic (Duo, Quarteto, Uno), dona (print da barra de costas: "isso tá errado ainda, quero que você faça um mecanismo correto com esse visual, mas funcional"): a barra (tampa) gira num canal redondo da base (cilindro r + 0,3 no eixo, sem a calha oblonga da cl117); nas duas pontas a BASE tem terminais do mesmo raio da barra (cilindro 1,1r + meia esfera, a 0,15 da barra), que formam as pontas arredondadas e seguram o pino; o pino (r·0,32) atravessa a barra e entra 0,9r em cada terminal, sem aparecer; a tampa tem a folga cilíndrica em volta dos terminais (gira sem bater). Conferido fechado, a 60° e aberto, de lado sem sobreposição.
 
 - **cl117** — Classic (Duo, Quarteto, Uno), dona (print do Classic aberto ao lado da foto: "pino não pode aparecer, a calha é maior e arredondada nas pontas"): o pino da `hingeBarra` fica todo dentro da barra (Lh − 1, nada para fora); a calha da base vira um oblongo visto de cima (pontas em meia-lua, ExtrudeGeometry de um stadium), Lh + 1,4 de comprimento, 2r + 3,2 de profundidade e 2r + 1,2 de altura; a barra cresceu para min(0,44·W, 30 mm) (foto: ~45% da largura). Conferido de lado aberto: a tampa não entra na base.
 
