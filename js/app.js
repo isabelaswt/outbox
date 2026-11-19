@@ -7439,7 +7439,9 @@ function incomDispensingGeo(g, m, y0) {
     const rc = Math.max(0.5, (m.rBot || 1) - 0.08), yb = y0 + 0.06, P = [new THREE.Vector2(0, yb)];
     for (let i = 0; i <= 8; i++) { const t = i / 8 * Math.PI / 2, yy = yb + rc - rc * Math.cos(t); P.push(new THREE.Vector2(Math.max(0.1, wallAt(yy + 0.3) - 0.7 - rc + rc * Math.sin(t)), yy)); }
     for (let yy = yb + rc + 0.5; yy < yR - 0.05; yy += 0.5) P.push(new THREE.Vector2(Math.min(a, wallAt(yy) - 0.7), yy));
-    for (let i = 0; i <= 48; i++) { const x = a * (1 - i / 48); P.push(new THREE.Vector2(x, yc(x) - 0.05)); }
+    // cl132: o bloco termina reto logo abaixo do meio do prato (em cima dele a casca mostra a curva em sorriso e a ponta do refil inteira;
+    // seguindo a curva até a parede, o bloco cobria a ponta)
+    const yTopB = yR - d - 0.15; P.splice(0, P.length, ...P.filter(q => q.y < yTopB)); P.push(new THREE.Vector2(Math.min(a, wallAt(yTopB) - 0.7), yTopB), new THREE.Vector2(0, yTopB));
     const bg = new THREE.LatheGeometry(P, 128); bg.deleteAttribute('uv'); bg.computeVertexNormals(); if (ox) bg.translate(ox, 0, 0);
     const out = mergeLoose([g, pg]); out.userData = { ...(g.userData || {}), massa: bg }; return out; }
   if (c) {
@@ -7632,7 +7634,9 @@ function buildInto(product, S, explodeAmt = 0) {
     if (mesh.material.transmission > 0 && !mesh.material.depthWrite) glassAxis(mesh);
     if (g.userData.massa && !THUMB_LITE) { const mm = new THREE.Mesh(g.userData.massa, material(colM, finM, null, r1(Math.min(m.W, m.D) * (m.massaK ?? 1.1)), look)); // cl131: bloco do fundo (Dispensing); cl132 (dona: "refração embaixo maior"): 0,4 → 1,1·W
       if (mm.material.transmission > 0) { mm.material = mm.material.clone(); // cl132: lente de vidro mais forte embaixo (foto: curva escura e brilho em volta da ponta do refil)
-        mm.material.ior = m.massaIor ?? 1.75; mm.material.attenuationColor = new THREE.Color(m.massaTint ?? '#c9d2d4'); mm.material.attenuationDistance = (m.massaDist ?? 0.6) * Math.min(m.W, m.D); }
+        mm.material.ior = m.massaIor ?? 1.75; mm.material.attenuationColor = new THREE.Color(m.massaTint ?? '#eef3f3'); mm.material.attenuationDistance = (m.massaDist ?? 2) * Math.min(m.W, m.D);
+        if (m.massaEnv) { mm.material.envMapIntensity = m.massaEnv; mm.material.specularIntensity = 1; mm.material.roughness = 0; mm.material.clearcoat = 1; } }
+      mm.renderOrder = (mesh.renderOrder || 0) + 1; // cl132: a casca (vidro por fora) era desenhada por cima e apagava o bloco — ele vem depois
       mm.name = 'massa'; mm.userData.idx = idx; if (mm.material.transmission > 0 && !mm.material.depthWrite) glassAxis(mm); product.add(mm); }
     // Tampa de vidro que veste a válvula: as paredes da cavidade aparecem como as linhas
     // do vidro grosso dos dois lados da válvula (antes a cavidade sumia e parecia uma janela).
