@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION, ADDITION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-18.cl114';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-18.cl115';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -707,7 +707,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-18.cl114';
+const BUILD = '2026-11-18.cl115';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -6957,11 +6957,11 @@ function compactParts(product, L, S0) {
     if (bObjs.length) {
       // Case p3–5 e foto ampliada: duas articulações curtas a ~30% do centro, não um eixo longo central.
       const r = clamp(Math.min(base.m.h, m.h) * 0.22, 1.1, 2.2), Lh = m.hingeCalha ? W * m.hingeCalha : m.hingeFull ? W * 0.94 : m.hingePair ? W * (m.hingePair.w ?? 0.11) : Math.min(W * (m.hingeWidth ?? (m.sides ? 0.4 : 0.32)), m.sides ? 44 : 24), g3 = Lh / 3, gap = m.hingePair ? 0.15 : 0.35;
-      const hz = m.hingeCalha ? z + r + 0.35 : z + r * 0.7; // calha: o eixo fica para dentro, num recorte do fundo da base e da tampa
+      const hz = m.hingeBarra ? z /* cl115 (dona: "isso tem que ficar na junção da tampa com a base, não na base"): a barra fica no eixo, na quina de trás */ : m.hingeCalha ? z + r + 0.35 : z + r * 0.7; // calha: o eixo fica para dentro, num recorte do fundo da base e da tampa
       const kn = (c, x0, x1) => { const g = new THREE.CylinderGeometry(r, r, x1 - x0, 40); g.rotateZ(Math.PI / 2); g.translate(cx + c + (x0 + x1) / 2, y0, hz); return g; };
       const mB = bObjs[0].material, mT = objs[0].material;
       if (m.hingeCalha && !m.hingeOculta && !THUMB_LITE) { const ni = x => { const g = x.index ? x.toNonIndexed() : x; for (const k in g.attributes) if (k !== 'position' && k !== 'normal') g.deleteAttribute(k); return g; };
-        const cut = new THREE.BoxGeometry(Lh + 0.6, 2 * r + 0.8, 2 * r + 1.6); cut.translate(cx, y0, z + r + 0.35 - 0.4);
+        const cut = new THREE.BoxGeometry(Lh + 0.6, 2 * r + 0.8, 2 * r + 1.6); cut.translate(cx, y0, m.hingeBarra ? z : z + r + 0.35 - 0.4);
         [objs[0], bObjs[0]].forEach(o => { const [outer, inner] = cutHole(o.geometry, cut); if (outer === o.geometry) return; const g = mergeGeometries([ni(outer), ni(inner)]); if (g) { o.geometry.dispose(); o.geometry = g; } });
         cut.dispose(); }
       if (m.hingeLeaf?.compact && m.hingeLeaf.concealed) { // Macaroon — cl91 (dona, fotos lilás: "o ângulo da dobradiça está errado, ele fica

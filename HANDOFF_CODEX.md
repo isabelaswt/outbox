@@ -1,4 +1,6 @@
-# Atualização Claude — 18/11/2026, cl114
+# Atualização Claude — 18/11/2026, cl115
+
+- **cl115** — Classic, dona (print da barra deitada em cima da base com a paleta aberta): "isso tem que ficar na junção da tampa com a base, não na base": com `hingeBarra` a barra fica centrada no eixo (hz = costas, y = divisão), igual ao giro da cl114; a calha (recorte na base e na tampa) acompanha. Fechada a barra fica na emenda das costas; aberta gira no lugar, sem sobreposição.
 
 - **cl114** — Classic: (1) dona, print de lado com a tampa entrando na base: "nunca acontecer isso de sobrepor" — com `hingeBarra` o giro passa para a quina de trás de cima (hingeInfo z = costas, y = divisão): a tampa só sobe e vai para trás; a barra fica onde estava, na calha, presa à tampa. (2) Classic Uno, foto aberta: "a borda do godê vai quase até a extremidade e é praticamente reta, não arredondada nas pontas" — godes.mgK 0,05 (margem ~5%), mm 0 (sai o limite da bandeja do catálogo) e rq 0,5 (quina do rebaixo, aro e godê quase vivas; concordância da boca 0,4).
 
