@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION, ADDITION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-18.cl106';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-18.cl107';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -707,7 +707,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-18.cl106';
+const BUILD = '2026-11-18.cl107';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -7260,21 +7260,29 @@ function compactParts(product, L, S0) {
           tongue = [cylX(2 * (half - gq), rr), prismX(2 * (half - gq), ya, yTopT, za - rr, za + rr, 0.3)];
           femea = [cylX(2 * half, rr + gq), prismX(2 * half, ya, yL + 1.5, z - 1.5, za + rr + gq, 0.25)];
           const pin = new THREE.CylinderGeometry(0.3, 0.3, 2 * half + 4, 20); pin.rotateZ(Math.PI / 2); pin.translate(cx, ya, za); add(pin, mirrorMat, base.idx, 'pino', 0, 0, 0); }
-        else { // cl106 (dona, fotos de Flat aberta de frente: "faça o mesmo mecanismo que chegamos no Big 4", "é um macho e fêmea mas o meio tem
-          // uma diferença, são duas rampas que se encontram", "--\____/--", "na parte alta da rampa ficam os pinos", "atrás é reto, não tem desenho"):
-          // a borda de trás da BASE tem por dentro um recuo em trapézio (rampa, fundo reto, rampa) e a TAMPA uma língua do mesmo desenho que
-          // desce nele. Os dois pinos ficam no alto das rampas, rente à divisão, entrando nas pontas da base. Por trás a parede da base fica
-          // inteira (o recuo não vaza): fechada, as costas são retas; aberta, a língua sobe e o desenho aparece de frente.
-          const half = W * 0.325, gq = 0.22, A = half - gq, D = clamp(base.m.h * 0.3, 1.6, 2.6), dr = Math.max(2.4, W * 0.035), za = z + 1.75 /* o recuo começa depois do arredondado da quina de trás (~1 mm): por trás nada aparece */, ya = yL - 0.45, yTopT = yL + 0.6;
+        else { // cl106 (dona, fotos de Flat aberta de frente: "faça o mesmo mecanismo que chegamos no Big 4", "são duas rampas que se encontram",
+          // "na parte alta da rampa ficam os pinos") → cl107 ("a forma é essa, mas essa seria o macho, quero a forma invertida dessa rampa"):
+          // a BASE é o macho — no meio da borda de trás ela sobe num ressalto em trapézio (--/‾‾‾\--: rampa, topo reto, rampa) — e a TAMPA
+          // é a fêmea, com o recorte do mesmo desenho (folga 0,22). Os dois pinos ficam no alto das rampas, rente às costas, entrando nas
+          // pontas da tampa. O ressalto vai da face de trás até a face de dentro da borda (medida na malha).
+          const half = W * 0.325, gq = 0.22, D = clamp(base.m.h * 0.3, 1.6, 2.6), dr = Math.max(2.4, W * 0.035), k = dr / D, At = half - dr, za = z + 0.45, ya = yL + D - 0.45;
           axis = { y: ya, z: za };
           let zIn = z + 4; { const bo = bObjs[0], p = bo.geometry.attributes.position, v = new THREE.Vector3(); bo.updateMatrix(); let zm = Infinity;
-            for (let k = 0; k < p.count; k++) { v.fromBufferAttribute(p, k).applyMatrix4(bo.matrix); if (Math.abs(v.x - cx) < A - dr && v.y > yL - 0.6 && v.y < yL + 0.01 && v.z > z + 2 && v.z < z + 9) zm = Math.min(zm, v.z); }
+            for (let q = 0; q < p.count; q++) { v.fromBufferAttribute(p, q).applyMatrix4(bo.matrix); if (Math.abs(v.x - cx) < At && v.y > yL - 0.6 && v.y < yL + 0.01 && v.z > z + 2 && v.z < z + 9) zm = Math.min(zm, v.z); }
             if (zm < Infinity) zIn = zm; }
-          const trap = (a2, yB, yT, z0b, z1b, bv) => { const sh = new THREE.Shape(); sh.moveTo(-a2, yT); sh.lineTo(-a2, yL); sh.lineTo(-a2 + dr, yB); sh.lineTo(a2 - dr, yB); sh.lineTo(a2, yL); sh.lineTo(a2, yT); sh.closePath();
+          const trapUp = (ab, yB, yT, z0b, z1b, bv) => { const hw = y => ab - (y - yL) * k, sh = new THREE.Shape(); // meia-largura cai com a altura (rampa)
+            sh.moveTo(-hw(yB), yB); sh.lineTo(hw(yB), yB); sh.lineTo(hw(yT), yT); sh.lineTo(-hw(yT), yT); sh.closePath();
             const g = new THREE.ExtrudeGeometry(sh, { depth: z1b - z0b - 2 * bv, bevelEnabled: bv > 0, bevelThickness: bv, bevelSize: bv, bevelSegments: 2 }); g.deleteAttribute('uv'); g.translate(cx, 0, z0b + bv); return g; };
-          tongue = [trap(A, yL - D, yTopT, za - 0.4, zIn - gq, 0.12)];
-          femea = [trap(A + gq, yL - D - gq, yL + 1.5, za - 0.4 - gq, zIn + 1.5, 0)];
-          [-1, 1].forEach(sg => { const pin = new THREE.CylinderGeometry(0.3, 0.3, 6, 20); pin.rotateZ(Math.PI / 2); pin.translate(cx + sg * A, ya, za); add(pin, mirrorMat, base.idx, 'pino', 0, 0, 0); }); }
+          const ressalto = trapUp(half, yL - 0.3, yL + D, z, zIn, 0.12), recorte = trapUp(half + gq, yL - 0.5, yL + D + gq, z - 1, zIn + gq, 0);
+          if (!THUMB_LITE) { const ni = x => { const g = x.index ? x.toNonIndexed() : x; for (const a in g.attributes) if (a !== 'position' && a !== 'normal') g.deleteAttribute(a); return g; };
+            const bo = bObjs[0]; try { bo.updateMatrix(); ressalto.applyMatrix4(bo.matrix.clone().invert()); const ev = new Evaluator(); ev.attributes = ['position', 'normal']; ev.useGroups = false;
+              const out = ev.evaluate(new Brush(flatPN(bo.geometry)), new Brush(flatPN(ressalto)), ADDITION).geometry; out.userData = { ...bo.geometry.userData }; bo.geometry.dispose(); bo.geometry = out;
+            } catch (e) { console.warn('Ressalto da dobradiça (Flat):', e); } ressalto.dispose();
+            const lo = objs[0]; lo.updateMatrix(); recorte.applyMatrix4(lo.matrix.clone().invert()); const [outer, inner] = cutHole(lo.geometry, recorte); recorte.dispose();
+            if (outer !== lo.geometry) { const g = mergeGeometries([ni(outer), ni(inner)]); if (g) { g.userData = { ...lo.geometry.userData }; lo.geometry.dispose(); lo.geometry = g; } } }
+          else { add(ressalto, mB, base.idx, 'dobradica', 0, 0, 0); recorte.dispose(); }
+          tongue = []; femea = [];
+          [-1, 1].forEach(sg => { const pin = new THREE.CylinderGeometry(0.25, 0.25, 5, 20); pin.rotateZ(Math.PI / 2); pin.translate(cx + sg * (At + 0.45 * k), ya, za); add(pin, mirrorMat, base.idx, 'pino', 0, 0, 0); }); }
         const ridge = null;
         if (ridge) { ridge.deleteAttribute('uv'); ridge.translate(cx, 0, z + 0.15); add(ridge, mB, base.idx, 'dobradica', 0, 0, 0);
           axis = { y: yL + (hn - gp) / 2, z: z + dz / 2 }; }
