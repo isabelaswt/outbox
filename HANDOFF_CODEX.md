@@ -1,4 +1,6 @@
-# Atualização Claude — 18/11/2026, cl113
+# Atualização Claude — 18/11/2026, cl114
+
+- **cl114** — Classic: (1) dona, print de lado com a tampa entrando na base: "nunca acontecer isso de sobrepor" — com `hingeBarra` o giro passa para a quina de trás de cima (hingeInfo z = costas, y = divisão): a tampa só sobe e vai para trás; a barra fica onde estava, na calha, presa à tampa. (2) Classic Uno, foto aberta: "a borda do godê vai quase até a extremidade e é praticamente reta, não arredondada nas pontas" — godes.mgK 0,05 (margem ~5%), mm 0 (sai o limite da bandeja do catálogo) e rq 0,5 (quina do rebaixo, aro e godê quase vivas; concordância da boca 0,4).
 
 - **cl113** — Classic (Duo, Quarteto, Uno), dona: "o classic é uma barra única de dobradiça, não dividida em vários" + "tem uma calha para essa dobradiça": novo `hingeBarra` — no ramo genérico, em vez dos 3 nós (base-tampa-base) e pino, um só cilindro de comprimento Lh preso à tampa; e `hingeCalha = min(0,32; 24/W)` para o recorte da calha na base e na tampa (o mesmo da calha genérica), com o eixo para dentro.
 

@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION, ADDITION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-18.cl113';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-18.cl114';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -707,7 +707,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-18.cl113';
+const BUILD = '2026-11-18.cl114';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -6728,9 +6728,9 @@ function compactParts(product, L, S0) {
         // o godê (1,8 mm) assenta no fundo de um rebaixo mais fundo da base: fica sempre afundado, nunca rente
         const WD = godeFundo(m), GH = 1.8, rimTop = top - WD + GH - 0.35, rimBot = m.godes.lata ? Math.max(y0 + 1, rimTop - LATA_H) : top - WD, rimM = m.godes.lata ? godeLata : godeRim;
         if (rect) { // Classic Uno: o godê único também é quadrado (bandeja Jorba 110F)
-          wells.push(pocketCut(rrOut((cw - 0.4) / 2, (ch - 0.4) / 2, 2), x, z, rimBot, top, Math.min(1.1, (top - rimBot) * 0.45), 0)); // cl41/cl45: boca do godê com concordância ("arredondado mesmo")
-          add(new RoundedBoxGeometry(cw - 0.6, rimTop - rimBot, ch - 0.6, 4, Math.min(1.7, (rimTop - rimBot) / 2)), rimM, idx, 'bandeja', x, (rimTop + rimBot) / 2, z);
-          add(new RoundedBoxGeometry(cw - 1.3, GH - 0.1, ch - 1.3, 4, 0.7), godeCor(k0 + j, nG), idx, 'gode', x, top - WD + (GH - 0.1) / 2, z);
+          const rq = m.godes.rq ?? 2; wells.push(pocketCut(rrOut((cw - 0.4) / 2, (ch - 0.4) / 2, rq), x, z, rimBot, top, Math.min(rq < 1 ? 0.4 : 1.1, (top - rimBot) * 0.45), 0)); // cl41/cl45: boca do godê com concordância ("arredondado mesmo")
+          add(new RoundedBoxGeometry(cw - 0.6, rimTop - rimBot, ch - 0.6, 4, Math.min(rq < 1 ? rq : 1.7, (rimTop - rimBot) / 2)), rimM, idx, 'bandeja', x, (rimTop + rimBot) / 2, z);
+          add(new RoundedBoxGeometry(cw - 1.3, GH - 0.1, ch - 1.3, 4, rq < 1 ? 0.3 : 0.7), godeCor(k0 + j, nG), idx, 'gode', x, top - WD + (GH - 0.1) / 2, z);
           if (one && m.godes.cove) { // Classic Uno (aprovação): borda côncava do aro até o godê, ~metade da borda, ~1,2 mm de fundo
             // cl44: cova elíptica com concordância também na quina do aro (antes ficava viva)
             const pw = cw - 0.4, pd = ch - 0.4, rc = 2, S = Math.max(0.8, (Math.min(w - pw, d - pd) / 2) * m.godes.cove), T = 1.2;
@@ -7365,7 +7365,7 @@ function compactParts(product, L, S0) {
       });
     }
     const rH = bObjs.length ? clamp(Math.min(base.m.h, m.h) * 0.22, 1.1, 2.2) : 0;
-    hingeInfo.set(idx, axis ? { y0: axis.y, z: axis.z, ang, under: base?.idx } : { y0, z: z + (m.hingeCalha && rH ? rH + 0.35 : rH * 0.7), ang, under: base?.idx });
+    hingeInfo.set(idx, axis ? { y0: axis.y, z: axis.z, ang, under: base?.idx } : { y0, z: m.hingeBarra ? z /* cl113 (dona: "nunca acontecer isso de sobrepor"): gira na quina de trás de cima — a tampa só sobe e vai para trás, nunca entra na base */ : z + (m.hingeCalha && rH ? rH + 0.35 : rH * 0.7), ang, under: base?.idx });
   });
   // cl50 (Moon Deck: "bug ao fechar/abrir"): primeiro monta todas as dobradiças, depois gira. A tampa vai presa ao andar do meio
   // (o eixo dela anda junto quando ele abre) e as peças da dobradiça presas ao andar do meio giram com ele
@@ -10701,6 +10701,9 @@ function incomProduct(r) {
       // fica 0,8 mm acima da borda de fora. A tampa (oca) assenta na borda e o patamar entra nela; a tampa cresce 0,8 para a altura bater
       // cl50 (Duo: "a borda que você subiu é maior, praticamente é invertido"; Uno: "o relevo é para cima"): a moldura alta em volta
       // dos godês tem a largura que era a da borda baixa (~5,5% da frente) e a borda de fora, mais baixa, fica com o resto
+      // cl114 (dona, foto do Classic Uno aberto: "a borda do godê vai quase até a extremidade e é praticamente reta, não arredondada nas pontas"):
+      // godê maior (margem ~5% em vez do tamanho da bandeja do catálogo) e de quinas quase vivas
+      if (b?.godes && /^Classic Uno/.test(r.n)) b.godes = { ...b.godes, mgK: 0.05, mm: 0, rq: 0.5 };
       if (b?.godes && t && /^Classic (Duo|Quarteto|Uno)/.test(r.n)) { const ph = 0.8; b.patamar = { rim: r1(W * 0.055), h: ph };
         t.gap = -ph; t.h = r1(t.h + ph); if (b.dedo) b.dedo.h = r1(b.dedo.h + ph); }
       // Frame (FRAME-FECHADO, FRAME-P-fechado, aprovação cl38): cavidade maior (~36% × 72% da base), abinha da largura dela, bem arredondada,
