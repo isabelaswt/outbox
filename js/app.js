@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION, ADDITION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-18.cl107';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-18.cl108';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -707,7 +707,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-18.cl107';
+const BUILD = '2026-11-18.cl108';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -7265,24 +7265,28 @@ function compactParts(product, L, S0) {
           // a BASE é o macho — no meio da borda de trás ela sobe num ressalto em trapézio (--/‾‾‾\--: rampa, topo reto, rampa) — e a TAMPA
           // é a fêmea, com o recorte do mesmo desenho (folga 0,22). Os dois pinos ficam no alto das rampas, rente às costas, entrando nas
           // pontas da tampa. O ressalto vai da face de trás até a face de dentro da borda (medida na malha).
-          const half = W * 0.325, gq = 0.22, D = clamp(base.m.h * 0.3, 1.6, 2.6), dr = Math.max(2.4, W * 0.035), k = dr / D, At = half - dr, za = z + 0.45, ya = yL + D - 0.45;
+          // cl108 (dona: "é exatamente isso só que para baixo, a rampa está para cima e elas precisam ficar para baixo"): o mesmo trapézio virado —
+          // a TAMPA desce no meio num macho --\___/-- (rampa, fundo reto, rampa) e a BASE tem o recuo do mesmo desenho (folga 0,22), aberto
+          // atrás (o macho sai por trás ao abrir). Eixo no pé do macho, rente às costas; os pinos nas quinas de baixo das rampas, entrando na base.
+          const half = W * 0.325, gq = 0.22, D = clamp(base.m.h * 0.3, 1.6, 2.6), dr = Math.max(2.4, W * 0.035), k = dr / D, za = z + 0.45, ya = yL - D + 0.45;
           axis = { y: ya, z: za };
           let zIn = z + 4; { const bo = bObjs[0], p = bo.geometry.attributes.position, v = new THREE.Vector3(); bo.updateMatrix(); let zm = Infinity;
-            for (let q = 0; q < p.count; q++) { v.fromBufferAttribute(p, q).applyMatrix4(bo.matrix); if (Math.abs(v.x - cx) < At && v.y > yL - 0.6 && v.y < yL + 0.01 && v.z > z + 2 && v.z < z + 9) zm = Math.min(zm, v.z); }
+            for (let q = 0; q < p.count; q++) { v.fromBufferAttribute(p, q).applyMatrix4(bo.matrix); if (Math.abs(v.x - cx) < half - dr && v.y > yL - 0.6 && v.y < yL + 0.01 && v.z > z + 2 && v.z < z + 9) zm = Math.min(zm, v.z); }
             if (zm < Infinity) zIn = zm; }
-          const trapUp = (ab, yB, yT, z0b, z1b, bv) => { const hw = y => ab - (y - yL) * k, sh = new THREE.Shape(); // meia-largura cai com a altura (rampa)
-            sh.moveTo(-hw(yB), yB); sh.lineTo(hw(yB), yB); sh.lineTo(hw(yT), yT); sh.lineTo(-hw(yT), yT); sh.closePath();
+          const hw = (ab, y) => ab - (yL - y) * k; // meia-largura estreita para baixo (rampa)
+          const trapDn = (ab, yT, yB, z0b, z1b, bv) => { const sh = new THREE.Shape();
+            sh.moveTo(-hw(ab, yB), yB); sh.lineTo(hw(ab, yB), yB); sh.lineTo(hw(ab, yT), yT); sh.lineTo(-hw(ab, yT), yT); sh.closePath();
             const g = new THREE.ExtrudeGeometry(sh, { depth: z1b - z0b - 2 * bv, bevelEnabled: bv > 0, bevelThickness: bv, bevelSize: bv, bevelSegments: 2 }); g.deleteAttribute('uv'); g.translate(cx, 0, z0b + bv); return g; };
-          const ressalto = trapUp(half, yL - 0.3, yL + D, z, zIn, 0.12), recorte = trapUp(half + gq, yL - 0.5, yL + D + gq, z - 1, zIn + gq, 0);
+          const macho = trapDn(half, yL + 0.3, yL - D, z, zIn - gq, 0.12), recuo = trapDn(half + gq, yL + 1, yL - D - gq, z - 1, zIn + 1.5, 0);
           if (!THUMB_LITE) { const ni = x => { const g = x.index ? x.toNonIndexed() : x; for (const a in g.attributes) if (a !== 'position' && a !== 'normal') g.deleteAttribute(a); return g; };
-            const bo = bObjs[0]; try { bo.updateMatrix(); ressalto.applyMatrix4(bo.matrix.clone().invert()); const ev = new Evaluator(); ev.attributes = ['position', 'normal']; ev.useGroups = false;
-              const out = ev.evaluate(new Brush(flatPN(bo.geometry)), new Brush(flatPN(ressalto)), ADDITION).geometry; out.userData = { ...bo.geometry.userData }; bo.geometry.dispose(); bo.geometry = out;
-            } catch (e) { console.warn('Ressalto da dobradiça (Flat):', e); } ressalto.dispose();
-            const lo = objs[0]; lo.updateMatrix(); recorte.applyMatrix4(lo.matrix.clone().invert()); const [outer, inner] = cutHole(lo.geometry, recorte); recorte.dispose();
-            if (outer !== lo.geometry) { const g = mergeGeometries([ni(outer), ni(inner)]); if (g) { g.userData = { ...lo.geometry.userData }; lo.geometry.dispose(); lo.geometry = g; } } }
-          else { add(ressalto, mB, base.idx, 'dobradica', 0, 0, 0); recorte.dispose(); }
+            const bo = bObjs[0]; bo.updateMatrix(); recuo.applyMatrix4(bo.matrix.clone().invert()); const [outer, inner] = cutHole(bo.geometry, recuo); recuo.dispose();
+            if (outer !== bo.geometry) { const g = mergeGeometries([ni(outer), ni(inner)]); if (g) { g.userData = { ...bo.geometry.userData }; bo.geometry.dispose(); bo.geometry = g; } }
+            const lo = objs[0]; try { lo.updateMatrix(); macho.applyMatrix4(lo.matrix.clone().invert()); const ev = new Evaluator(); ev.attributes = ['position', 'normal']; ev.useGroups = false;
+              const out = ev.evaluate(new Brush(flatPN(lo.geometry)), new Brush(flatPN(macho)), ADDITION).geometry; out.userData = { ...lo.geometry.userData }; lo.geometry.dispose(); lo.geometry = out;
+            } catch (e) { console.warn('Macho da dobradiça (Flat):', e); } macho.dispose(); }
+          else { add(macho, mT, idx, 'dobradica', 0, 0, 0); objs.push(product.children.at(-1)); recuo.dispose(); }
           tongue = []; femea = [];
-          [-1, 1].forEach(sg => { const pin = new THREE.CylinderGeometry(0.25, 0.25, 5, 20); pin.rotateZ(Math.PI / 2); pin.translate(cx + sg * (At + 0.45 * k), ya, za); add(pin, mirrorMat, base.idx, 'pino', 0, 0, 0); }); }
+          [-1, 1].forEach(sg => { const pin = new THREE.CylinderGeometry(0.25, 0.25, 5, 20); pin.rotateZ(Math.PI / 2); pin.translate(cx + sg * hw(half, ya), ya, za); add(pin, mirrorMat, base.idx, 'pino', 0, 0, 0); }); }
         const ridge = null;
         if (ridge) { ridge.deleteAttribute('uv'); ridge.translate(cx, 0, z + 0.15); add(ridge, mB, base.idx, 'dobradica', 0, 0, 0);
           axis = { y: yL + (hn - gp) / 2, z: z + dz / 2 }; }

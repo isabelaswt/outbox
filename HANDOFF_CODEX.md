@@ -1,4 +1,6 @@
-# Atualização Claude — 18/11/2026, cl107
+# Atualização Claude — 18/11/2026, cl108
+
+- **cl108** — Flat (todas), dona: "é exatamente isso só que para baixo, a rampa está para cima e elas precisam ficar para baixo": o trapézio da cl107 virado. A TAMPA desce no meio num macho --\\___/-- (meia-largura W·0,325 em cima, rampas de max(2,4; W·0,035), fundo ~0,3·h da base), unido à tampa por CSG; a BASE tem o recuo do mesmo desenho (folga 0,22), aberto atrás para o macho sair ao abrir. Eixo no pé do macho (yL−D+0,45), 0,45 para dentro das costas; pinos r 0,25 nas quinas de baixo das rampas, entrando na base. Fechada, a emenda --\\___/-- aparece nas costas como linha fina.
 
 - **cl107** — Flat (todas), dona: "essa seria o macho, quero a forma invertida dessa rampa": papéis trocados. A BASE é o macho — no meio da borda de trás sobe um ressalto em trapézio --/‾‾‾\\-- (meia-largura W·0,325 embaixo, rampas de max(2,4; W·0,035), altura ~0,3·h da base), da face de trás até a face de dentro da borda, unido à base por CSG. A TAMPA é a fêmea (recorte do mesmo desenho, folga 0,22). Pinos r 0,25 no alto das rampas, eixo 0,45 abaixo do topo do ressalto e 0,45 para dentro das costas. Aberta, a tampa gira em volta do topo do ressalto e fica acima da borda, como nas fotos. Fechada, a emenda do ressalto aparece nas costas como linha fina (não dá para esconder com a base macho e o eixo nas costas).
 
