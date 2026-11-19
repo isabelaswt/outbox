@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION, ADDITION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-18.cl131';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-19.cl132';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -707,7 +707,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-18.cl131';
+const BUILD = '2026-11-19.cl132';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -7427,16 +7427,20 @@ function incomDispensingGeo(g, m, y0) {
   // cl129 (dona: "não ter a estrutura que segura o refil, fica sobreposta, quero só o refil, a casca e o fundo abaulado"): sem cavidade
   // cortada (a superfície dela refratava como um segundo contorno do refil) — a casca fica só a superfície de fora e o fundo é um prato
   // abaulado em sorriso, de parede a parede, logo abaixo do refil
-  if (c?.prato) { // cl131 (dona: "essa linha reta tá esquisita", "parece que sai do vidro a curva", "deixar mais com cara de massa de vidro"):
-    // o prato abaulado da cl129 (curva em sorriso, superfície da casca) fica 0,7 mm dentro do vidro; embaixo dele, um BLOCO maciço de vidro à
-    // parte (malha própria, refração grossa só nele) com o topo 0,05 mm abaixo do prato — dá o peso do vidro sem dobrar o refil
-    const { a, d, y } = c.prato, Rs = (a * a + d * d) / (2 * d), yc = x => y0 + y - d + Rs - Math.sqrt(Rs * Rs - x * x), D = [];
+  if (c?.prato) { // cl131 (dona: "essa linha reta tá esquisita", "parece que sai do vidro a curva", "deixar mais com cara de massa de vidro",
+    // "isso tá melhor, mas sai do vidro"): prato abaulado em sorriso + BLOCO maciço de vidro à parte embaixo (malha própria, refração grossa
+    // só nele). O corpo afina para baixo: o raio da parede é medido na malha a cada altura e o bloco/prato ficam 0,7 mm para dentro dele
+    const pos = g.attributes.position, ox = m.ox || 0, yTop = y0 + c.prato.y + 1, Rw = new Map();
+    for (let k = 0; k < pos.count; k++) { const py = pos.getY(k); if (py > yTop) continue; const b = Math.round((py - y0) * 2), r = Math.hypot(pos.getX(k) - ox, pos.getZ(k)); if (r > (Rw.get(b) || 0)) Rw.set(b, r); }
+    const wallAt = yy => { const b = Math.round((yy - y0) * 2); for (let o = 0; o < 6; o++) { const v = Math.min(Rw.get(b - o) ?? Infinity, Rw.get(b + o) ?? Infinity); if (isFinite(v)) return v; } return m.W / 2; };
+    const { d, y } = c.prato, yR = y0 + y, a = Math.min(c.prato.a, wallAt(yR) - 0.7), Rs = (a * a + d * d) / (2 * d), yc = x => yR - d + Rs - Math.sqrt(Rs * Rs - x * x), D = [];
     for (let i = 0; i <= 48; i++) { const x = a * i / 48; D.push(new THREE.Vector2(x, yc(x))); }
-    const pg = new THREE.LatheGeometry(D, 128); pg.deleteAttribute('uv'); if (m.ox) pg.translate(m.ox, 0, 0);
-    const rc = Math.min(a * 0.5, Math.max(0.5, (m.rBot || 1) - 0.08)), yb = y0 + 0.06, P = [new THREE.Vector2(0, yb)];
-    for (let i = 0; i <= 8; i++) { const t = i / 8 * Math.PI / 2; P.push(new THREE.Vector2(a - rc + rc * Math.sin(t), yb + rc - rc * Math.cos(t))); }
+    const pg = new THREE.LatheGeometry(D, 128); pg.deleteAttribute('uv'); if (ox) pg.translate(ox, 0, 0);
+    const rc = Math.max(0.5, (m.rBot || 1) - 0.08), yb = y0 + 0.06, P = [new THREE.Vector2(0, yb)];
+    for (let i = 0; i <= 8; i++) { const t = i / 8 * Math.PI / 2, yy = yb + rc - rc * Math.cos(t); P.push(new THREE.Vector2(Math.max(0.1, wallAt(yy + 0.3) - 0.7 - rc + rc * Math.sin(t)), yy)); }
+    for (let yy = yb + rc + 0.5; yy < yR - 0.05; yy += 0.5) P.push(new THREE.Vector2(Math.min(a, wallAt(yy) - 0.7), yy));
     for (let i = 0; i <= 48; i++) { const x = a * (1 - i / 48); P.push(new THREE.Vector2(x, yc(x) - 0.05)); }
-    const bg = new THREE.LatheGeometry(P, 128); bg.deleteAttribute('uv'); bg.computeVertexNormals(); if (m.ox) bg.translate(m.ox, 0, 0);
+    const bg = new THREE.LatheGeometry(P, 128); bg.deleteAttribute('uv'); bg.computeVertexNormals(); if (ox) bg.translate(ox, 0, 0);
     const out = mergeLoose([g, pg]); out.userData = { ...(g.userData || {}), massa: bg }; return out; }
   if (c) {
     const floor = c.floor, h = m.h - floor + 1;
@@ -7626,7 +7630,9 @@ function buildInto(product, S, explodeAmt = 0) {
         cx: (gb.min.x + gb.max.x) / 2, cz: (gb.min.z + gb.max.z) / 2 }; }
     const mesh = new THREE.Mesh(g, material(colM, finM, band, thick, look));
     if (mesh.material.transmission > 0 && !mesh.material.depthWrite) glassAxis(mesh);
-    if (g.userData.massa && !THUMB_LITE) { const mm = new THREE.Mesh(g.userData.massa, material(colM, finM, null, r1(Math.min(m.W, m.D) * 0.4), look)); // cl131: bloco do fundo (Dispensing)
+    if (g.userData.massa && !THUMB_LITE) { const mm = new THREE.Mesh(g.userData.massa, material(colM, finM, null, r1(Math.min(m.W, m.D) * (m.massaK ?? 1.1)), look)); // cl131: bloco do fundo (Dispensing); cl132 (dona: "refração embaixo maior"): 0,4 → 1,1·W
+      if (mm.material.transmission > 0) { mm.material = mm.material.clone(); // cl132: lente de vidro mais forte embaixo (foto: curva escura e brilho em volta da ponta do refil)
+        mm.material.ior = m.massaIor ?? 1.75; mm.material.attenuationColor = new THREE.Color(m.massaTint ?? '#c9d2d4'); mm.material.attenuationDistance = (m.massaDist ?? 0.6) * Math.min(m.W, m.D); }
       mm.name = 'massa'; mm.userData.idx = idx; if (mm.material.transmission > 0 && !mm.material.depthWrite) glassAxis(mm); product.add(mm); }
     // Tampa de vidro que veste a válvula: as paredes da cavidade aparecem como as linhas
     // do vidro grosso dos dois lados da válvula (antes a cavidade sumia e parecia uma janela).
