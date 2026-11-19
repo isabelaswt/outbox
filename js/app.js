@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION, ADDITION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-18.cl121';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-18.cl122';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -707,7 +707,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-18.cl121';
+const BUILD = '2026-11-18.cl122';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -10838,8 +10838,8 @@ function incomProduct(r) {
   const refillPhoto = {
     incomp_dispensadores_dispensing_15: [0.68, 0.1, false],
     // aprovação cl47 (Dispensing 15 conta-gotas): cápsula refil de fundo bem curvo e muita massa de SAN embaixo (parece vidro)
-    incomp_conta_gotas_dispensing_15: [0.62, 0.195, false, 0.5], // cl121 (dona: "peso de vidro no chão"; foto: o fundo maciço é ~35% da altura do corpo)
-    incomp_conta_gotas_dispensing_30: [0.7, 0.11, false, 0.5], // cl52: "refil acabando antes do fundo"; cl121: fundo ~0,33 da largura (foto)
+    incomp_conta_gotas_dispensing_15: [0.62, 0.15, false, 0.5], // cl122: medido na foto, do fundo do refil à base ~0,45 da largura
+    incomp_conta_gotas_dispensing_30: [0.7, 0.085, false, 0.5], // cl52: "refil acabando antes do fundo"; cl122: do fundo do refil à base ~0,38 da largura (foto)
     incomp_dispensadores_dispensing_30: [0.76, 0.08, false], // foto: coluna ~75% da largura
     incomp_dispensadores_dispensing_60: [0.82, 0.08, false], // foto da dona: coluna ~83%
     incomp_dispensadores_dispensing_cube: [0.8, 0.045, true],
@@ -10854,9 +10854,12 @@ function incomProduct(r) {
     // senão eram quatro paredes à vista; sem o fundo grosso extra do SAN (a casca já tem o piso da cavidade).
     // cl121 (dona, Dispensing ao lado da foto: "o chão dos 3ds tá ruim, precisa ter esse peso de vidro no chão"): a casca de SAN é um bloco
     // grosso — material de vidro (espessura que refrata e escurece as bordas, não a película fina do PET) e quina de baixo arredondada
-    Object.assign(fr, { finish: 'vidro', color: '#f5f8fb', rBot: r1(Math.min(2.2, W * 0.07)), vol: false, liq: false, bpesc: false, casca: true, apoio: false, fundoGrosso: false,
-      incomRefillCavity: { W: r1(rw + 0.4), D: r1(rd + 0.4), floor: r2(roundK ? floor - 0.4 : floor * 0.65), rBot: r1(roundK ? rb + 0.2 : rb), ...side,
-        punt: { d: r1(Math.min(2, floor * 0.3)), a: r1(Math.min(W, r.D ?? W) * 0.34) } } }); // cl60 (Dispensing 15 conta-gotas: "refil está acabando antes do fundo"): na cápsula de fundo curvo a cavidade acompanha o refil até embaixo
+    Object.assign(fr, { finish: 'cristal', color: '#f5f8fb', rBot: r1(Math.min(2.2, W * 0.07)), vol: false, liq: false, bpesc: false, casca: true, apoio: false, fundoGrosso: false,
+      // cl122 (dona: "acho que tem que modelar esse fundo mesmo"; fotos ampliadas do fundo): a cavidade é um copo ~1 mm mais largo que o
+      // refil, de fundo chato com canto arredondado (~35% do raio) — a ponta redonda do refil fica logo acima e o piso do copo aparece como
+      // uma elipse; embaixo, bloco maciço de fundo reto, só com a marquinha de injeção no centro
+      incomRefillCavity: { W: r1(rw + (roundK ? 1.2 : 0.4)), D: r1(rd + (roundK ? 1.2 : 0.4)), floor: r2(roundK ? floor - 0.6 : floor * 0.65), rBot: r1(roundK ? (rw + 1.2) / 2 * 0.35 : rb), ...side,
+        punt: roundK ? { d: 0.35, a: 0.9 } : { d: r1(Math.min(2, floor * 0.3)), a: r1(Math.min(W, r.D ?? W) * 0.34) } } }); // cl60 (Dispensing 15 conta-gotas: "refil está acabando antes do fundo"): na cápsula de fundo curvo a cavidade acompanha o refil até embaixo
     const refill = P('Refil PET', rw, rd, hr, { ...clear, ...shape, h: hr, vol: true, casca: true, apoio: false, // conteúdo no refil (cheio, tom de base)
       liq: true, liqType: 'cremoso', liqLevel: 94, liqColor: corDe(BASE_CORES, r.n),
       gap: r2(floor - fr.h), rBot: rb, rTop: 0.5, incomRefillCavity: { W: r1(rw - 2 * wall), D: r1(rd - 2 * wall), floor: wall, rBot: Math.max(0, rb - wall), ...side } });
