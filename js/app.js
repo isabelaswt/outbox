@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION, ADDITION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-18.cl119';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-18.cl120';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -707,7 +707,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-18.cl119';
+const BUILD = '2026-11-18.cl120';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -6691,13 +6691,19 @@ function compactParts(product, L, S0) {
         const cells = seN && m.godes.cells.length === 1 ? [Array.from({ length: 96 }, (_, i) => sp(0.5, 0.5, seN, -i / 96 * Math.PI * 2))] : m.godes.cells.map(fit);
         const rimTop = top - WD + GH - 0.35, rimBot = m.godes.lata ? Math.max(y0 + 1, rimTop - LATA_H) : top - WD; // cristal: latinha inteira
         const gr = m.godes.grow || 0, st = m.godes.step; // grow: godês maiores (vão menor) que no desenho; step: segunda cavidade com degrau
+        // cl120 (dona, print da Flat com "linhas"): com a parede entre godês mais estreita que 2× a concordância da boca, os dois cortes se
+        // sobrepunham no meio da parede e o corte (todos juntos numa malha só) deixava uma costura escura e serrilhada. A concordância de
+        // cada godê fica limitada a quase metade da parede até o vizinho mais perto (a parede fica com topo, sem crista)
+        const halfGap = cells.map((c, j) => { const A = shapeOf(c, 0.05 - gr).getSpacedPoints(60); let g = Infinity;
+          cells.forEach((c2, k) => { if (k === j) return; const B = shapeOf(c2, 0.05 - gr).getSpacedPoints(60); A.forEach(a => B.forEach(b => { const dd = Math.hypot(a.x - b.x, a.y - b.y); if (dd < g) g = dd; })); });
+          return g / 2; });
         cells.forEach((c, j) => {
           const s0 = st && st.j === j ? st.inset : 0;
           if (s0) stepCut = ext(c, 0.05 - gr, top + 2 - (top - st.d), top - st.d); // degrau: corte à parte (dois cortes sobrepostos na mesma malha falhavam)
           // aprovação cl43 (Classic Duo/Quarteto: "a própria estrutura do godê precisa de um fillet"; vale para todo godê por contorno):
           // boca do godê com concordância — o contorno é o mesmo do desenho, deslocado para fora só no arredondado de cima
           const cOut = o => shapeOf(c, 0.05 - gr + s0 - o).getSpacedPoints(120).slice(0, -1).map(v => [v.x, -v.y]);
-          wells.push(s0 ? ext(c, 0.05 - gr + s0, top + 2 - rimBot, rimBot) : pocketCut(cOut, cx, cz, rimBot, top, Math.min(1.8, (top - rimBot) * 0.6), 0));
+          wells.push(s0 ? ext(c, 0.05 - gr + s0, top + 2 - rimBot, rimBot) : pocketCut(cOut, cx, cz, rimBot, top, Math.min(1.8, (top - rimBot) * 0.6, Math.max(0.3, halfGap[j] - 0.3)), 0));
           // Frame (aprovação cl44, foto FRAME-G-1): bordinha/canal em volta do godê antes da borda — patamar raso no contorno dele
           if (m.godes.canal && cells.length === 1 && !s0) { const k = m.godes.canal; stepCut = pocketCut(o => cOut(o + k.w), cx, cz, top - k.h, top, Math.min(0.6, k.h * 0.8), Math.min(0.15, k.h * 0.2)); }
           // foto (Flat Dez): o pó enche a bandeja quase até a borda; aro de metal fino em volta
@@ -6706,7 +6712,7 @@ function compactParts(product, L, S0) {
             const sg = new THREE.ExtrudeGeometry(shapeOf(c, 0.35 - gr + s0 + ro), { depth: Math.max(0.2, hs - 2 * ro), bevelEnabled: true, bevelThickness: ro, bevelSize: ro, bevelSegments: 6, curveSegments: 12 });
             sg.deleteAttribute('uv'); sg.rotateX(-Math.PI / 2); sg.translate(cx, top - WD + ro + 0.02, cz); add(sg, esponjaMat, idx, 'esponja', 0, 0, 0);
           } else {
-          add(ext(c, 0.12 - gr + s0, rimTop - rimBot, rimBot), m.godes.lata ? godeLata : godeRim, idx, 'bandeja', 0, 0, 0);
+          add(ext(c, 0.04 - gr + s0, rimTop - rimBot, rimBot), m.godes.lata ? godeLata : godeRim, idx, 'bandeja', 0, 0, 0); /* cl120: a bandeja encosta na parede do rebaixo (a fresta de 0,07 aparecia como risco escuro serrilhado) */
           add(ext(c, 0.35 - gr + s0, GH - 0.1, top - WD), godeCor(j, m.godes.cells.length), idx, 'gode', 0, 0, 0); }
         });
         if (m.godes.concha && cells.length === 1) { // Macaroon: por dentro a base é uma concha — da borda desce em curva até o aro do godê
@@ -6732,7 +6738,7 @@ function compactParts(product, L, S0) {
         const WD = godeFundo(m), GH = 1.8, rimTop = top - WD + GH - 0.35, rimBot = m.godes.lata ? Math.max(y0 + 1, rimTop - LATA_H) : top - WD, rimM = m.godes.lata ? godeLata : godeRim;
         if (rect) { // Classic Uno: o godê único também é quadrado (bandeja Jorba 110F)
           const rq = m.godes.rq ?? 2; wells.push(pocketCut(rrOut((cw - 0.4) / 2, (ch - 0.4) / 2, rq), x, z, rimBot, top, Math.min(rq < 1 ? 0.4 : 1.1, (top - rimBot) * 0.45), 0)); // cl41/cl45: boca do godê com concordância ("arredondado mesmo")
-          add(new RoundedBoxGeometry(cw - 0.6, rimTop - rimBot, ch - 0.6, 4, Math.min(rq < 1 ? rq : 1.7, (rimTop - rimBot) / 2)), rimM, idx, 'bandeja', x, (rimTop + rimBot) / 2, z);
+          add(new RoundedBoxGeometry(cw - 0.42, rimTop - rimBot, ch - 0.42, 4, Math.min(rq < 1 ? rq : 1.7, (rimTop - rimBot) / 2)), rimM, idx, 'bandeja', x, (rimTop + rimBot) / 2, z);
           add(new RoundedBoxGeometry(cw - 1.3, GH - 0.1, ch - 1.3, 4, rq < 1 ? 0.3 : 0.7), godeCor(k0 + j, nG), idx, 'gode', x, top - WD + (GH - 0.1) / 2, z);
           if (one && m.godes.cove) { // Classic Uno (aprovação): borda côncava do aro até o godê, ~metade da borda, ~1,2 mm de fundo
             // cl44: cova elíptica com concordância também na quina do aro (antes ficava viva)
