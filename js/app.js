@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION, ADDITION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-18.cl124';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-18.cl125';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -707,7 +707,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-18.cl124';
+const BUILD = '2026-11-18.cl125';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -10864,9 +10864,10 @@ function incomProduct(r) {
       // cl122 (dona: "acho que tem que modelar esse fundo mesmo"; fotos ampliadas do fundo): a cavidade é um copo ~1 mm mais largo que o
       // refil, de fundo chato com canto arredondado (~35% do raio) — a ponta redonda do refil fica logo acima e o piso do copo aparece como
       // uma elipse; embaixo, bloco maciço de fundo reto, só com a marquinha de injeção no centro
-      // cl124 (dona: "não ter contato com a parede onde fica o refil, imagina que é tipo um copo e o refil fica flutuando ali"): copo com
-      // folga de ~1,3 mm em volta e embaixo do refil, fundo curvo (calota mais aberta que a ponta do refil) — o refil não encosta em nada
-      incomRefillCavity: roundK ? { W: r1(rw + 2.6), D: r1(rd + 2.6), floor: r2(floor + rb * 0.6), bowl: { d: r2(rb * 0.6 + 1.3) }, rBot: 0, ...side, punt: { d: 0.35, a: 0.9 } }
+      // cl125 (dona: "não quero essa parede do frasco de fora perto do refil, só quero uma curva embaixo mostrando esse peso da base"):
+      // a cavidade fica colada no refil (0,2 mm menor — a parede some dentro do contorno dele) e só embaixo da ponta redonda abre uma
+      // tigela curva, 1,6 mm abaixo dela: a meia-lua de acrílico mostra o peso da base
+      incomRefillCavity: roundK ? { W: r1(rw - 0.2), D: r1(rd - 0.2), floor: r2(floor + rb), bowl: { d: r2(rb + 1.6) }, rBot: 0, ...side, punt: { d: 0.35, a: 0.9 } }
         : { W: r1(rw + 0.4), D: r1(rd + 0.4), floor: r2(floor * 0.65), rBot: r1(rb), ...side, punt: { d: r1(Math.min(2, floor * 0.3)), a: r1(Math.min(W, r.D ?? W) * 0.34) } } }); // cl60 (Dispensing 15 conta-gotas: "refil está acabando antes do fundo"): na cápsula de fundo curvo a cavidade acompanha o refil até embaixo
     const refill = P('Refil PET', rw, rd, hr, { ...clear, ...shape, h: hr, vol: true, casca: true, apoio: false, // conteúdo no refil (cheio, tom de base)
       liq: true, liqType: 'cremoso', liqLevel: 94, liqColor: corDe(BASE_CORES, r.n),

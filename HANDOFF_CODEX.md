@@ -1,4 +1,6 @@
-# Atualização Claude — 18/11/2026, cl124
+# Atualização Claude — 18/11/2026, cl125
+
+- **cl125** — Dispensing 15/30 conta-gotas, dona ("não é isso, não quero essa parede do frasco de fora perto do refil, só quero uma curva embaixo mostrando esse peso da base"): a cavidade fica colada no refil (0,2 mm MENOR — a parede some dentro do contorno dele, sem linha em volta) e só embaixo da ponta redonda abre a tigela curva (`bowl.d` = rb + 1,6, aro no começo da ponta): a meia-lua de acrílico entre a ponta do refil e a tigela é a única curva à vista, sobre o bloco maciço.
 
 - **cl124** — Dispensing 15/30 conta-gotas, dona ("não ter contato com a parede onde fica o refil, imagina que é tipo um copo e o refil fica flutuando ali"): a cavidade virou um copo 2,6 mm mais largo que o refil (folga ~1,3 mm em volta) com fundo curvo (`bowl.d` = 0,6·rb + 1,3; aro 0,6·rb acima da ponta do refil), sem a aba larga/degrau da cl123 — o refil não encosta nas paredes nem no fundo.
 
