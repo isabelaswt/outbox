@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION, ADDITION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-18.cl110';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-18.cl111';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -707,7 +707,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-18.cl110';
+const BUILD = '2026-11-18.cl111';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -7293,10 +7293,23 @@ function compactParts(product, L, S0) {
             if (outer !== bo.geometry) { const g = mergeGeometries([ni(outer), ni(inner)]); if (g) { g.userData = { ...bo.geometry.userData }; bo.geometry.dispose(); bo.geometry = g; } }
             const lo = objs[0]; try { lo.updateMatrix(); macho.applyMatrix4(lo.matrix.clone().invert()); const ev = new Evaluator(); ev.attributes = ['position', 'normal']; ev.useGroups = false;
               const out = ev.evaluate(new Brush(flatPN(lo.geometry)), new Brush(flatPN(macho)), ADDITION).geometry; out.userData = { ...lo.geometry.userData }; lo.geometry.dispose(); lo.geometry = out;
-            } catch (e) { console.warn('Macho da dobradiça (Flat):', e); } macho.dispose(); }
+            } catch (e) { console.warn('Macho da dobradiça (Flat):', e); } macho.dispose();
+            // cl111 (dona, descrição: "na borda traseira há uma calha rebaixada comprida, com dois apoios curtos afastados entre si; esses apoios
+            // recebem o pino e se articulam com os encaixes da tampa; por fora faces predominantemente planas, integradas à estrutura; o formato
+            // cilíndrico fica no alojamento interno do pino, sem rolo aparente"): o recuo é a calha; dentro dela dois APOIOS da base — blocos
+            // retos, ~73% do meio para as pontas, rentes às costas, um pouco abaixo da borda — e a rampa da tampa ganha os ENCAIXES (fendas
+            // com folga) onde eles entram. Um pino só atravessa a rampa e os dois apoios.
+            const xs = half * 0.73, ws = Math.max(3, W * 0.035), sTop = yL - 0.25, sBot = yMB - gq - 0.15, sDep = 1.5;
+            [-1, 1].forEach(sg => {
+              const fenda = new THREE.BoxGeometry(ws + 2 * gq, yL - 0.02 - (yMB - 0.6), tT + 3).translate(cx + sg * xs, (yL - 0.02 + yMB - 0.6) / 2, z + (tT + 3) / 2 - 1);
+              fenda.deleteAttribute('uv'); fenda.applyMatrix4(lo.matrix.clone().invert()); const [o2, i2] = cutHole(lo.geometry, fenda); fenda.dispose();
+              if (o2 !== lo.geometry) { const g = mergeGeometries([ni(o2), ni(i2)]); if (g) { g.userData = { ...lo.geometry.userData }; lo.geometry.dispose(); lo.geometry = g; } }
+              try { const apoio = new THREE.BoxGeometry(ws, sTop - sBot, sDep).translate(cx + sg * xs, (sTop + sBot) / 2, z + sDep / 2); apoio.deleteAttribute('uv'); apoio.applyMatrix4(bo.matrix.clone().invert());
+                const ev = new Evaluator(); ev.attributes = ['position', 'normal']; ev.useGroups = false; const out = ev.evaluate(new Brush(flatPN(bo.geometry)), new Brush(flatPN(apoio)), ADDITION).geometry;
+                out.userData = { ...bo.geometry.userData }; bo.geometry.dispose(); bo.geometry = out; apoio.dispose(); } catch (e) { console.warn('Apoio da dobradiça (Flat):', e); } }); }
           else { add(macho, mT, idx, 'dobradica', 0, 0, 0); objs.push(product.children.at(-1)); recuo.dispose(); }
           tongue = []; femea = [];
-          [-1, 1].forEach(sg => { const pin = new THREE.CylinderGeometry(0.25, 0.25, 5, 20); pin.rotateZ(Math.PI / 2); pin.translate(cx + sg * hw(half, ya), ya, za); add(pin, mirrorMat, base.idx, 'pino', 0, 0, 0); }); }
+          { const L2 = 2 * (half * 0.73 + Math.max(3, W * 0.035) / 2) - 0.6, pin = new THREE.CylinderGeometry(0.25, 0.25, L2, 20); pin.rotateZ(Math.PI / 2); pin.translate(cx, ya, za); add(pin, mirrorMat, base.idx, 'pino', 0, 0, 0); } }
         const ridge = null;
         if (ridge) { ridge.deleteAttribute('uv'); ridge.translate(cx, 0, z + 0.15); add(ridge, mB, base.idx, 'dobradica', 0, 0, 0);
           axis = { y: yL + (hn - gp) / 2, z: z + dz / 2 }; }

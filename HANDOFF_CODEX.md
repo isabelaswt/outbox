@@ -1,4 +1,6 @@
-# Atualização Claude — 18/11/2026, cl110
+# Atualização Claude — 18/11/2026, cl111
+
+- **cl111** — Flat (todas), dona (descrição: "calha rebaixada comprida na borda traseira, com dois apoios curtos afastados entre si que recebem o pino e se articulam com os encaixes da tampa; faces planas por fora, o cilíndrico só no alojamento interno do pino, sem rolo aparente"): o recuo da cl110 é a calha. Dentro dela, dois APOIOS da base (blocos retos, unidos por CSG) a ±0,73·meia-largura, largura max(3; W·0,035), 1,5 mm de profundidade rentes às costas, do fundo da calha até 0,25 abaixo da borda. A rampa da tampa ganha os ENCAIXES (fendas com folga 0,22, cortadas com cutHole) onde eles entram. Um pino único r 0,25 no eixo atravessa a rampa e os dois apoios (os dois pinos curtos das pontas saíram).
 
 - **cl110** — Flat (todas), dona mandou uma descrição técnica ("superfície inclinada trapezoidal, a rampa desce em direção ao eixo, laterais inclinadas, relativamente fina, faz parte da tampa e conecta a região interna da tampa aos blocos da dobradiça; evitar rampa arredondada ou espessa"): o macho da tampa virou uma CUNHA — face de dentro inclinada, 0,9 mm de profundidade no pé (no eixo) e até 3,5 mm em cima (encosta no interior da tampa, limitado pela face de dentro da borda − 0,6) — com as laterais em rampa do trapézio. Malha montada à mão (8 vértices, faces planas) e unida à tampa por CSG. O encaixe da base acompanha a mesma inclinação com folga 0,22 + 0,3.
 
