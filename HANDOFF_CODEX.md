@@ -1,4 +1,6 @@
-# Atualização Claude — 18/11/2026, cl126
+# Atualização Claude — 18/11/2026, cl127
+
+- **cl127** — Dispensing 15/30 conta-gotas, dona ("ainda não" / "a curva é ao contrário"): a curva virou sorriso — o PISO de dentro do frasco é uma calota rasa de parede a parede (`bowl.d` = 0,13·W, meio mais baixo, 1 mm abaixo da ponta do refil); a cavidade vai até 1,5 mm da parede de fora (a parede de dentro some no contorno, sem formar parede perto do refil); fundo de baixo reto com a marquinha de injeção. Sai a calota côncava por baixo da cl126.
 
 - **cl126** — Dispensing 15/30 conta-gotas, dona ("você fez a mesma coisa, quero uma curva na parte de baixo do frasco, independente do refil"; "ela não sobe e cria uma parede, ela acaba embaixo"): a curva saiu da cavidade do refil e foi para o FUNDO DO FRASCO — calota côncava por baixo de 84% da largura (`punt` a = 0,42·W, d = min(metade do piso, 0,13·W)), que aparece em arco através do bloco e termina no pé; a cavidade do refil fica colada nele (0,2 mm menor, mesmo fundo redondo) e não aparece. A tigela (`bowl`) continua disponível no código, sem uso.
 
