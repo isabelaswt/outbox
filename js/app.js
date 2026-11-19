@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION, ADDITION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-18.cl109';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-18.cl110';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -707,7 +707,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-18.cl109';
+const BUILD = '2026-11-18.cl110';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -7279,7 +7279,15 @@ function compactParts(product, L, S0) {
             const g = new THREE.ExtrudeGeometry(sh, { depth: z1b - z0b - 2 * bv, bevelEnabled: bv > 0, bevelThickness: bv, bevelSize: bv, bevelSegments: 2 }); g.deleteAttribute('uv'); g.translate(cx, 0, z0b + bv); return g; };
           // cl109 (dona: "tirar essa parte, não preciso" — o bloco alto que ficava em pé aberta — e "essa parte que sobra fica na tampa, não na base"):
           // o macho continua na tampa, mas raso — só a espessura da parede de trás (T) —, e a base só tem o encaixe dele
-          const T = 1.8, macho = trapDn(half, yL + 0.3, yL - D, z, z + T, 0.12), recuo = trapDn(half + gq, yL + 1, yL - D - gq, z - 1, z + T + gq, 0);
+          // cl110 (dona, descrição técnica: "superfície inclinada trapezoidal, a rampa desce em direção ao eixo da articulação, laterais inclinadas,
+          // relativamente fina, faz parte da tampa e conecta a região interna da tampa aos blocos da dobradiça; evitar rampa arredondada ou espessa"):
+          // o macho vira uma CUNHA — face de dentro inclinada, funda em cima (encosta no interior da tampa) e fina embaixo (no eixo) —, com as
+          // laterais em rampa do trapézio. A base tem o encaixe da mesma inclinação, com folga
+          const yMT = yL + 0.3, yMB = yL - D, tB = 0.9, tT = clamp(zIn - z - 0.6, 2, 3.5), dep = y => tB + (y - yMB) / (yMT - yMB) * (tT - tB);
+          const cunha = (ab, yT, yB, zb0, dT, dB) => { const hT = hw(ab, yT), hB = hw(ab, yB), P = [[-hB, yB, zb0], [hB, yB, zb0], [hB, yB, zb0 + dB], [-hB, yB, zb0 + dB], [-hT, yT, zb0], [hT, yT, zb0], [hT, yT, zb0 + dT], [-hT, yT, zb0 + dT]];
+            const F = [[0, 1, 2], [0, 2, 3], [4, 6, 5], [4, 7, 6], [0, 4, 5], [0, 5, 1], [3, 2, 6], [3, 6, 7], [1, 5, 6], [1, 6, 2], [0, 3, 7], [0, 7, 4]], a = [];
+            F.forEach(f => f.forEach(q => a.push(P[q][0] + cx, P[q][1], P[q][2]))); const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(a, 3)); g.computeVertexNormals(); return g; };
+          const macho = cunha(half, yMT, yMB, z, tT, tB), recuo = cunha(half + gq, yL + 1, yMB - gq, z - 1, 1 + dep(yL + 1) + gq + 0.3, 1 + dep(yMB - gq) + gq + 0.3);
           if (!THUMB_LITE) { const ni = x => { const g = x.index ? x.toNonIndexed() : x; for (const a in g.attributes) if (a !== 'position' && a !== 'normal') g.deleteAttribute(a); return g; };
             const bo = bObjs[0]; bo.updateMatrix(); recuo.applyMatrix4(bo.matrix.clone().invert()); const [outer, inner] = cutHole(bo.geometry, recuo); recuo.dispose();
             if (outer !== bo.geometry) { const g = mergeGeometries([ni(outer), ni(inner)]); if (g) { g.userData = { ...bo.geometry.userData }; bo.geometry.dispose(); bo.geometry = g; } }

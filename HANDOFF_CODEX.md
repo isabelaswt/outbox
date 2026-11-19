@@ -1,4 +1,6 @@
-# Atualização Claude — 18/11/2026, cl109
+# Atualização Claude — 18/11/2026, cl110
+
+- **cl110** — Flat (todas), dona mandou uma descrição técnica ("superfície inclinada trapezoidal, a rampa desce em direção ao eixo, laterais inclinadas, relativamente fina, faz parte da tampa e conecta a região interna da tampa aos blocos da dobradiça; evitar rampa arredondada ou espessa"): o macho da tampa virou uma CUNHA — face de dentro inclinada, 0,9 mm de profundidade no pé (no eixo) e até 3,5 mm em cima (encosta no interior da tampa, limitado pela face de dentro da borda − 0,6) — com as laterais em rampa do trapézio. Malha montada à mão (8 vértices, faces planas) e unida à tampa por CSG. O encaixe da base acompanha a mesma inclinação com folga 0,22 + 0,3.
 
 - **cl109** — Flat (todas), dona (print do bloco em pé com a paleta aberta: "tirar essa parte, não preciso"; "essa parte que sobra fica na tampa, não na base"): o macho --\\___/-- continua na TAMPA, mas raso — só T = 1,8 mm, a parede de trás — em vez de ir até a face de dentro da borda; a base só tem o encaixe dele (folga 0,22). Aberta, não sobra bloco em pé na frente do espelho.
 
