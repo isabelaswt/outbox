@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION, ADDITION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-18.cl111';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-18.cl112';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -707,7 +707,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-18.cl111';
+const BUILD = '2026-11-18.cl112';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -7268,7 +7268,9 @@ function compactParts(product, L, S0) {
           // cl108 (dona: "é exatamente isso só que para baixo, a rampa está para cima e elas precisam ficar para baixo"): o mesmo trapézio virado —
           // a TAMPA desce no meio num macho --\___/-- (rampa, fundo reto, rampa) e a BASE tem o recuo do mesmo desenho (folga 0,22), aberto
           // atrás (o macho sai por trás ao abrir). Eixo no pé do macho, rente às costas; os pinos nas quinas de baixo das rampas, entrando na base.
-          const half = W * 0.325, gq = 0.22, D = clamp(base.m.h * 0.3, 1.6, 2.6), dr = Math.max(2.4, W * 0.035), k = dr / D, za = z + 0.45, ya = yL - D + 0.45;
+          // cl112 (dona: "calha reta" e "rampa nos apoios"; foto de cima da Trio Redondo: calha longa e estreita na borda de trás): calha mais comprida
+          // (meia-largura W·0,42) e de pontas RETAS (k = 0); a peça da tampa dentro dela fica reta e fina; a rampa passa para os dois apoios
+          const half = W * 0.42, gq = 0.22, D = clamp(base.m.h * 0.3, 1.6, 2.6), dr = Math.max(2.4, W * 0.035), k = 0, za = z + 0.45, ya = yL - D + 0.45;
           axis = { y: ya, z: za };
           let zIn = z + 4; { const bo = bObjs[0], p = bo.geometry.attributes.position, v = new THREE.Vector3(); bo.updateMatrix(); let zm = Infinity;
             for (let q = 0; q < p.count; q++) { v.fromBufferAttribute(p, q).applyMatrix4(bo.matrix); if (Math.abs(v.x - cx) < half - dr && v.y > yL - 0.6 && v.y < yL + 0.01 && v.z > z + 2 && v.z < z + 9) zm = Math.min(zm, v.z); }
@@ -7287,7 +7289,7 @@ function compactParts(product, L, S0) {
           const cunha = (ab, yT, yB, zb0, dT, dB) => { const hT = hw(ab, yT), hB = hw(ab, yB), P = [[-hB, yB, zb0], [hB, yB, zb0], [hB, yB, zb0 + dB], [-hB, yB, zb0 + dB], [-hT, yT, zb0], [hT, yT, zb0], [hT, yT, zb0 + dT], [-hT, yT, zb0 + dT]];
             const F = [[0, 1, 2], [0, 2, 3], [4, 6, 5], [4, 7, 6], [0, 4, 5], [0, 5, 1], [3, 2, 6], [3, 6, 7], [1, 5, 6], [1, 6, 2], [0, 3, 7], [0, 7, 4]], a = [];
             F.forEach(f => f.forEach(q => a.push(P[q][0] + cx, P[q][1], P[q][2]))); const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(a, 3)); g.computeVertexNormals(); return g; };
-          const macho = cunha(half, yMT, yMB, z, tT, tB), recuo = cunha(half + gq, yL + 1, yMB - gq, z - 1, 1 + dep(yL + 1) + gq + 0.3, 1 + dep(yMB - gq) + gq + 0.3);
+          const T = 1.8, cD = clamp(zIn - z - 0.8, 2.4, 3.3), macho = cunha(half, yMT, yMB, z, T, T), recuo = cunha(half + gq, yL + 1, yMB - gq, z - 1, 1 + cD, 1 + cD);
           if (!THUMB_LITE) { const ni = x => { const g = x.index ? x.toNonIndexed() : x; for (const a in g.attributes) if (a !== 'position' && a !== 'normal') g.deleteAttribute(a); return g; };
             const bo = bObjs[0]; bo.updateMatrix(); recuo.applyMatrix4(bo.matrix.clone().invert()); const [outer, inner] = cutHole(bo.geometry, recuo); recuo.dispose();
             if (outer !== bo.geometry) { const g = mergeGeometries([ni(outer), ni(inner)]); if (g) { g.userData = { ...bo.geometry.userData }; bo.geometry.dispose(); bo.geometry = g; } }
@@ -7299,17 +7301,19 @@ function compactParts(product, L, S0) {
             // cilíndrico fica no alojamento interno do pino, sem rolo aparente"): o recuo é a calha; dentro dela dois APOIOS da base — blocos
             // retos, ~73% do meio para as pontas, rentes às costas, um pouco abaixo da borda — e a rampa da tampa ganha os ENCAIXES (fendas
             // com folga) onde eles entram. Um pino só atravessa a rampa e os dois apoios.
-            const xs = half * 0.73, ws = Math.max(3, W * 0.035), sTop = yL - 0.25, sBot = yMB - gq - 0.15, sDep = 1.5;
+            const xs = half * 0.73, ws = Math.max(3, W * 0.04), sTop = yL - 0.25, sBot = yMB - gq - 0.15, sDep = cD - 0.2, yF = sBot + 0.5; // apoio: costas rentes, topo em RAMPA descendo para a frente
             [-1, 1].forEach(sg => {
               const fenda = new THREE.BoxGeometry(ws + 2 * gq, yL - 0.02 - (yMB - 0.6), tT + 3).translate(cx + sg * xs, (yL - 0.02 + yMB - 0.6) / 2, z + (tT + 3) / 2 - 1);
               fenda.deleteAttribute('uv'); fenda.applyMatrix4(lo.matrix.clone().invert()); const [o2, i2] = cutHole(lo.geometry, fenda); fenda.dispose();
               if (o2 !== lo.geometry) { const g = mergeGeometries([ni(o2), ni(i2)]); if (g) { g.userData = { ...lo.geometry.userData }; lo.geometry.dispose(); lo.geometry = g; } }
-              try { const apoio = new THREE.BoxGeometry(ws, sTop - sBot, sDep).translate(cx + sg * xs, (sTop + sBot) / 2, z + sDep / 2); apoio.deleteAttribute('uv'); apoio.applyMatrix4(bo.matrix.clone().invert());
+              try { const x0 = sg * xs - ws / 2, x1 = sg * xs + ws / 2, P = [[x0, sBot, z], [x1, sBot, z], [x1, sBot, z + sDep], [x0, sBot, z + sDep], [x0, sTop, z], [x1, sTop, z], [x1, yF, z + sDep], [x0, yF, z + sDep]], a = [];
+                [[0, 1, 2], [0, 2, 3], [4, 6, 5], [4, 7, 6], [0, 4, 5], [0, 5, 1], [3, 2, 6], [3, 6, 7], [1, 5, 6], [1, 6, 2], [0, 3, 7], [0, 7, 4]].forEach(f => f.forEach(q => a.push(P[q][0] + cx, P[q][1], P[q][2])));
+                const apoio = new THREE.BufferGeometry(); apoio.setAttribute('position', new THREE.Float32BufferAttribute(a, 3)); apoio.computeVertexNormals(); apoio.applyMatrix4(bo.matrix.clone().invert());
                 const ev = new Evaluator(); ev.attributes = ['position', 'normal']; ev.useGroups = false; const out = ev.evaluate(new Brush(flatPN(bo.geometry)), new Brush(flatPN(apoio)), ADDITION).geometry;
                 out.userData = { ...bo.geometry.userData }; bo.geometry.dispose(); bo.geometry = out; apoio.dispose(); } catch (e) { console.warn('Apoio da dobradiça (Flat):', e); } }); }
           else { add(macho, mT, idx, 'dobradica', 0, 0, 0); objs.push(product.children.at(-1)); recuo.dispose(); }
           tongue = []; femea = [];
-          { const L2 = 2 * (half * 0.73 + Math.max(3, W * 0.035) / 2) - 0.6, pin = new THREE.CylinderGeometry(0.25, 0.25, L2, 20); pin.rotateZ(Math.PI / 2); pin.translate(cx, ya, za); add(pin, mirrorMat, base.idx, 'pino', 0, 0, 0); } }
+          { const L2 = 2 * (W * 0.42 * 0.73 + Math.max(3, W * 0.04) / 2) - 0.6, pin = new THREE.CylinderGeometry(0.25, 0.25, L2, 20); pin.rotateZ(Math.PI / 2); pin.translate(cx, ya, za); add(pin, mirrorMat, base.idx, 'pino', 0, 0, 0); } }
         const ridge = null;
         if (ridge) { ridge.deleteAttribute('uv'); ridge.translate(cx, 0, z + 0.15); add(ridge, mB, base.idx, 'dobradica', 0, 0, 0);
           axis = { y: yL + (hn - gp) / 2, z: z + dz / 2 }; }

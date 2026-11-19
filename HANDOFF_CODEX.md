@@ -1,4 +1,6 @@
-# Atualização Claude — 18/11/2026, cl111
+# Atualização Claude — 18/11/2026, cl112
+
+- **cl112** — Flat (todas), dona respondeu "calha reta" + "rampa nos apoios" e mandou foto de cima (Trio Redondo: calha longa e estreita na borda de trás, apoios curtos perto das pontas): calha de pontas RETAS (k = 0) e mais comprida (meia-largura W·0,42), profundidade em z cD = clamp(face de dentro − 0,8; 2,4; 3,3), aberta atrás; a peça da tampa dentro dela é reta e fina (T = 1,8, sem inclinação); os dois apoios (x = ±0,73·meia-largura, largura max(3; W·0,04)) ocupam a profundidade da calha, costas rentes, e têm o topo em RAMPA descendo para a frente (de 0,25 abaixo da borda até 0,5 acima do fundo). Pino único atravessando os apoios.
 
 - **cl111** — Flat (todas), dona (descrição: "calha rebaixada comprida na borda traseira, com dois apoios curtos afastados entre si que recebem o pino e se articulam com os encaixes da tampa; faces planas por fora, o cilíndrico só no alojamento interno do pino, sem rolo aparente"): o recuo da cl110 é a calha. Dentro dela, dois APOIOS da base (blocos retos, unidos por CSG) a ±0,73·meia-largura, largura max(3; W·0,035), 1,5 mm de profundidade rentes às costas, do fundo da calha até 0,25 abaixo da borda. A rampa da tampa ganha os ENCAIXES (fendas com folga 0,22, cortadas com cutHole) onde eles entram. Um pino único r 0,25 no eixo atravessa a rampa e os dois apoios (os dois pinos curtos das pontas saíram).
 
