@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION, ADDITION, INTERSECTION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-20.cl149';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-20.cl150';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -707,7 +707,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-20.cl149';
+const BUILD = '2026-11-20.cl150';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -7592,6 +7592,11 @@ function incomDispensingGeo(g, m, y0) {
     cut.translate(m.ox || 0, y0 + m.h - o.fromTop, g.boundingBox.max.z - (o.d - 1) / 2);
     const [outer, inner] = cutHole(g, cut); if (outer !== g) g = mergeLoose([outer, inner]);
   }
+  if (m.refilClic) { // cl150: travinhas do clique do refil do Cube — dois dentes na borda de cima do colar, na frente e atrás, saltando um pouco
+    g.computeBoundingBox(); const k = m.refilClic, top = y0 + m.h, zf = g.boundingBox.max.z, parts = [g]; // a caixa real (W da peça poligonal é o raio de fora do polígono)
+    for (const sz of [-1, 1]) for (const sx of [-1, 1]) { const b = new THREE.BoxGeometry(k.w, k.h, k.d); b.deleteAttribute('uv'); b.translate((m.ox || 0) + sx * k.x, top - k.h / 2 - 0.2, sz * (zf - 0.3 + k.d / 2)); parts.push(b); }
+    g = mergeLoose(parts);
+  }
   if (m.incomOnOff) {
     // cl144: acionador On-Off — fenda em U aberta no topo, cortada na parede, e o bico redondo (tubo radial furado) logo ao lado dela,
     // com o alto passando um pouco do topo. Medidas tiradas das fotos (proporção da largura), sem cota de molde.
@@ -7682,7 +7687,7 @@ function buildInto(product, S, explodeAmt = 0) {
       if (neckSeat) m = { ...m, threadPhase: base[i].y0 + (y0 - yl) - neckSeat.y0 };
     }
     let g = moduleGeo(m, y0, { logoQuality: hasLogo, body: under, ...(THUMB_LITE ? { lo: true } : {}) }); if (!g) return; // miniatura: malha leve
-    if (!THUMB_LITE && (m0.incomRefillCavity || m0.incomTwistOutlet || m0.incomOnOff)) g = cutCached('incomDispensing', [m, y0], g, () => incomDispensingGeo(g, m, y0));
+    if (!THUMB_LITE && (m0.incomRefillCavity || m0.incomTwistOutlet || m0.incomOnOff || m0.refilClic)) g = cutCached('incomDispensing', [m, y0], g, () => incomDispensingGeo(g, m, y0));
     if (!THUMB_LITE && m0.incomPoteCavity) g = cutCached('incomPote', [m, y0], g, () => incomPoteGeo(g, m, y0));
     if (m0.oco && !m0.threadReceiver && !THUMB_LITE) g = cutCached('oco', [m, y0, hasLogo], g, () => ocoGeo(g, m, y0));
     if (m0.threadReceiver && !THUMB_LITE) g = cutCached('threadReceiver', [m, y0], g, () => {
@@ -11127,13 +11132,16 @@ function incomProduct(r) {
       incomRefillCavity: roundK ? (() => { const eli = r.k === 'incomp_dispensadores_dispensing_eliptico', dB = eli ? 2.4 : r1(Math.min(W, r.D ?? W) * 0.13); return { prato: { a: r1((eli ? W : Math.min(W, r.D ?? W)) / 2 - 0.7), d: dB, y: r2(floor - (eli ? 0.9 : 1) + dB) } }; /* cl131: prato da cl129, 0,7 mm dentro do vidro; cl148 (dona, foto do Elíptico: "fazer de fora a fora a curva"): no Elíptico o bloco vai até a parede na largura (achatado na profundidade) e a curva é mais rasa */ })()
         : { W: r1(rw + 0.4), D: r1(rd + 0.4), floor: r2(floor * 0.65), rBot: r1(rb), ...side, punt: { d: r1(Math.min(2, floor * 0.3)), a: r1(Math.min(W, r.D ?? W) * 0.34) } } }); // cl60 (Dispensing 15 conta-gotas: "refil está acabando antes do fundo"): na cápsula de fundo curvo a cavidade acompanha o refil até embaixo
     const refill = P('Refil PET', rw, rd, hr, { ...clear, ...shape, h: hr, vol: true, casca: true, apoio: false, // conteúdo no refil (cheio, tom de base)
-      liq: true, liqType: 'cremoso', liqLevel: 94, liqColor: corDe(BASE_CORES, r.n),
+      liq: true, liqType: 'cremoso', liqLevel: 99, liqColor: corDe(BASE_CORES, r.n), // cl150 (dona, Elíptico: "tem um vão"): a 94% sobrava uma faixa vazia sob o anel (aparecia o gargalo); nas fotos o conteúdo chega ao anel
       gap: r2(floor - fr.h), rBot: rb, rTop: 0.5, incomRefillCavity: { W: r1(rw - 2 * wall), D: r1(rd - 2 * wall), floor: wall, rBot: Math.max(0, rb - wall), ...side } });
     ms.splice(1, 0, refill);
     // cl149 (dona, desenho do Cube "Refil 50 / Refil 30": "tem refil o dispensing cube… parece ser um refil quadrado também"): o refil é
     // um frasco quadrado de PET com um colar mais largo no alto (~15% mais largo que o corpo, ~15% da largura de altura) logo abaixo do
     // gargalo 20/410 — o colar fica no alto do frasco, sob o anel
-    if (cubeK) { const fh = r1(rw * 0.15); ms.splice(2, 0, P('Colar do refil', r1(rw * 1.155), r1(rd * 1.155), fh, { ...clear, ...shape, casca: true, apoio: false, veste: false, gap: -fh, rBot: 0.6, rTop: 0.6 })); }
+    // cl150 (dona, foto do Cube aberto na bancada: "refil vai até em cima, parece ter um clic para travar"): o colar ocupa quase toda a
+    // boca do frasco (~92% da largura) e é mais alto (~22% do refil), com duas travinhas na borda de cima, na frente e atrás
+    if (cubeK) { const fh = r1(rw * 0.22), cw = r1(W * 0.92); ms.splice(2, 0, P('Colar do refil', cw, cw, fh, { ...clear, ...shape, casca: true, apoio: false, veste: false, gap: -fh, rBot: 1.2, rTop: 0.5,
+      refilClic: { w: r1(cw * 0.16), h: 2.2, d: 1.3, x: r2(cw * 0.3) } })); }
     // cl116 (dona, Dispensing 15/30 conta-gotas: "deixar o refil mais alto, tá acabando antes, parede acompanhar"; fotos: o refil sobe até
     // o anel e continua por trás dele): o refil cresce ~85% da altura do anel para dentro dele, o anel ganha a mesma cavidade e o
     // líquido vai até em cima

@@ -1,4 +1,6 @@
-# Atualização Claude — 20/11/2026, cl149
+# Atualização Claude — 20/11/2026, cl150
+
+- **cl150** — (1) Dispensing Cube, dona (foto do Cube aberto na bancada: "refil vai até em cima, parece ter um clic para travar"): o colar do refil ocupa quase toda a boca do frasco (~92% da largura, ~22% do refil de altura) e ganhou duas travinhas do clique na borda de cima, na frente e atrás (`refilClic`, posição pela caixa real da peça — o W da peça poligonal é o raio de fora). (2) Dispensing Elíptico, dona ("tem um vão"): o líquido dos refis dos dispensadores ia a 94% e sobrava uma faixa vazia sob o anel (aparecia o gargalo); agora 99%, como nas fotos — vale para todos os refis desse bloco (15/30/60, Quadrado, Cube, Elíptico e os 15/30 conta-gotas). Miniaturas regeradas.
 
 - **cl149** — Dispensing Cube, dona (desenho "Refil 50 / Refil 30" do catálogo: "tem refil o dispensing cube… parece ser um refil quadrado também"): o refil quadrado ganhou o colar mais largo no alto (~15% mais largo que o corpo, ~15% da largura de altura, PET transparente), logo abaixo do gargalo 20/410 e do anel — aparece como a faixa clara no alto do conteúdo, como na foto. Miniatura regerada.
 
