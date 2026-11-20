@@ -1,4 +1,6 @@
-# Atualização Claude — 20/11/2026, cl150
+# Atualização Claude — 20/11/2026, cl151
+
+- **cl151** — On-Off 100/120, dona (fotos de perto do topo: "arredondar na quina"; "o pump é separado da estrutura"): fenda e canaleta num recorte só, com os cantos de dentro arredondados (ponta da canaleta ~0,9 mm, passagem para a fenda ~0,7 mm), perfil plano na tangente do meio do recorte. A capa virou um cilindro de parede fina (~1,5 mm) e o disco do acionador fica dentro dela, 0,8 mm abaixo da borda, de quina arredondada, com uma fresta de ~0,45 mm em volta; o bico nasce no disco (alto 0,9 mm abaixo da borda). Miniaturas dos dois regeradas.
 
 - **cl150** — (1) Dispensing Cube, dona (foto do Cube aberto na bancada: "refil vai até em cima, parece ter um clic para travar"): o colar do refil ocupa quase toda a boca do frasco (~92% da largura, ~22% do refil de altura) e ganhou duas travinhas do clique na borda de cima, na frente e atrás (`refilClic`, posição pela caixa real da peça — o W da peça poligonal é o raio de fora). (2) Dispensing Elíptico, dona ("tem um vão"): o líquido dos refis dos dispensadores ia a 94% e sobrava uma faixa vazia sob o anel (aparecia o gargalo); agora 99%, como nas fotos — vale para todos os refis desse bloco (15/30/60, Quadrado, Cube, Elíptico e os 15/30 conta-gotas). Miniaturas regeradas.
 

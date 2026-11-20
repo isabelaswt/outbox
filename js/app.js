@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION, ADDITION, INTERSECTION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-20.cl150';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-20.cl151';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -707,7 +707,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-20.cl150';
+const BUILD = '2026-11-20.cl151';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -7600,21 +7600,30 @@ function incomDispensingGeo(g, m, y0) {
   if (m.incomOnOff) {
     // cl144: acionador On-Off — fenda em U aberta no topo, cortada na parede, e o bico redondo (tubo radial furado) logo ao lado dela,
     // com o alto passando um pouco do topo. Medidas tiradas das fotos (proporção da largura), sem cota de molde.
-    const o = m.incomOnOff, R = m.W / 2, top = y0 + m.h, a = o.dir * Math.PI / 180, dr = Math.max(1.2, o.w * 0.6), sh = new THREE.Shape();
-    sh.moveTo(-o.w / 2, top + 1); sh.lineTo(-o.w / 2, top - o.d + o.w / 2); sh.absarc(0, top - o.d + o.w / 2, o.w / 2, Math.PI, 0, false); sh.lineTo(o.w / 2, top + 1); sh.closePath();
-    const slot = new THREE.ExtrudeGeometry(sh, { depth: 2 * dr + 2, bevelEnabled: false, curveSegments: 24 }); slot.deleteAttribute('uv');
-    slot.translate(0, 0, R - dr); slot.rotateY(a); slot.translate(m.ox || 0, 0, 0);
-    let [outer, inner] = cutHole(g, slot); if (outer !== g) g = mergeLoose([outer, inner]); slot.dispose();
+    const o = m.incomOnOff, R = m.W / 2, top = y0 + m.h, a = o.dir * Math.PI / 180, dr = Math.max(1.2, o.w * 0.6);
+    // cl151 (dona, foto do topo do On-Off: "o pump é separado da estrutura"): a capa é um cilindro de parede fina (~1,5 mm) e, dentro dela,
+    // o disco do acionador fica ~0,8 mm abaixo da borda, de quina arredondada, com uma fresta (~0,45 mm) em volta — o bico é dele
+    { const rw = R - 1.5, rd = rw - 0.45, dp = 0.8, f = 0.6, P = [new THREE.Vector2(0, top - dp)];
+      P.push(new THREE.Vector2(rd - f, top - dp)); for (let i = 1; i <= 8; i++) { const t = i / 8 * Math.PI / 2; P.push(new THREE.Vector2(rd - f + f * Math.sin(t), top - dp - f + f * Math.cos(t))); }
+      P.push(new THREE.Vector2(rd, top - 4), new THREE.Vector2(rw, top - 4), new THREE.Vector2(rw, top + 1), new THREE.Vector2(0, top + 1));
+      const sep = new THREE.LatheGeometry(P, 128); sep.deleteAttribute('uv'); if (m.ox) sep.translate(m.ox, 0, 0);
+      const [o1, i1] = cutHole(g, sep); if (o1 !== g) g = mergeLoose([o1, i1]); sep.dispose(); }
     // bico: centro ao lado da fenda (meia fenda + raio do bico) e rente ao topo; sai da parede `out` mm
     const rn = o.noz / 2, an = a + (o.w / 2 + rn + 0.2) / R, yc = top + o.rise - rn, L = dr + o.out;
-    // cl145 (dona: "o bico precisa poder andar para o lado, hoje ele tá preso por fora da parte que gira, fazer cavidade para ele andar"):
-    // canaleta aberta no alto da parede, da fenda até um pouco depois do bico, com a mesma profundidade da fenda — o bico (da parte de
-    // dentro, que gira) corre nela entre a fenda (liga) e a ponta (trava); ele nasce lá dentro e não encosta na parede da capa
-    { const yb = Math.min(top - o.d * 0.25, yc - rn - 0.4), a0 = a, a1 = an + (rn + 0.6) / R, f0 = a0 - Math.PI / 2, f1 = a1 - Math.PI / 2, sh2 = new THREE.Shape();
-      sh2.absarc(0, 0, R + 2, f0, f1, false); sh2.absarc(0, 0, R - dr, f1, f0, true); sh2.closePath();
-      const trk = new THREE.ExtrudeGeometry(sh2, { depth: top + 1 - yb, bevelEnabled: false, curveSegments: 48 }); trk.deleteAttribute('uv');
-      trk.rotateX(-Math.PI / 2); trk.translate(m.ox || 0, yb, 0);
-      [outer, inner] = cutHole(g, trk); if (outer !== g) g = mergeLoose([outer, inner]); trk.dispose(); }
+    // cl145 (dona: "o bico precisa poder andar para o lado… fazer cavidade para ele andar"): canaleta aberta no alto da parede, da fenda até
+    // um pouco depois do bico — o bico (da parte de dentro, que gira) corre nela entre a fenda (liga) e a ponta (trava).
+    // cl151 (dona, foto do On-Off rosa de perto: "arredondar na quina"): fenda e canaleta num recorte só, com os cantos de dentro
+    // arredondados — o fundo da canaleta na ponta (~0,9 mm) e a passagem dela para a fenda (~0,7 mm). Perfil plano na tangente do meio do
+    // recorte, fundo o bastante para cobrir a curva da parede nas pontas.
+    { const yb = Math.min(top - o.d * 0.25, yc - rn - 0.4), u1 = (o.w / 2 + rn + 0.2) + rn + 0.6, um = (u1 - o.w / 2) / 2, am = a + um / R;
+      const ri = Math.min(0.7, (top - yb) * 0.4), ro = Math.min(0.9, (top - yb) * 0.45), yU = top - o.d + o.w / 2, sh = new THREE.Shape(), X = u => u - um;
+      sh.moveTo(X(-o.w / 2), top + 1); sh.lineTo(X(-o.w / 2), yU); sh.absarc(X(0), yU, o.w / 2, Math.PI, 0, false);
+      sh.lineTo(X(o.w / 2), yb - ri); sh.absarc(X(o.w / 2 + ri), yb - ri, ri, Math.PI, Math.PI / 2, true); // canto côncavo fenda → canaleta
+      sh.lineTo(X(u1 - ro), yb); sh.absarc(X(u1 - ro), yb + ro, ro, -Math.PI / 2, 0, false); sh.lineTo(X(u1), top + 1); sh.closePath();
+      const half = Math.max(Math.abs(X(-o.w / 2)), Math.abs(X(u1))), sag = R - Math.sqrt(Math.max(0, R * R - half * half)), z0 = R - dr - sag;
+      const cut = new THREE.ExtrudeGeometry(sh, { depth: R + 3 - z0, bevelEnabled: false, curveSegments: 24 }); cut.deleteAttribute('uv');
+      cut.translate(0, 0, z0); cut.rotateY(am); cut.translate(m.ox || 0, 0, 0);
+      const [outer, inner] = cutHole(g, cut); if (outer !== g) g = mergeLoose([outer, inner]); cut.dispose(); }
     const tube = cyl(rn, 0, L + 1.5, 0.3, 0.3); tube.rotateX(Math.PI / 2); tube.translate(0, yc, R - dr - 1.5);
     const bore = cyl(rn * 0.5, 0, L + 2.5, 0, 0); bore.rotateX(Math.PI / 2); bore.translate(0, yc, R - dr - 0.9);
     [tube, bore].forEach(x => { x.rotateY(an); x.translate(m.ox || 0, 0, 0); });
@@ -10681,7 +10690,7 @@ function incomProduct(r) {
         // cl144 (dona, print do On-Off: "on off não ficou modelado"; fotos DISPENSING-ON-OFF-100 e 6-3): topo reto de quina quase viva e,
         // na borda de cima, uma fenda em U aberta no alto (~0,10·D × 0,34·D) com o biquinho redondo saindo ao lado dela, rente ao topo
         // (Ø ~0,11·D, passa um pouco do topo); no lugar do bico lateral antigo
-        P('Acionador e capa', W, D, hc, { rTop: 0.8, _t: [f, 1], incomOnOff: { w: r1(W * 0.1), d: r1(W * 0.34), dir: 15, noz: r2(W * 0.11), out: -0.4, rise: -0.4 } })]; // cl146 (dona: "ele tá passando da tampa"): o bico fica todo dentro da canaleta — ponta 0,4 mm para dentro da parede e o alto 0,4 mm abaixo do topo
+        P('Acionador e capa', W, D, hc, { rTop: 0.8, _t: [f, 1], incomOnOff: { w: r1(W * 0.1), d: r1(W * 0.34), dir: 15, noz: r2(W * 0.11), out: -0.4, rise: -0.9 } })]; /* cl151: o bico nasce no disco do acionador, que fica 0,8 mm abaixo da borda da capa */ // cl146 (dona: "ele tá passando da tampa"): o bico fica todo dentro da canaleta — ponta 0,4 mm para dentro da parede e o alto 0,4 mm abaixo do topo
       // cl145: o perfil do desenho abaulava o topo (centro reto e um anel caindo até a borda — o "disco" do print); na foto o acionador é
       // um cilindro reto de topo plano
       { const c = ms[1]; delete c.prof; delete c.W0; }
