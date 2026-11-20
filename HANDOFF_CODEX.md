@@ -1,4 +1,6 @@
-# Atualização Claude — 20/11/2026, cl148
+# Atualização Claude — 20/11/2026, cl149
+
+- **cl149** — Dispensing Cube, dona (desenho "Refil 50 / Refil 30" do catálogo: "tem refil o dispensing cube… parece ser um refil quadrado também"): o refil quadrado ganhou o colar mais largo no alto (~15% mais largo que o corpo, ~15% da largura de altura, PET transparente), logo abaixo do gargalo 20/410 e do anel — aparece como a faixa clara no alto do conteúdo, como na foto. Miniatura regerada.
 
 - **cl148** — Dispensing Elíptico, dona (print do fundo ao lado da foto do catálogo: "tá bem diferente o fundo, fazer de fora a fora a curva"): o prato/bloco usava a profundidade (30) como raio e parava no meio — aparecia uma caixa clara. Agora vai até a parede na largura (W/2 − 0,7, achatado na profundidade), com a curva mais rasa (2,4 mm), e o refil tem o fundo quase reto da foto (cantos de ~20%, não a ponta redonda dos 15/30/60). Miniatura regerada.
 

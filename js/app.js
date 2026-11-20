@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION, ADDITION, INTERSECTION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-20.cl148';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-20.cl149';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -707,7 +707,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-20.cl148';
+const BUILD = '2026-11-20.cl149';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -11130,6 +11130,10 @@ function incomProduct(r) {
       liq: true, liqType: 'cremoso', liqLevel: 94, liqColor: corDe(BASE_CORES, r.n),
       gap: r2(floor - fr.h), rBot: rb, rTop: 0.5, incomRefillCavity: { W: r1(rw - 2 * wall), D: r1(rd - 2 * wall), floor: wall, rBot: Math.max(0, rb - wall), ...side } });
     ms.splice(1, 0, refill);
+    // cl149 (dona, desenho do Cube "Refil 50 / Refil 30": "tem refil o dispensing cube… parece ser um refil quadrado também"): o refil é
+    // um frasco quadrado de PET com um colar mais largo no alto (~15% mais largo que o corpo, ~15% da largura de altura) logo abaixo do
+    // gargalo 20/410 — o colar fica no alto do frasco, sob o anel
+    if (cubeK) { const fh = r1(rw * 0.15); ms.splice(2, 0, P('Colar do refil', r1(rw * 1.155), r1(rd * 1.155), fh, { ...clear, ...shape, casca: true, apoio: false, veste: false, gap: -fh, rBot: 0.6, rTop: 0.6 })); }
     // cl116 (dona, Dispensing 15/30 conta-gotas: "deixar o refil mais alto, tá acabando antes, parede acompanhar"; fotos: o refil sobe até
     // o anel e continua por trás dele): o refil cresce ~85% da altura do anel para dentro dele, o anel ganha a mesma cavidade e o
     // líquido vai até em cima
