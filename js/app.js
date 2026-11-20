@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION, ADDITION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-19.cl140';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-20.cl141';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -707,7 +707,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-19.cl140';
+const BUILD = '2026-11-20.cl141';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -10454,6 +10454,14 @@ function incomProduct(r) {
       const dcg = /^incomp_conta_gotas_dispensing/.test(r.k);
       if (r.t === 'bulb') { f0 = 0.485; f1 = 0.58; }
       if (dcg) { f0 = 0.568; f1 = 0.65; }
+      // cl141 (aprovação, Dispensing 15 dispensador: "estrutura de válvula é maior, ombro é mais alto, tem um outro degrau no ombro,
+      // fazer a correção como você fez no dispensing 15 do conta gotas, em tudo que for"); fotos DISPENSING-15/30/60 medidas em
+      // largura do corpo (bate entre 15 e 30): anel preto ~0,30·W de altura a partir de 53,5% / 63% / 62% da altura, um degrau
+      // ~0,86·W × 0,12·W por cima (dentro da sobretampa) e a pump com colar ~0,70·W × 0,47·W. A pump é a mesma peça 20/410 em
+      // toda a linha (o colar do Quadrado na foto também tem ~15,8 mm): anel, degrau e pump em mm, e a sobretampa com a altura que
+      // a pump pede (a medida de catálogo do 60 é mais baixa que a foto e a pump furava a tampa)
+      const dsp = /^incomp_dispensadores_dispensing_(15|30|60)$/.test(r.k), dspQ = r.k === 'incomp_dispensadores_dispensing_quadrado';
+      if (dsp) { f1 = 1 - 43.8 / H; f0 = f1 - 10.1 / H; }
       // sobretampa de plástico transparente: casca de uma superfície só (cavada, a parede de dentro aparecia como
       // uma segunda linha; com o oco da válvula, como uma parede por dentro, igual às tampas maciças de Surlyn)
       const cap = P(twist ? 'Acionador' : 'Sobretampa', W, D, H * (1 - f1), { ...sh, ...(twist ? {} : { ...clear, casca: true }), rBot: 0.5, rTop: r.t === 'bulb' ? W / 2 * 0.95 : r.t === 'cgr' ? W * 0.3 : 2, _t: [f1, 1] });
@@ -10485,7 +10493,7 @@ function incomProduct(r) {
       // cl116 (dona, Amsterdam Deluxe 100: "colar precisa ser mais alto, fazer o mesmo dente interno que você fez no bulb para prender a tampa"):
       // nos Deluxe o anel cresce ~60% (tirado do alto do frasco, a altura total fica) e ganha o dente para dentro onde a sobretampa encaixa
       if (dlx) { const an = ms.find(m => m.name === 'Anel'), fr0 = ms[0]; if (an && fr0) { const e = r1(an.h * 0.6); an.h = r2(an.h + e); fr0.h = r2(fr0.h - e); } }
-      const dente = r.t === 'bulb' || dlx ? { n: 'Dente da sobretampa', w: r1(W - 2.6), h: 2.5 } : dcg ? { n: 'Degrau do ombro', w: r1(W * 0.86), h: r1(H * 0.04) } : null;
+      const dente = r.t === 'bulb' || dlx ? { n: 'Dente da sobretampa', w: r1(W - 2.6), h: 2.5 } : dcg ? { n: 'Degrau do ombro', w: r1(W * 0.86), h: r1(H * 0.04) } : dsp || dspQ ? { n: 'Degrau do ombro', w: r1(W - 4.7), h: dspQ ? 2.5 : 4 } : null;
       if (dente) { const ai = ms.findIndex(m => m.name === 'Anel');
         if (ai >= 0) ms.splice(ai + 1, 0, P(dente.n, dente.w, D ? r1(D - (W - dente.w)) : null, dente.h, { ...sh, rTop: 0.4, rBot: 0, gap: 0 }));
         cap.gap = -dente.h; }
@@ -10495,6 +10503,7 @@ function incomProduct(r) {
       // chega perto do topo da sobretampa
       if (r.n === 'Amsterdam Deluxe 100' && v) Object.assign(v, { h: r1(v.h * 1.5), actH: r1(v.actH * 1.4) });
       if (r.t === 'bulb' && r.c === 'Dispensadores') Object.assign(v, { h: r1(v.h * 1.58), actH: r1(v.actH * 1.5), headH: r1(v.headH * 1.29) });
+      if (r.c === 'Dispensadores' && r.t !== 'bulb' && v.sprayType === 'dosadora') Object.assign(v, { W: 23.6, D: 23.6, h: 15.8, guideW: 17.5, guideH: 6.4, actW: 13.8, headH: 13.5 }); // cl141: pump da foto do Dispensing 15 (colar 0,70·W × 0,47·W, guia 0,52·W × 0,19·W, atuador 0,41·W) em mm
       if (r.t === 'bulb' && r.c === 'Conta-gotas') Object.assign(v, { W: r1(W * 0.58), D: r1(W * 0.58), h: r1(H * 0.18), actW: r1(W * 0.32), actH: r1(H * 0.19) });
       if (dcg) { Object.assign(v, { W: r1(W * 0.64), D: r1(W * 0.64), h: r1(H * 0.13), actW: r1(W * 0.34), actH: r1(H * 0.17), friso: 0.6 }); /* cl119 (fotos Dispensing 15/30): colar ~64% do corpo com friso embaixo; o anel passa um pouco do corpo */
         const an = ms.find(m => m.name === 'Anel'); if (an) { an.W = r1(W + 0.8); if (an.D) an.D = r1(an.D + 0.8); } }
