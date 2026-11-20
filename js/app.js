@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION, ADDITION, INTERSECTION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-20.cl152';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-20.cl153';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -707,7 +707,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-20.cl152';
+const BUILD = '2026-11-20.cl153';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -7596,6 +7596,9 @@ function incomDispensingGeo(g, m, y0) {
     } else { const cut = new THREE.BoxGeometry(o.w, o.h, o.d + 1); cut.translate(m.ox || 0, yc, zf - (o.d - 1) / 2);
       const [outer, inner] = cutHole(g, cut); if (outer !== g) g = mergeLoose([outer, inner]); }
   }
+  if (m.incomTwistNotch) { // cl153: entalhe atravessando a parede da manga do Twist, aberto em cima
+    g.computeBoundingBox(); const k = m.incomTwistNotch, top = y0 + m.h, cut = new THREE.BoxGeometry(k.w, k.h + 1, 8);
+    cut.translate(m.ox || 0, top - k.h + (k.h + 1) / 2, g.boundingBox.max.z - 2); const [outer, inner] = cutHole(g, cut); if (outer !== g) g = mergeLoose([outer, inner]); }
   if (m.refilClic) { // cl150: travinhas do clique do refil do Cube — dois dentes na borda de cima do colar, na frente e atrás, saltando um pouco
     g.computeBoundingBox(); const k = m.refilClic, top = y0 + m.h, zf = g.boundingBox.max.z, parts = [g]; // a caixa real (W da peça poligonal é o raio de fora do polígono)
     for (const sz of [-1, 1]) for (const sx of [-1, 1]) { const b = new THREE.BoxGeometry(k.w, k.h, k.d); b.deleteAttribute('uv'); b.translate((m.ox || 0) + sx * k.x, top - k.h / 2 - 0.2, sz * (zf - 0.3 + k.d / 2)); parts.push(b); }
@@ -7700,7 +7703,7 @@ function buildInto(product, S, explodeAmt = 0) {
       if (neckSeat) m = { ...m, threadPhase: base[i].y0 + (y0 - yl) - neckSeat.y0 };
     }
     let g = moduleGeo(m, y0, { logoQuality: hasLogo, body: under, ...(THUMB_LITE ? { lo: true } : {}) }); if (!g) return; // miniatura: malha leve
-    if (!THUMB_LITE && (m0.incomRefillCavity || m0.incomTwistOutlet || m0.incomOnOff || m0.refilClic)) g = cutCached('incomDispensing', [m, y0], g, () => incomDispensingGeo(g, m, y0));
+    if (!THUMB_LITE && (m0.incomRefillCavity || m0.incomTwistOutlet || m0.incomTwistNotch || m0.incomOnOff || m0.refilClic)) g = cutCached('incomDispensing', [m, y0], g, () => incomDispensingGeo(g, m, y0));
     if (!THUMB_LITE && m0.incomPoteCavity) g = cutCached('incomPote', [m, y0], g, () => incomPoteGeo(g, m, y0));
     if (m0.oco && !m0.threadReceiver && !THUMB_LITE) g = cutCached('oco', [m, y0, hasLogo], g, () => ocoGeo(g, m, y0));
     if (m0.threadReceiver && !THUMB_LITE) g = cutCached('threadReceiver', [m, y0], g, () => {
@@ -10616,7 +10619,7 @@ function incomProduct(r) {
       ms = [P('Base', W, D, hb, { ...sq(0.08), rBot: 1.5, casca: true, incomRefillCavity: { ...cavity, floor }, _t: [0, fs], twist: { lift: r1(ha + 2) }, abre: 0, abreAberto: 90 }), // cl152 (dona: "ir mais alto a abertura"; foto aberta): o acionador sobe ~14 mm (foto) e fica 1 mm ainda dentro da manga — ele tem 3 mm a mais escondidos lá dentro
         P('Refil PET', rw, rw, hr, { ...clear, h: hr, vol: true, casca: true, apoio: false,
           rBot: r1(rw * 0.25), rTop: 1, gap: r2(floor - hb), incomRefillCavity: { W: r1(rw - 2 * wall), D: r1(rw - 2 * wall), floor: wall, rBot: r1(rw * 0.25 - wall) } }),
-        P('Manga giratória', W, D, H - hb, { ...sq(0.08), casca: true, apoio: false, veste: false,
+        P('Manga giratória', W, D, H - hb, { ...sq(0.08), casca: true, apoio: false, veste: false, incomTwistNotch: { w: r1(W * 0.115 + 0.6), h: 2.9 }, // cl153 (dona, desenho pág. 55: "tem uma calha na estrutura para sair a tampa que vai para fora"; foto fechada): entalhe na borda de cima da manga, no meio da frente, por onde passa o bico
           gap: r2(hb - floor - hr), incomRefillCavity: { ...cavity, floor: -1 }, _t: [fs, 1] }),
         P('Acionador PP', W * 0.84, D * 0.84, ha + 3, { ...sq(0.08), gap: -(ha + 3), apoio: false, veste: false, twistLift: true,
           incomTwistOutlet: { boss: true, w: r1(W * 0.115), h: 2.6, d: 1, hw: r1(W * 0.065), hh: 1.2, fromTop: 1.7 } })]; break; } // cl152 (dona: "o lugar que sai o produto é pra frente"; foto): bico retangular saltado ~1 mm no alto da frente, com furo retangular

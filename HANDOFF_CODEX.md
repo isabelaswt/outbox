@@ -1,4 +1,6 @@
-# Atualização Claude — 20/11/2026, cl152
+# Atualização Claude — 20/11/2026, cl153
+
+- **cl153** — Dispensing Twist, dona (desenho pág. 55: "tem uma calha na estrutura para sair a tampa que vai para fora"): entalhe atravessando a parede da manga na borda de cima, no meio da frente (largura do bico + 0,6, 2,9 mm de altura, `incomTwistNotch`) — fechado, o bico do acionador encaixa nele (foto fechada); aberto, fica o entalhe vazio. Miniatura regerada.
 
 - **cl152** — Dispensing Twist, dona (foto aberta: "ir mais alto a abertura, o lugar que sai o produto é pra frente"; "não é um buraco, é um retângulo para frente com furo dentro retangular também"): aberto, o acionador sobe ~14 mm (era ~5) e continua encaixado na manga — ele ganhou 3 mm a mais por baixo, escondidos dentro da manga quando fechado. A saída virou um bico retangular saltado ~1 mm no alto da frente (~0,115·W × 2,6 mm), com furo retangular dentro (`incomTwistOutlet.boss`). Miniatura regerada.
 
