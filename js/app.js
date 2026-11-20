@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION, ADDITION, INTERSECTION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-20.cl143';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-20.cl144';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -707,7 +707,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-20.cl143';
+const BUILD = '2026-11-20.cl144';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -7577,6 +7577,29 @@ function incomDispensingGeo(g, m, y0) {
     cut.translate(m.ox || 0, y0 + m.h - o.fromTop, g.boundingBox.max.z - (o.d - 1) / 2);
     const [outer, inner] = cutHole(g, cut); if (outer !== g) g = mergeLoose([outer, inner]);
   }
+  if (m.incomOnOff) {
+    // cl144: acionador On-Off — fenda em U aberta no topo, cortada na parede, e o bico redondo (tubo radial furado) logo ao lado dela,
+    // com o alto passando um pouco do topo. Medidas tiradas das fotos (proporção da largura), sem cota de molde.
+    const o = m.incomOnOff, R = m.W / 2, top = y0 + m.h, a = o.dir * Math.PI / 180, dr = Math.max(1.2, o.w * 0.6), sh = new THREE.Shape();
+    sh.moveTo(-o.w / 2, top + 1); sh.lineTo(-o.w / 2, top - o.d + o.w / 2); sh.absarc(0, top - o.d + o.w / 2, o.w / 2, Math.PI, 0, false); sh.lineTo(o.w / 2, top + 1); sh.closePath();
+    const slot = new THREE.ExtrudeGeometry(sh, { depth: 2 * dr + 2, bevelEnabled: false, curveSegments: 24 }); slot.deleteAttribute('uv');
+    slot.translate(0, 0, R - dr); slot.rotateY(a); slot.translate(m.ox || 0, 0, 0);
+    let [outer, inner] = cutHole(g, slot); if (outer !== g) g = mergeLoose([outer, inner]); slot.dispose();
+    // topo reto de verdade: o leque do topo herdava a normal inclinada da quina e aparecia um disco sombreado (print da dona);
+    // as faces horizontais de cima ficam com a normal para cima
+    if (g.index) { const ud = g.userData; g = g.toNonIndexed(); g.userData = ud; }
+    { const P = g.attributes.position.array, N = g.attributes.normal.array, A = new THREE.Vector3(), B = new THREE.Vector3(), C = new THREE.Vector3();
+      for (let i = 0; i < P.length; i += 9) { A.fromArray(P, i); B.fromArray(P, i + 3); C.fromArray(P, i + 6);
+        if (Math.min(A.y, B.y, C.y) < top - 0.05) continue; B.sub(A); C.sub(A); B.cross(C).normalize();
+        if (Math.abs(B.y) > 0.999) for (let j = 0; j < 3; j++) { N[i + j * 3] = 0; N[i + j * 3 + 1] = 1; N[i + j * 3 + 2] = 0; } }
+      g.attributes.normal.needsUpdate = true; }
+    // bico: centro ao lado da fenda (meia fenda + raio do bico) e rente ao topo; sai da parede `out` mm
+    const rn = o.noz / 2, an = a + (o.w / 2 + rn + 0.2) / R, yc = top + o.rise - rn, L = dr + o.out;
+    const tube = cyl(rn, 0, L, 0.3, 0.3); tube.rotateX(Math.PI / 2); tube.translate(0, yc, R - dr);
+    const bore = cyl(rn * 0.5, 0, L + 1, 0, 0); bore.rotateX(Math.PI / 2); bore.translate(0, yc, R - dr + 0.6);
+    [tube, bore].forEach(x => { x.rotateY(an); x.translate(m.ox || 0, 0, 0); });
+    const [tc, hole] = cutHole(tube, bore); g = mergeLoose([g, tc, hole]); bore.dispose();
+  }
   return g;
 }
 // Cavidade dos potes Incom; interiores estimados pela foto/desenho, sem cota industrial.
@@ -7644,7 +7667,7 @@ function buildInto(product, S, explodeAmt = 0) {
       if (neckSeat) m = { ...m, threadPhase: base[i].y0 + (y0 - yl) - neckSeat.y0 };
     }
     let g = moduleGeo(m, y0, { logoQuality: hasLogo, body: under, ...(THUMB_LITE ? { lo: true } : {}) }); if (!g) return; // miniatura: malha leve
-    if (!THUMB_LITE && (m0.incomRefillCavity || m0.incomTwistOutlet)) g = cutCached('incomDispensing', [m, y0], g, () => incomDispensingGeo(g, m, y0));
+    if (!THUMB_LITE && (m0.incomRefillCavity || m0.incomTwistOutlet || m0.incomOnOff)) g = cutCached('incomDispensing', [m, y0], g, () => incomDispensingGeo(g, m, y0));
     if (!THUMB_LITE && m0.incomPoteCavity) g = cutCached('incomPote', [m, y0], g, () => incomPoteGeo(g, m, y0));
     if (m0.oco && !m0.threadReceiver && !THUMB_LITE) g = cutCached('oco', [m, y0, hasLogo], g, () => ocoGeo(g, m, y0));
     if (m0.threadReceiver && !THUMB_LITE) g = cutCached('threadReceiver', [m, y0], g, () => {
@@ -10594,8 +10617,11 @@ function incomProduct(r) {
       // Fotos On-Off 100/120: frasco PET transparente com o líquido à vista (azul/rosado), capa branca opaca; base ~3 mm
       ms = [P('Frasco', W, D, H * f, { vol: true, rBot: 2, bpesc: true, bpescMola: true, _t: [0, f], own: true, finish: 'pet', color: '#ffffff',
           liq: true, liqType: 'transparente', liqLevel: 92, liqClear: 80, liqColor: corDe(['#cfe3ee', '#f2d4d8', '#e3edf1'], r.n), fundoGrosso: true, fundo: 3, fundoR: 2 }),
-        P('Acionador e capa', W, D, hc, { rTop: 3, _t: [f, 1], spout: { t: r1(1 - (dn / 2 + 1.6) / hc) , L: 4.2, droop: 0, D: dn, dir: 0 } })];
-      { const c = ms[1], sp0 = c.spout; sp0.L = r2(1 + c.W / 2 - capHalfAt(c, sp0.t * c.h) - 0.35); } break; } // ponta do bico rente ao corpo (a medida do catálogo é o diâmetro)
+        // cl144 (dona, print do On-Off: "on off não ficou modelado"; fotos DISPENSING-ON-OFF-100 e 6-3): topo reto de quina quase viva e,
+        // na borda de cima, uma fenda em U aberta no alto (~0,10·D × 0,34·D) com o biquinho redondo saindo ao lado dela, rente ao topo
+        // (Ø ~0,11·D, passa um pouco do topo); no lugar do bico lateral antigo
+        P('Acionador e capa', W, D, hc, { rTop: 0.8, _t: [f, 1], incomOnOff: { w: r1(W * 0.1), d: r1(W * 0.34), dir: 15, noz: r2(W * 0.11), out: r2(W * 0.06), rise: r2(W * 0.023) } })];
+      break; }
     case 'flacon': case 'flaconb': { const b = r.t === 'flaconb' || r.n === 'Julie';
       // frasco, colar e bulbo/botão medidos no desenho: o frasco acaba onde a largura cai abaixo de 90%; o colar
       // vai até a próxima queda forte; o resto é o bulbo (proporção fixa deixava frasco curto e bulbo enorme)

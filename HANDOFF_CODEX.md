@@ -1,4 +1,6 @@
-# Atualização Claude — 20/11/2026, cl143
+# Atualização Claude — 20/11/2026, cl144
+
+- **cl144** — Dispensing On-Off 100/120, dona (print: "on off não ficou modelado"; fotos DISPENSING-ON-OFF-100 e 6-3): o acionador era um cilindro de topo arredondado com um bico lateral. Agora topo reto (rTop 0,8 e normal reta nas faces de cima — o leque do topo herdava a normal da quina e aparecia um disco sombreado), fenda em U aberta no alto da parede (`incomOnOff`: 0,10·D × 0,34·D, a 15° da frente) e o biquinho redondo furado ao lado dela, rente ao topo (Ø 0,11·D, passa ~1 mm do topo, sai 0,06·D da parede). Medidas tiradas das fotos, sem cota de molde.
 
 - **cl143** — Dona ("todas flat fazer com a nova solução"): a calha com rampas da Flat Dez (cl142/cdx45) e a abertura a 80° agora valem para todas as Flat — Duo, Sexteto, Trio Retangular, Trio Redondo, 6 + 1 e Dez (mesma caixa de 119,7 × 63 × 14,1 no catálogo, sem ajuste de medida). Petit Aplicador · Flat Pad (frasnagas) fica de fora. Conferido local: costas fechadas, aberta a 80° e de lado a 90° nas seis, godês intactos, sem avisos de CSG.
 
