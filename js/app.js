@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION, ADDITION, INTERSECTION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-20.cl144';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-20.cl145';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -707,7 +707,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-20.cl144';
+const BUILD = '2026-11-20.cl145';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -7585,18 +7585,18 @@ function incomDispensingGeo(g, m, y0) {
     const slot = new THREE.ExtrudeGeometry(sh, { depth: 2 * dr + 2, bevelEnabled: false, curveSegments: 24 }); slot.deleteAttribute('uv');
     slot.translate(0, 0, R - dr); slot.rotateY(a); slot.translate(m.ox || 0, 0, 0);
     let [outer, inner] = cutHole(g, slot); if (outer !== g) g = mergeLoose([outer, inner]); slot.dispose();
-    // topo reto de verdade: o leque do topo herdava a normal inclinada da quina e aparecia um disco sombreado (print da dona);
-    // as faces horizontais de cima ficam com a normal para cima
-    if (g.index) { const ud = g.userData; g = g.toNonIndexed(); g.userData = ud; }
-    { const P = g.attributes.position.array, N = g.attributes.normal.array, A = new THREE.Vector3(), B = new THREE.Vector3(), C = new THREE.Vector3();
-      for (let i = 0; i < P.length; i += 9) { A.fromArray(P, i); B.fromArray(P, i + 3); C.fromArray(P, i + 6);
-        if (Math.min(A.y, B.y, C.y) < top - 0.05) continue; B.sub(A); C.sub(A); B.cross(C).normalize();
-        if (Math.abs(B.y) > 0.999) for (let j = 0; j < 3; j++) { N[i + j * 3] = 0; N[i + j * 3 + 1] = 1; N[i + j * 3 + 2] = 0; } }
-      g.attributes.normal.needsUpdate = true; }
     // bico: centro ao lado da fenda (meia fenda + raio do bico) e rente ao topo; sai da parede `out` mm
     const rn = o.noz / 2, an = a + (o.w / 2 + rn + 0.2) / R, yc = top + o.rise - rn, L = dr + o.out;
-    const tube = cyl(rn, 0, L, 0.3, 0.3); tube.rotateX(Math.PI / 2); tube.translate(0, yc, R - dr);
-    const bore = cyl(rn * 0.5, 0, L + 1, 0, 0); bore.rotateX(Math.PI / 2); bore.translate(0, yc, R - dr + 0.6);
+    // cl145 (dona: "o bico precisa poder andar para o lado, hoje ele tá preso por fora da parte que gira, fazer cavidade para ele andar"):
+    // canaleta aberta no alto da parede, da fenda até um pouco depois do bico, com a mesma profundidade da fenda — o bico (da parte de
+    // dentro, que gira) corre nela entre a fenda (liga) e a ponta (trava); ele nasce lá dentro e não encosta na parede da capa
+    { const yb = Math.min(top - o.d * 0.25, yc - rn - 0.4), a0 = a, a1 = an + (rn + 0.6) / R, f0 = a0 - Math.PI / 2, f1 = a1 - Math.PI / 2, sh2 = new THREE.Shape();
+      sh2.absarc(0, 0, R + 2, f0, f1, false); sh2.absarc(0, 0, R - dr, f1, f0, true); sh2.closePath();
+      const trk = new THREE.ExtrudeGeometry(sh2, { depth: top + 1 - yb, bevelEnabled: false, curveSegments: 48 }); trk.deleteAttribute('uv');
+      trk.rotateX(-Math.PI / 2); trk.translate(m.ox || 0, yb, 0);
+      [outer, inner] = cutHole(g, trk); if (outer !== g) g = mergeLoose([outer, inner]); trk.dispose(); }
+    const tube = cyl(rn, 0, L + 1.5, 0.3, 0.3); tube.rotateX(Math.PI / 2); tube.translate(0, yc, R - dr - 1.5);
+    const bore = cyl(rn * 0.5, 0, L + 2.5, 0, 0); bore.rotateX(Math.PI / 2); bore.translate(0, yc, R - dr - 0.9);
     [tube, bore].forEach(x => { x.rotateY(an); x.translate(m.ox || 0, 0, 0); });
     const [tc, hole] = cutHole(tube, bore); g = mergeLoose([g, tc, hole]); bore.dispose();
   }
@@ -10308,18 +10308,18 @@ const tRim = new THREE.DirectionalLight(0xe8eef5, 0.8); tRim.position.set(300, 2
 const thumbCam = new THREE.OrthographicCamera(-1, 1, 1, -1, 1, 20000); // miniatura sempre de frente e ortográfica (como a vista Frente · ortográfica)
 const thumbCache = new Map();
 function thumbKey(st) {
-  return JSON.stringify(st, (k, v) => k === 'uid' ? undefined : v);
+  return JSON.stringify(st, (k, v) => (k === 'uid' || /Uid$/.test(k) ? undefined : v)); // ids sorteados a cada carga (uid, threadNeckUid) não mudam a forma
 }
 const beigeOf = st => ({ ...st, color: BEIGE, finish: 'fosco', logos: [], side: (st.side || []).map(beigeOf),
   modules: (st.modules || []).map(m => ({ ...m, own: false, liq: false, labType: 'nenhum', labImg: '', labImgB: '', reliefImg: '' })) });
-function thumbOf(st) {
-  const key = thumbKey(st);
+function thumbOf(st, full = false) {
+  const key = thumbKey(st) + (full ? '|full' : '');
   if (thumbCache.has(key)) return thumbCache.get(key);
   const g = new THREE.Group(); thumbScene.add(g);
   const ns = normalize(structuredClone(st));
   // partes da montagem leem o projeto global (vidro, líquido, fundo): durante a miniatura
   // ele é o próprio modelo — antes a miniatura pegava a cor/vidro do projeto aberto na tela
-  const S0 = S; S = ns; THUMB_LITE = true;
+  const S0 = S; S = ns; THUMB_LITE = !full; // full: modelagem completa (recortes, cavidades) — só para gerar as miniaturas prontas da Incom
   try {
   if (ns.side?.length) { // arquivo com lado a lado: a miniatura mostra todos os produtos na ordem
     const all = [{ slot: ns.slot || 0, it: ns }, ...ns.side.map(it => ({ slot: it.slot || 0, it }))].sort((a, b) => a.slot - b.slot);
@@ -10350,10 +10350,31 @@ function pumpThumbs() {
   setTimeout(pumpThumbs, 16);
 }
 // Começa no próximo ciclo: a grade que pediu a miniatura já está na tela.
+// cl145 (dona: "conferir se os thumbs estão iguais a modelagem aprovada"): a miniatura ao vivo é leve (THUMB_LITE pula recortes e
+// cavidades — sumiam a janela da Drop, a aba da frente dos compactos, a fenda do On-Off…) e a completa leva de segundos a minutos por
+// produto. As do catálogo Incom são renderizadas antes com a modelagem completa (assets/thumbs/incom, gerador `OUTBOX.makeIncomThumbs`)
+// e valem enquanto a assinatura do modelo bater; produto alterado sem miniatura nova volta para a leve até regenerar.
+const thumbSig = st => { const k = thumbKey(st); let h = 0x811c9dc5; for (let i = 0; i < k.length; i++) { h ^= k.charCodeAt(i); h = Math.imul(h, 0x01000193); } return (h >>> 0).toString(16).padStart(8, '0'); };
+const INCOM_THUMBS = fetch('assets/thumbs/incom/index.json?v=' + BUILD).then(r => (r.ok ? r.json() : {})).catch(() => ({}));
 function queueThumb(img, st) {
+  if (st.forn) { INCOM_THUMBS.then(ix => { const f = ix[thumbSig(st)]; if (f) img.src = 'assets/thumbs/incom/' + f; else queueThumbLive(img, st); }); return; }
+  queueThumbLive(img, st);
+}
+function queueThumbLive(img, st) {
   const hit = thumbCache.get(thumbKey(st));
   if (hit) { img.src = hit; return; }
   thumbQueue.push({ img, st }); if (!pumping) { pumping = true; setTimeout(pumpThumbs, 0); }
+}
+// Gerador das miniaturas prontas da Incom (rodar no navegador, local): para cada produto do catálogo, a miniatura bege com a modelagem
+// completa vai para `post(nome, dataURL)`; no fim, o índice assinatura → arquivo. `only`: nomes a refazer (o resto do índice fica).
+async function makeIncomThumbs(post, only = null) {
+  const ix = {}, slug = n => n.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '').toLowerCase();
+  for (const [name, st0] of Object.entries(PRESETS).filter(([, s]) => s.forn)) {
+    const st = beigeOf(st0), f = slug(name) + '.png';
+    if (!only || only.includes(name)) { await post(f, thumbOf(st, true)); await new Promise(r => setTimeout(r, 0)); }
+    ix[thumbSig(st)] = f;
+  }
+  return ix;
 }
 // Só redesenha a galeria quando a lista muda (salvar/excluir/importar);
 // escolher um modelo apenas move o destaque, sem recarregar miniaturas.
@@ -10621,6 +10642,9 @@ function incomProduct(r) {
         // na borda de cima, uma fenda em U aberta no alto (~0,10·D × 0,34·D) com o biquinho redondo saindo ao lado dela, rente ao topo
         // (Ø ~0,11·D, passa um pouco do topo); no lugar do bico lateral antigo
         P('Acionador e capa', W, D, hc, { rTop: 0.8, _t: [f, 1], incomOnOff: { w: r1(W * 0.1), d: r1(W * 0.34), dir: 15, noz: r2(W * 0.11), out: r2(W * 0.06), rise: r2(W * 0.023) } })];
+      // cl145: o perfil do desenho abaulava o topo (centro reto e um anel caindo até a borda — o "disco" do print); na foto o acionador é
+      // um cilindro reto de topo plano
+      { const c = ms[1]; delete c.prof; delete c.W0; }
       break; }
     case 'flacon': case 'flaconb': { const b = r.t === 'flaconb' || r.n === 'Julie';
       // frasco, colar e bulbo/botão medidos no desenho: o frasco acaba onde a largura cai abaixo de 90%; o colar
@@ -12263,7 +12287,7 @@ $('#varBtn').onclick = () => {
 };
 $('#genDice').onclick = () => { $('#genSeed').value = Math.floor(Math.random() * 99999) + 1; runGen(); };
 
-window.OUTBOX = { capHalfAt, incomValve, termValve, INCOM_CAPS, startPlacing: L => { S.logos.push(L); startPlacing(L); }, get preview() { return preview; }, get gizmoOn() { return gizmoOn; }, get ao() { return { aoP, aoO, GTAOPass }; }, CS, COAT_U, relief: { normalMapToDisplacement, classifyReliefImage, imageToDisplacement, cleanDisplacementMap, reliefSizeNote }, get hdr() { return HDR; }, ensureHdr, moduleGeo, exportRoot, get S() { return S; }, get swapScroll() { return swapScroll; }, product, layout, scene, sun, stage, ground, renderer, areaKey, areaFill, hemi, detailShow, applyLogos, build, render: () => renderFrame(), get cam() { return cam; }, PRESETS, LIB, loadState, setSideTab, volumes, get sel() { return sel; }, set sel(v) { sel = v; renderStack(); renderEditor(); } };
+window.OUTBOX = { makeIncomThumbs, thumbSig, beigeOf, capHalfAt, incomValve, termValve, INCOM_CAPS, startPlacing: L => { S.logos.push(L); startPlacing(L); }, get preview() { return preview; }, get gizmoOn() { return gizmoOn; }, get ao() { return { aoP, aoO, GTAOPass }; }, CS, COAT_U, relief: { normalMapToDisplacement, classifyReliefImage, imageToDisplacement, cleanDisplacementMap, reliefSizeNote }, get hdr() { return HDR; }, ensureHdr, moduleGeo, exportRoot, get S() { return S; }, get swapScroll() { return swapScroll; }, product, layout, scene, sun, stage, ground, renderer, areaKey, areaFill, hemi, detailShow, applyLogos, build, render: () => renderFrame(), get cam() { return cam; }, PRESETS, LIB, loadState, setSideTab, volumes, get sel() { return sel; }, set sel(v) { sel = v; renderStack(); renderEditor(); } };
 
 buildDraftPresets();
 resize();
