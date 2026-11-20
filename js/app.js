@@ -17,9 +17,9 @@ import { GTAOPass } from 'three/addons/postprocessing/GTAOPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
-import { Brush, Evaluator, SUBTRACTION, ADDITION } from 'three-bvh-csg';
+import { Brush, Evaluator, SUBTRACTION, ADDITION, INTERSECTION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-20.cl141';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-20.cl142';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -707,7 +707,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-20.cl141';
+const BUILD = '2026-11-20.cl142';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -7260,6 +7260,87 @@ function compactParts(product, L, S0) {
             const g = toCreasedNormals(out, THREE.MathUtils.degToRad(38)); g.userData = { ...body.geometry.userData }; if (g !== out) out.dispose(); body.geometry.dispose(); body.geometry = g;
           } catch (e) { console.warn('União da dobradiça do Case:', e); unionB.forEach(g => add(g, mB, base.idx, 'dobradica', 0, 0, 0)); } }
         else unionB.forEach(g => add(g, mB, base.idx, 'dobradica', 0, 0, 0));
+      } else if (m.hingeFlatDez) {
+        // cdx45 — dona: sem furo externo fechado; recorte interno preserva uma parede contínua da tampa.
+        // Dimensões do detalhe estimadas pela foto, sem cotas de molde.
+        // Eixo atrás da parede externa: a saia abre para fora; o topo da calha segue nivelado a 90°.
+        const ya = y0 - 1.35, za = z - 0.1, xs = W * 0.27, topExtension = 10, rampOuter = 0.6 + topExtension, span = 2 * (xs + rampOuter),
+          channelHeight = 6.5, channelDepth = 3.4, channelCenterY = y0 + 1.8,
+          channelCenterZ = z + 2.35, floorZ = z + 0.65;
+        axis = { y: ya, z: za };
+        const join = (o, g) => {
+          const ev = new Evaluator(); ev.attributes = ['position','normal']; ev.useGroups = false;
+          const out = ev.evaluate(new Brush(flatPN(o.geometry)), new Brush(flatPN(g)), ADDITION).geometry;
+          out.userData = { ...o.geometry.userData }; o.geometry.dispose(); o.geometry = out; g.dispose();
+        };
+        if (!THUMB_LITE) {
+          // O rebaixo termina no alto de cada rampa; os trechos externos ficam inteiros e retos.
+          const cutter = new THREE.BoxGeometry(span, channelHeight, channelDepth)
+            .translate(cx, channelCenterY, channelCenterZ);
+          const [outer, inner] = cutHole(objs[0].geometry, cutter); cutter.dispose();
+          if (outer !== objs[0].geometry) {
+            const next = mergeGeometries([flatPN(outer), flatPN(inner)]);
+            if (next) { next.userData = { ...objs[0].geometry.userData }; objs[0].geometry.dispose(); objs[0].geometry = next; }
+          }
+        }
+        if (!THUMB_LITE) {
+          // A tampa termina nos dois recortes; a continuação não acompanha sua abertura.
+          // Transfere a própria pele das pontas para a base, preservando a forma fechada.
+          const splitX = xs + rampOuter + 0.2, endX = W / 2 + 0.2, lowY = y0 - 0.2,
+            highY = y0 + 3.05, backZ = z - 0.2, frontZ = z + 4.2, baseTop = localBox([bObjs[0]]).max.y;
+          // Parede externa vem da própria tampa; o cortador interno acompanha seus cantos.
+          const innerEnvelope = moduleGeo({ ...m, W, D: bb.max.z-bb.min.z, h: m.h+2, rBot: 0, rTop: 0 },y0-1,{inset:0.65,lo:false});
+          innerEnvelope.translate(cx,0,(bb.min.z+bb.max.z)/2);
+          [-1,1].forEach(sg => {
+            const zone = new THREE.BoxGeometry(endX-splitX,highY-lowY,frontZ-backZ)
+              .translate(cx+sg*(endX+splitX)/2,(highY+lowY)/2,(frontZ+backZ)/2);
+            const ev = new Evaluator(); ev.attributes = ['position','normal']; ev.useGroups = false;
+            const skin = ev.evaluate(new Brush(flatPN(objs[0].geometry)),new Brush(flatPN(zone)),INTERSECTION).geometry;
+            if (skin.attributes.position.count) {
+              skin.computeBoundingBox(); skin.translate(0,baseTop-skin.boundingBox.max.y,0);
+              add(skin,mB,base.idx,'dobradica_extremidade',0,0,0);
+            }
+            else skin.dispose();
+            // Pequena separação na borda do recorte, sem criar uma cavidade extra.
+            const relief = new THREE.BoxGeometry(endX-splitX+0.12,highY-lowY+0.12,frontZ-backZ+0.12)
+              .translate(cx+sg*(endX+splitX)/2,(highY+lowY)/2,(frontZ+backZ)/2);
+            // Recorta só por dentro: a parede externa original não chega a ser removida.
+            const pocket = ev.evaluate(new Brush(flatPN(relief)),new Brush(flatPN(innerEnvelope)),INTERSECTION).geometry;
+            const [outer,inner] = cutHole(objs[0].geometry,pocket); zone.dispose(); relief.dispose(); pocket.dispose();
+            if (outer !== objs[0].geometry) {
+              const next = mergeGeometries([flatPN(outer),flatPN(inner)]);
+              if(next){next.userData={...objs[0].geometry.userData};objs[0].geometry.dispose();objs[0].geometry=next;}
+            }
+          });
+          innerEnvelope.dispose();
+        }
+        // O acréscimo de largura é real: fundo e lábio acompanham o canal ampliado.
+        const floor = new THREE.BoxGeometry(span,channelHeight+0.3,0.65)
+          .translate(cx,channelCenterY,z+0.325);
+        const lip = new THREE.BoxGeometry(span,0.3,0.65)
+          .translate(cx,channelCenterY-channelHeight/2-0.1,z+0.925);
+        if (!THUMB_LITE) {
+          join(objs[0],floor); join(objs[0],lip);
+          // Passagem do prolongamento da tampa quando fechada, sem alterar o godê.
+          const clearance = new THREE.BoxGeometry(span+0.12,1.8,1.5)
+            .translate(cx,y0-0.9,z+0.65);
+          const [outer,inner] = cutHole(bObjs[0].geometry,clearance); clearance.dispose();
+          if(outer !== bObjs[0].geometry){const g=mergeGeometries([flatPN(outer),flatPN(inner)]);if(g){g.userData={...bObjs[0].geometry.userData};bObjs[0].geometry.dispose();bObjs[0].geometry=g;}}
+        } else {
+          add(floor,mT,idx,'fundo_calha',0,0,0); add(lip,mT,idx,'labio_calha',0,0,0);
+        }
+        [-1, 1].forEach(sg => {
+          const xc = cx + sg * xs, direction = -sg, shape = new THREE.Shape();
+          // Ocupa a altura da calha e sobe do fundo até a face interna; nada sai sobre a base.
+          [[-rampOuter,-.05],[4,-.05],[4,.02],[.5,.6],[-rampOuter,.6]].forEach(([xx,zz],i)=>
+            i ? shape.lineTo(direction*xx,zz) : shape.moveTo(direction*xx,zz));
+          shape.closePath();
+          const ramp = new THREE.ExtrudeGeometry(shape,{depth:channelHeight,bevelEnabled:false});
+          ramp.deleteAttribute('uv'); ramp.rotateX(Math.PI/2);
+          ramp.translate(xc,channelCenterY+channelHeight/2,floorZ);
+          if (!THUMB_LITE) join(objs[0],ramp);
+          else { add(ramp,mT,idx,'rampa_calha',0,0,0); objs.push(product.children.at(-1)); }
+        });
       } else if (m.hingeOculta) { // Big/Flat — cl58, foto ampliada da dona (assets/revisao/ref-dona/flat-dobradica-ampliada.png):
         // nada de rolo/faixa. Na borda de trás a TAMPA é recortada para cima no centro (as pontas descem até a divisão e "abraçam"
         // o eixo) e a BASE sobe no centro num ressalto que entra nesse recorte; a passagem ponta→centro é um degrau com chanfro
@@ -10798,6 +10879,7 @@ function incomProduct(r) {
       // cl51 (todas as Flat: "dobradiça é escondida, a tampa tem uma parte que abraça a dobradiça", 2ª foto): eixo dentro de uma calha
       // de ~90% da largura, coberto por um rolo da própria tampa, rente às costas — por fora não aparece nó nem pino
       Object.assign(t, { hingeCalha: 0.9, hingeOculta: true });
+      if (r.n === 'Flat Dez') { t.hingeFlatDez = true; t.abreAberto = 80; }
     } }
     ms.forEach((m, i) => { if (m.hinge && !m.caseLatch && ms[i - 1]?.dedo) m.snapFront = true; });
     if (/^Classic/.test(r.n)) { const t = ms.find(m => m.name === 'Tampa'); if (t) Object.assign(t, { hingeBarra: true, hingeCalha: r2(Math.min(0.44, 30 / W)) }); } /* cl117: calha maior (foto: ~45% da largura) */ // cl113: barra única ("o classic é uma barra única") dentro de uma calha ("tem uma calha para essa dobradiça")
