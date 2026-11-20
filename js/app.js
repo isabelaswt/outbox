@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION, ADDITION, INTERSECTION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-20.cl142';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-20.cl143';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -707,7 +707,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-20.cl142';
+const BUILD = '2026-11-20.cl143';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -10879,7 +10879,9 @@ function incomProduct(r) {
       // cl51 (todas as Flat: "dobradiça é escondida, a tampa tem uma parte que abraça a dobradiça", 2ª foto): eixo dentro de uma calha
       // de ~90% da largura, coberto por um rolo da própria tampa, rente às costas — por fora não aparece nó nem pino
       Object.assign(t, { hingeCalha: 0.9, hingeOculta: true });
-      if (r.n === 'Flat Dez') { t.hingeFlatDez = true; t.abreAberto = 80; }
+      // cl143 (dona: "todas flat fazer com a nova solução"): a calha com rampas da Flat Dez (cdx45) vale para todas as Flat — mesma caixa
+      // de 119,7 × 63 × 14,1 no catálogo; abrem a 80° como a Dez
+      t.hingeFlatDez = true; t.abreAberto = 80;
     } }
     ms.forEach((m, i) => { if (m.hinge && !m.caseLatch && ms[i - 1]?.dedo) m.snapFront = true; });
     if (/^Classic/.test(r.n)) { const t = ms.find(m => m.name === 'Tampa'); if (t) Object.assign(t, { hingeBarra: true, hingeCalha: r2(Math.min(0.44, 30 / W)) }); } /* cl117: calha maior (foto: ~45% da largura) */ // cl113: barra única ("o classic é uma barra única") dentro de uma calha ("tem uma calha para essa dobradiça")

@@ -1,4 +1,6 @@
-# Atualização Claude — 20/11/2026, cl142
+# Atualização Claude — 20/11/2026, cl143
+
+- **cl143** — Dona ("todas flat fazer com a nova solução"): a calha com rampas da Flat Dez (cl142/cdx45) e a abertura a 80° agora valem para todas as Flat — Duo, Sexteto, Trio Retangular, Trio Redondo, 6 + 1 e Dez (mesma caixa de 119,7 × 63 × 14,1 no catálogo, sem ajuste de medida). Petit Aplicador · Flat Pad (frasnagas) fica de fora. Conferido local: costas fechadas, aberta a 80° e de lado a 90° nas seis, godês intactos, sem avisos de CSG.
 
 - **cl142** — Flat Dez: integrada a entrega do Codex (estudo cdx45, aprovado pela dona com "feito!" em 20/11), só o patch `flat-dez-somente.patch` — import `INTERSECTION` do three-bvh-csg, ramo `m.hingeFlatDez` em `compactParts` antes de `hingeOculta`, e `hingeFlatDez` + `abreAberto = 80` exclusivamente quando `r.n === 'Flat Dez'`. Calha de 6,5 mm com duas rampas maciças da tampa (+10 mm retos no topo), continuações laterais da base fixas e no nível dela, canto traseiro fechado (corte só por dentro, parede externa contínua), eixo em y0 − 1,35 / z − 0,1. Aplicado sobre a cl141 (o único conflito era o carimbo do import do incom.js no contexto). Conferido local: caixa fechada 119,684 × 62,509 × 14,100 (igual ao estudo), aberta a 80°/90°/105° sem erro, Flat Duo inalterada.
 
