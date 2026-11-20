@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION, ADDITION, INTERSECTION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-20.cl145';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-20.cl146';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -707,7 +707,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-20.cl145';
+const BUILD = '2026-11-20.cl146';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -10641,7 +10641,7 @@ function incomProduct(r) {
         // cl144 (dona, print do On-Off: "on off não ficou modelado"; fotos DISPENSING-ON-OFF-100 e 6-3): topo reto de quina quase viva e,
         // na borda de cima, uma fenda em U aberta no alto (~0,10·D × 0,34·D) com o biquinho redondo saindo ao lado dela, rente ao topo
         // (Ø ~0,11·D, passa um pouco do topo); no lugar do bico lateral antigo
-        P('Acionador e capa', W, D, hc, { rTop: 0.8, _t: [f, 1], incomOnOff: { w: r1(W * 0.1), d: r1(W * 0.34), dir: 15, noz: r2(W * 0.11), out: r2(W * 0.06), rise: r2(W * 0.023) } })];
+        P('Acionador e capa', W, D, hc, { rTop: 0.8, _t: [f, 1], incomOnOff: { w: r1(W * 0.1), d: r1(W * 0.34), dir: 15, noz: r2(W * 0.11), out: -0.4, rise: -0.4 } })]; // cl146 (dona: "ele tá passando da tampa"): o bico fica todo dentro da canaleta — ponta 0,4 mm para dentro da parede e o alto 0,4 mm abaixo do topo
       // cl145: o perfil do desenho abaulava o topo (centro reto e um anel caindo até a borda — o "disco" do print); na foto o acionador é
       // um cilindro reto de topo plano
       { const c = ms[1]; delete c.prof; delete c.W0; }
