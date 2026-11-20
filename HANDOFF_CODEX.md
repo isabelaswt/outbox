@@ -1,4 +1,6 @@
-# Atualização Claude — 20/11/2026, cl151
+# Atualização Claude — 20/11/2026, cl152
+
+- **cl152** — Dispensing Twist, dona (foto aberta: "ir mais alto a abertura, o lugar que sai o produto é pra frente"; "não é um buraco, é um retângulo para frente com furo dentro retangular também"): aberto, o acionador sobe ~14 mm (era ~5) e continua encaixado na manga — ele ganhou 3 mm a mais por baixo, escondidos dentro da manga quando fechado. A saída virou um bico retangular saltado ~1 mm no alto da frente (~0,115·W × 2,6 mm), com furo retangular dentro (`incomTwistOutlet.boss`). Miniatura regerada.
 
 - **cl151** — On-Off 100/120, dona (fotos de perto do topo: "arredondar na quina"; "o pump é separado da estrutura"): fenda e canaleta num recorte só, com os cantos de dentro arredondados (ponta da canaleta ~0,9 mm, passagem para a fenda ~0,7 mm), perfil plano na tangente do meio do recorte. A capa virou um cilindro de parede fina (~1,5 mm) e o disco do acionador fica dentro dela, 0,8 mm abaixo da borda, de quina arredondada, com uma fresta de ~0,45 mm em volta; o bico nasce no disco (alto 0,9 mm abaixo da borda). Miniaturas dos dois regeradas.
 
