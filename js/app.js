@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION, ADDITION, INTERSECTION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-20.cl153';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-20.cl154';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -707,7 +707,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-20.cl153';
+const BUILD = '2026-11-20.cl154';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -7596,9 +7596,9 @@ function incomDispensingGeo(g, m, y0) {
     } else { const cut = new THREE.BoxGeometry(o.w, o.h, o.d + 1); cut.translate(m.ox || 0, yc, zf - (o.d - 1) / 2);
       const [outer, inner] = cutHole(g, cut); if (outer !== g) g = mergeLoose([outer, inner]); }
   }
-  if (m.incomTwistNotch) { // cl153: entalhe atravessando a parede da manga do Twist, aberto em cima
-    g.computeBoundingBox(); const k = m.incomTwistNotch, top = y0 + m.h, cut = new THREE.BoxGeometry(k.w, k.h + 1, 8);
-    cut.translate(m.ox || 0, top - k.h + (k.h + 1) / 2, g.boundingBox.max.z - 2); const [outer, inner] = cutHole(g, cut); if (outer !== g) g = mergeLoose([outer, inner]); }
+  if (m.incomTwistNotch) { // cl153/cl154: canal na face de dentro da parede da manga do Twist, aberto em cima
+    g.computeBoundingBox(); const k = m.incomTwistNotch, top = y0 + m.h, zo = g.boundingBox.max.z, cut = new THREE.BoxGeometry(k.w, k.h + 1, 8 - (k.keep || 0));
+    cut.translate(m.ox || 0, top - k.h + (k.h + 1) / 2, zo - 8 + (8 - (k.keep || 0)) / 2); const [outer, inner] = cutHole(g, cut); if (outer !== g) g = mergeLoose([outer, inner]); } // cl154: deixa `keep` mm de parede por fora (canal interno)
   if (m.refilClic) { // cl150: travinhas do clique do refil do Cube — dois dentes na borda de cima do colar, na frente e atrás, saltando um pouco
     g.computeBoundingBox(); const k = m.refilClic, top = y0 + m.h, zf = g.boundingBox.max.z, parts = [g]; // a caixa real (W da peça poligonal é o raio de fora do polígono)
     for (const sz of [-1, 1]) for (const sx of [-1, 1]) { const b = new THREE.BoxGeometry(k.w, k.h, k.d); b.deleteAttribute('uv'); b.translate((m.ox || 0) + sx * k.x, top - k.h / 2 - 0.2, sz * (zf - 0.3 + k.d / 2)); parts.push(b); }
@@ -10616,12 +10616,12 @@ function incomProduct(r) {
       // cl147 (aprovação, Twist: "o abrir aqui tem que ser com barra pq tem giro embaixo para o pump abrir"; fotos DISPENSING-TWIST):
       // abre girando a base (até 90°, o quadrado volta a alinhar) e o acionador sobe ~4% da altura acima da manga — no slider da barra,
       // como as dobradiças; a manga não sai mais
-      ms = [P('Base', W, D, hb, { ...sq(0.08), rBot: 1.5, casca: true, incomRefillCavity: { ...cavity, floor }, _t: [0, fs], twist: { lift: r1(ha + 2) }, abre: 0, abreAberto: 90 }), // cl152 (dona: "ir mais alto a abertura"; foto aberta): o acionador sobe ~14 mm (foto) e fica 1 mm ainda dentro da manga — ele tem 3 mm a mais escondidos lá dentro
+      ms = [P('Base', W, D, hb, { ...sq(0.08), rBot: 1.5, casca: true, incomRefillCavity: { ...cavity, floor }, _t: [0, fs], twist: { lift: r1(ha + 3) }, abre: 0, abreAberto: 90 }), // cl152 (dona: "ir mais alto a abertura"; foto aberta): o acionador sobe ~14 mm (foto) e fica 1 mm ainda dentro da manga — ele tem 3 mm a mais escondidos lá dentro
         P('Refil PET', rw, rw, hr, { ...clear, h: hr, vol: true, casca: true, apoio: false,
           rBot: r1(rw * 0.25), rTop: 1, gap: r2(floor - hb), incomRefillCavity: { W: r1(rw - 2 * wall), D: r1(rw - 2 * wall), floor: wall, rBot: r1(rw * 0.25 - wall) } }),
-        P('Manga giratória', W, D, H - hb, { ...sq(0.08), casca: true, apoio: false, veste: false, incomTwistNotch: { w: r1(W * 0.115 + 0.6), h: 2.9 }, // cl153 (dona, desenho pág. 55: "tem uma calha na estrutura para sair a tampa que vai para fora"; foto fechada): entalhe na borda de cima da manga, no meio da frente, por onde passa o bico
+        P('Manga giratória', W, D, H - hb, { ...sq(0.08), casca: true, apoio: false, veste: false, incomTwistNotch: { w: r1(W * 0.115 + 0.6), h: 3.7, keep: 1.4 }, // cl153 (dona, desenho pág. 55: "tem uma calha na estrutura para sair a tampa que vai para fora"); cl154 ("é para dentro, ela fica totalmente para dentro, a calha fica interna"): canal só na face de dentro da parede, no meio da frente, aberto em cima — por fora não aparece
           gap: r2(hb - floor - hr), incomRefillCavity: { ...cavity, floor: -1 }, _t: [fs, 1] }),
-        P('Acionador PP', W * 0.84, D * 0.84, ha + 3, { ...sq(0.08), gap: -(ha + 3), apoio: false, veste: false, twistLift: true,
+        P('Acionador PP', W * 0.84, D * 0.84, ha + 3, { ...sq(0.08), gap: -(ha + 4), apoio: false, veste: false, twistLift: true, // cl154: fechado fica todo dentro da manga (topo ~0,3 mm abaixo da borda)
           incomTwistOutlet: { boss: true, w: r1(W * 0.115), h: 2.6, d: 1, hw: r1(W * 0.065), hh: 1.2, fromTop: 1.7 } })]; break; } // cl152 (dona: "o lugar que sai o produto é pra frente"; foto): bico retangular saltado ~1 mm no alto da frente, com furo retangular
     // falls through
     case 'cg': case 'cgt': case 'cgr': case 'bulb': {

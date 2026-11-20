@@ -1,4 +1,6 @@
-# Atualização Claude — 20/11/2026, cl153
+# Atualização Claude — 20/11/2026, cl154
+
+- **cl154** — Dispensing Twist, dona ("é para dentro, ela fica totalmente para dentro, a calha fica interna"): o entalhe da cl153 atravessava a parede; agora é um canal só na face de dentro da manga, no meio da frente, aberto em cima (`incomTwistNotch.keep` = 1,4 mm de parede por fora) — por fora não aparece. Fechado, o acionador fica todo dentro da manga (topo 0,3 mm abaixo da borda, bico 2 mm para dentro da face); aberto, sobe ~15 mm pelo canal. Miniatura regerada.
 
 - **cl153** — Dispensing Twist, dona (desenho pág. 55: "tem uma calha na estrutura para sair a tampa que vai para fora"): entalhe atravessando a parede da manga na borda de cima, no meio da frente (largura do bico + 0,6, 2,9 mm de altura, `incomTwistNotch`) — fechado, o bico do acionador encaixa nele (foto fechada); aberto, fica o entalhe vazio. Miniatura regerada.
 
