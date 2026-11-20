@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION, ADDITION, INTERSECTION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-20.cl146';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-20.cl147';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -707,7 +707,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-20.cl146';
+const BUILD = '2026-11-20.cl147';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -6604,6 +6604,17 @@ function dedoGeo(g, o, y0, h) {
 // Moon Deck (foto MOON-DECK-2, aprovação cl41): o andar do meio segue a tampa depois de 'de' graus, até 'max'
 const segueAng = (m, top) => clamp((top - m.segue.de) * (m.segue.k ?? 1), 0, m.segue.max);
 // h.under: peça de baixo que também gira (andar do meio): o ângulo é absoluto, o eixo vai junto com ela (girar a de baixo antes)
+// Abertura por giro (Twist, cl147): a peça com `twist` gira em torno do eixo e as com `twistLift` sobem junto (0–90°)
+const twistMod = St => St.modules.find(m => m.twist);
+const twistAngOf = St => { const m = twistMod(St); return !m ? 0 : m.abre > 0 ? m.abre : St.aberto ? (m.abreAberto ?? 90) : 0; };
+function poseTwist(root, St, ang = twistAngOf(St)) {
+  const i = St.modules.findIndex(m => m.twist); if (i < 0) return; const m = St.modules[i], a = clamp(ang, 0, 90);
+  root.children.forEach(o => { const u = o.userData; if (!o.isMesh || u.idx == null) return;
+    if (u.idx === i) o.rotation.y = -a * Math.PI / 180;
+    else if (St.modules[u.idx]?.twistLift) { if (u.twY0 == null) u.twY0 = o.position.y; o.position.y = u.twY0 + (m.twist.lift || 0) * a / 90; }
+    else return;
+    o.updateMatrix(); o.updateMatrixWorld(true); });
+}
 function setHinge(objs, ang) {
   const R = (y, z, a) => new THREE.Matrix4().makeTranslation(0, y, z).multiply(new THREE.Matrix4().makeRotationX(-a * Math.PI / 180)).multiply(new THREE.Matrix4().makeTranslation(0, -y, -z));
   ang = clamp(ang, 0, 180);
@@ -6691,7 +6702,7 @@ function compactParts(product, L, S0) {
         const shapeOf = (c, inset) => { const P = c.map(([x, y]) => [x * TW, y * TD]), cx0 = P.reduce((t, q) => t + q[0], 0) / P.length, cy0 = P.reduce((t, q) => t + q[1], 0) / P.length;
           const Q = P.map(([x, y]) => { const dx = x - cx0, dy = y - cy0, l = Math.hypot(dx, dy) || 1, k = Math.max(0.2, 1 - inset / l); return [cx0 + dx * k, cy0 + dy * k]; });
           // cantos arredondados, como o godê de verdade (o desenho da bandeja vem em quinas vivas)
-          const rc = Math.max(0.6, 2.2 - inset * 0.6), n = Q.length, sh = new THREE.Shape();
+          const rc = Math.max(0.6, (m.godes.rc ?? 2.2) - inset * 0.6), n = Q.length, sh = new THREE.Shape();
           Q.forEach((B, q) => { const A = Q[(q - 1 + n) % n], C = Q[(q + 1) % n], l1 = Math.hypot(A[0] - B[0], A[1] - B[1]), l2 = Math.hypot(C[0] - B[0], C[1] - B[1]);
             if (!(l1 > 1e-3 && l2 > 1e-3)) { q ? sh.lineTo(B[0], B[1]) : sh.moveTo(B[0], B[1]); return; }
             const r = Math.min(rc, l1 * 0.45, l2 * 0.45), p1 = [B[0] + (A[0] - B[0]) / l1 * r, B[1] + (A[1] - B[1]) / l1 * r], p2 = [B[0] + (C[0] - B[0]) / l2 * r, B[1] + (C[1] - B[1]) / l2 * r];
@@ -6710,7 +6721,8 @@ function compactParts(product, L, S0) {
           return g / 2; });
         cells.forEach((c, j) => {
           const s0 = st && st.j === j ? st.inset : 0;
-          if (s0) stepCut = ext(c, 0.05 - gr, top + 2 - (top - st.d), top - st.d); // degrau: corte à parte (dois cortes sobrepostos na mesma malha falhavam)
+          if (s0) stepCut = st.round ? pocketCut(o => shapeOf(c, 0.05 - gr - o).getSpacedPoints(160).slice(0, -1).map(v => [v.x, -v.y]), cx, cz, top - st.d, top, Math.min(0.7, st.d * 0.75), Math.min(0.25, st.d * 0.25)) // cl147: degrau com a quina arredondada (Flat Duo)
+            : ext(c, 0.05 - gr, top + 2 - (top - st.d), top - st.d); // degrau: corte à parte (dois cortes sobrepostos na mesma malha falhavam)
           // aprovação cl43 (Classic Duo/Quarteto: "a própria estrutura do godê precisa de um fillet"; vale para todo godê por contorno):
           // boca do godê com concordância — o contorno é o mesmo do desenho, deslocado para fora só no arredondado de cima
           const cOut = o => shapeOf(c, 0.05 - gr + s0 - o).getSpacedPoints(120).slice(0, -1).map(v => [v.x, -v.y]);
@@ -7544,7 +7556,10 @@ function incomDispensingGeo(g, m, y0) {
     let bg = new THREE.LatheGeometry(P, 256);
     { const sh = new THREE.Shape(); sh.moveTo(-a - 1, rimB + 3); for (let i = 0; i <= 200; i++) { const x = -a - 1 + (2 * a + 2) * i / 200; sh.lineTo(x, Math.min(rimB + 0.02, yTopB(Math.min(a, Math.abs(x))))); } sh.lineTo(a + 1, rimB + 3); sh.closePath();
       const cut = new THREE.ExtrudeGeometry(sh, { depth: 2 * a + 4, bevelEnabled: false, curveSegments: 4 }); cut.deleteAttribute("uv"); cut.translate(0, 0, -a - 2);
-      bg.deleteAttribute('uv'); const [o1, i1] = cutHole(bg, cut); if (o1 !== bg) { const gg = mergeGeometries([o1, i1]); if (gg) bg = gg; } } bg.deleteAttribute('uv'); bg.computeVertexNormals(); if (ox) bg.translate(ox, 0, 0);
+      bg.deleteAttribute('uv'); const [o1, i1] = cutHole(bg, cut); if (o1 !== bg) { const gg = mergeGeometries([o1, i1]); if (gg) bg = gg; } } bg.deleteAttribute('uv');
+    // cl147 (aprovação, Elíptico: "base com bug de modelagem"): corpo elíptico — o bloco/prato (de revolução, no raio maior) achatam na profundidade
+    const kz = m.D > 0 && m.D < m.W - 0.5 ? m.D / m.W : 1; if (kz < 1) { bg.scale(1, 1, kz); pg.scale(1, 1, kz); }
+    bg.computeVertexNormals(); if (ox) bg.translate(ox, 0, 0);
     // cl136 (dona: "prefiro só deixar a mais escura"): sai a curva clara do prato (superfície na casca); fica só o sorriso do bloco de vidro
     const out = m.comPrato ? mergeLoose([g, pg]) : g; if (!m.comPrato) pg.dispose(); out.userData = { ...(g.userData || {}), massa: bg }; return out; }
   if (c) {
@@ -7917,6 +7932,7 @@ function buildInto(product, S, explodeAmt = 0) {
     }
   });
   compactParts(product, L, S);
+  poseTwist(product, S);
   if (semiSee) product.children.forEach(o => {
     if (o.material === semiTube) o.renderOrder = 3;
     else if (o.userData.liquid && o.name === 'liquido') { o.renderOrder = 2; o.material.depthWrite = false; }
@@ -8330,8 +8346,8 @@ $('#explodeBtn').onclick = () => { explode = !explode; $('#explodeBtn').classLis
 // Abrir / fechar: aparece só em produto que abre (compacto com dobradiça, batom com tampa e bala)
 // slider e botão: a tampa de cima (no Moon Deck o andar do meio tem o seu próprio controle em Peças)
 const hingeTop = () => S.modules.filter(x => x.hinge).at(-1);
-const hingeAng = () => { const m = hingeTop(); return !m ? 0 : m.abre > 0 ? m.abre : S.aberto ? (m.abreAberto ?? 105) : 0; };
-function syncOpenBtn() { const b = $('#openBtn'), r = $('#openAng'); if (!b) return; const ok = S.modules.some(m => m.hinge || m.capa || m.sens), hinge = S.modules.some(m => m.hinge);
+const hingeAng = () => { const m = hingeTop(); return !m ? (twistMod(S) ? twistAngOf(S) : 0) : m.abre > 0 ? m.abre : S.aberto ? (m.abreAberto ?? 105) : 0; };
+function syncOpenBtn() { const b = $('#openBtn'), r = $('#openAng'); if (!b) return; const ok = S.modules.some(m => m.hinge || m.capa || m.sens || m.twist), hinge = S.modules.some(m => m.hinge || m.twist);
   const open = !!S.aberto || hingeAng() > 0;
   b.classList.toggle('hidden', !ok); b.classList.toggle('on', ok && open); b.textContent = ok && open ? 'Fechar' : 'Abrir';
   if (r) { r.classList.toggle('hidden', !hinge); if (document.activeElement !== r) r.value = hingeAng(); } }
@@ -8361,11 +8377,21 @@ function animateHinges(open) {
     renderFrame(); if (u < 1) requestAnimationFrame(step); else { syncOpenBtn(); req(); } };
   requestAnimationFrame(step); syncOpenBtn(); saveLocalSoon();
 }
+function animateTwist(open) { // cl147: Twist abre girando a base, sem remontar
+  const tm = twistMod(S), a0 = twistAngOf(S), a1 = open ? (tm.abreAberto ?? 90) : 0, id = ++openAnimId, T = 520, start = performance.now();
+  S.aberto = open; tm.abre = 0;
+  const ease = u => u < 0.5 ? 2 * u * u : 1 - (-2 * u + 2) ** 2 / 2;
+  const step = now => { if (id !== openAnimId) return; const u = Math.min(1, (now - start) / T); poseTwist(product, S, a0 + (a1 - a0) * ease(u)); renderFrame();
+    if (u < 1) requestAnimationFrame(step); else { syncOpenBtn(); req(); } };
+  requestAnimationFrame(step); syncOpenBtn(); saveLocalSoon();
+}
 $('#openBtn').onclick = () => { const open = !!S.aberto || hingeAng() > 0;
+  if (twistMod(S) && !S.modules.some(m => m.hinge || m.capa || m.sens) && !explode) return animateTwist(!open);
   if (soDobradica() && !explode) return animateHinges(!open);
   S.aberto = !open; S.modules.forEach(m => { if (m.hinge) m.abre = 0; }); busy(() => { build(); fit(); }); saveLocalSoon(); };
 // Slider: gira só a tampa (sem remontar); ao soltar, guarda o ângulo na peça
 $('#openAng').oninput = e => { const v = +e.target.value;
+  if (!hingeTop() && twistMod(S)) { const tw = twistMod(S), a = Math.min(v, 90); tw.abre = a; S.aberto = a > 0; poseTwist(product, S, a); renderFrame(); syncOpenBtn(); return; } // cl147: Twist na barra
   const tm = hingeTop(); if (tm) tm.abre = v; S.aberto = v > 0;
   const idx = new Set([S.modules.indexOf(tm)]);
   S.modules.forEach((m, i) => { if (m.segue && m !== tm && !(m.abre > 0)) setHinge(product.children.filter(o => o.isMesh && o.userData.idx === i), segueAng(m, v)); }); // andar do meio junto (antes: a tampa vai presa nele)
@@ -10416,9 +10442,15 @@ function godesOf(r) {
   // Flat Duo (foto, medida no catálogo): bandeja 1 de 60,4 × 44,4 à esquerda e bandeja 2 menor (~38 × 42) à direita
   // Aprovação cl37 (foto FLAT-DUO-1): godês bem mais juntos — o da esquerda ~55% e o da direita ~43% da bandeja, vão de ~2,5 mm;
   // o da direita é uma segunda cavidade com degrau em volta (a borda dele parece mais larga)
-  if (/^Flat Duo/.test(n)) tr = { ar: 104 / 44.4, mmTw: 104, step: { j: 1, inset: 1.6, d: 0.9 }, c: [[[-0.5, 0.48], [-0.5, -0.48], [0.05, -0.48], [0.05, 0.48]], [[0.074, 0.5], [0.074, -0.5], [0.5, -0.5], [0.5, 0.5]]] };
+  // cl147 (aprovação, Flat Duo: "borda dos godês é mais arredondada, o godê da direita tem uma borda maior"; foto FLAT-DUO-1 ampliada):
+  // cantos de ~3 mm e a moldura do godê da direita ~3 mm (era 1,6), com a quina do degrau arredondada
+  if (/^Flat Duo/.test(n)) tr = { ar: 104 / 44.4, mmTw: 104, rc: 3.2, step: { j: 1, inset: 3, d: 0.9, round: true }, c: [[[-0.5, 0.48], [-0.5, -0.48], [0.05, -0.48], [0.05, 0.48]], [[0.074, 0.5], [0.074, -0.5], [0.5, -0.5], [0.5, 0.5]]] };
   // Fotos FLAT-DEZ e FLAT-SEXTETO: godês mais juntos que no desenho (vão ~1,6 mm no Dez, ~3,3 no Sexteto) e, no Sexteto, mais borda dos lados (~7%)
   if (tr && /^Flat Dez/.test(n)) tr = { ...tr, mmTw: 106.5, grow: 0.45 };
+  // cl147 (aprovação, Flat Trio Redondo: "godês estão low poly"): o contorno do desenho tinha 16 pontos por godê — cada um vira uma
+  // elipse lisa (96 pontos) no mesmo retângulo (no tamanho real é um círculo)
+  if (tr && /^Flat Trio Redondo/.test(n)) tr = { ...tr, c: tr.c.map(c => { const xs = c.map(q => q[0]), ys = c.map(q => q[1]), x0 = (Math.min(...xs) + Math.max(...xs)) / 2, y0 = (Math.min(...ys) + Math.max(...ys)) / 2,
+    rx = (Math.max(...xs) - Math.min(...xs)) / 2, ry = (Math.max(...ys) - Math.min(...ys)) / 2; return Array.from({ length: 96 }, (_, i) => { const a = i / 96 * Math.PI * 2; return [x0 + rx * Math.cos(a), y0 + ry * Math.sin(a)]; }); }) };
   if (tr && /^Flat Sexteto/.test(n)) tr = { ...tr, mmTw: 103, grow: 0.3 };
   if (tr && /Quinteto/.test(n)) tr = { ...tr, grow: -0.6 }; // aprovação cl45 (Frame G Quinteto): divisórias maiores (~1,2 mm a mais entre os godês)
   // Classic Duo (foto de cima do site, CLASSIC-DUO-1): godê da esquerda ~53% e o da direita ~38% da bandeja, vão de ~9%,
@@ -10429,7 +10461,7 @@ function godesOf(r) {
     tr = { ar: 1, c: [half(1), half(-1).reverse()] }; }
   if (tr && /Classic Quarteto/.test(n)) tr = { ...tr, slot: [[-0.1, 0.5], [-0.1, -0.5], [0.1, -0.5], [0.1, 0.5]] };
   // cl51 (dona, foto FLAT-6+1: "o godê maior fica na esquerda"): sem o espelhamento antigo — a bandeja do desenho já tem o grande à esquerda
-  return tr ? { rows, rect, cells: tr.c, ar: tr.ar, slot: tr.slot, grow: tr.grow, step: tr.step, mm: tr.mmTw ? tr.mmTw - 1 : mm, n: frameN(n) || undefined } : { rows, rect, mm };
+  return tr ? { rows, rect, cells: tr.c, ar: tr.ar, slot: tr.slot, grow: tr.grow, step: tr.step, rc: tr.rc, mm: tr.mmTw ? tr.mmTw - 1 : mm, n: frameN(n) || undefined } : { rows, rect, mm };
 }
 // Tamanho da bandeja (godê) informado no catálogo, em mm, quando não há desenho dela
 const TRAY_MM = { incomp_compactos_case_g: 58.3, incomp_compactos_case_m: 41.1, incomp_compactos_case_m_all_crystal: 41.1, incomp_compactos_classic_uno: 52.8,
@@ -10560,12 +10592,15 @@ function incomProduct(r) {
       // Foto: acionador ~84% da largura/~10% da altura; refil ~65% da largura, sem cotas próprias.
       const [fs] = incomFrac(pr, [0.23]), hb = r2(H * fs), floor = r2(H * 0.04), hr = r2(H * 0.69), ha = r2(H * 0.1);
       const rw = r1(W * 0.65), wall = r1(W * 0.025), cavity = { W: r1(W * 0.86), D: r1(D * 0.86), sides: 4, sideR: 0.08, rBot: 0.5 };
-      ms = [P('Base', W, D, hb, { ...sq(0.08), rBot: 1.5, casca: true, incomRefillCavity: { ...cavity, floor }, _t: [0, fs] }),
+      // cl147 (aprovação, Twist: "o abrir aqui tem que ser com barra pq tem giro embaixo para o pump abrir"; fotos DISPENSING-TWIST):
+      // abre girando a base (até 90°, o quadrado volta a alinhar) e o acionador sobe ~4% da altura acima da manga — no slider da barra,
+      // como as dobradiças; a manga não sai mais
+      ms = [P('Base', W, D, hb, { ...sq(0.08), rBot: 1.5, casca: true, incomRefillCavity: { ...cavity, floor }, _t: [0, fs], twist: { lift: r1(H * 0.04) }, abre: 0, abreAberto: 90 }),
         P('Refil PET', rw, rw, hr, { ...clear, h: hr, vol: true, casca: true, apoio: false,
           rBot: r1(rw * 0.25), rTop: 1, gap: r2(floor - hb), incomRefillCavity: { W: r1(rw - 2 * wall), D: r1(rw - 2 * wall), floor: wall, rBot: r1(rw * 0.25 - wall) } }),
-        P('Manga giratória', W, D, H - hb, { ...sq(0.08), casca: true, apoio: false, veste: false, capa: 'vira',
+        P('Manga giratória', W, D, H - hb, { ...sq(0.08), casca: true, apoio: false, veste: false,
           gap: r2(hb - floor - hr), incomRefillCavity: { ...cavity, floor: -1 }, _t: [fs, 1] }),
-        P('Acionador PP', W * 0.84, D * 0.84, ha, { ...sq(0.08), gap: -ha, apoio: false, veste: false,
+        P('Acionador PP', W * 0.84, D * 0.84, ha, { ...sq(0.08), gap: -ha, apoio: false, veste: false, twistLift: true,
           incomTwistOutlet: { w: r1(W * 0.11), h: r1(H * 0.012), d: r1(W * 0.04), fromTop: r1(H * 0.025) } })]; break; }
     // falls through
     case 'cg': case 'cgt': case 'cgr': case 'bulb': {
@@ -10585,7 +10620,7 @@ function incomProduct(r) {
       // ~0,86·W × 0,12·W por cima (dentro da sobretampa) e a pump com colar ~0,70·W × 0,47·W. A pump é a mesma peça 20/410 em
       // toda a linha (o colar do Quadrado na foto também tem ~15,8 mm): anel, degrau e pump em mm, e a sobretampa com a altura que
       // a pump pede (a medida de catálogo do 60 é mais baixa que a foto e a pump furava a tampa)
-      const dsp = /^incomp_dispensadores_dispensing_(15|30|60)$/.test(r.k), dspQ = r.k === 'incomp_dispensadores_dispensing_quadrado';
+      const dsp = /^incomp_dispensadores_dispensing_(15|30|60)$/.test(r.k), dspQ = /^incomp_dispensadores_dispensing_(quadrado|eliptico)$/.test(r.k); // cl147: Elíptico com o degrau ("falta dente interno como os outros dispensers")
       if (dsp) { f1 = 1 - 43.8 / H; f0 = f1 - 10.1 / H; }
       // sobretampa de plástico transparente: casca de uma superfície só (cavada, a parede de dentro aparecia como
       // uma segunda linha; com o oco da válvula, como uma parede por dentro, igual às tampas maciças de Surlyn)
@@ -10628,7 +10663,7 @@ function incomProduct(r) {
       // chega perto do topo da sobretampa
       if (r.n === 'Amsterdam Deluxe 100' && v) Object.assign(v, { h: r1(v.h * 1.5), actH: r1(v.actH * 1.4) });
       if (r.t === 'bulb' && r.c === 'Dispensadores') Object.assign(v, { h: r1(v.h * 1.58), actH: r1(v.actH * 1.5), headH: r1(v.headH * 1.29) });
-      if (r.c === 'Dispensadores' && r.t !== 'bulb' && v.sprayType === 'dosadora') Object.assign(v, { W: 23.6, D: 23.6, h: 15.8, guideW: 17.5, guideH: 6.4, actW: 13.8, headH: 13.5 }); // cl141: pump da foto do Dispensing 15 (colar 0,70·W × 0,47·W, guia 0,52·W × 0,19·W, atuador 0,41·W) em mm
+      if (r.c === 'Dispensadores' && r.t !== 'bulb' && v.sprayType === 'dosadora') Object.assign(v, r.k === 'incomp_dispensadores_dispensing_eliptico' ? { W: 27.1, D: 27.1, h: 18.2, guideW: 20.1, guideH: 7.4, actW: 15.9, headH: 15.5 } /* cl147 (aprovação, Elíptico: "válvula tá menor"): ×1,15, na proporção da sobretampa mais alta (49,5 contra 43,8) */ : { W: 23.6, D: 23.6, h: 15.8, guideW: 17.5, guideH: 6.4, actW: 13.8, headH: 13.5 }); // cl141: pump da foto do Dispensing 15 (colar 0,70·W × 0,47·W, guia 0,52·W × 0,19·W, atuador 0,41·W) em mm
       if (r.t === 'bulb' && r.c === 'Conta-gotas') Object.assign(v, { W: r1(W * 0.58), D: r1(W * 0.58), h: r1(H * 0.18), actW: r1(W * 0.32), actH: r1(H * 0.19) });
       if (dcg) { Object.assign(v, { W: r1(W * 0.64), D: r1(W * 0.64), h: r1(H * 0.13), actW: r1(W * 0.34), actH: r1(H * 0.17), friso: 0.6 }); /* cl119 (fotos Dispensing 15/30): colar ~64% do corpo com friso embaixo; o anel passa um pouco do corpo */
         const an = ms.find(m => m.name === 'Anel'); if (an) { an.W = r1(W + 0.8); if (an.D) an.D = r1(an.D + 0.8); } }
@@ -11050,9 +11085,14 @@ function incomProduct(r) {
     if (c && r.k === 'incomp_dispensadores_dispensing_eliptico') Object.assign(c, { ...clear, casca: true, capa: 'vira' }); }
   // Págs. 50/51: topo contínuo arredondado, sem a aba que o traço rasterizado criava.
   // Raio de canto estimado pela foto (~12% da largura); envelope externo cotado preservado.
+  // cl147 (aprovação, Cube: "face lateral tem ângulos maior e embaixo fica quase um trapézio, ver desenho técnico"; pág. 50): no desenho a
+  // face reta da frente é ~70% da largura (quinas verticais bem arredondadas) e o pé fecha numa curva de ~8,5 mm de altura por ~5,9 mm
+  // para dentro (o "trapézio"); o alto da sobretampa fecha igual
+  const cubeK = r.k === 'incomp_dispensadores_dispensing_cube';
+  if (cubeK) ms.forEach(m => { if (!['Frasco', 'Anel', 'Sobretampa'].includes(m.name)) return; m.sideR = 0.3; if (m.name !== 'Sobretampa') { delete m.prof; delete m.W0; const f = polyFit({ W, D: W, sides: 4, sideR: 0.3 }); m.W = f.W; if (m.D) m.D = f.D; } });
   if (['incomp_dispensadores_dispensing_cube', 'incomp_dispensadores_dispensing_eliptico'].includes(r.k)) {
     const c = ms.find(m => m.name === 'Sobretampa');
-    if (c) { delete c.prof; delete c.W0; Object.assign(c, polyFit({ W, D, sides: c.sides, sideR: c.sideR }), { rTop: r1(W * 0.12), rBot: 0.5, topDip: 0 }); }
+    if (c) { delete c.prof; delete c.W0; Object.assign(c, polyFit({ W, D, sides: c.sides, sideR: c.sideR }), { rTop: r1(W * 0.12), rBot: 0.5, topDip: 0 }, cubeK ? { rTop: 8.5, rTopW: 5.9 } : {}); }
   }
   // Págs. 47–51/54: refil independente; casca externa não contém líquido.
   // Largura e vão inferior estimados pela foto. On-Off não mostra cartucho separado.
@@ -11064,7 +11104,7 @@ function incomProduct(r) {
     incomp_dispensadores_dispensing_30: [0.76, 0.08, false, 0.5], // foto: coluna ~75% da largura; cl139: fundo de vidro maciço como nos conta-gotas
     incomp_dispensadores_dispensing_60: [0.82, 0.08, false, 0.5], // foto da dona: coluna ~83%; cl139: fundo de vidro maciço como nos conta-gotas
     incomp_dispensadores_dispensing_cube: [0.8, 0.045, true],
-    incomp_dispensadores_dispensing_eliptico: [0.78, 0.045, false],
+    incomp_dispensadores_dispensing_eliptico: [0.78, 0.08, false, 0.5], // cl147 (aprovação: "líquido passando da parte do refil, base com bug de modelagem"): o fundo dos irmãos 15/30/60 (refil de ponta redonda, prato e bloco maciço)
     incomp_dispensadores_dispensing_quadrado: [0.70, 0.06, false] // foto da dona: coluna ~70%
   }[r.k];
   if (refillPhoto) {
@@ -11075,7 +11115,7 @@ function incomProduct(r) {
     // senão eram quatro paredes à vista; sem o fundo grosso extra do SAN (a casca já tem o piso da cavidade).
     // cl121 (dona, Dispensing ao lado da foto: "o chão dos 3ds tá ruim, precisa ter esse peso de vidro no chão"): a casca de SAN é um bloco
     // grosso — material de vidro (espessura que refrata e escurece as bordas, não a película fina do PET) e quina de baixo arredondada
-    Object.assign(fr, { finish: 'vidro', color: '#f5f8fb', rBot: r1(Math.min(2.2, W * 0.07)), vol: false, liq: false, bpesc: false, casca: true, apoio: false, fundoGrosso: false,
+    Object.assign(fr, { finish: 'vidro', color: '#f5f8fb', rBot: cubeK ? 8.5 : r1(Math.min(2.2, W * 0.07)), rBotW: cubeK ? 5.9 : 0, vol: false, liq: false, bpesc: false, casca: true, apoio: false, fundoGrosso: false,
       // cl122 (dona: "acho que tem que modelar esse fundo mesmo"; fotos ampliadas do fundo): a cavidade é um copo ~1 mm mais largo que o
       // refil, de fundo chato com canto arredondado (~35% do raio) — a ponta redonda do refil fica logo acima e o piso do copo aparece como
       // uma elipse; embaixo, bloco maciço de fundo reto, só com a marquinha de injeção no centro
