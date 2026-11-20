@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION, ADDITION, INTERSECTION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-20.cl147';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-20.cl148';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -707,7 +707,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-20.cl147';
+const BUILD = '2026-11-20.cl148';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -11104,7 +11104,7 @@ function incomProduct(r) {
     incomp_dispensadores_dispensing_30: [0.76, 0.08, false, 0.5], // foto: coluna ~75% da largura; cl139: fundo de vidro maciço como nos conta-gotas
     incomp_dispensadores_dispensing_60: [0.82, 0.08, false, 0.5], // foto da dona: coluna ~83%; cl139: fundo de vidro maciço como nos conta-gotas
     incomp_dispensadores_dispensing_cube: [0.8, 0.045, true],
-    incomp_dispensadores_dispensing_eliptico: [0.78, 0.08, false, 0.5], // cl147 (aprovação: "líquido passando da parte do refil, base com bug de modelagem"): o fundo dos irmãos 15/30/60 (refil de ponta redonda, prato e bloco maciço)
+    incomp_dispensadores_dispensing_eliptico: [0.78, 0.08, false, 0.2], // cl148 (foto do catálogo, pág. 51): refil de fundo quase reto, cantos de ~20% (a ponta redonda dos 15/30/60 não é a dele) // cl147 (aprovação: "líquido passando da parte do refil, base com bug de modelagem"): o fundo dos irmãos 15/30/60 (refil de ponta redonda, prato e bloco maciço)
     incomp_dispensadores_dispensing_quadrado: [0.70, 0.06, false] // foto da dona: coluna ~70%
   }[r.k];
   if (refillPhoto) {
@@ -11124,7 +11124,7 @@ function incomProduct(r) {
       // (84% da largura) côncava por baixo, que aparece através do bloco e termina no pé
       // cl127–cl129 (dona: "a curva é ao contrário"; "parede do lado não existe, apenas fundo"; "quero só o refil, a casca e o fundo
       // abaulado"): sem cavidade — só o prato abaulado em sorriso (meio 1 mm abaixo da ponta do refil, de parede a parede)
-      incomRefillCavity: roundK ? (() => { const dB = r1(Math.min(W, r.D ?? W) * 0.13); return { prato: { a: r1(Math.min(W, r.D ?? W) / 2 - 0.7), d: dB, y: r2(floor - 1 + dB) } }; /* cl131: prato da cl129, 0,7 mm dentro do vidro */ })()
+      incomRefillCavity: roundK ? (() => { const eli = r.k === 'incomp_dispensadores_dispensing_eliptico', dB = eli ? 2.4 : r1(Math.min(W, r.D ?? W) * 0.13); return { prato: { a: r1((eli ? W : Math.min(W, r.D ?? W)) / 2 - 0.7), d: dB, y: r2(floor - (eli ? 0.9 : 1) + dB) } }; /* cl131: prato da cl129, 0,7 mm dentro do vidro; cl148 (dona, foto do Elíptico: "fazer de fora a fora a curva"): no Elíptico o bloco vai até a parede na largura (achatado na profundidade) e a curva é mais rasa */ })()
         : { W: r1(rw + 0.4), D: r1(rd + 0.4), floor: r2(floor * 0.65), rBot: r1(rb), ...side, punt: { d: r1(Math.min(2, floor * 0.3)), a: r1(Math.min(W, r.D ?? W) * 0.34) } } }); // cl60 (Dispensing 15 conta-gotas: "refil está acabando antes do fundo"): na cápsula de fundo curvo a cavidade acompanha o refil até embaixo
     const refill = P('Refil PET', rw, rd, hr, { ...clear, ...shape, h: hr, vol: true, casca: true, apoio: false, // conteúdo no refil (cheio, tom de base)
       liq: true, liqType: 'cremoso', liqLevel: 94, liqColor: corDe(BASE_CORES, r.n),
