@@ -1,4 +1,6 @@
-# Atualização Claude — 21/11/2026, cl167
+# Atualização Claude — 21/11/2026, cl168
+
+- **cl168** — Frasnagas em pé sobre a tampa (Charlotte, Charlotte Rounded, Olympea), dona (foto do Charlotte: "tem um dente entre a tampa e a frasnaga, faça por favor"): faixa do frasco de 1,2 mm entre a tampa e o corpo, 0,8 mm para dentro dos dois (`Dente da tampa`, mesma seção da tampa); o frasco encurta o mesmo tanto e a altura total fica igual. Miniaturas dos três regeradas.
 
 - **cl167** — Beatrice, dona (detalhe da pág. 76 ao lado do modelo: "rosca não vai até embaixo"; depois "aprovado"): o gargalo tem só 3 voltas no alto, um trecho liso embaixo e o anel mais largo junto ao ombro (ringH 1,6 / ringW 0,9); o anel fica dentro da tampa, que apoia no ombro (a rosca da tampa não conta o anel e o bico desce os 1,6 mm do anel na pilha). A aba do bico ficou da largura da rosca. Altura fechada 101,5. **Aprovado pela dona no chat.**
 
