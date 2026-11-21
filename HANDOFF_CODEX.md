@@ -1,4 +1,6 @@
-# Atualização Claude — 21/11/2026, cl169
+# Atualização Claude — 21/11/2026, cl170
+
+- **cl170** — Charlotte, Charlotte Rounded, Olympea, dona ("foi muito, não se vê o bico"): a fresta de 0,5 mm mostrava o bico branco; agora 0,2 mm preenchida por um anel do próprio frasco recuado 1,2 mm (`Sulco da tampa`) — de fora fica só um sulco fino, sem o bico aparecendo. Altura total igual. Miniaturas dos três regeradas.
 
 - **cl169** — Charlotte, Charlotte Rounded, Olympea, dona ("esse detalhe da tampa não existe"; "ele só tem um pequeno dente de distância, foi muito"; "parece que não é menor não, só tem um espacinho de separação"): sai a faixa da cl168; a tampa fica na largura do corpo, sem o perfil do desenho (que fazia uma borda saltada no alto — laterais retas), e há só uma fresta de 0,5 mm entre tampa e corpo (o frasco sobe e encurta o mesmo tanto; altura total igual). O bico do Charlotte/Rounded ficou com 50% da profundidade de referência (era 62%) para caber no vão da tampa. Miniaturas dos três regeradas.
 

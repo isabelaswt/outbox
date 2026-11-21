@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION, ADDITION, INTERSECTION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-21.cl169';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-21.cl170';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -707,7 +707,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-21.cl169';
+const BUILD = '2026-11-21.cl170';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -11286,9 +11286,12 @@ function incomProduct(r) {
   // espacinho de separação"): nas que ficam em pé sobre a tampa (Charlotte, Charlotte Rounded, Olympea), tampa na largura do corpo e uma
   // fresta de 0,5 mm entre os dois (o frasco sobe e encurta o mesmo tanto — altura total igual)
   if (r.c === 'Frasnagas' && ms[0]?.name === 'Tampa' && ms[0].capa && ms.at(-1)?.name === 'Frasco') {
-    const cp = ms[0], fr = ms.at(-1), gp = 0.5;
+    const cp = ms[0], fr = ms.at(-1), gp = 0.2; // cl170 (dona: "foi muito, não se vê o bico"): 0,5 mostrava o bico branco pela fresta — só uma linha
     delete cp.prof; delete cp.W0; // cl169 (dona: "esse detalhe da tampa não existe"): o perfil do desenho fazia uma borda saltada no alto da tampa — laterais retas
-    fr.gap = r2((fr.gap || 0) + gp); fr.h = r2(fr.h - gp);
+    fr.h = r2(fr.h - gp);
+    // a fresta é um sulco: anel do próprio frasco, recuado 1,2 mm, ocupa o vão (sem ele o bico branco aparecia pela fresta)
+    const f = W / cp.W, rW = cp.W * f, rD = (cp.D || cp.W) * f;
+    ms.splice(ms.length - 1, 0, M('reto', { name: 'Sulco da tampa', W: r2(cp.W * (rW - 2.4) / rW), D: r2((cp.D || cp.W) * (rD - 2.4) / rD), h: gp, sides: cp.sides, sideR: cp.sideR, rTop: 0, rBot: 0, apoio: false }));
   }
   if (r.c === 'Frasnagas' && /^(Beatrice|Julie|Olive|Vênus 35|Vênus 45)$/.test(r.n)) {
     const cap = ms[1], free = r.n === 'Beatrice';
