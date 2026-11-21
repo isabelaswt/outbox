@@ -1,4 +1,6 @@
-# Atualização Claude — 21/11/2026, cl168
+# Atualização Claude — 21/11/2026, cl169
+
+- **cl169** — Charlotte, Charlotte Rounded, Olympea, dona ("esse detalhe da tampa não existe"; "ele só tem um pequeno dente de distância, foi muito"; "parece que não é menor não, só tem um espacinho de separação"): sai a faixa da cl168; a tampa fica na largura do corpo, sem o perfil do desenho (que fazia uma borda saltada no alto — laterais retas), e há só uma fresta de 0,5 mm entre tampa e corpo (o frasco sobe e encurta o mesmo tanto; altura total igual). O bico do Charlotte/Rounded ficou com 50% da profundidade de referência (era 62%) para caber no vão da tampa. Miniaturas dos três regeradas.
 
 - **cl168** — Frasnagas em pé sobre a tampa (Charlotte, Charlotte Rounded, Olympea), dona (foto do Charlotte: "tem um dente entre a tampa e a frasnaga, faça por favor"): faixa do frasco de 1,2 mm entre a tampa e o corpo, 0,8 mm para dentro dos dois (`Dente da tampa`, mesma seção da tampa); o frasco encurta o mesmo tanto e a altura total fica igual. Miniaturas dos três regeradas.
 

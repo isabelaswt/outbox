@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION, ADDITION, INTERSECTION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-21.cl168';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-21.cl169';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -707,7 +707,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-21.cl168';
+const BUILD = '2026-11-21.cl169';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -10859,7 +10859,7 @@ function incomProduct(r) {
         // fotos do site: tampa sai de baixo e mostra o gargalo roscado com o bico cônico dosador apontando para baixo
         const hcC = r1(H * f), hbC = r1(hcC - 2);
         ms = [P('Tampa', W, Dc, hcC, { ...sc, rBot: 2, rTop: 0.5, oco: true, ocoCima: true, ocoTop: 1.6, capa: true, _t: [0, f] }),
-          M('bicoAplicador', { name: 'Gargalo roscado e bico dosador', W: r1(Dc * 0.62), D: r1(Dc * 0.62), h: hbC, bocaBaixo: true, gap: -hbC, pesc: false, mola: false, own: true, finish: 'fosco', color: '#f5f2ec' /* cl165/cl166: PP natural leitoso — opaco acetinado (transparente, o canal aparecia na frente da rosca) */ }),
+          M('bicoAplicador', { name: 'Gargalo roscado e bico dosador', W: r1(Dc * 0.5), D: r1(Dc * 0.5), h: hbC, /* cl169: cabe no vão da tampa mais estreita (era 0,62) */ bocaBaixo: true, gap: -hbC, pesc: false, mola: false, own: true, finish: 'fosco', color: '#f5f2ec' /* cl165/cl166: PP natural leitoso — opaco acetinado (transparente, o canal aparecia na frente da rosca) */ }),
           P('Frasco', W, Dc, H * (1 - f), { ...sc, vol: true, rBot: 0.5, rTop: r.t === 'frnr' ? W * 0.4 : 2, _t: [f, 1] })]; break; }
       const sb = r.n === 'Beatrice' ? sq(0.2) : {}; // Beatrice: frasco retangular de cantos arredondados (foto)
       // cl164 (dona: "ele não é quadrado, é fino"): sem profundidade no catálogo — 45 ml em 42,9 × ~73 mm de corpo dão ~20 mm (quadrado seriam ~105 ml)
@@ -11282,14 +11282,13 @@ function incomProduct(r) {
     }
   }
   if (r.c === 'Frascos' && /^(Amsterdam|Chicago|Miami|New York|Seoul 250|Sydney 60)$/.test(r.n)) { const fr = ms.find(m => m.name === 'Frasco'); if (fr) Object.assign(fr, { own: true, finish: 'pet', color: '#ffffff', liq: true, liqLevel: 97, liqType: 'transparente', liqClear: 85, liqColor: corDe(GEL_CORES, r.n), fundoGrosso: true, fundo: r1(H * 0.025), fundoR: 2 }); } // PET transparente: gel quase incolor (o frasco aparece) sobre o fundo grosso ("plástico pesado", ~4% da altura na foto do Chicago)
-  // cl168 (dona, foto do Charlotte: "tem um dente entre a tampa e a frasnaga, faça por favor"): nas que ficam em pé sobre a tampa
-  // (Charlotte, Charlotte Rounded, Olympea), uma faixa do frasco de ~1,2 mm entre a tampa e o corpo, 0,8 mm para dentro dos dois —
-  // o frasco encurta o mesmo tanto (altura total igual)
+  // cl168/cl169 (dona, foto do Charlotte: "tem um dente entre a tampa e a frasnaga"; "foi muito"; "parece que não é menor não, só tem um
+  // espacinho de separação"): nas que ficam em pé sobre a tampa (Charlotte, Charlotte Rounded, Olympea), tampa na largura do corpo e uma
+  // fresta de 0,5 mm entre os dois (o frasco sobe e encurta o mesmo tanto — altura total igual)
   if (r.c === 'Frasnagas' && ms[0]?.name === 'Tampa' && ms[0].capa && ms.at(-1)?.name === 'Frasco') {
-    const cp = ms[0], fr = ms.at(-1), dh = 1.2, ins = 0.8, f = W / cp.W, rW = cp.W * f, rD = (cp.D || cp.W) * f;
-    fr.h = r2(fr.h - dh);
-    ms.splice(ms.length - 1, 0, M('reto', { name: 'Dente da tampa', W: r2(cp.W * (rW - 2 * ins) / rW), D: r2((cp.D || cp.W) * (rD - 2 * ins) / rD), h: dh,
-      sides: cp.sides, sideR: cp.sideR, rTop: 0.2, rBot: 0.2, apoio: false }));
+    const cp = ms[0], fr = ms.at(-1), gp = 0.5;
+    delete cp.prof; delete cp.W0; // cl169 (dona: "esse detalhe da tampa não existe"): o perfil do desenho fazia uma borda saltada no alto da tampa — laterais retas
+    fr.gap = r2((fr.gap || 0) + gp); fr.h = r2(fr.h - gp);
   }
   if (r.c === 'Frasnagas' && /^(Beatrice|Julie|Olive|Vênus 35|Vênus 45)$/.test(r.n)) {
     const cap = ms[1], free = r.n === 'Beatrice';
