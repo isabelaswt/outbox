@@ -1,4 +1,6 @@
-# Atualização Claude — 21/11/2026, cl170
+# Atualização Claude — 21/11/2026, cl171
+
+- **cl171** — Olympea, dona (vista de lado: "parece uma diferença grande entre frasco e tampa, é assim mesmo?"; fotos OLYMPIA): o frasco afina para baixo (taperB 94) e a tampa estava na largura do topo — degrau na junção. Pelas fotos, a tampa tem a largura do pé do frasco: agora 94% (W e D), junção alinhada com o sulco fino. Miniatura regerada.
 
 - **cl170** — Charlotte, Charlotte Rounded, Olympea, dona ("foi muito, não se vê o bico"): a fresta de 0,5 mm mostrava o bico branco; agora 0,2 mm preenchida por um anel do próprio frasco recuado 1,2 mm (`Sulco da tampa`) — de fora fica só um sulco fino, sem o bico aparecendo. Altura total igual. Miniaturas dos três regeradas.
 
