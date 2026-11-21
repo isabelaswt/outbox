@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION, ADDITION, INTERSECTION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-20.cl161';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-20.cl162';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -707,7 +707,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-20.cl161';
+const BUILD = '2026-11-20.cl162';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -9618,6 +9618,20 @@ function incomSuggestions(m) {
     for (const k of ['incomSpray', 'incomDosadora', 'patoIncom', 'incomTrigger', 'incomEspumadora', 'incomBicoAplicador', 'incomSens', 'incomTambor']) if (LIB[k])
       clos.push({ k, mod: M(k, { ...(size[k] || {}), gap: m.gap, ox: m.ox }), label: LIB[k].name.replace(/^Incom · /, ''), cur: typeOf(m) === k, fecho: true });
   }
+  // cl162 (dona: levar a troca de fechamentos para Deluxe e Dispensadores): na válvula desses produtos, os fechamentos da página do
+  // catálogo. Spray e dosadora entram ajustados para caber sob a sobretampa (mesma rosca); os demais não cabem nela — a troca tira a
+  // sobretampa e o dente dela. Twist e On-Off têm mecanismo próprio e ficam de fora.
+  const lineK = me?.fcat, isTD = /Twist|On-Off/.test(nm);
+  if ((lineK === 'Deluxes' || (lineK === 'Dispensadores' && !isTD)) && m.kind === 'spray') {
+    const capM = S.modules.find(x => x.name === 'Sobretampa'), keep = { threadReceiver: m.threadReceiver, threadNeckUid: m.threadNeckUid, gap: m.gap, ox: m.ox };
+    const dnM = S.modules.find(x => /^(Dente da sobretampa|Degrau do ombro)$/.test(x.name)), capFit = capM && { ...capM, h: capM.h - (dnM?.h || 0) - 1.5 }; // o degrau/dente fica dentro da sobretampa: desconta, com folga
+    const Wb = S.modules.find(x => x.vol)?.W || 45, inCap = t => { try { return capFit ? { ...fitValveIn(t, capFit, m.W), ...keep } : M(t, keep); } catch { return M(t, keep); } };
+    const opts = [['Spray', inCap('spray'), 'spray'], ['Dosadora', inCap('pumpDosadora'), 'pumpDosadora']];
+    if (lineK === 'Deluxes') opts.push(['Válvula bico de pato', M('patoIncom', { W: r1(Wb * 0.45), D: r1(Wb * 0.45), ...keep }), 'patoIncom', true], ['Trigger', M('incomTrigger', keep), 'incomTrigger', true],
+      ['Espumadora', M('incomEspumadora', keep), 'incomEspumadora', true], ['Bico aplicador', M('incomBicoAplicador', keep), 'incomBicoAplicador', true],
+      ['Tampa Sens', M('incomSens', { W: r1(Wb * 0.727), D: r1(Wb * 0.727), h: r1(Wb * 0.424), ...keep }), 'incomSens', true]);
+    for (const [label, mod, k, dropCap] of opts) clos.push({ k, mod, label: dropCap && capM ? `${label} (sem sobretampa)` : label, cur: typeOf(m) === k || (k === 'spray' && m.sprayType === 'mist') || (k === 'pumpDosadora' && m.sprayType === 'dosadora'), fecho: true, dropCap: !!dropCap });
+  }
   return [...(out.length > 1 ? out : []), ...clos];
 }
 function renderSwap(ed, m) {
@@ -9643,10 +9657,12 @@ function renderSwap(ed, m) {
   originTabs.onkeydown = e => { if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(e.key)) return; e.preventDefault(); chooseOrigin(e.key === 'Home' ? 'outbox' : e.key === 'End' ? 'incom' : swapOrigin === 'incom' ? 'outbox' : 'incom'); originTabs.querySelector(`[data-origin="${swapOrigin}"]`).focus(); };
   const sugs = incomSuggestions(m);
   if (sugs.length) { let hF = false; if (sugs.some(sg => !sg.fecho)) { const h = document.createElement('h4'); h.textContent = 'Sugestões Incom para este produto'; grid.appendChild(h); }
-    for (const sg of sugs) { if (sg.fecho && !hF) { hF = true; const h = document.createElement('h4'); h.textContent = 'Fechamentos do catálogo para este frasco'; grid.appendChild(h); } const card = document.createElement('div'); card.className = 'card' + (sg.cur ? ' on' : ''); card.title = sg.label; card.dataset.grp = 'Sugestões Incom'; card.dataset.origin = 'sug';
+    for (const sg of sugs) { if (sg.fecho && !hF) { hF = true; const h = document.createElement('h4'); h.textContent = 'Fechamentos do catálogo para este produto'; grid.appendChild(h); } const card = document.createElement('div'); card.className = 'card' + (sg.cur ? ' on' : ''); card.title = sg.label; card.dataset.grp = 'Sugestões Incom'; card.dataset.origin = 'sug';
       card.innerHTML = `<img class="ph" alt=""><div>${sg.label}</div>`;
       card.onclick = () => { if (sg.cur) return; swapScroll = { key: skey, top: grid.scrollTop }; swapMemo.set(m.uid + '|' + typeOf(m), structuredClone(m));
-        S.modules[sel] = { ...structuredClone(sg.mod), uid: m.uid }; setTimeout(() => toastUndo(sg.fecho ? `Trocado por ${sg.label}` : `Trocada pela tampa de ${sg.label}`), 50); renderStack(); renderEditorKeepScroll(); build(); };
+        S.modules[sel] = { ...structuredClone(sg.mod), uid: m.uid };
+        if (sg.dropCap) { S.modules = S.modules.filter(x => x.name !== 'Sobretampa' && x.name !== 'Dente da sobretampa'); sel = S.modules.findIndex(x => x.uid === m.uid); } // cl162: fechamento que não cabe na sobretampa
+        setTimeout(() => toastUndo(sg.fecho ? `Trocado por ${sg.label}` : `Trocada pela tampa de ${sg.label}`), 50); renderStack(); renderEditorKeepScroll(); build(); };
       grid.appendChild(card); queueThumb(card.querySelector('img'), { color: BEIGE, finish: 'fosco', modules: [{ ...structuredClone(sg.mod), liq: false }] }); } }
   for (const [gTitle, gKeys] of groups) {
   if (gTitle) { const h = document.createElement('h4'); h.textContent = gTitle; grid.appendChild(h); }
