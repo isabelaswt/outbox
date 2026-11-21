@@ -1,4 +1,6 @@
-# Atualização Claude — 21/11/2026, cl166
+# Atualização Claude — 21/11/2026, cl167
+
+- **cl167** — Beatrice, dona (detalhe da pág. 76 ao lado do modelo: "rosca não vai até embaixo"; depois "aprovado"): o gargalo tem só 3 voltas no alto, um trecho liso embaixo e o anel mais largo junto ao ombro (ringH 1,6 / ringW 0,9); o anel fica dentro da tampa, que apoia no ombro (a rosca da tampa não conta o anel e o bico desce os 1,6 mm do anel na pilha). A aba do bico ficou da largura da rosca. Altura fechada 101,5. **Aprovado pela dona no chat.**
 
 - **cl166** — Frasnagas, dona: (1) Charlotte/Charlotte Rounded/Olympea ("se aparece o furo pela transparência, a rosca fica na frente"): o perfil do bico virado para baixo (`bocaBaixo`) vinha no sentido inverso — as faces apontavam para dentro e de frente aparecia o canal por trás da rosca; perfil invertido e bicos em PP natural opaco acetinado (`fosco`, #f5f2ec), sem refração. Emenda do torno dos bicos virada para trás. (2) Beatrice ("onde tem isso?"; "precisa ser mais parecido, mais pontudo"; "tem uma borda que encaixa na rosca"; detalhe BICO DOSADOR da pág. 76): bico próprio fino (`incomBico.fino`) — aba de ~1,3 mm sobre a boca do gargalo, da largura da rosca, e bico em sino: base ~58% do Ø do gargalo, ~37/28% a 30/70% da altura, ponta ~20%, altura ~0,8× o Ø; gargalo Ø13 × 16 com ~5 voltas. Altura fechada 101,5. Índice das miniaturas refeito (imagens iguais).
 

@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION, ADDITION, INTERSECTION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-21.cl166';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-21.cl167';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -707,7 +707,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-21.cl166';
+const BUILD = '2026-11-21.cl167';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -1937,7 +1937,7 @@ function sprayGeo(m, y0, { lo = false } = {}) {
     // altura, ~28% a 70% e ponta ~20%, quase reta em cima; altura ~0,8× o Ø
     const R = m.W / 2, D = 2 * R, L = Math.max(4, Math.min(m.h - 3, D * 0.82)), bore = 0.7, rt = D * 0.1, inR = Math.min(R - 0.4, D * 0.33);
     // cl166c (dona: "tem uma borda que encaixa na rosca"): o inserto tem uma aba sobre a boca do gargalo, da largura da rosca (~1,3 mm), e o bico nasce dela
-    const fl = 1.3, rf = R + 0.25, y1 = 3 + fl, L2 = Math.max(3, L - fl);
+    const fl = 1.3, rf = R - 0.1, y1 = 3 + fl, L2 = Math.max(3, L - fl); // aba da largura da rosca (cl167)
     const pts = [[bore, 0], [inR, 0], [inR, 3], [rf - 0.2, 3], [rf, 3.2], [rf, y1 - 0.25], [rf - 0.25, y1], [D * 0.29, y1], [D * 0.235, y1 + L2 * 0.1], [D * 0.19, y1 + L2 * 0.3], [D * 0.155, y1 + L2 * 0.55], [D * 0.13, y1 + L2 * 0.75], [rt + 0.1, y1 + L2 - 0.35], [rt * 0.85, y1 + L2 - 0.05], [bore, y1 + L2], [bore, 0]];
     const g = new THREE.LatheGeometry(pts.map(([r, y]) => new THREE.Vector2(r, y0 + y)), lo ? 48 : 128, Math.PI) /* cl166: emenda do torno virada para trás (de frente aparecia como uma faixa no meio do bico) */; g.deleteAttribute('uv'); return g;
   }
@@ -11287,13 +11287,14 @@ function incomProduct(r) {
     // P79/81/85/86: 20-410. Beatrice p76: rosca sem norma cotada, dimensões representativas.
     // cl164 (dona, foto da Beatrice aberta: "beatrice"): o gargalo é comprido (~0,8× o diâmetro, voltas largas por quase todo ele) e tem o inserto
     // dosador em ponta saindo dela, como Julie/Olive ("Tampa e Inserto em PP" no catálogo)
-    const neck = free ? M('gargalo', { name: 'Gargalo roscado', neckStd: 'livre', W: 13, D: 13, h: 16, // detalhe "BICO DOSADOR" da pág. 76 ampliado: Ø ~13, ~1,2× o Ø de altura, ~5 voltas e a borda de cima lisa
-      pitch: 2.6, turns: 5, threadD: 0.6, threadTop: 0.45, threadBottom: 0.35, ringH: 0, ringW: 0 })
+    const neck = free ? M('gargalo', { name: 'Gargalo roscado', neckStd: 'livre', W: 13, D: 13, h: 16, // detalhe "BICO DOSADOR" da pág. 76 ampliado: Ø ~13, ~1,2× o Ø de altura e a borda de cima lisa
+      // cl167 (dona: "rosca não vai até embaixo"): 3 voltas só no alto; embaixo um trecho liso e o anel mais largo junto ao ombro
+      pitch: 2.6, turns: 3, threadD: 0.6, threadTop: 0.45, threadBottom: 0.35, ringH: 1.6, ringW: 0.9 })
       : NECK('20/410', { name: 'Rosca 20-410', ringH: 0, ringW: 0 });
     Object.assign(neck, { exposedNeck: true, embed: 0, neckFillet: 0 }, free ? { own: true, finish: 'petFosco', color: '#f6f3ee' } : {}); // cl164: na Beatrice o gargalo é do inserto de PP — branco translúcido (foto), não a cor do frasco
     ms[0].wandMouth = Math.max(2, neck.W / 2 - 3.2);
     cap.threadReceiver = { W: neck.W, h: neck.h, pitch: neck.pitch, turns: neck.turns,
-      threadD: neck.threadD, ringH: neck.ringH, ...(free ? { threadTop: 0.45, threadBottom: 0.35 } : {}) };
+      threadD: neck.threadD, ringH: free ? 0 : neck.ringH, ...(free ? { threadTop: 0.45, threadBottom: 0.35 } : {}) }; // cl167: o anel da base da Beatrice fica dentro da tampa (ela apoia no ombro)
     Object.assign(cap, { capa: 'vira', threadNeckUid: neck.uid }); ms.splice(1, 0, neck);
     // Fotos abertas do site: Julie e Olive têm ponteira dosadora branca pontuda; Vênus, cone translúcido mais largo.
     // Proporções pela foto, sem cota; limitada ao vão da tampa, que desce o mesmo tanto (altura fechada mantida).
@@ -11301,7 +11302,8 @@ function incomProduct(r) {
       const th = r1(Math.min(room, 13.5)), tg = -r1(neck.h - 3); // Beatrice (foto): bico ~0,65× o Ø do gargalo // o gargalo não ocupa altura na pilha: a ponteira nasce 3 mm dentro da boca
       if (th > 4) { ms.splice(2, 0, M('bicoAplicador', { name: 'Bico dosador Ø1,6 mm', W: r1(neck.W - 2 * (neck.threadD || 0.8) - 0.2), D: r1(neck.W - 2 * (neck.threadD || 0.8) - 0.2), h: th, incomBico: true, gap: -tg, pesc: false, mola: false,
           own: true, finish: 'fosco', color: vn ? '#f1e9de' : '#f4f1ec', ...(free ? { fino: true } : {}) })); // cl165/cl166: PP natural leitoso, opaco; Beatrice: bico fino (pág. 76)
-        cap.gap = r2((cap.gap || 0) + tg); } } // o bico sobe até a boca sem ocupar altura na pilha: a tampa desce o mesmo tanto e mantém o assento
+        cap.gap = r2((cap.gap || 0) + tg); }
+      if (free && neck.ringH) { const bi = ms.find(x => x.incomBico); if (bi) bi.gap = r2((bi.gap || 0) - neck.ringH); } } // cl167: o anel da base do gargalo entra na pilha — o bico e a tampa voltam ao lugar (tampa apoiada no ombro) // o bico sobe até a boca sem ocupar altura na pilha: a tampa desce o mesmo tanto e mantém o assento
   }
   if (r.c === 'Frasnagas' && r.n === 'Tube') {
     const neck = ms[1]; Object.assign(ms.at(-1), { threadNeckUid: neck.uid, threadCavityFull: true, ocoWall: 1,
