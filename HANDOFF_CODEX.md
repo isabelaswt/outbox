@@ -1,4 +1,6 @@
-# Atualização Claude — 20/11/2026, cl156
+# Atualização Claude — 20/11/2026, cl157
+
+- **cl157** — Deluxes, aprovação (Amsterdam Deluxe 100: "poder ter tampa redonda ou reta"; Amsterdam Deluxe 200: "ajustar tamanho do spray, poder ter tampa reta ou curva"; New York Deluxe 100: "ajustar tamanho da base do spray para ficar como a ref"): (1) o spray mais alto aprovado no Amsterdam 100 (cl138: colar ×1,5, acionador ×1,4) vale para todos os Deluxe — Amsterdam, New York e Sydney 100/200. (2) Sobretampa dos Deluxe com a opção "Topo da sobretampa" no editor: Como no catálogo / Redonda (domo, raio ≈ metade da largura) / Reta (raio 1,2) — `capTopoOpt`/`capTopo`, aplicado no build sem o perfil do desenho; as fotos mostram as duas versões. Miniaturas regeradas.
 
 - **cl156** — On-Off 100/120, aprovação ("topo do atuador é bem no nível, não é rebaixado, precisa ter espaço atrás para dedo"): o disco do acionador fica no nível da borda da capa (só a fresta em volta; o bico 0,4 mm abaixo dela) e a parede da capa tem uma cava suave atrás (~70% da largura, ~3,5 mm de fundo; cilindro deitado ∩ anel da parede, então o disco fica inteiro), por onde o dedo aperta. Miniaturas regeradas.
 

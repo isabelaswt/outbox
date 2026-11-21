@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION, ADDITION, INTERSECTION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-20.cl156';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-20.cl157';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -707,7 +707,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-20.cl156';
+const BUILD = '2026-11-20.cl157';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -7713,6 +7713,7 @@ function buildInto(product, S, explodeAmt = 0) {
       const neckSeat = m0.threadNeckUid ? base.find(e => e.m.uid === m0.threadNeckUid) : dn?.kind === 'gargalo' ? base[i - 1] : null;
       if (neckSeat) m = { ...m, threadPhase: base[i].y0 + (y0 - yl) - neckSeat.y0 };
     }
+    if (m0.capTopoOpt && (m0.capTopo === 'redonda' || m0.capTopo === 'reta')) m = { ...m, prof: undefined, W0: undefined, rTopW: 0, topDip: 0, rTop: m0.capTopo === 'reta' ? 1.2 : r1(Math.min(Math.min(m.W, m.D || m.W) / 2 * 0.95, m.h * 0.6)) }; // cl157: topo da sobretampa dos Deluxe — redondo (domo) ou reto
     let g = moduleGeo(m, y0, { logoQuality: hasLogo, body: under, ...(THUMB_LITE ? { lo: true } : {}) }); if (!g) return; // miniatura: malha leve
     if (!THUMB_LITE && (m0.incomRefillCavity || m0.incomTwistOutlet || m0.incomTwistNotch || m0.incomOnOff || m0.refilClic)) g = cutCached('incomDispensing', [m, y0], g, () => incomDispensingGeo(g, m, y0));
     if (!THUMB_LITE && m0.incomPoteCavity) g = cutCached('incomPote', [m, y0], g, () => incomPoteGeo(g, m, y0));
@@ -8771,6 +8772,7 @@ const MF = [
     K(['pescWave', m => `${pescName(m)}: ondulação em S`, -15, 15, 0.5, 'mm', m => m.pesc]),
   ]],
   ['Abertura', [
+    GT(['capTopo', 'Topo da sobretampa', 'select', [['', 'Como no catálogo'], ['redonda', 'Redonda (domo)'], ['reta', 'Reta']], m => m.capTopoOpt]), // cl157: Deluxe
     GT(['topType', 'Sistema de abertura', 'select', [['nenhum', 'Nenhum'], ['flip', 'Flip-top (tampinha com dobradiça)'], ['disc', 'Disc-top (disco basculante)']]]),
     GT(['openPct', 'Abrir', 0, 100, 1, '%', m => m.topType !== 'nenhum']),
     GT(['lidSide', 'Tampinha fica', 'select', [['cima', 'Em cima'], ['baixo', 'Embaixo (bisnaga em pé na tampa)']], m => m.topType === 'flip']),
@@ -10693,7 +10695,9 @@ function incomProduct(r) {
       // colar da válvula ~58% mais alto e acionador 50% mais alto — o bico fica logo abaixo do topo da sobretampa
       // cl138 (aprovação, Amsterdam Deluxe 100: "o spray tá baixo, precisa ficar mais alto"; foto): colar ×1,5 e acionador ×1,4 — o spray
       // chega perto do topo da sobretampa
-      if (r.n === 'Amsterdam Deluxe 100' && v) Object.assign(v, { h: r1(v.h * 1.5), actH: r1(v.actH * 1.4) });
+      // cl157 (aprovação, Amsterdam Deluxe 200: "ajustar tamanho do spray"; New York Deluxe 100: "ajustar tamanho da base do spray para ficar como a ref"):
+      // o spray mais alto aprovado no Amsterdam 100 (cl138) vale para todos os Deluxe (e o Amsterdam 100 listado em Conta-gotas)
+      if (dlx && v) Object.assign(v, { h: r1(v.h * 1.5), actH: r1(v.actH * 1.4) });
       if (r.t === 'bulb' && r.c === 'Dispensadores') Object.assign(v, { h: r1(v.h * 1.58), actH: r1(v.actH * 1.5), headH: r1(v.headH * 1.29) });
       if (r.c === 'Dispensadores' && r.t !== 'bulb' && v.sprayType === 'dosadora') Object.assign(v, r.k === 'incomp_dispensadores_dispensing_eliptico' ? { W: 27.1, D: 27.1, h: 18.2, guideW: 20.1, guideH: 7.4, actW: 15.9, headH: 15.5 } /* cl147 (aprovação, Elíptico: "válvula tá menor"): ×1,15, na proporção da sobretampa mais alta (49,5 contra 43,8) */ : { W: 23.6, D: 23.6, h: 15.8, guideW: 17.5, guideH: 6.4, actW: 13.8, headH: 13.5 }); // cl141: pump da foto do Dispensing 15 (colar 0,70·W × 0,47·W, guia 0,52·W × 0,19·W, atuador 0,41·W) em mm
       if (r.t === 'bulb' && r.c === 'Conta-gotas') Object.assign(v, { W: r1(W * 0.58), D: r1(W * 0.58), h: r1(H * 0.18), actW: r1(W * 0.32), actH: r1(H * 0.19) });
@@ -11112,6 +11116,8 @@ function incomProduct(r) {
     if (r.c === 'Conta-gotas' && r.n === 'Julie' && fr) Object.assign(fr, { own: true, color: BEIGE, finish: 'fosco' });
     // Deluxes, págs. 57–62: saia lisa na foto principal e nos detalhes spray/dosadora.
     if (r.c === 'Deluxes' || /^Amsterdam Deluxe/.test(r.n)) ms.forEach(m => { if (m.kind === 'spray') Object.assign(m, { ridges: 0, skirtPct: 100, bandInset: 0 }); });
+    // cl157 (aprovação, Amsterdam Deluxe 100/200: "poder ter tampa redonda ou reta"; fotos dos Deluxe com sobretampa em domo e reta): opção na sobretampa
+    if (r.c === 'Deluxes' || /^Amsterdam Deluxe/.test(r.n)) { const c = ms.find(m => m.name === 'Sobretampa'); if (c) c.capTopoOpt = true; }
     const c = ms.find(m => m.name === 'Sobretampa');
     if (c && r.k === 'incomp_dispensadores_dispensing_cube') Object.assign(c, { own: false, casca: true, capa: 'vira', oco: true });
     if (c && r.k === 'incomp_dispensadores_dispensing_eliptico') Object.assign(c, { ...clear, casca: true, capa: 'vira' }); }
