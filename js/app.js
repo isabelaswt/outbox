@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION, ADDITION, INTERSECTION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-20.cl154';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-20.cl155';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -707,7 +707,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-20.cl154';
+const BUILD = '2026-11-20.cl155';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -11113,7 +11113,7 @@ function incomProduct(r) {
   if (cubeK) ms.forEach(m => { if (!['Frasco', 'Anel', 'Sobretampa'].includes(m.name)) return; m.sideR = 0.3; if (m.name !== 'Sobretampa') { delete m.prof; delete m.W0; const f = polyFit({ W, D: W, sides: 4, sideR: 0.3 }); m.W = f.W; if (m.D) m.D = f.D; } });
   if (['incomp_dispensadores_dispensing_cube', 'incomp_dispensadores_dispensing_eliptico'].includes(r.k)) {
     const c = ms.find(m => m.name === 'Sobretampa');
-    if (c) { delete c.prof; delete c.W0; Object.assign(c, polyFit({ W, D, sides: c.sides, sideR: c.sideR }), { rTop: r1(W * 0.12), rBot: 0.5, topDip: 0 }, cubeK ? { rTop: 8.5, rTopW: 5.9 } : {}); }
+    if (c) { delete c.prof; delete c.W0; Object.assign(c, polyFit({ W, D, sides: c.sides, sideR: c.sideR }), { rTop: r1(W * 0.12), rBot: 0.5, topDip: 0 }, cubeK ? { rTop: 7.5, rTopW: 0 } : {}); } // cl155 (dona, Cube: "precisa arredondar mais a tampa, não tem esse chanfro"): o raio elíptico (8,5 × 5,9) aparecia como chanfro — raio redondo de 7,5
   }
   // Págs. 47–51/54: refil independente; casca externa não contém líquido.
   // Largura e vão inferior estimados pela foto. On-Off não mostra cartucho separado.

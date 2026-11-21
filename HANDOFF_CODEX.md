@@ -1,4 +1,6 @@
-# Atualização Claude — 20/11/2026, cl154
+# Atualização Claude — 20/11/2026, cl155
+
+- **cl155** — Dispensing Cube, dona ("precisa arredondar mais a tampa, não tem esse chanfro"): o arredondamento elíptico do alto da sobretampa (8,5 de altura × 5,9 para dentro) aparecia como chanfro; agora raio redondo de 7,5 mm. Miniatura regerada.
 
 - **cl154** — Dispensing Twist, dona ("é para dentro, ela fica totalmente para dentro, a calha fica interna"): o entalhe da cl153 atravessava a parede; agora é um canal só na face de dentro da manga, no meio da frente, aberto em cima (`incomTwistNotch.keep` = 1,4 mm de parede por fora) — por fora não aparece. Fechado, o acionador fica todo dentro da manga (topo 0,3 mm abaixo da borda, bico 2 mm para dentro da face); aberto, sobe ~15 mm pelo canal. Miniatura regerada.
 
