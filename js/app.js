@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION, ADDITION, INTERSECTION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-20.cl157';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-20.cl158';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -707,7 +707,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-20.cl157';
+const BUILD = '2026-11-20.cl158';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -7713,7 +7713,7 @@ function buildInto(product, S, explodeAmt = 0) {
       const neckSeat = m0.threadNeckUid ? base.find(e => e.m.uid === m0.threadNeckUid) : dn?.kind === 'gargalo' ? base[i - 1] : null;
       if (neckSeat) m = { ...m, threadPhase: base[i].y0 + (y0 - yl) - neckSeat.y0 };
     }
-    if (m0.capTopoOpt && (m0.capTopo === 'redonda' || m0.capTopo === 'reta')) m = { ...m, prof: undefined, W0: undefined, rTopW: 0, topDip: 0, rTop: m0.capTopo === 'reta' ? 1.2 : r1(Math.min(Math.min(m.W, m.D || m.W) / 2 * 0.95, m.h * 0.6)) }; // cl157: topo da sobretampa dos Deluxe — redondo (domo) ou reto
+    if (m0.capTopoOpt && /^(arredondada|redonda|reta)$/.test(m0.capTopo || '')) m = { ...m, prof: undefined, W0: undefined, rTopW: 0, topDip: 0, rTop: m0.capTopo === 'reta' ? 1.2 : r1(Math.min(m.W, m.D || m.W) * 0.22) }; // cl157: topo da sobretampa dos Deluxe — arredondado ou reto; cl158 (dona: "nunca redonda, sempre arredondada"; foto): topo reto com canto de ~22% da largura, nunca domo
     let g = moduleGeo(m, y0, { logoQuality: hasLogo, body: under, ...(THUMB_LITE ? { lo: true } : {}) }); if (!g) return; // miniatura: malha leve
     if (!THUMB_LITE && (m0.incomRefillCavity || m0.incomTwistOutlet || m0.incomTwistNotch || m0.incomOnOff || m0.refilClic)) g = cutCached('incomDispensing', [m, y0], g, () => incomDispensingGeo(g, m, y0));
     if (!THUMB_LITE && m0.incomPoteCavity) g = cutCached('incomPote', [m, y0], g, () => incomPoteGeo(g, m, y0));
@@ -8772,7 +8772,7 @@ const MF = [
     K(['pescWave', m => `${pescName(m)}: ondulação em S`, -15, 15, 0.5, 'mm', m => m.pesc]),
   ]],
   ['Abertura', [
-    GT(['capTopo', 'Topo da sobretampa', 'select', [['', 'Como no catálogo'], ['redonda', 'Redonda (domo)'], ['reta', 'Reta']], m => m.capTopoOpt]), // cl157: Deluxe
+    GT(['capTopo', 'Topo da sobretampa', 'select', [['', 'Como no catálogo'], ['arredondada', 'Arredondada'], ['reta', 'Reta']], m => m.capTopoOpt]), // cl157: Deluxe
     GT(['topType', 'Sistema de abertura', 'select', [['nenhum', 'Nenhum'], ['flip', 'Flip-top (tampinha com dobradiça)'], ['disc', 'Disc-top (disco basculante)']]]),
     GT(['openPct', 'Abrir', 0, 100, 1, '%', m => m.topType !== 'nenhum']),
     GT(['lidSide', 'Tampinha fica', 'select', [['cima', 'Em cima'], ['baixo', 'Embaixo (bisnaga em pé na tampa)']], m => m.topType === 'flip']),
@@ -11117,7 +11117,7 @@ function incomProduct(r) {
     // Deluxes, págs. 57–62: saia lisa na foto principal e nos detalhes spray/dosadora.
     if (r.c === 'Deluxes' || /^Amsterdam Deluxe/.test(r.n)) ms.forEach(m => { if (m.kind === 'spray') Object.assign(m, { ridges: 0, skirtPct: 100, bandInset: 0 }); });
     // cl157 (aprovação, Amsterdam Deluxe 100/200: "poder ter tampa redonda ou reta"; fotos dos Deluxe com sobretampa em domo e reta): opção na sobretampa
-    if (r.c === 'Deluxes' || /^Amsterdam Deluxe/.test(r.n)) { const c = ms.find(m => m.name === 'Sobretampa'); if (c) c.capTopoOpt = true; }
+    if (r.c === 'Deluxes' || /^Amsterdam Deluxe/.test(r.n)) { const c = ms.find(m => m.name === 'Sobretampa'); if (c) { c.capTopoOpt = true; if (/^(New York|Sydney) Deluxe/.test(r.n)) c.capTopo = 'arredondada'; } } // cl158: o desenho do New York e do Sydney dava domo — "nunca redonda, sempre arredondada"
     const c = ms.find(m => m.name === 'Sobretampa');
     if (c && r.k === 'incomp_dispensadores_dispensing_cube') Object.assign(c, { own: false, casca: true, capa: 'vira', oco: true });
     if (c && r.k === 'incomp_dispensadores_dispensing_eliptico') Object.assign(c, { ...clear, casca: true, capa: 'vira' }); }

@@ -1,4 +1,6 @@
-# Atualização Claude — 20/11/2026, cl157
+# Atualização Claude — 20/11/2026, cl158
+
+- **cl158** — Deluxes, dona (foto da sobretampa: "nunca redonda, sempre arredondada"): a opção do topo da sobretampa deixou de ser domo — "Arredondada" é topo reto com canto de ~22% da largura (≈ 9 mm no Amsterdam 100); "Reta" segue com raio 1,2. O desenho do New York e do Sydney dava domo: esses vêm Arredondada por padrão. Miniaturas regeradas.
 
 - **cl157** — Deluxes, aprovação (Amsterdam Deluxe 100: "poder ter tampa redonda ou reta"; Amsterdam Deluxe 200: "ajustar tamanho do spray, poder ter tampa reta ou curva"; New York Deluxe 100: "ajustar tamanho da base do spray para ficar como a ref"): (1) o spray mais alto aprovado no Amsterdam 100 (cl138: colar ×1,5, acionador ×1,4) vale para todos os Deluxe — Amsterdam, New York e Sydney 100/200. (2) Sobretampa dos Deluxe com a opção "Topo da sobretampa" no editor: Como no catálogo / Redonda (domo, raio ≈ metade da largura) / Reta (raio 1,2) — `capTopoOpt`/`capTopo`, aplicado no build sem o perfil do desenho; as fotos mostram as duas versões. Miniaturas regeradas.
 
