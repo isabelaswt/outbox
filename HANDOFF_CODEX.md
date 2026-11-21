@@ -1,4 +1,6 @@
-# Atualização Claude — 20/11/2026, cl158
+# Atualização Claude — 20/11/2026, cl159
+
+- **cl159** — Deluxes, dona (Amsterdam Deluxe 200 ao lado da página 58: "proporção não parece certa"): medidas nas fotos do catálogo (págs. 57–62), o frasco ocupa ~58–65% da altura e a sobretampa ~28–31%; o modelo dava frasco 55% e sobretampa 37% nos seis. Frasco e anel agora pela foto de cada um (Amsterdam 100: 58,5/10,4%; Amsterdam 200: 63,7/8,3%; New York 100: 59,6/9,2%; New York 200: 62,2/6,8%; Sydney 100: 61,9/8,6%; Sydney 200: 64,8/6,6%), a sobretampa com o resto (altura total = catálogo) e a pump encolhe proporcionalmente só se não couber (2,5 mm de folga no topo). Miniaturas regeradas.
 
 - **cl158** — Deluxes, dona (foto da sobretampa: "nunca redonda, sempre arredondada"): a opção do topo da sobretampa deixou de ser domo — "Arredondada" é topo reto com canto de ~22% da largura (≈ 9 mm no Amsterdam 100); "Reta" segue com raio 1,2. O desenho do New York e do Sydney dava domo: esses vêm Arredondada por padrão. Miniaturas regeradas.
 

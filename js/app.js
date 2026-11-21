@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION, ADDITION, INTERSECTION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-20.cl158';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-20.cl159';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -707,7 +707,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-20.cl158';
+const BUILD = '2026-11-20.cl159';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -10698,6 +10698,13 @@ function incomProduct(r) {
       // cl157 (aprovação, Amsterdam Deluxe 200: "ajustar tamanho do spray"; New York Deluxe 100: "ajustar tamanho da base do spray para ficar como a ref"):
       // o spray mais alto aprovado no Amsterdam 100 (cl138) vale para todos os Deluxe (e o Amsterdam 100 listado em Conta-gotas)
       if (dlx && v) Object.assign(v, { h: r1(v.h * 1.5), actH: r1(v.actH * 1.4) });
+      // cl159 (dona, Amsterdam Deluxe 200 ao lado da página 58: "proporção não parece certa"): nas fotos do catálogo (págs. 57–62) o frasco
+      // ocupa ~58–65% da altura e a sobretampa ~28–31%; o modelo dava frasco 55% e sobretampa 37% em todos os Deluxe. Frasco e anel (parte
+      // visível) pela foto de cada um; a sobretampa fica com o resto e a pump encolhe só se não couber (folga de 2,5 mm no topo)
+      { const dp = { amsterdam_deluxe_100: [0.585, 0.104], amsterdam_deluxe_200: [0.637, 0.083], new_york_deluxe_100: [0.596, 0.092], new_york_deluxe_200: [0.622, 0.068], sydney_deluxe_100: [0.619, 0.086], sydney_deluxe_200: [0.648, 0.066] }[r.k.replace(/^incomp_(deluxes|conta_gotas)_/, '')];
+        const fr0 = ms[0], an = ms.find(m => m.name === 'Anel'), dn = ms.find(m => m.name === 'Dente da sobretampa');
+        if (dlx && dp && fr0 && an) { const aVis = r2(H * dp[1]); fr0.h = r2(H * dp[0]); an.h = aVis; cap.h = r2(H - fr0.h - aVis);
+          if (v) { const free = cap.h - (dn ? dn.h : 0) - 2.5, tot = v.h + (v.guideH || 0) + (v.actH || 0); if (tot > free) { const k = free / tot; v.h = r1(v.h * k); if (v.guideH) v.guideH = r1(v.guideH * k); v.actH = r1(v.actH * k); } } } }
       if (r.t === 'bulb' && r.c === 'Dispensadores') Object.assign(v, { h: r1(v.h * 1.58), actH: r1(v.actH * 1.5), headH: r1(v.headH * 1.29) });
       if (r.c === 'Dispensadores' && r.t !== 'bulb' && v.sprayType === 'dosadora') Object.assign(v, r.k === 'incomp_dispensadores_dispensing_eliptico' ? { W: 27.1, D: 27.1, h: 18.2, guideW: 20.1, guideH: 7.4, actW: 15.9, headH: 15.5 } /* cl147 (aprovação, Elíptico: "válvula tá menor"): ×1,15, na proporção da sobretampa mais alta (49,5 contra 43,8) */ : { W: 23.6, D: 23.6, h: 15.8, guideW: 17.5, guideH: 6.4, actW: 13.8, headH: 13.5 }); // cl141: pump da foto do Dispensing 15 (colar 0,70·W × 0,47·W, guia 0,52·W × 0,19·W, atuador 0,41·W) em mm
       if (r.t === 'bulb' && r.c === 'Conta-gotas') Object.assign(v, { W: r1(W * 0.58), D: r1(W * 0.58), h: r1(H * 0.18), actW: r1(W * 0.32), actH: r1(H * 0.19) });
