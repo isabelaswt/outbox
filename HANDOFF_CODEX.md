@@ -1,4 +1,6 @@
-# Atualização Claude — 20/11/2026, cl155
+# Atualização Claude — 20/11/2026, cl156
+
+- **cl156** — On-Off 100/120, aprovação ("topo do atuador é bem no nível, não é rebaixado, precisa ter espaço atrás para dedo"): o disco do acionador fica no nível da borda da capa (só a fresta em volta; o bico 0,4 mm abaixo dela) e a parede da capa tem uma cava suave atrás (~70% da largura, ~3,5 mm de fundo; cilindro deitado ∩ anel da parede, então o disco fica inteiro), por onde o dedo aperta. Miniaturas regeradas.
 
 - **cl155** — Dispensing Cube, dona ("precisa arredondar mais a tampa, não tem esse chanfro"): o arredondamento elíptico do alto da sobretampa (8,5 de altura × 5,9 para dentro) aparecia como chanfro; agora raio redondo de 7,5 mm. Miniatura regerada.
 

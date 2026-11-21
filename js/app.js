@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION, ADDITION, INTERSECTION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-20.cl155';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-20.cl156';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -707,7 +707,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-20.cl155';
+const BUILD = '2026-11-20.cl156';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -7609,12 +7609,23 @@ function incomDispensingGeo(g, m, y0) {
     // com o alto passando um pouco do topo. Medidas tiradas das fotos (proporção da largura), sem cota de molde.
     const o = m.incomOnOff, R = m.W / 2, top = y0 + m.h, a = o.dir * Math.PI / 180, dr = Math.max(1.2, o.w * 0.6);
     // cl151 (dona, foto do topo do On-Off: "o pump é separado da estrutura"): a capa é um cilindro de parede fina (~1,5 mm) e, dentro dela,
-    // o disco do acionador fica ~0,8 mm abaixo da borda, de quina arredondada, com uma fresta (~0,45 mm) em volta — o bico é dele
-    { const rw = R - 1.5, rd = rw - 0.45, dp = 0.8, f = 0.6, P = [new THREE.Vector2(0, top - dp)];
-      P.push(new THREE.Vector2(rd - f, top - dp)); for (let i = 1; i <= 8; i++) { const t = i / 8 * Math.PI / 2; P.push(new THREE.Vector2(rd - f + f * Math.sin(t), top - dp - f + f * Math.cos(t))); }
-      P.push(new THREE.Vector2(rd, top - 4), new THREE.Vector2(rw, top - 4), new THREE.Vector2(rw, top + 1), new THREE.Vector2(0, top + 1));
+    // o disco do acionador, de quina arredondada, com uma fresta (~0,45 mm) em volta — o bico é dele
+    // cl156 (aprovação, On-Off 100: "topo do atuador é bem no nível, não é rebaixado, precisa ter espaço atrás para dedo"): o disco fica no
+    // nível da borda (só a fresta em volta) e a parede da capa tem uma cava suave atrás (~70% da largura, ~3,5 mm), para o dedo apertar
+    { const rw = R - 1.5, rd = rw - 0.45, f = 0.6, P = [new THREE.Vector2(rd - f - 0.02, top + 1), new THREE.Vector2(rd - f, top + 0.02)];
+      for (let i = 1; i <= 8; i++) { const t = i / 8 * Math.PI / 2; P.push(new THREE.Vector2(rd - f + f * Math.sin(t), top - f + f * Math.cos(t))); }
+      P.push(new THREE.Vector2(rd, top - 4), new THREE.Vector2(rw, top - 4), new THREE.Vector2(rw, top + 1), new THREE.Vector2(rd - f - 0.02, top + 1));
       const sep = new THREE.LatheGeometry(P, 128); sep.deleteAttribute('uv'); if (m.ox) sep.translate(m.ox, 0, 0);
-      const [o1, i1] = cutHole(g, sep); if (o1 !== g) g = mergeLoose([o1, i1]); sep.dispose(); }
+      const [o1, i1] = cutHole(g, sep); if (o1 !== g) g = mergeLoose([o1, i1]); sep.dispose();
+      // cava do dedo: cilindro deitado (eixo na tangente de trás) ∩ anel da parede — só a capa desce, o disco fica inteiro
+      const dpt = 3.5, half = R * 0.7, Rs = (half * half + dpt * dpt) / (2 * dpt), ev = new Evaluator(); ev.attributes = ['position', 'normal']; ev.useGroups = false;
+      const cylS = new THREE.CylinderGeometry(Rs, Rs, 2 * R + 6, 128); cylS.deleteAttribute('uv'); cylS.rotateZ(Math.PI / 2); cylS.translate(0, top - dpt + Rs, -R); cylS.rotateY(a);
+      const outerC = new THREE.CylinderGeometry(R + 1, R + 1, dpt + 2, 128), innerC = new THREE.CylinderGeometry(rw - 0.2, rw - 0.2, dpt + 4, 128);
+      [outerC, innerC].forEach(c => { c.deleteAttribute('uv'); c.translate(0, top - dpt / 2 + 0.5, 0); });
+      const ringG = ev.evaluate(new Brush(flatPN(outerC)), new Brush(flatPN(innerC)), SUBTRACTION).geometry;
+      const scoop = ev.evaluate(new Brush(flatPN(ringG)), new Brush(flatPN(cylS)), INTERSECTION).geometry; if (m.ox) scoop.translate(m.ox, 0, 0);
+      if (scoop.attributes.position.count) { const [o2, i2] = cutHole(g, scoop); if (o2 !== g) g = mergeLoose([o2, i2]); }
+      [cylS, outerC, innerC, ringG, scoop].forEach(x => x.dispose()); }
     // bico: centro ao lado da fenda (meia fenda + raio do bico) e rente ao topo; sai da parede `out` mm
     const rn = o.noz / 2, an = a + (o.w / 2 + rn + 0.2) / R, yc = top + o.rise - rn, L = dr + o.out;
     // cl145 (dona: "o bico precisa poder andar para o lado… fazer cavidade para ele andar"): canaleta aberta no alto da parede, da fenda até
@@ -10697,7 +10708,7 @@ function incomProduct(r) {
         // cl144 (dona, print do On-Off: "on off não ficou modelado"; fotos DISPENSING-ON-OFF-100 e 6-3): topo reto de quina quase viva e,
         // na borda de cima, uma fenda em U aberta no alto (~0,10·D × 0,34·D) com o biquinho redondo saindo ao lado dela, rente ao topo
         // (Ø ~0,11·D, passa um pouco do topo); no lugar do bico lateral antigo
-        P('Acionador e capa', W, D, hc, { rTop: 0.8, _t: [f, 1], incomOnOff: { w: r1(W * 0.1), d: r1(W * 0.34), dir: 15, noz: r2(W * 0.11), out: -0.4, rise: -0.9 } })]; /* cl151: o bico nasce no disco do acionador, que fica 0,8 mm abaixo da borda da capa */ // cl146 (dona: "ele tá passando da tampa"): o bico fica todo dentro da canaleta — ponta 0,4 mm para dentro da parede e o alto 0,4 mm abaixo do topo
+        P('Acionador e capa', W, D, hc, { rTop: 0.8, _t: [f, 1], incomOnOff: { w: r1(W * 0.1), d: r1(W * 0.34), dir: 15, noz: r2(W * 0.11), out: -0.4, rise: -0.4 } })]; /* cl156: com o disco no nível da borda, o alto do bico fica 0,4 mm abaixo dela */ // cl146 (dona: "ele tá passando da tampa"): o bico fica todo dentro da canaleta — ponta 0,4 mm para dentro da parede e o alto 0,4 mm abaixo do topo
       // cl145: o perfil do desenho abaulava o topo (centro reto e um anel caindo até a borda — o "disco" do print); na foto o acionador é
       // um cilindro reto de topo plano
       { const c = ms[1]; delete c.prof; delete c.W0; }
