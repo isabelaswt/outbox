@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION, ADDITION, INTERSECTION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-20.cl160';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-20.cl161';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -707,7 +707,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-20.cl160';
+const BUILD = '2026-11-20.cl161';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -9609,7 +9609,16 @@ function incomSuggestions(m) {
     const v = k.replace(/^Incom /, '').replace(/\s*\([^)]*\)\s*$/, '');
     out.push({ k, mod, label: v === fam ? `${fam} (padrão do catálogo)` : v, cur: sig(mod) === sig(m) });
   }
-  return out.length > 1 ? out : [];
+  // cl161 (dona, Amsterdam frasco ao lado da pág. 64 do catálogo: "aqui oferecer as peças intercambiáveis de válvulas, sempre oferecer a
+  // troca quando possível"): nos Frascos (rosca 24-410) os fechamentos do catálogo entram primeiro na troca, já no tamanho do frasco
+  const clos = [], cat = categoryOf(m)?.[0];
+  if (me?.fcat === 'Frascos' && (cat === 'Tampa' || cat === 'Válvula')) {
+    const Wb = S.modules.find(x => x.vol)?.W || 50;
+    const size = { incomSens: { W: r1(Wb * 0.727), D: r1(Wb * 0.727), h: r1(Wb * 0.424) }, incomTambor: { W: r1(Wb * 0.98), D: r1(Wb * 0.98) }, patoIncom: { W: r1(Wb * 88 / 196), D: r1(Wb * 88 / 196) } };
+    for (const k of ['incomSpray', 'incomDosadora', 'patoIncom', 'incomTrigger', 'incomEspumadora', 'incomBicoAplicador', 'incomSens', 'incomTambor']) if (LIB[k])
+      clos.push({ k, mod: M(k, { ...(size[k] || {}), gap: m.gap, ox: m.ox }), label: LIB[k].name.replace(/^Incom · /, ''), cur: typeOf(m) === k, fecho: true });
+  }
+  return [...(out.length > 1 ? out : []), ...clos];
 }
 function renderSwap(ed, m) {
   const [label, keys] = categoryOf(m), cur = typeOf(m);
@@ -9633,11 +9642,11 @@ function renderSwap(ed, m) {
   originTabs.onclick = e => { const origin = e.target.closest('button')?.dataset.origin; if (origin) chooseOrigin(origin); };
   originTabs.onkeydown = e => { if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(e.key)) return; e.preventDefault(); chooseOrigin(e.key === 'Home' ? 'outbox' : e.key === 'End' ? 'incom' : swapOrigin === 'incom' ? 'outbox' : 'incom'); originTabs.querySelector(`[data-origin="${swapOrigin}"]`).focus(); };
   const sugs = incomSuggestions(m);
-  if (sugs.length) { const h = document.createElement('h4'); h.textContent = 'Sugestões Incom para este produto'; grid.appendChild(h);
-    for (const sg of sugs) { const card = document.createElement('div'); card.className = 'card' + (sg.cur ? ' on' : ''); card.title = sg.label; card.dataset.grp = 'Sugestões Incom'; card.dataset.origin = 'sug';
+  if (sugs.length) { let hF = false; if (sugs.some(sg => !sg.fecho)) { const h = document.createElement('h4'); h.textContent = 'Sugestões Incom para este produto'; grid.appendChild(h); }
+    for (const sg of sugs) { if (sg.fecho && !hF) { hF = true; const h = document.createElement('h4'); h.textContent = 'Fechamentos do catálogo para este frasco'; grid.appendChild(h); } const card = document.createElement('div'); card.className = 'card' + (sg.cur ? ' on' : ''); card.title = sg.label; card.dataset.grp = 'Sugestões Incom'; card.dataset.origin = 'sug';
       card.innerHTML = `<img class="ph" alt=""><div>${sg.label}</div>`;
       card.onclick = () => { if (sg.cur) return; swapScroll = { key: skey, top: grid.scrollTop }; swapMemo.set(m.uid + '|' + typeOf(m), structuredClone(m));
-        S.modules[sel] = { ...structuredClone(sg.mod), uid: m.uid }; setTimeout(() => toastUndo(`Trocada pela tampa de ${sg.label}`), 50); renderStack(); renderEditorKeepScroll(); build(); };
+        S.modules[sel] = { ...structuredClone(sg.mod), uid: m.uid }; setTimeout(() => toastUndo(sg.fecho ? `Trocado por ${sg.label}` : `Trocada pela tampa de ${sg.label}`), 50); renderStack(); renderEditorKeepScroll(); build(); };
       grid.appendChild(card); queueThumb(card.querySelector('img'), { color: BEIGE, finish: 'fosco', modules: [{ ...structuredClone(sg.mod), liq: false }] }); } }
   for (const [gTitle, gKeys] of groups) {
   if (gTitle) { const h = document.createElement('h4'); h.textContent = gTitle; grid.appendChild(h); }
@@ -10786,10 +10795,8 @@ function incomProduct(r) {
           const valve = M('spray', { name: 'Spray liso', W: mm(cw), D: mm(cw), h: mm(ch),
             skirtPct: 100, ridges: 0, collarR: 0.6, guideW: mm(gw), guideH: mm(gh), guideLine: 0,
             stemH: 0, actW: r1(mm(pw) - 1.6), actH: r1(mm(ph) - 1.2), mola: false });
-          // Proteção sobre o atuador. Folgas 0,8/1,2 mm de representação, não cotas industriais.
-          const cap = P('Proteção transparente do spray', mm(pw), null, mm(ph), { ...clear, casca: true,
-            rTop: 0.4, rBot: 0, seatV: true, gap: valve.guideH, capa: true });
-          return [valve, cap]; })()
+          // cl161 (dona, print do spray ao lado da foto: "não tem tampa"): sem a proteção transparente sobre o atuador (era um P próprio)
+          return [valve]; })()
         : fe === 'patoIncom' ? M('patoIncom', { W: r1(W * 88 / 196), D: r1(W * 88 / 196) }) // P68: válvula própria (saia 88 px de 196 do corpo)
         : fe === 'tampa' ? M('incomTambor', { W: r1(W * 0.98), D: r1(W * 0.98), h: r2((H - nh) * 0.31 - 1.6) })
         : fe === 'sens' ? M('incomSens', { W: r1(W * 0.727), D: r1(W * 0.727), h: r1(W * 0.424) }) // foto do New York 250 de frente: 72,7% da largura do frasco e altura de 42,4% dela
