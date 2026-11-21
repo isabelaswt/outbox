@@ -1,4 +1,6 @@
-# Atualização Claude — 21/11/2026, cl172
+# Atualização Claude — 21/11/2026, cl173
+
+- **cl173** — Olympea, dona ("ele é reto no topo"): sai a solda inclinada (`tilt`/`keepTiltHeight`); o topo do corpo cônico é reto, como no desenho da p80. Miniatura regerada.
 
 - **cl172** — Olympea, dona (desenho da p80: "olympea é uma frasnaga cônica"): de frente o corpo é um retângulo de 35 mm até a solda; de lado afina em ogiva até ~3 mm (`coneZ` k 3/W, pw 2,6 — nova deformação em `moduleGeo`: a profundidade encolhe com a altura, a largura fica). No desenho a vista de lado tem a mesma largura da frente na tampa: tampa e pé do corpo redondos Ø 35 (era 94% de 35 × 22, retângulo arredondado). Solda de cima segue inclinada (fotos). Bico na mesma medida de antes. Miniatura regerada.
 
