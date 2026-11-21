@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION, ADDITION, INTERSECTION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-20.cl159';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-20.cl160';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -302,7 +302,7 @@ const BASE = {
   // pescante do corpo (quando não há válvula na pilha)
   bpesc: true, bpescV: 2, bpescD: 4, bpescGap: 3, bpescCurve: 0, bpescWave: 0, bpescMola: false,
   // líquido dentro do corpo
-  liq: false, liqLevel: 92, liqColor: '#c9a45c', liqType: 'cremoso', liqClear: 60, liqInset: 0, liqSize: 9, liqColor2: '#ffffff',
+  liq: false, liqLevel: 97, liqColor: '#c9a45c', liqType: 'cremoso', liqClear: 60, liqInset: 0, liqSize: 9, liqColor2: '#ffffff',
   // sistema de abertura da tampa: flip-top (dobradiça na linha) ou disc-top.
   topType: 'nenhum', openPct: 0, lidSide: 'cima', lidOver: 0, aba: false, orifD: 4, discD: 36, discDip: 4, discDimple: 1.2, discRise: 0,
   // bisnaga: tubo que achata até a solda mantendo o perímetro.
@@ -707,7 +707,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-20.cl159';
+const BUILD = '2026-11-20.cl160';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -1056,7 +1056,7 @@ const PRESETS = {
     M('boston'), NECK('24/410', { embed: 12 }), M('locao')] },
   // Referência gloss labial: tubo de vidro grosso, rosca curta, tampa alta com aplicador.
   'Gloss labial': { color: BEIGE, finish: 'fosco', modules: [
-    M('reto', { name: 'Tubo gloss', W: 17, D: 17, h: 64, rBot: 2, rTop: 1.2, liq: true, liqType: 'cremoso', liqLevel: 90, bpesc: false }),
+    M('reto', { name: 'Tubo gloss', W: 17, D: 17, h: 64, rBot: 2, rTop: 1.2, liq: true, liqType: 'cremoso', liqLevel: 96, bpesc: false }),
     M('gargalo', { neckStd: 'livre', W: 12, D: 12, h: 8, pitch: 2, turns: 2, ringH: 0.3, ringW: 0 }),
     M('tampaGloss', { tipColor: BEIGE })] },
   // Referência stick (protetor/desodorante): base opaca, copo que veste o bastão,
@@ -10689,6 +10689,10 @@ function incomProduct(r) {
       if (dlx) { const an = ms.find(m => m.name === 'Anel'), fr0 = ms[0]; if (an && fr0) { const e = r1(an.h * 0.6); an.h = r2(an.h + e); fr0.h = r2(fr0.h - e); } }
       const dente = r.t === 'bulb' || dlx ? { n: 'Dente da sobretampa', w: r1(W - 2.6), h: 2.5 } : dcg ? { n: 'Degrau do ombro', w: r1(W * 0.86), h: r1(H * 0.04) } : dsp || dspQ ? { n: 'Degrau do ombro', w: r1(W - 4.7), h: dspQ ? 2.5 : 4 } : null;
       if (dente) { const ai = ms.findIndex(m => m.name === 'Anel');
+        // cl160 (dona, print do Deluxe: "dente é interno, sempre"): o dente nunca passa do anel nem da parede da sobretampa — fica 0,6 mm
+        // para dentro do topo do anel (largura real do perfil do desenho) e 0,6 mm dentro do vão da sobretampa (parede ~1,5 mm)
+        if (ai >= 0) { const an = ms[ai], fw = (mm, at) => { const q = mm.prof?.length ? mm.prof[at < 0 ? mm.prof.length - 1 : 0] : null; return mm.W * (q ? Math.min(q[1], q[2] ?? q[1]) : 1); };
+          dente.w = r1(Math.min(dente.w, fw(an, -1) - 1.2, fw(cap, 0) - 3 - 1.2)); }
         if (ai >= 0) ms.splice(ai + 1, 0, P(dente.n, dente.w, D ? r1(D - (W - dente.w)) : null, dente.h, { ...sh, rTop: 0.4, rBot: 0, gap: 0 }));
         cap.gap = -dente.h; }
       // cl137 (aprovação, Bulb dispensador: "a válvula precisa ser mais alta, tudo fica mais alto, quase chega no topo"; fotos DISPENSING-BULB):
@@ -10715,7 +10719,7 @@ function incomProduct(r) {
       // bico do acionador (lotion) saindo de lado no alto da capa, como na foto do catálogo
       // Fotos On-Off 100/120: frasco PET transparente com o líquido à vista (azul/rosado), capa branca opaca; base ~3 mm
       ms = [P('Frasco', W, D, H * f, { vol: true, rBot: 2, bpesc: true, bpescMola: true, _t: [0, f], own: true, finish: 'pet', color: '#ffffff',
-          liq: true, liqType: 'transparente', liqLevel: 92, liqClear: 80, liqColor: corDe(['#cfe3ee', '#f2d4d8', '#e3edf1'], r.n), fundoGrosso: true, fundo: 3, fundoR: 2 }),
+          liq: true, liqType: 'transparente', liqLevel: 97, liqClear: 80, liqColor: corDe(['#cfe3ee', '#f2d4d8', '#e3edf1'], r.n), fundoGrosso: true, fundo: 3, fundoR: 2 }),
         // cl144 (dona, print do On-Off: "on off não ficou modelado"; fotos DISPENSING-ON-OFF-100 e 6-3): topo reto de quina quase viva e,
         // na borda de cima, uma fenda em U aberta no alto (~0,10·D × 0,34·D) com o biquinho redondo saindo ao lado dela, rente ao topo
         // (Ø ~0,11·D, passa um pouco do topo); no lugar do bico lateral antigo
@@ -10965,7 +10969,7 @@ function incomProduct(r) {
       const cs = Math.cos(Math.PI / 4), face = cap.sides === 4 ? Math.min(cap.W, cap.D) * (cs + (1 - cs) * (cap.sideR || 0)) : Math.min(cap.W, cap.D);
       const nw = r1(face - 2 * OCO.wall - 0.8), nh = r1(Math.max(4, hc - OCO.top - 0.8));
       const neck = M('gargalo', { name: 'Boca com rosca', neckStd: 'livre', W: nw, D: nw, h: nh, pitch: 3.2, turns: 1.25, threadD: 0.9, ringH: 0, ringW: 0, embed: 4, neckFillet: 0, tuboAberto: true });
-      ms = [P('Pote', W, D, hp, { ...s0, vol: true, rBot: 3, ocoTopo: true, liq: true, liqType: 'cremoso', liqLevel: 93, liqColor: '#f2ebe0', _t: [0, f] }), neck, cap]; break; }
+      ms = [P('Pote', W, D, hp, { ...s0, vol: true, rBot: 3, ocoTopo: true, liq: true, liqType: 'cremoso', liqLevel: 96, liqColor: '#f2ebe0', _t: [0, f] }), neck, cap]; break; }
     case 'stick': {
       const [f] = SPLIT_FIX[r.pg] ? [SPLIT_FIX[r.pg]] : incomFrac(pr, [0.5]), g = r.pg === 131, hb = r2(H * f), ht = r2(H - hb);
       // Fotos p130/131 a 1,3x: base aberta M 237 px / G 232 px; colar 25/24 px;
@@ -11101,7 +11105,7 @@ function incomProduct(r) {
   // à vista); colares lisos. Págs. 50/51: Cube opaco e Elíptico transparente, ambos com sobretampa própria.
   if (['Conta-gotas', 'Dispensadores', 'Deluxes'].includes(r.c) && r.t !== 'onoff' && !/Twist/.test(r.n)) {
     const fr = ms.find(m => m.name === 'Frasco'), disp = r.c === 'Dispensadores';
-    if (fr) Object.assign(fr, { own: true, finish: 'pet', color: '#ffffff', liq: true, liqLevel: disp ? 94 : 92,
+    if (fr) Object.assign(fr, { own: true, finish: 'pet', color: '#ffffff', liq: true, liqLevel: 97, /* cl160 (dona: "aumentar líquido geral para não ter muito headgap"): era 92–94% */
       liqType: disp ? 'cremoso' : 'transparente', liqColor: corDe(disp ? BASE_CORES : SERUM_CORES, r.n), ...(disp ? {} : { liqClear: 85 }) });
     // Frasco em SAN (fotos Dispensing 15/30/60, Bulb, Elíptico, Quadrado): acrílico de fundo grosso (~10% da altura),
     // o conteúdo fica numa coluna acima dele. Medida na foto do Dispensing 15, sem cota de molde.
@@ -11207,7 +11211,7 @@ function incomProduct(r) {
     }[r.k];
     if (cup) {
       const pot = ms[0], hp = pot.h, floor = r2(H * cup.floor), cw = r1(W * cup.mouth), cd = r1(D * cup.mouth);
-      Object.assign(pot, { liq: true, liqType: 'cremoso', liqLevel: 93, liqColor: corDe(CREME_CORES, r.n), ocoTopo: false, casca: true, apoio: false,
+      Object.assign(pot, { liq: true, liqType: 'cremoso', liqLevel: 96, liqColor: corDe(CREME_CORES, r.n), ocoTopo: false, casca: true, apoio: false,
         incomPoteCavity: { W: cw, D: cd, floor, rBot: r1(Math.min(hp - floor, cw / 2, cd / 2) * cup.round) } });
       if (cup.refill) {
         const rw = r1(W * cup.refill), rd = r1(D * cup.refill), bottom = r2(H * cup.bottom), rh = r2(hp - bottom);
@@ -11237,7 +11241,7 @@ function incomProduct(r) {
       cap.femaleThread = { W: nw, h: nh, pitch: neck.pitch, turns: neck.turns, threadD: neck.threadD, ringH: 0, threadTop: 0.45, threadBottom: 0.35 };
     }
   }
-  if (r.c === 'Frascos' && /^(Amsterdam|Chicago|Miami|New York|Seoul 250|Sydney 60)$/.test(r.n)) { const fr = ms.find(m => m.name === 'Frasco'); if (fr) Object.assign(fr, { own: true, finish: 'pet', color: '#ffffff', liq: true, liqLevel: 92, liqType: 'transparente', liqClear: 85, liqColor: corDe(GEL_CORES, r.n), fundoGrosso: true, fundo: r1(H * 0.025), fundoR: 2 }); } // PET transparente: gel quase incolor (o frasco aparece) sobre o fundo grosso ("plástico pesado", ~4% da altura na foto do Chicago)
+  if (r.c === 'Frascos' && /^(Amsterdam|Chicago|Miami|New York|Seoul 250|Sydney 60)$/.test(r.n)) { const fr = ms.find(m => m.name === 'Frasco'); if (fr) Object.assign(fr, { own: true, finish: 'pet', color: '#ffffff', liq: true, liqLevel: 97, liqType: 'transparente', liqClear: 85, liqColor: corDe(GEL_CORES, r.n), fundoGrosso: true, fundo: r1(H * 0.025), fundoR: 2 }); } // PET transparente: gel quase incolor (o frasco aparece) sobre o fundo grosso ("plástico pesado", ~4% da altura na foto do Chicago)
   if (r.c === 'Frasnagas' && /^(Beatrice|Julie|Olive|Vênus 35|Vênus 45)$/.test(r.n)) {
     const cap = ms[1], free = r.n === 'Beatrice';
     // P79/81/85/86: 20-410. Beatrice p76: rosca sem norma cotada, dimensões representativas.
