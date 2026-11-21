@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION, ADDITION, INTERSECTION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-20.cl162';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-21.cl163';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -707,7 +707,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-20.cl162';
+const BUILD = '2026-11-21.cl163';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -9614,7 +9614,7 @@ function incomSuggestions(m) {
   const clos = [], cat = categoryOf(m)?.[0];
   if (me?.fcat === 'Frascos' && (cat === 'Tampa' || cat === 'Válvula')) {
     const Wb = S.modules.find(x => x.vol)?.W || 50;
-    const size = { incomSens: { W: r1(Wb * 0.727), D: r1(Wb * 0.727), h: r1(Wb * 0.424) }, incomTambor: { W: r1(Wb * 0.98), D: r1(Wb * 0.98) }, patoIncom: { W: r1(Wb * 88 / 196), D: r1(Wb * 88 / 196) } };
+    const size = { incomSens: { W: r1(Wb * 0.727), D: r1(Wb * 0.727), h: r1(Wb * 0.424) }, incomTambor: { W: r1(Wb * 0.98), D: r1(Wb * 0.98) } }; // cl163 (dona: "proporção tá certa do pump?"): o bico de pato entra no tamanho real da peça (colar 26,9, haste 14,1) — só o colar estreitado deixava a haste larga demais
     for (const k of ['incomSpray', 'incomDosadora', 'patoIncom', 'incomTrigger', 'incomEspumadora', 'incomBicoAplicador', 'incomSens', 'incomTambor']) if (LIB[k])
       clos.push({ k, mod: M(k, { ...(size[k] || {}), gap: m.gap, ox: m.ox }), label: LIB[k].name.replace(/^Incom · /, ''), cur: typeOf(m) === k, fecho: true });
   }
@@ -9627,7 +9627,7 @@ function incomSuggestions(m) {
     const dnM = S.modules.find(x => /^(Dente da sobretampa|Degrau do ombro)$/.test(x.name)), capFit = capM && { ...capM, h: capM.h - (dnM?.h || 0) - 1.5 }; // o degrau/dente fica dentro da sobretampa: desconta, com folga
     const Wb = S.modules.find(x => x.vol)?.W || 45, inCap = t => { try { return capFit ? { ...fitValveIn(t, capFit, m.W), ...keep } : M(t, keep); } catch { return M(t, keep); } };
     const opts = [['Spray', inCap('spray'), 'spray'], ['Dosadora', inCap('pumpDosadora'), 'pumpDosadora']];
-    if (lineK === 'Deluxes') opts.push(['Válvula bico de pato', M('patoIncom', { W: r1(Wb * 0.45), D: r1(Wb * 0.45), ...keep }), 'patoIncom', true], ['Trigger', M('incomTrigger', keep), 'incomTrigger', true],
+    if (lineK === 'Deluxes') opts.push(['Válvula bico de pato', M('patoIncom', keep), 'patoIncom', true], ['Trigger', M('incomTrigger', keep), 'incomTrigger', true],
       ['Espumadora', M('incomEspumadora', keep), 'incomEspumadora', true], ['Bico aplicador', M('incomBicoAplicador', keep), 'incomBicoAplicador', true],
       ['Tampa Sens', M('incomSens', { W: r1(Wb * 0.727), D: r1(Wb * 0.727), h: r1(Wb * 0.424), ...keep }), 'incomSens', true]);
     for (const [label, mod, k, dropCap] of opts) clos.push({ k, mod, label: dropCap && capM ? `${label} (sem sobretampa)` : label, cur: typeOf(m) === k || (k === 'spray' && m.sprayType === 'mist') || (k === 'pumpDosadora' && m.sprayType === 'dosadora'), fecho: true, dropCap: !!dropCap });

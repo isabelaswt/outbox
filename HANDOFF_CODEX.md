@@ -1,4 +1,6 @@
-# Atualização Claude — 20/11/2026, cl162
+# Atualização Claude — 21/11/2026, cl163
+
+- **cl163** — Dona (bico de pato ao lado da foto: "proporção tá certa do pump?"): a peça `patoIncom` já bate com as fotos (colar 26,9 × 18,7, haste 14,1 × 15,3, braço 5,2 — num frasco de ~50 mm: colar ~55%, haste ~29%), mas a troca da cl161/cl162 estreitava só o colar (45% do frasco / Deluxe 45%) e a haste ficava larga demais para ele. Agora o bico de pato entra no tamanho real da peça (mesma rosca 24/410) — Frascos e Deluxes. Conferido ao lado das fotos do Chicago e do Seoul.
 
 - **cl162** — Dona ("Sim, levar" — a troca de fechamentos da cl161 para Deluxe e Dispensadores): ao clicar na válvula, "Fechamentos do catálogo para este produto". Deluxes: Spray e Dosadora ajustados para caber sob a sobretampa (`fitValveIn` com a altura da sobretampa menos o dente e 1,5 mm), e Bico de pato, Trigger, Espumadora, Bico aplicador e Tampa Sens marcados "(sem sobretampa)" — a troca tira a sobretampa e o dente. Dispensadores (menos Twist e On-Off, de mecanismo próprio): Spray e Dosadora, sempre sob a sobretampa. Conferido nos 13 produtos: todas as válvulas ficam 2,5–18 mm abaixo do topo da sobretampa. A troca guarda rosca/gargalo da válvula original (`threadReceiver`). Miniaturas não mudam (presets iguais).
 
