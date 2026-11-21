@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION, ADDITION, INTERSECTION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-21.cl171';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-21.cl172';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -707,7 +707,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-21.cl171';
+const BUILD = '2026-11-21.cl172';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -2934,6 +2934,11 @@ function moduleGeo(m0, y0, opts = {}) {
   let g, extras = [];
   if (flipOpen) [g, extras] = flipOpenGeo(m, y0, rings, seg, disp, ang);
   else g = loft(rings, seg, disp, !!(disp && (kmax || m.ridges > 0)));
+  if (m.coneZ && g) { // cl172 (Olympea, desenho p80: "é uma frasnaga cônica"): de frente a largura fica; de lado a profundidade afina até a solda
+    const p = g.attributes.position, { k = 0.1, pw = 1.8 } = m.coneZ; g.computeBoundingBox(); const cz = (g.boundingBox.max.z + g.boundingBox.min.z) / 2;
+    for (let i = 0; i < p.count; i++) { const t = clamp((p.getY(i) - y0) / m.h, 0, 1), f = Math.max(k, 1 - (1 - k) * Math.pow(t, pw)); p.setZ(i, cz + (p.getZ(i) - cz) * f); }
+    p.needsUpdate = true; g.computeVertexNormals(); g.computeBoundingBox();
+  }
   if (m.tilt && g) {
     tiltTop(g, y0, m.tilt);
     if (m.keepTiltHeight) { // Olympea p80: raio no topo inclinado não pode retirar a altura cotada.
@@ -10850,11 +10855,13 @@ function incomProduct(r) {
         f = r.n === 'Julie' ? f0 + 5.5 / H : f0; // Julie (fotos): o anel do ombro é do frasco; a tampa é um cilindro simples, sem aba // Charlotte e Olympea: em pé sobre a tampa (fotos)
       // Charlotte (divisão abaixo da metade no desenho): fica em pé sobre a tampa, corpo em cima. Na foto é uma
       // bisnaga achatada (frente larga, seção de retângulo arredondado), não um cilindro
-      if (r.n === 'Olympea') { const sc = sq(0.4); // foto: em pé sobre a tampa preta, corpo achatado com o topo inclinado
-        const hcO = r1(H * f), hbO = r1(hcO - 2);
-        ms = [P('Tampa', r1(W * 0.94), r1(D * 0.94), hcO, { ...sc, rBot: 2, rTop: 0.5, oco: true, ocoCima: true, ocoTop: 1.6, capa: true }), // cl171 (dona: "parece uma diferença grande entre frasco e tampa"; fotos OLYMPIA): a tampa tem a largura do pé do frasco (que afina para baixo, taperB 94), não a do topo
-          M('bicoAplicador', { name: 'Gargalo roscado e bico dosador', W: r1(Math.min(W, D) * 0.62), D: r1(Math.min(W, D) * 0.62), h: hbO, bocaBaixo: true, gap: -hbO, pesc: false, mola: false, own: true, finish: 'fosco', color: '#f5f2ec' /* cl165/cl166: PP natural leitoso — opaco acetinado (transparente, o canal aparecia na frente da rosca) */ }),
-          P('Frasco', W, D, H * (1 - f), { ...sc, vol: true, rBot: 0.5, rTop: 2.5, taperB: 94, tilt: [1, 0.86], keepTiltHeight: true })]; break; }
+      if (r.n === 'Olympea') { // foto: em pé sobre a tampa preta, solda de cima inclinada
+        // cl172 (dona, desenho da p80: "olympea é uma frasnaga cônica"): de frente o corpo é um retângulo de 35 mm até a solda; de lado
+        // afina em ogiva até ~3 mm. A tampa e o pé do corpo são redondos (Ø 35: no desenho a vista de lado tem a mesma largura da frente)
+        const hcO = r1(H * f), hbO = r1(hcO - 2), sc = {};
+        ms = [P('Tampa', W, W, hcO, { rBot: 2, rTop: 0.5, oco: true, ocoCima: true, ocoTop: 1.6, capa: true }), // cl171 (dona: "parece uma diferença grande entre frasco e tampa"; fotos OLYMPIA): a tampa tem a largura do pé do frasco (que afina para baixo, taperB 94), não a do topo
+          M('bicoAplicador', { name: 'Gargalo roscado e bico dosador', W: r1(Math.min(W, D) * 0.62), D: r1(Math.min(W, D) * 0.62), h: hbO, /* D do catálogo (22) só para o bico ficar como estava */ bocaBaixo: true, gap: -hbO, pesc: false, mola: false, own: true, finish: 'fosco', color: '#f5f2ec' /* cl165/cl166: PP natural leitoso — opaco acetinado (transparente, o canal aparecia na frente da rosca) */ }),
+          P('Frasco', W, W, H * (1 - f), { ...sc, vol: true, rBot: 0.5, rTop: 1.5, coneZ: { k: r2(3 / W), pw: 2.6 }, tilt: [1, 0.86], keepTiltHeight: true })]; break; }
       if (f < 0.5) { const sc = { ...sq(0.12) }, Dc = r1(W * 0.58); // foto: retângulo de arestas vivas (raio pequeno), não oval
         // fotos do site: tampa sai de baixo e mostra o gargalo roscado com o bico cônico dosador apontando para baixo
         const hcC = r1(H * f), hbC = r1(hcC - 2);
