@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION, ADDITION, INTERSECTION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-21.cl163';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-21.cl165';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -707,7 +707,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-21.cl163';
+const BUILD = '2026-11-21.cl165';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -7889,7 +7889,10 @@ function buildInto(product, S, explodeAmt = 0) {
     }
     // boca do gargalo em vidro transparente: sem o fundo escuro (ele aparecia pelas paredes)
     if (m0.kind === 'gargalo' && ['vidro', 'pet'].includes(ms.own ? ms.finish : S.finish)) g.userData.extras = [];
-    (g.userData.extras || []).forEach(xg => { const xm = new THREE.Mesh(xg, xg.userData.mat === 'insert' ? insertMat : xg.userData.mat === 'clear' ? clearMat : holeFor(ms.own ? ms.color : S.color)); xm.userData.idx = idx; if (xg.userData.boca) xm.name = 'boca'; product.add(xm); });
+    // cl165 (dona, bico translúcido com um bastão bege por dentro: "que material é esse do bico? parece bege dentro"): em peça transparente o furo
+    // (canal do bico, saída) fica no próprio material da peça — o escuro de furo aparecia através da parede como um bastão
+    const glassX = isGlass(ms.own ? ms.finish : S.finish) ? material(ms.own ? ms.color : S.color, ms.own ? ms.finish : S.finish) : null;
+    (g.userData.extras || []).forEach(xg => { const xm = new THREE.Mesh(xg, xg.userData.mat === 'insert' ? insertMat : xg.userData.mat === 'clear' ? clearMat : glassX || holeFor(ms.own ? ms.color : S.color)); xm.userData.idx = idx; if (xg.userData.boca) xm.name = 'boca'; product.add(xm); });
     if (!tubeBody && !solidBody && (m.kind === 'spray' || (m.kind === 'perfil' && !m.vol)) && m.pesc && isFinite(floor)) { // recheio sólido: sem tubo
       // Comprimento medido montado; na vista explodida desce junto com a válvula.
       const add = (geo, name) => { const pm = new THREE.Mesh(geo, innerMat); pm.userData.idx = idx; pm.name = `${String(idx + 1).padStart(2, '0')}_${name}`; product.add(pm); };
@@ -10838,16 +10841,18 @@ function incomProduct(r) {
       if (r.n === 'Olympea') { const sc = sq(0.4); // foto: em pé sobre a tampa preta, corpo achatado com o topo inclinado
         const hcO = r1(H * f), hbO = r1(hcO - 2);
         ms = [P('Tampa', W, D, hcO, { ...sc, rBot: 2, rTop: 0.5, oco: true, ocoCima: true, ocoTop: 1.6, capa: true }),
-          M('bicoAplicador', { name: 'Gargalo roscado e bico dosador', W: r1(Math.min(W, D) * 0.62), D: r1(Math.min(W, D) * 0.62), h: hbO, bocaBaixo: true, gap: -hbO, pesc: false, mola: false, own: true, finish: 'pet', color: '#f4efea' }),
+          M('bicoAplicador', { name: 'Gargalo roscado e bico dosador', W: r1(Math.min(W, D) * 0.62), D: r1(Math.min(W, D) * 0.62), h: hbO, bocaBaixo: true, gap: -hbO, pesc: false, mola: false, own: true, finish: 'petFosco', color: '#f7f4ef' /* cl165: PP natural leitoso (o PET transparente mostrava o canal de 1,6 mm como um bastão bege) */ }),
           P('Frasco', W, D, H * (1 - f), { ...sc, vol: true, rBot: 0.5, rTop: 2.5, taperB: 94, tilt: [1, 0.86], keepTiltHeight: true })]; break; }
       if (f < 0.5) { const sc = { ...sq(0.12) }, Dc = r1(W * 0.58); // foto: retângulo de arestas vivas (raio pequeno), não oval
         // fotos do site: tampa sai de baixo e mostra o gargalo roscado com o bico cônico dosador apontando para baixo
         const hcC = r1(H * f), hbC = r1(hcC - 2);
         ms = [P('Tampa', W, Dc, hcC, { ...sc, rBot: 2, rTop: 0.5, oco: true, ocoCima: true, ocoTop: 1.6, capa: true, _t: [0, f] }),
-          M('bicoAplicador', { name: 'Gargalo roscado e bico dosador', W: r1(Dc * 0.62), D: r1(Dc * 0.62), h: hbC, bocaBaixo: true, gap: -hbC, pesc: false, mola: false, own: true, finish: 'pet', color: '#f4efea' }),
+          M('bicoAplicador', { name: 'Gargalo roscado e bico dosador', W: r1(Dc * 0.62), D: r1(Dc * 0.62), h: hbC, bocaBaixo: true, gap: -hbC, pesc: false, mola: false, own: true, finish: 'petFosco', color: '#f7f4ef' /* cl165: PP natural leitoso (o PET transparente mostrava o canal de 1,6 mm como um bastão bege) */ }),
           P('Frasco', W, Dc, H * (1 - f), { ...sc, vol: true, rBot: 0.5, rTop: r.t === 'frnr' ? W * 0.4 : 2, _t: [f, 1] })]; break; }
-      const sb = r.n === 'Beatrice' ? sq(0.2) : {}; // Beatrice: frasco quadrado de cantos arredondados (foto)
-      ms = [P('Frasco', W, D, H * f, { ...sb, vol: true, rBot: 3, rTop: 1, ...o, _t: [0, f] }), P('Tampa', W * (r.t === 'frnt' ? 0.88 : 1), D, H * (1 - f), { ...sb, rTop: r.t === 'frnr' ? W * 0.4 : 2, _t: [f, 1] })]; break; }
+      const sb = r.n === 'Beatrice' ? sq(0.2) : {}; // Beatrice: frasco retangular de cantos arredondados (foto)
+      // cl164 (dona: "ele não é quadrado, é fino"): sem profundidade no catálogo — 45 ml em 42,9 × ~73 mm de corpo dão ~20 mm (quadrado seriam ~105 ml)
+      const Db = r.n === 'Beatrice' ? r1(W * 0.47) : D;
+      ms = [P('Frasco', W, Db, H * f, { ...sb, vol: true, rBot: 3, rTop: 1, ...o, _t: [0, f] }), P('Tampa', W * (r.t === 'frnt' ? 0.88 : 1), Db, H * (1 - f), { ...sb, rTop: r.t === 'frnr' ? W * 0.4 : 2, _t: [f, 1] })]; break; }
     case 'tube': {
       // Pág. 84: frasco PE sem solda; 29 × 109 mm no desenho de corpo com gargalo, sem tampa.
       // Junção a ~83% da altura, medida no desenho. Seção traseira não cotada: D=W provisório.
@@ -11268,20 +11273,22 @@ function incomProduct(r) {
   if (r.c === 'Frasnagas' && /^(Beatrice|Julie|Olive|Vênus 35|Vênus 45)$/.test(r.n)) {
     const cap = ms[1], free = r.n === 'Beatrice';
     // P79/81/85/86: 20-410. Beatrice p76: rosca sem norma cotada, dimensões representativas.
-    const neck = free ? M('gargalo', { name: 'Gargalo roscado', neckStd: 'livre', W: 22, D: 22, h: 6,
-      pitch: 1.2, turns: 2, threadD: 0.7, threadTop: 0.45, threadBottom: 0.35, ringH: 0, ringW: 0 })
+    // cl164 (dona, foto da Beatrice aberta: "beatrice"): o gargalo é comprido (~0,8× o diâmetro, voltas largas por quase todo ele) e tem o inserto
+    // dosador em ponta saindo dela, como Julie/Olive ("Tampa e Inserto em PP" no catálogo)
+    const neck = free ? M('gargalo', { name: 'Gargalo roscado', neckStd: 'livre', W: 13, D: 13, h: 16, // foto deitada: Ø ~13, ~16 de comprido (pela largura de 42,9)
+      pitch: 2.6, turns: 5, threadD: 0.6, threadTop: 0.45, threadBottom: 0.35, ringH: 0, ringW: 0 })
       : NECK('20/410', { name: 'Rosca 20-410', ringH: 0, ringW: 0 });
-    Object.assign(neck, { exposedNeck: true, embed: 0, neckFillet: 0 });
+    Object.assign(neck, { exposedNeck: true, embed: 0, neckFillet: 0 }, free ? { own: true, finish: 'petFosco', color: '#f6f3ee' } : {}); // cl164: na Beatrice o gargalo é do inserto de PP — branco translúcido (foto), não a cor do frasco
     ms[0].wandMouth = Math.max(2, neck.W / 2 - 3.2);
     cap.threadReceiver = { W: neck.W, h: neck.h, pitch: neck.pitch, turns: neck.turns,
       threadD: neck.threadD, ringH: neck.ringH, ...(free ? { threadTop: 0.45, threadBottom: 0.35 } : {}) };
     Object.assign(cap, { capa: 'vira', threadNeckUid: neck.uid }); ms.splice(1, 0, neck);
     // Fotos abertas do site: Julie e Olive têm ponteira dosadora branca pontuda; Vênus, cone translúcido mais largo.
     // Proporções pela foto, sem cota; limitada ao vão da tampa, que desce o mesmo tanto (altura fechada mantida).
-    if (!free) { const vn = /^Vênus/.test(r.n), room = cap.h - neck.h + 0.8; // ponteira nasce 3 mm dentro da boca: sobra ~2 mm até o teto da tampa
-      const th = r1(Math.min(room, 13.5)), tg = -r1(neck.h - 3); // o gargalo não ocupa altura na pilha: a ponteira nasce 3 mm dentro da boca
+    { const vn = /^Vênus/.test(r.n), room = cap.h - neck.h + 0.8; // ponteira nasce 3 mm dentro da boca: sobra ~2 mm até o teto da tampa
+      const th = r1(Math.min(room, free ? 9 : 13.5)), tg = -r1(neck.h - 3); // Beatrice (foto): bico ~0,65× o Ø do gargalo // o gargalo não ocupa altura na pilha: a ponteira nasce 3 mm dentro da boca
       if (th > 4) { ms.splice(2, 0, M('bicoAplicador', { name: 'Bico dosador Ø1,6 mm', W: r1(neck.W - 2 * (neck.threadD || 0.8) - 0.2), D: r1(neck.W - 2 * (neck.threadD || 0.8) - 0.2), h: th, incomBico: true, gap: -tg, pesc: false, mola: false,
-          own: true, finish: vn ? 'pet' : 'fosco', color: vn ? '#efe4d6' : '#f4f1ec' }));
+          own: true, finish: vn ? 'petFosco' : 'fosco', color: vn ? '#f1e9de' : '#f4f1ec' })); // cl165: Vênus em PP natural leitoso
         cap.gap = r2((cap.gap || 0) + tg); } } // o bico sobe até a boca sem ocupar altura na pilha: a tampa desce o mesmo tanto e mantém o assento
   }
   if (r.c === 'Frasnagas' && r.n === 'Tube') {

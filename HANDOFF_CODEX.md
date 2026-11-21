@@ -1,4 +1,6 @@
-# Atualização Claude — 21/11/2026, cl163
+# Atualização Claude — 21/11/2026, cl165
+
+- **cl165** — (1) Beatrice, dona (foto aberta: "beatrice"; "ele não é quadrado, é fino"): sem profundidade no catálogo — 45 ml em 42,9 × ~73 mm de corpo dão ~20 mm, então o frasco ficou achatado (42,9 × 20,2; quadrado seriam ~105 ml). Gargalo do inserto pela foto deitada: Ø 13, 16 mm de comprido, voltas largas (passo 2,6, 5 voltas), em PP branco translúcido (não a cor do frasco), e o bico dosador em ponta que os irmãos Julie/Olive já tinham ("Tampa e Inserto em PP"). Altura fechada mantida (101,5). (2) Frasnagas, dona (bico com um bastão bege por dentro: "que material é esse do bico? parece bege dentro"): os bicos dosadores (Charlotte, Charlotte Rounded, Olympea, Vênus) eram PET transparente e o canal de 1,6 mm aparecia como um bastão bege refratado; agora PP natural leitoso (`petFosco`), como na foto da Beatrice. E em qualquer peça transparente o furo passa a usar o material da própria peça, não o escuro de furo. Miniatura da Beatrice regerada; índice refeito.
 
 - **cl163** — Dona (bico de pato ao lado da foto: "proporção tá certa do pump?"): a peça `patoIncom` já bate com as fotos (colar 26,9 × 18,7, haste 14,1 × 15,3, braço 5,2 — num frasco de ~50 mm: colar ~55%, haste ~29%), mas a troca da cl161/cl162 estreitava só o colar (45% do frasco / Deluxe 45%) e a haste ficava larga demais para ele. Agora o bico de pato entra no tamanho real da peça (mesma rosca 24/410) — Frascos e Deluxes. Conferido ao lado das fotos do Chicago e do Seoul.
 
