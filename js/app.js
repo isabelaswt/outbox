@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION, ADDITION, INTERSECTION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-22.cl175';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-22.cl176';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -707,7 +707,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-22.cl175';
+const BUILD = '2026-11-22.cl176';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -1965,7 +1965,7 @@ function sprayGeo(m, y0, { lo = false } = {}) {
     const th = new THREE.TubeGeometry(new THREE.CatmullRomCurve3(P), lo ? 120 : 400, Math.min(0.75, R * 0.08), 12, false); th.deleteAttribute('uv');
     const out = mergeGeometries([g.index ? g.toNonIndexed() : g, th.index ? th.toNonIndexed() : th]) || g;
     // bico independente: disco na boca + cone curto
-    const rD = R * 0.9, rB = R * 0.58, tip = R * 0.13, bico = [[bore, hc + 0.05], [rD, hc + 0.05], [rD, hc - 0.7], [rB, hc - 0.85], [tip, 0.3], [tip * 0.75, 0], [Math.min(bore + 0.35, tip * 0.6), 0.05], [bore, -0.15], [bore, hc + 0.05]].reverse();
+    const rD = Rc /* cl176 (dona: "a base do bico segue a mesma dimensão da rosca, não é para fora") */, rB = R * 0.58, tip = R * 0.13, bico = [[bore, hc + 0.05], [rD, hc + 0.05], [rD, hc - 0.7], [rB, hc - 0.85], [tip, 0.3], [tip * 0.75, 0], [Math.min(bore + 0.35, tip * 0.6), 0.05], [bore, -0.15], [bore, hc + 0.05]].reverse();
     const bg = new THREE.LatheGeometry(bico.map(([r, y]) => new THREE.Vector2(r, y0 + y)), seg); bg.deleteAttribute('uv'); bg.userData.mat = 'insert';
     out.userData.extras = [bg]; return out;
   }

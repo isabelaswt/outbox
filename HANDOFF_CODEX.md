@@ -1,4 +1,6 @@
-# Atualização Claude — 22/11/2026, cl175
+# Atualização Claude — 22/11/2026, cl176
+
+- **cl176** — Olympea, dona ("essa base do bico segue a mesma dimensão da rosca, não é para fora"): o disco do bico independente passa de 0,9·R para o raio do gargalo (`Rc`), rente a ele.
 
 - **cl175** — (1) Olympea, dona ("a solução é parecida com esse [o gargalo da Beatrice], mas mais curta, o bico é independente"): `bocaBaixo` + `bocaCurto` virou duas peças — gargalo translúcido (petFosco #f6f3ee, como o da Beatrice) com aro junto ao ombro e rosca em hélice (2 voltas, filete redondo), e o bico à parte em PP opaco (extra `insert`): disco na boca e cone curto (36% da peça) até a ponta pequena e achatada. (2) Beatrice, dona (foto deitada: "o bico é levemente mais baixo, a parte da rosca"): gargalo do inserto 16 → 13 mm. Miniaturas das duas regeradas.
 
