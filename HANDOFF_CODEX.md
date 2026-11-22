@@ -1,4 +1,6 @@
-# Atualização Claude — 22/11/2026, cl176
+# Atualização Claude — 22/11/2026, cl177
+
+- **cl177** — Frasnagas, dona: (1) Beatrice (foto: "base parece ser mais arredondada"): quina de baixo do frasco 0,5 → 4 mm. (2) Olympea (foto ampliada: "rosca é mais junta, comparar as duas"): as 2 voltas da hélice ficam juntas logo acima da boca (passo ~0,19 do Ø do gargalo); o resto do gargalo é liso até o aro do ombro. (3) Charlotte e Charlotte Rounded ("charlotte também tem questão com o bico, replicar"): mesma solução do Olympea (`bocaCurto`): gargalo translúcido com rosca junta e bico independente opaco de cone curto, na largura que cabe na tampa deles (50% da profundidade). Miniaturas dos quatro regeradas.
 
 - **cl176** — Olympea, dona ("essa base do bico segue a mesma dimensão da rosca, não é para fora"): o disco do bico independente passa de 0,9·R para o raio do gargalo (`Rc`), rente a ele.
 
