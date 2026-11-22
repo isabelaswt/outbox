@@ -1,4 +1,6 @@
-# Atualização Claude — 21/11/2026, cl173
+# Atualização Claude — 22/11/2026, cl174
+
+- **cl174** — Olympea, dona (foto ampliada do bico ao lado do render aberto: "o bico parece que precisa ser menos bicudo"; "tudo parece que precisa ser maior comparado à foto, o raio da rosca"): gargalo e bico com 56% da largura do corpo (era 0,62 × 22 = 39%); `bocaCurto` no perfil `bocaBaixo` — aro largo junto ao ombro, 2 voltas de rosca, aro em cima da rosca e cone curto (~38% da peça) até uma ponta pequena e achatada (raio 0,15·R) com o furinho. Charlotte segue com o bico longo. Miniatura regerada.
 
 - **cl173** — Olympea, dona ("ele é reto no topo"): sai a solda inclinada (`tilt`/`keepTiltHeight`); o topo do corpo cônico é reto, como no desenho da p80. Miniatura regerada.
 
