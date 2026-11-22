@@ -1,4 +1,6 @@
-# Atualização Claude — 22/11/2026, cl174
+# Atualização Claude — 22/11/2026, cl175
+
+- **cl175** — (1) Olympea, dona ("a solução é parecida com esse [o gargalo da Beatrice], mas mais curta, o bico é independente"): `bocaBaixo` + `bocaCurto` virou duas peças — gargalo translúcido (petFosco #f6f3ee, como o da Beatrice) com aro junto ao ombro e rosca em hélice (2 voltas, filete redondo), e o bico à parte em PP opaco (extra `insert`): disco na boca e cone curto (36% da peça) até a ponta pequena e achatada. (2) Beatrice, dona (foto deitada: "o bico é levemente mais baixo, a parte da rosca"): gargalo do inserto 16 → 13 mm. Miniaturas das duas regeradas.
 
 - **cl174** — Olympea, dona (foto ampliada do bico ao lado do render aberto: "o bico parece que precisa ser menos bicudo"; "tudo parece que precisa ser maior comparado à foto, o raio da rosca"): gargalo e bico com 56% da largura do corpo (era 0,62 × 22 = 39%); `bocaCurto` no perfil `bocaBaixo` — aro largo junto ao ombro, 2 voltas de rosca, aro em cima da rosca e cone curto (~38% da peça) até uma ponta pequena e achatada (raio 0,15·R) com o furinho. Charlotte segue com o bico longo. Miniatura regerada.
 

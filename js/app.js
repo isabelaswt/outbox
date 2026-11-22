@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION, ADDITION, INTERSECTION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-22.cl174';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-22.cl175';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -707,7 +707,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-22.cl174';
+const BUILD = '2026-11-22.cl175';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -1951,6 +1951,23 @@ function sprayGeo(m, y0, { lo = false } = {}) {
     const pts = [[bore, 0], [Math.min(6.4, R - 1.6), 0], [Math.min(6.4, R - 1.6), 3], [R - 0.2, 3], [R, 3.25], [R, 3.85], [R - 0.25, 4.1],
       [cb, 4.1], [2.4, top - 0.45 * sy], [2.25, top - 0.15 * sy], [1.95, top], [bore, top], [bore, 0]];
     const g = new THREE.LatheGeometry(pts.map(([r, y]) => new THREE.Vector2(r, y0 + y)), lo ? 48 : 128, Math.PI) /* cl166: emenda do torno virada para trás (de frente aparecia como uma faixa no meio do bico) */; g.deleteAttribute('uv'); return g;
+  }
+  if (m.bocaBaixo && m.bocaCurto) {
+    // cl175 (Olympea, dona: "a solução é parecida com esse [o gargalo da Beatrice], mas mais curta, o bico é independente"): gargalo
+    // translúcido (material da peça) com aro junto ao ombro e rosca em hélice, e o bico como peça à parte (opaca, `insert`): disco apoiado
+    // na boca do gargalo e cone curto até uma ponta pequena e achatada. Tudo aponta para baixo (y = 0 é a ponta do bico).
+    const R = m.W / 2, Rc = R * 0.8, hc = m.h * 0.36, hn = m.h - hc, bore = 0.7, seg = lo ? 48 : 128;
+    const neck = [[bore, m.h + 0.5], [R, m.h + 0.5], [R, m.h - 1.6], [Rc + 0.2, m.h - 1.9], [Rc, m.h - 2.2], [Rc, hc + 0.15], [Rc - 0.6, hc], [bore, hc], [bore, m.h + 0.5]].reverse();
+    const g = new THREE.LatheGeometry(neck.map(([r, y]) => new THREE.Vector2(r, y0 + y)), seg, Math.PI); g.deleteAttribute('uv');
+    // rosca: 2 voltas de filete redondo em hélice no trecho do meio do gargalo
+    const yA = hc + (hn - 2.2) * 0.22, yB = hc + (hn - 2.2) * 0.85, turns = 2, NP = 160, P = [];
+    for (let i = 0; i <= NP; i++) { const u = i / NP, a = u * turns * TAU; P.push(new THREE.Vector3(Math.cos(a) * (Rc + 0.05), y0 + yA + (yB - yA) * u, Math.sin(a) * (Rc + 0.05))); }
+    const th = new THREE.TubeGeometry(new THREE.CatmullRomCurve3(P), lo ? 120 : 400, Math.min(0.75, R * 0.08), 12, false); th.deleteAttribute('uv');
+    const out = mergeGeometries([g.index ? g.toNonIndexed() : g, th.index ? th.toNonIndexed() : th]) || g;
+    // bico independente: disco na boca + cone curto
+    const rD = R * 0.9, rB = R * 0.58, tip = R * 0.13, bico = [[bore, hc + 0.05], [rD, hc + 0.05], [rD, hc - 0.7], [rB, hc - 0.85], [tip, 0.3], [tip * 0.75, 0], [Math.min(bore + 0.35, tip * 0.6), 0.05], [bore, -0.15], [bore, hc + 0.05]].reverse();
+    const bg = new THREE.LatheGeometry(bico.map(([r, y]) => new THREE.Vector2(r, y0 + y)), seg); bg.deleteAttribute('uv'); bg.userData.mat = 'insert';
+    out.userData.extras = [bg]; return out;
   }
   if (m.bocaBaixo) {
     // Frasnaga em pé sobre a tampa (fotos do site Incom, Charlotte/Olympea): na ponta de baixo do corpo, gargalo
@@ -10863,7 +10880,7 @@ function incomProduct(r) {
         // afina em ogiva até ~3 mm. A tampa e o pé do corpo são redondos (Ø 35: no desenho a vista de lado tem a mesma largura da frente)
         const hcO = r1(H * f), hbO = r1(hcO - 2), sc = {};
         ms = [P('Tampa', W, W, hcO, { rBot: 2, rTop: 0.5, oco: true, ocoCima: true, ocoTop: 1.6, capa: true }), // cl171 (dona: "parece uma diferença grande entre frasco e tampa"; fotos OLYMPIA): a tampa tem a largura do pé do frasco (que afina para baixo, taperB 94), não a do topo
-          M('bicoAplicador', { name: 'Gargalo roscado e bico dosador', W: r1(W * 0.56), D: r1(W * 0.56), h: hbO, /* cl174 (dona: "tudo parece que precisa ser maior comparado à foto, o raio da rosca"): rosca ~56% da largura do corpo (foto ampliada); era 0,62 × 22 */ bocaBaixo: true, bocaCurto: true /* cl174 */, gap: -hbO, pesc: false, mola: false, own: true, finish: 'fosco', color: '#f5f2ec' /* cl165/cl166: PP natural leitoso — opaco acetinado (transparente, o canal aparecia na frente da rosca) */ }),
+          M('bicoAplicador', { name: 'Gargalo roscado e bico dosador', W: r1(W * 0.56), D: r1(W * 0.56), h: hbO, /* cl174 (dona: "tudo parece que precisa ser maior comparado à foto, o raio da rosca"): rosca ~56% da largura do corpo (foto ampliada); era 0,62 × 22 */ bocaBaixo: true, bocaCurto: true /* cl174 */, gap: -hbO, pesc: false, mola: false, own: true, finish: 'petFosco', color: '#f6f3ee' /* cl175: gargalo translúcido como o da Beatrice; o bico (extra) é opaco */ /* cl165/cl166: PP natural leitoso — opaco acetinado (transparente, o canal aparecia na frente da rosca) */ }),
           P('Frasco', W, W, H * (1 - f), { ...sc, vol: true, rBot: 0.5, rTop: 1.5, coneZ: { k: r2(3 / W), pw: 2.6 } /* cl173 (dona: "ele é reto no topo"): sem a solda inclinada */ })]; break; }
       if (f < 0.5) { const sc = { ...sq(0.12) }, Dc = r1(W * 0.58); // foto: retângulo de arestas vivas (raio pequeno), não oval
         // fotos do site: tampa sai de baixo e mostra o gargalo roscado com o bico cônico dosador apontando para baixo
@@ -11308,7 +11325,7 @@ function incomProduct(r) {
     // P79/81/85/86: 20-410. Beatrice p76: rosca sem norma cotada, dimensões representativas.
     // cl164 (dona, foto da Beatrice aberta: "beatrice"): o gargalo é comprido (~0,8× o diâmetro, voltas largas por quase todo ele) e tem o inserto
     // dosador em ponta saindo dela, como Julie/Olive ("Tampa e Inserto em PP" no catálogo)
-    const neck = free ? M('gargalo', { name: 'Gargalo roscado', neckStd: 'livre', W: 13, D: 13, h: 16, // detalhe "BICO DOSADOR" da pág. 76 ampliado: Ø ~13, ~1,2× o Ø de altura e a borda de cima lisa
+    const neck = free ? M('gargalo', { name: 'Gargalo roscado', neckStd: 'livre', W: 13, D: 13, h: 13, /* cl175 (dona, foto da Beatrice deitada: "o bico é levemente mais baixo, a parte da rosca"): 16 → 13 */ // detalhe "BICO DOSADOR" da pág. 76 ampliado: Ø ~13, ~1,2× o Ø de altura e a borda de cima lisa
       // cl167 (dona: "rosca não vai até embaixo"): 3 voltas só no alto; embaixo um trecho liso e o anel mais largo junto ao ombro
       pitch: 2.6, turns: 3, threadD: 0.6, threadTop: 0.45, threadBottom: 0.35, ringH: 1.6, ringW: 0.9 })
       : NECK('20/410', { name: 'Rosca 20-410', ringH: 0, ringW: 0 });
