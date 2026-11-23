@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION, ADDITION, INTERSECTION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-23.cl179';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-23.cl180';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -707,7 +707,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-23.cl179';
+const BUILD = '2026-11-23.cl180';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -1956,7 +1956,9 @@ function sprayGeo(m, y0, { lo = false } = {}) {
     // cl175 (Olympea, dona: "a solução é parecida com esse [o gargalo da Beatrice], mas mais curta, o bico é independente"): gargalo
     // translúcido (material da peça) com aro junto ao ombro e rosca em hélice, e o bico como peça à parte (opaca, `insert`): disco apoiado
     // na boca do gargalo e cone curto até uma ponta pequena e achatada. Tudo aponta para baixo (y = 0 é a ponta do bico).
-    const R = m.W / 2, Rc = R * 0.8, hc = m.h * 0.36, hn = m.h - hc, bore = 0.7, seg = lo ? 48 : 128;
+    // cl180 (dona, Charlotte: "não é tão alto"): o gargalo tem no máximo ~1× o próprio Ø de altura (numa tampa alta ele esticava); o cone tem
+    // comprimento próprio (0,21 da peça), e embaixo dele sobra o vão da tampa
+    const R = m.W / 2, Rc = R * 0.8, hn = Math.min(m.h * 0.64, 2 * R * 1.05), hc = m.h - hn, coneL = m.h * 0.21, bore = 0.7, seg = lo ? 48 : 128;
     const neck = [[bore, m.h + 0.5], [R, m.h + 0.5], [R, m.h - 1.6], [Rc + 0.2, m.h - 1.9], [Rc, m.h - 2.2], [Rc, hc + 0.15], [Rc - 0.6, hc], [bore, hc], [bore, m.h + 0.5]].reverse();
     const g = new THREE.LatheGeometry(neck.map(([r, y]) => new THREE.Vector2(r, y0 + y)), seg, Math.PI); g.deleteAttribute('uv');
     // rosca: 2 voltas de filete redondo em hélice no trecho do meio do gargalo
@@ -1967,7 +1969,7 @@ function sprayGeo(m, y0, { lo = false } = {}) {
     const out = mergeGeometries([g.index ? g.toNonIndexed() : g, th.index ? th.toNonIndexed() : th]) || g;
     // bico independente: disco na boca + cone curto
     // cl178 (dona: "um pouco menor o bico"): cone ~22% mais curto e mais estreito; a ponta fica mais acima (gargalo e tampa iguais)
-    const rD = Rc /* cl176 (dona: "a base do bico segue a mesma dimensão da rosca, não é para fora") */, rB = R * 0.48, tip = R * 0.12, y0b = hc * 0.42 /* cl179 (dona: "deixar mais curto ainda"): cone ~42% mais curto que o da cl177 */, bico = [[bore, hc + 0.05], [rD, hc + 0.05], [rD, hc - 0.7], [rB, hc - 0.85], [tip, y0b + 0.3], [tip * 0.75, y0b], [Math.min(bore + 0.35, tip * 0.6), y0b + 0.05], [bore, y0b - 0.15], [bore, hc + 0.05]].reverse();
+    const rD = Rc /* cl176 (dona: "a base do bico segue a mesma dimensão da rosca, não é para fora") */, rB = R * 0.48, tip = R * 0.12, y0b = hc - coneL /* cl179 (dona: "deixar mais curto ainda"); cl180: comprimento fixo */, bico = [[bore, hc + 0.05], [rD, hc + 0.05], [rD, hc - 0.7], [rB, hc - 0.85], [tip, y0b + 0.3], [tip * 0.75, y0b], [Math.min(bore + 0.35, tip * 0.6), y0b + 0.05], [bore, y0b - 0.15], [bore, hc + 0.05]].reverse();
     const bg = new THREE.LatheGeometry(bico.map(([r, y]) => new THREE.Vector2(r, y0 + y)), seg); bg.deleteAttribute('uv'); bg.userData.mat = 'insert';
     out.userData.extras = [bg]; return out;
   }

@@ -1,4 +1,6 @@
-# Atualização Claude — 23/11/2026, cl179
+# Atualização Claude — 23/11/2026, cl180
+
+- **cl180** — Charlotte e Charlotte Rounded, dona (foto do Charlotte aberto: "não é tão alto"): o gargalo do `bocaCurto` tem no máximo ~1,05× o próprio Ø de altura (numa tampa alta ele esticava até encher o vão); o cone tem comprimento próprio (0,21 da peça) e embaixo dele sobra o vão da tampa. Olympea sem mudança (o gargalo dele já era mais curto que o limite).
 
 - **cl179** — Olympea, Charlotte e Charlotte Rounded, dona ("deixar mais curto ainda"): cone do bico independente bem mais curto (ponta a 42% da altura do trecho do bico, era 22%; base 0,48·R).
 
