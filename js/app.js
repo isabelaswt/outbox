@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION, ADDITION, INTERSECTION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-23.cl183';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-23.cl184';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -707,7 +707,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-23.cl183';
+const BUILD = '2026-11-23.cl184';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -10905,7 +10905,7 @@ function incomProduct(r) {
         // fotos do site: tampa sai de baixo e mostra o gargalo roscado com o bico cônico dosador apontando para baixo
         const hcC = r1(H * f), hbC = r1(hcC - 2);
         ms = [P('Tampa', W, Dc, hcC, { ...sc, rBot: 2, rTop: 0.5, oco: true, ocoCima: true, ocoTop: 1.6, capa: true, _t: [0, f] }),
-          M('bicoAplicador', { name: 'Gargalo roscado e bico dosador', W: r1(Dc * 0.5), D: r1(Dc * 0.5), h: hbC, /* cl169: cabe no vão da tampa mais estreita (era 0,62) */ bocaBaixo: true, bocaCurto: true /* cl177 (dona: "charlotte também tem questão com o bico, replicar"): mesma solução do Olympea */, bocaPitch: 0.28, bocaVoltas: 3 /* cl181 (dona: "parece que a rosca é mais espaçada"); cl182: 3 voltas de passo 0,28 Ø, medidas na foto */, bocaPerfil: 'trompete' /* cl182: bico em trompete (foto) */, gap: -hbC, pesc: false, mola: false, own: true, finish: 'petFosco', color: '#f6f3ee' /* cl165/cl166: PP natural leitoso — opaco acetinado (transparente, o canal aparecia na frente da rosca) */ }),
+          M('bicoAplicador', { name: 'Gargalo roscado e bico dosador', W: r1(Dc * 0.5), D: r1(Dc * 0.5), h: hbC, /* cl169: cabe no vão da tampa mais estreita (era 0,62) */ bocaBaixo: true, bocaCurto: true /* cl177 (dona: "charlotte também tem questão com o bico, replicar"): mesma solução do Olympea */, bocaPitch: 0.2, bocaVoltas: 3 /* cl181 (dona: "parece que a rosca é mais espaçada"); cl183: 3 voltas medidas na foto; cl184 (dona: "rosca são mais próximas e perto da tampa"): passo 0,2 Ø, as voltas ficam junto da boca e o resto do gargalo fica liso até o ombro */, bocaPerfil: 'trompete' /* cl182: bico em trompete (foto) */, gap: -hbC, pesc: false, mola: false, own: true, finish: 'petFosco', color: '#f6f3ee' /* cl165/cl166: PP natural leitoso — opaco acetinado (transparente, o canal aparecia na frente da rosca) */ }),
           P('Frasco', W, Dc, H * (1 - f), { ...sc, vol: true, rBot: 0.5, rTop: r.t === 'frnr' ? W * 0.4 : 2, _t: [f, 1] })]; break; }
       const sb = r.n === 'Beatrice' ? sq(0.2) : {}; // Beatrice: frasco retangular de cantos arredondados (foto)
       // cl164 (dona: "ele não é quadrado, é fino"): sem profundidade no catálogo — 45 ml em 42,9 × ~73 mm de corpo dão ~20 mm (quadrado seriam ~105 ml)

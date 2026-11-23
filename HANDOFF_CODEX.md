@@ -1,4 +1,6 @@
-# Atualização Claude — 23/11/2026, cl183
+# Atualização Claude — 23/11/2026, cl184
+
+- **cl184** — Charlotte e Charlotte Rounded, dona ("rosca são mais próximas e perto da tampa"): passo da hélice 0,28 → 0,2 do Ø do gargalo; as 3 voltas ficam juntas logo acima do bico (onde a tampa rosqueia) e o resto do gargalo fica liso até o ombro.
 
 - **cl183** — Olympea, Charlotte e Charlotte Rounded, dona ("bicos ainda estão diferentes da referência das fotos, fazer exatamente igual"): gargalo e bico do `bocaCurto` refeitos com o perfil medido nas fotos, tudo em função do Ø do gargalo (D). Olympea (foto aberta): aro do ombro 1,13 D × 0,08 D, gargalo liso 0,74 D, 2 voltas de filete grosso (Ø 0,09 D) logo abaixo da boca, bico com disco 0,08 D do mesmo Ø do gargalo e cone reto 0,47 D (base 0,75 D, ponta chata 0,2 D). Charlotte (foto da bisnaga branca aberta, `bocaPerfil: 'trompete'`): gargalo 1,05 D, 3 voltas de passo 0,28 D (`bocaVoltas`), bico em trompete: sai largo (0,86 D), afina em curva côncava até tubo de 0,25 D com ponta redonda, altura 0,72 D. (cl182 só carimbo de cache.)
 
