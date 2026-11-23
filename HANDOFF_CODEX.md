@@ -1,4 +1,6 @@
-# Atualização Claude — 23/11/2026, cl180
+# Atualização Claude — 23/11/2026, cl181
+
+- **cl181** — Charlotte e Charlotte Rounded, dona ("parece que a rosca é mais espaçada"): passo da hélice 0,19 → 0,34 do Ø do gargalo (`bocaPitch`); Olympea segue com a rosca junta.
 
 - **cl180** — Charlotte e Charlotte Rounded, dona (foto do Charlotte aberto: "não é tão alto"): o gargalo do `bocaCurto` tem no máximo ~1,05× o próprio Ø de altura (numa tampa alta ele esticava até encher o vão); o cone tem comprimento próprio (0,21 da peça) e embaixo dele sobra o vão da tampa. Olympea sem mudança (o gargalo dele já era mais curto que o limite).
 

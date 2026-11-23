@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION, ADDITION, INTERSECTION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-23.cl180';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-23.cl181';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -707,7 +707,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-23.cl180';
+const BUILD = '2026-11-23.cl181';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -1963,7 +1963,7 @@ function sprayGeo(m, y0, { lo = false } = {}) {
     const g = new THREE.LatheGeometry(neck.map(([r, y]) => new THREE.Vector2(r, y0 + y)), seg, Math.PI); g.deleteAttribute('uv');
     // rosca: 2 voltas de filete redondo em hélice no trecho do meio do gargalo
     // cl177 (dona, foto ampliada: "rosca é mais junta"): as 2 voltas ficam juntas, logo acima da boca (passo ~0,19 do Ø do gargalo); o resto do gargalo é liso até o aro
-    const pitchR = r1(Rc * 2 * 0.19), yA = hc + 1, yB = yA + pitchR * 2, turns = 2, NP = 160, P = [];
+    const pitchR = r1(Rc * 2 * (m.bocaPitch ?? 0.19)) /* cl181: Charlotte com voltas mais espaçadas (bocaPitch) */, yA = hc + 1, yB = yA + pitchR * 2, turns = 2, NP = 160, P = [];
     for (let i = 0; i <= NP; i++) { const u = i / NP, a = u * turns * TAU; P.push(new THREE.Vector3(Math.cos(a) * (Rc + 0.05), y0 + yA + (yB - yA) * u, Math.sin(a) * (Rc + 0.05))); }
     const th = new THREE.TubeGeometry(new THREE.CatmullRomCurve3(P), lo ? 120 : 400, Math.min(0.75, R * 0.08), 12, false); th.deleteAttribute('uv');
     const out = mergeGeometries([g.index ? g.toNonIndexed() : g, th.index ? th.toNonIndexed() : th]) || g;
@@ -10890,7 +10890,7 @@ function incomProduct(r) {
         // fotos do site: tampa sai de baixo e mostra o gargalo roscado com o bico cônico dosador apontando para baixo
         const hcC = r1(H * f), hbC = r1(hcC - 2);
         ms = [P('Tampa', W, Dc, hcC, { ...sc, rBot: 2, rTop: 0.5, oco: true, ocoCima: true, ocoTop: 1.6, capa: true, _t: [0, f] }),
-          M('bicoAplicador', { name: 'Gargalo roscado e bico dosador', W: r1(Dc * 0.5), D: r1(Dc * 0.5), h: hbC, /* cl169: cabe no vão da tampa mais estreita (era 0,62) */ bocaBaixo: true, bocaCurto: true /* cl177 (dona: "charlotte também tem questão com o bico, replicar"): mesma solução do Olympea */, gap: -hbC, pesc: false, mola: false, own: true, finish: 'petFosco', color: '#f6f3ee' /* cl165/cl166: PP natural leitoso — opaco acetinado (transparente, o canal aparecia na frente da rosca) */ }),
+          M('bicoAplicador', { name: 'Gargalo roscado e bico dosador', W: r1(Dc * 0.5), D: r1(Dc * 0.5), h: hbC, /* cl169: cabe no vão da tampa mais estreita (era 0,62) */ bocaBaixo: true, bocaCurto: true /* cl177 (dona: "charlotte também tem questão com o bico, replicar"): mesma solução do Olympea */, bocaPitch: 0.34 /* cl181 (dona: "parece que a rosca é mais espaçada") */, gap: -hbC, pesc: false, mola: false, own: true, finish: 'petFosco', color: '#f6f3ee' /* cl165/cl166: PP natural leitoso — opaco acetinado (transparente, o canal aparecia na frente da rosca) */ }),
           P('Frasco', W, Dc, H * (1 - f), { ...sc, vol: true, rBot: 0.5, rTop: r.t === 'frnr' ? W * 0.4 : 2, _t: [f, 1] })]; break; }
       const sb = r.n === 'Beatrice' ? sq(0.2) : {}; // Beatrice: frasco retangular de cantos arredondados (foto)
       // cl164 (dona: "ele não é quadrado, é fino"): sem profundidade no catálogo — 45 ml em 42,9 × ~73 mm de corpo dão ~20 mm (quadrado seriam ~105 ml)

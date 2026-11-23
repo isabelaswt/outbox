@@ -181,6 +181,7 @@ Pendências conhecidas (precisam de dado ou de decisão; não invente):
 
 **Registro** (o mais novo em cima):
 
+- **cl181** — Charlotte e Charlotte Rounded, dona ("parece que a rosca é mais espaçada"): passo da hélice 0,19 → 0,34 do Ø do gargalo (`bocaPitch`); Olympea segue com a rosca junta.
 - **cl180** — Charlotte e Charlotte Rounded, dona (foto do Charlotte aberto: "não é tão alto"): o gargalo do `bocaCurto` tem no máximo ~1,05× o próprio Ø de altura (numa tampa alta ele esticava até encher o vão); o cone tem comprimento próprio (0,21 da peça) e embaixo dele sobra o vão da tampa. Olympea sem mudança (o gargalo dele já era mais curto que o limite).
 - **cl179** — Olympea, Charlotte e Charlotte Rounded, dona ("deixar mais curto ainda"): cone do bico independente bem mais curto (ponta a 42% da altura do trecho do bico, era 22%; base 0,48·R).
 - **cl178** — Olympea, Charlotte e Charlotte Rounded, dona (foto ao lado do render aberto: "um pouco menor o bico"): o cone do bico independente ficou ~22% mais curto e mais estreito (base 0,5·R, ponta 0,12·R); gargalo, rosca e tampa iguais — a ponta só fica mais acima.
