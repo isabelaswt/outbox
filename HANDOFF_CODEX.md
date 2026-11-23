@@ -1,4 +1,6 @@
-# Atualização Claude — 23/11/2026, cl178
+# Atualização Claude — 23/11/2026, cl179
+
+- **cl179** — Olympea, Charlotte e Charlotte Rounded, dona ("deixar mais curto ainda"): cone do bico independente bem mais curto (ponta a 42% da altura do trecho do bico, era 22%; base 0,48·R).
 
 - **cl178** — Olympea, Charlotte e Charlotte Rounded, dona (foto ao lado do render aberto: "um pouco menor o bico"): o cone do bico independente ficou ~22% mais curto e mais estreito (base 0,5·R, ponta 0,12·R); gargalo, rosca e tampa iguais — a ponta só fica mais acima.
 

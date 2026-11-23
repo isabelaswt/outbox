@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION, ADDITION, INTERSECTION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-23.cl178';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-23.cl179';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -707,7 +707,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-23.cl178';
+const BUILD = '2026-11-23.cl179';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -1967,7 +1967,7 @@ function sprayGeo(m, y0, { lo = false } = {}) {
     const out = mergeGeometries([g.index ? g.toNonIndexed() : g, th.index ? th.toNonIndexed() : th]) || g;
     // bico independente: disco na boca + cone curto
     // cl178 (dona: "um pouco menor o bico"): cone ~22% mais curto e mais estreito; a ponta fica mais acima (gargalo e tampa iguais)
-    const rD = Rc /* cl176 (dona: "a base do bico segue a mesma dimensão da rosca, não é para fora") */, rB = R * 0.5, tip = R * 0.12, y0b = hc * 0.22, bico = [[bore, hc + 0.05], [rD, hc + 0.05], [rD, hc - 0.7], [rB, hc - 0.85], [tip, y0b + 0.3], [tip * 0.75, y0b], [Math.min(bore + 0.35, tip * 0.6), y0b + 0.05], [bore, y0b - 0.15], [bore, hc + 0.05]].reverse();
+    const rD = Rc /* cl176 (dona: "a base do bico segue a mesma dimensão da rosca, não é para fora") */, rB = R * 0.48, tip = R * 0.12, y0b = hc * 0.42 /* cl179 (dona: "deixar mais curto ainda"): cone ~42% mais curto que o da cl177 */, bico = [[bore, hc + 0.05], [rD, hc + 0.05], [rD, hc - 0.7], [rB, hc - 0.85], [tip, y0b + 0.3], [tip * 0.75, y0b], [Math.min(bore + 0.35, tip * 0.6), y0b + 0.05], [bore, y0b - 0.15], [bore, hc + 0.05]].reverse();
     const bg = new THREE.LatheGeometry(bico.map(([r, y]) => new THREE.Vector2(r, y0 + y)), seg); bg.deleteAttribute('uv'); bg.userData.mat = 'insert';
     out.userData.extras = [bg]; return out;
   }

@@ -181,6 +181,7 @@ Pendências conhecidas (precisam de dado ou de decisão; não invente):
 
 **Registro** (o mais novo em cima):
 
+- **cl179** — Olympea, Charlotte e Charlotte Rounded, dona ("deixar mais curto ainda"): cone do bico independente bem mais curto (ponta a 42% da altura do trecho do bico, era 22%; base 0,48·R).
 - **cl178** — Olympea, Charlotte e Charlotte Rounded, dona (foto ao lado do render aberto: "um pouco menor o bico"): o cone do bico independente ficou ~22% mais curto e mais estreito (base 0,5·R, ponta 0,12·R); gargalo, rosca e tampa iguais — a ponta só fica mais acima.
 - **cl177** — Frasnagas, dona: (1) Beatrice (foto: "base parece ser mais arredondada"): quina de baixo do frasco 0,5 → 4 mm. (2) Olympea (foto ampliada: "rosca é mais junta, comparar as duas"): as 2 voltas da hélice ficam juntas logo acima da boca (passo ~0,19 do Ø do gargalo); o resto do gargalo é liso até o aro do ombro. (3) Charlotte e Charlotte Rounded ("charlotte também tem questão com o bico, replicar"): mesma solução do Olympea (`bocaCurto`): gargalo translúcido com rosca junta e bico independente opaco de cone curto, na largura que cabe na tampa deles (50% da profundidade). Miniaturas dos quatro regeradas.
 - **cl176** — Olympea, dona ("essa base do bico segue a mesma dimensão da rosca, não é para fora"): o disco do bico independente passa de 0,9·R para o raio do gargalo (`Rc`), rente a ele.
