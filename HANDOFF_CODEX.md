@@ -1,4 +1,6 @@
-# Atualização Claude — 23/11/2026, cl184
+# Atualização Claude — 23/11/2026, cl185
+
+- **cl185** — Charlotte e Charlotte Rounded, dona ("a ponta do bico não é tão arredondada assim"): a ponta do trompete deixou de ser meia esfera; agora é chata, só com a borda arredondada (raio 0,35 do raio da ponta).
 
 - **cl184** — Charlotte e Charlotte Rounded, dona ("rosca são mais próximas e perto da tampa"): passo da hélice 0,28 → 0,2 do Ø do gargalo; as 3 voltas ficam juntas logo acima do bico (onde a tampa rosqueia) e o resto do gargalo fica liso até o ombro.
 

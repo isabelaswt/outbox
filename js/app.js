@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION, ADDITION, INTERSECTION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-23.cl184';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-23.cl185';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -707,7 +707,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-23.cl184';
+const BUILD = '2026-11-23.cl185';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -1977,8 +1977,9 @@ function sprayGeo(m, y0, { lo = false } = {}) {
     if (tromp) {
       const lipT = D * 0.05, yb = hc - lipT, L = D * 0.72, rb = Rc * 0.86, rt = Rc * 0.25, yt = yb - L, N = lo ? 10 : 24;
       bico = [[bore, hc + 0.05], [Rc, hc + 0.05], [Rc, yb + 0.1], [Rc - 0.1, yb]];
-      for (let i = 0; i <= N; i++) { const s = 1 - i / N; bico.push([rt + (rb - rt) * Math.pow(s, 2.6), yt + rt + (yb - yt - rt) * s]); }
-      for (let i = 1; i <= 8; i++) { const a = i / 8 * Math.PI / 2; bico.push([Math.max(bore, rt * Math.cos(a)), yt + rt - rt * Math.sin(a)]); }
+      const e = rt * 0.35 /* cl185 (dona: "a ponta do bico não é tão arredondada assim"): ponta chata, só a borda arredondada (era meia esfera) */;
+      for (let i = 0; i <= N; i++) { const s = 1 - i / N; bico.push([rt + (rb - rt) * Math.pow(s, 2.6), yt + e + (yb - yt - e) * s]); }
+      for (let i = 1; i <= 6; i++) { const a = i / 6 * Math.PI / 2; bico.push([Math.max(bore, rt - e + e * Math.cos(a)), yt + e - e * Math.sin(a)]); }
       bico.push([bore, yt], [bore, hc + 0.05]);
     } else {
       const lipT = D * 0.08, yb = hc - lipT, L = D * 0.47, rb = Rc * 0.75, rt = Rc * 0.2, yt = yb - L, e = Math.min(0.35, rt * 0.3);
