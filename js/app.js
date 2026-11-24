@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION, ADDITION, INTERSECTION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-23.cl245';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-23.cl246';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -707,7 +707,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-23.cl245';
+const BUILD = '2026-11-23.cl246';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -10673,7 +10673,7 @@ function fitValveIn(t, cap, wv0) {
 // godês) entra montado: aparece pela tampa transparente, ao abrir ou no Explodir. Compactos e
 // paletas têm o desenho em perspectiva no catálogo: ficam com a forma básica.
 // Divisão tampa × frasco lida a olho no desenho técnico (a extração automática não achou a linha)
-const SPLIT_FIX = { 99: 48.3 / 74, 101: 0.55, 102: 0.54, 96: 0.58, 98: 0.58, 100: 47.8 / 87.1 /* cl245 (dona: "proporção de tampa e frasco parecem erradas"; desenho p.100 medido: tampa 32,5, frasco 47,8, argola 6,7 mm); era 0,6 */, 103: 0.63, 104: 0.5, 107: 0.57, 108: 0.65, 123: 0.58, 124: 0.65, 125: 0.56, 126: 0.66, 130: 0.66, 131: 0.5 };
+const SPLIT_FIX = { 99: 48.3 / 74, 101: 0.55, 102: 0.54, 96: 0.58, 98: 0.58, 100: 47.8 / 87.1 /* cl245 (dona: "proporção de tampa e frasco parecem erradas"; desenho p.100 medido: tampa 32,5, frasco 47,8, argola 6,7 mm); era 0,6 */, 103: 0.63, 104: 61.2 / 112.3 /* cl246 (desenho p.104 medido, irmão do Moma Charm): frasco 61,2, tampa 43,6, argola 7,4 mm; era 0,5 */, 107: 0.57, 108: 0.65, 123: 0.58, 124: 0.65, 125: 0.56, 126: 0.66, 130: 0.66, 131: 0.5 };
 // Cor de exemplo do conteúdo (maquiagem): sempre a mesma para o mesmo modelo
 const BATOM_CORES = ['#9b1b30', '#e0604e', '#c43a3a', '#d9667f', '#7a2846', '#b5525a'];
 const GLOSS_CORES = ['#b8323f', '#d77a7a', '#a3473a', '#c9707e', '#8c2f45', '#e09a8a', '#b85c4f', '#d45f74'];
@@ -11033,7 +11033,7 @@ function incomProduct(r) {
       const tl = pr ? (pr.p.find(q => q[0] > f + 0.1 && (q[1] + q[2]) / 2 < 0.6 * Math.max(...pr.p.map(z => (z[1] + z[2]) / 2))) || [1])[0] : 1;
       // Págs.100/104: vão circular Ø4,5 mm. Seção do aro 1 mm continua estimada;
       // a altura reservada ao olhal é compensada na tampa para manter a cota total.
-      const charm = /Charm/.test(r.n), arg = tl < 1 && charm ? { R: 3.25, r: 1, feet: true, ...(r.n === 'Moma Charm' ? { emb: 1.8 } /* cl245: argola sai 6,7 mm acima da tampa (desenho) */ : {}) } : null;
+      const charm = /Charm/.test(r.n), arg = tl < 1 && charm ? { R: 3.25, r: 1, feet: true, ...(r.n === 'Moma Charm' ? { emb: 1.8 } /* cl245: argola sai 6,7 mm acima da tampa (desenho) */ : r.n === 'Oscar Charm' ? { emb: 1.1 } /* cl246: 7,4 mm (desenho p.104) */ : {}) } : null;
       const cap = P('Tampa', W, D, H * (tl - f), { ...s0, ...(r.n === 'Silhouette' ? { perfilReto: true, rLivre: true, rTop: 1.5, rBot: 0.5 } : {}), ...(/All Crystal/.test(r.n) ? { own: true, finish: 'pet', color: '#ffffff', topDip: 0.5, roscaInt: { r: r1((Math.min(W, D) - 3) / 2 + 0.35), y0: r1(H * (tl - f) * 0.12), y1: r1(H * (tl - f) * 0.5), n: 5 } } : {}), rTop: arg ? 1.2 : r.t === 'gloss' ? W * 0.2 : r.t === 'glosssq' ? r1(Math.min(W, D ?? W) * 0.18) : 1.2, ...(tl < 1 && !arg && r.t !== 'glosssq' ? { domeTop: r1(W * 0.42) } : {}), ...(arg ? { argola: arg } : {}), ...(r.t === 'glosssq' ? {} : { _t: [f, tl] }) }); // Timeless: tampa quadrada de topo reto e borda arredondada (o perfil redondo do desenho virava ponta de pirâmide)
       // Fotos p.94-108 e 122-126: tampa, haste e aplicador saem juntos para conferência aberta.
       Object.assign(cap, { capa: 'vira', capaCarry: true, oco: true }); /* cl206 (revisão pelas fotos: em todas as fotos abertas de gloss e máscara a tampa fica em pé com a haste para cima, ao lado do frasco): vira em vez de deitar */

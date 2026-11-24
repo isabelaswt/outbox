@@ -1,4 +1,6 @@
-# Atualização Claude — 24/11/2026, cl245
+# Atualização Claude — 24/11/2026, cl246
+
+- **cl246** — Oscar Charm, irmão do Moma Charm (desenho da p.104 medido): o corte tampa/frasco passou de 0,5 para 61,2/112,3. Frasco 56 → 61,2 mm, tampa 43,7 mm, argola 7,4 mm acima da tampa (`emb` 1,1).
 
 - **cl245** — Moma Charm, dona ("proporção de tampa e frasco parecem erradas"; desenho da p.100 medido em px): o corte tampa/frasco estava fixo em 0,6 (`SPLIT_FIX[100]`) e agora é 47,8/87,1.
   - Frasco: 52,3 → 47,8 mm.

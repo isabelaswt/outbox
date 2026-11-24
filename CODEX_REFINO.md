@@ -241,6 +241,7 @@ Pendências conhecidas (precisam de dado ou de decisão; não invente):
   - Frasco: 52,3 → 47,8 mm.
   - Tampa: 26,9 → 32,6 mm.
   - Argola: sai 6,7 mm acima da tampa. Nova opção `emb` (embutimento) na argola: 1,8 mm no Moma Charm; o padrão continua 0,6.
+- **cl246** — Oscar Charm, irmão do Moma Charm (desenho da p.104 medido): o corte tampa/frasco passou de 0,5 para 61,2/112,3. Frasco 56 → 61,2 mm, tampa 43,7 mm, argola 7,4 mm acima da tampa (`emb` 1,1).
   - No Abrir a tampa fica em pé ao lado da bala, com o fecho para cima. Novo modo `capa: 'pe'`: sai sem girar. Antes ficava deitada.
   - Long, Long Abaulada e Long Lipview: a bala sobe `lb * 0,85` (como Ella e Squared). Antes subia só 41/320 da tampa (Long) ou 0,45 (Lipview) e mal aparecia; nas fotos ela sai ~20% da altura do batom aberto.
   - Potes revisados sem divergências a corrigir. As peneiras pretas das fotos são acessório opcional.
