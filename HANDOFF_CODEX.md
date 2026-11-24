@@ -1,4 +1,6 @@
-# Atualização Claude — 24/11/2026, cl243
+# Atualização Claude — 24/11/2026, cl244
+
+- **cl244** — Guggen Roll On, dona ("parece que a bola é maior"): a faixa prateada vista pelo aro transparente da foto também é a bola. A bola volta a ~0,75 da largura da rosca (6,9 → 8,6 mm) e quase preenche a cúpula, que continua fechando rente a ela.
 
 - **cl243** — Guggen Roll On, dona ("ela não faz esse gomo, é mais no formato da bola"): o topo do suporte agora é uma cúpula esférica contínua, com o raio do aro. Ela sai tangente da parede reta e fecha rente à bola, ~10% acima do equador, com folga de 0,3 mm. Antes era uma borda abaulada (perfil reto e quarto de círculo) que parecia um gomo.
 

@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION, ADDITION, INTERSECTION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-23.cl243';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-23.cl244';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -707,7 +707,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-23.cl243';
+const BUILD = '2026-11-23.cl244';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -11044,7 +11044,7 @@ function incomProduct(r) {
       if (r.t === 'glosssq') cap.h = r2(H * (1 - f)); // Timeless: sem o recorte do ápice, a tampa vai até a cota total
       const wv = r1(Math.max(5, Math.min(Math.min(W, D) * 0.55, 2 * (capHalfAt(cap, 0) - 1.6))));
       // Guggen Roll On (foto): no gargalo um suporte transparente com a bolinha de aço; a tampa veste os dois
-      if (/Roll On/.test(r.n)) { const hs = 6, wsup = r1(Math.min(W, D) * 0.62), db = r1(wsup * 0.6), wcup = r1(wsup * 0.9); /* cl241 (dona: "não abre, acompanha a bola"; foto p.98): o aro tem a largura do miolo da rosca e fecha rente à bola, sem abrir para fora; bola ~0,6 da rosca */
+      if (/Roll On/.test(r.n)) { const hs = 6, wsup = r1(Math.min(W, D) * 0.62), db = r1(wsup * 0.75), wcup = r1(wsup * 0.9); /* cl244 (dona: "parece que a bola é maior"): a faixa prateada vista pelo aro transparente também é a bola — ~0,75 da rosca */ /* cl241 (dona: "não abre, acompanha a bola"; foto p.98): o aro tem a largura do miolo da rosca e fecha rente à bola, sem abrir para fora; bola ~0,6 da rosca */
         // cl233 (dona, detalhe da p.98: "rollon abraça a esfera"): acima da rosca o suporte sobe liso e se curva para dentro, abraçando a
         // esfera até ~15% acima do equador; só a calota de cima fica de fora. Esfera ~0,75 da largura do suporte (foto)
         // cl243 (dona: "ela não faz esse gomo, é mais no formato da bola"): o topo é uma cúpula esférica contínua (raio = do aro),
