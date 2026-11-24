@@ -1,4 +1,10 @@
-# Atualização Claude — 24/11/2026, cl249
+# Atualização Claude — 24/11/2026, cl254
+
+- **cl250–254** — Tate e Timeless, dona ("proporção frasco e tampa parecem erradas"):
+  - Tate (desenho p.106 medido): frasco 50,3 mm (`SPLIT_FIX[106]`; antes ~0,52 do total). O topo da tampa é reto, de cantos bem arredondados (`rTop` 0,28 W), e não a meia-esfera de antes. Líquido com piso reto.
+  - Timeless: a proporção já batia com o desenho p.107. O que destoava das fotos era o cristal: parede e fundo grossos, com a cor recuada.
+  - Tate, Timeless e Timeless Plus: `liqInset` 0,22 / 0,18 W e `fundo` 0,26 W. O recuo é ~1,4× o medido na foto, porque o cristal amplia o líquido como lente.
+  - Testado e descartado: nível do líquido 95%. Mostrava a haste preta acima do líquido.
 
 - **cl247–249** — Oscar All Crystal, dona ("faltou rosca interna da tampa" e "rever todo, topo do frasco errado"); revisão completa pela foto:
   - Gargalo: largo (0,78 W = 14,5 mm) e curto (0,5 W = 9,3 mm), com 4 voltas. Antes era estreito e alto (19 mm, 0,55 da tampa).

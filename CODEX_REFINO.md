@@ -247,6 +247,11 @@ Pendências conhecidas (precisam de dado ou de decisão; não invente):
   - Ombro do frasco: arredondado até o gargalo (`rLivre`, `rTop` 2,2).
   - Rosca fêmea: cortada na própria tampa de cristal (`femaleThread` na tampa). A tampa é maciça nos ~45% de cima (`ocoTop`) e tem o furo roscado do Ø do gargalo embaixo; fechada, a rosca aparece pelo cristal.
   - Inserto: virou um anel fino e incolor. Transparente dentro de transparente não aparece no render; por isso a rosca do inserto sumia.
+- **cl250–254** — Tate e Timeless, dona ("proporção frasco e tampa parecem erradas"):
+  - Tate (desenho p.106 medido): frasco 50,3 mm (`SPLIT_FIX[106]`; antes ~0,52 do total). O topo da tampa é reto, de cantos bem arredondados (`rTop` 0,28 W), e não a meia-esfera de antes. Líquido com piso reto.
+  - Timeless: a proporção já batia com o desenho p.107. O que destoava das fotos era o cristal: parede e fundo grossos, com a cor recuada.
+  - Tate, Timeless e Timeless Plus: `liqInset` 0,22 / 0,18 W e `fundo` 0,26 W. O recuo é ~1,4× o medido na foto, porque o cristal amplia o líquido como lente.
+  - Testado e descartado: nível do líquido 95%. Mostrava a haste preta acima do líquido.
   - No Abrir a tampa fica em pé ao lado da bala, com o fecho para cima. Novo modo `capa: 'pe'`: sai sem girar. Antes ficava deitada.
   - Long, Long Abaulada e Long Lipview: a bala sobe `lb * 0,85` (como Ella e Squared). Antes subia só 41/320 da tampa (Long) ou 0,45 (Lipview) e mal aparecia; nas fotos ela sai ~20% da altura do batom aberto.
   - Potes revisados sem divergências a corrigir. As peneiras pretas das fotos são acessório opcional.
