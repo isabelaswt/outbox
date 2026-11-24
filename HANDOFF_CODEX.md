@@ -1,4 +1,8 @@
-# Atualização Claude — 24/11/2026, cl222
+# Atualização Claude — 24/11/2026, cl224
+
+- **cl224** — Ella, dona ("está errado a tampa, é curva"): o topo da tampa era uma rampa quase reta na largura toda. Agora é plano em ~40% da largura e só o lado baixo rola em curva convexa (`curvaU: 0.6`, queda 2,2 mm), como nas fotos 1/2.
+
+- **cl223** — Tube, pente fino pela foto aberta (3.jpg, medida): de frente o corpo afina em linha reta do fundo ao ombro (0,81); o ombro é plano com quina pequena (`rTop` 1,6, antes abaulado); a passagem achatado→redondo corre o corpo todo; tampa 0,93 W (138/148 px).
 
 - **cl222** — Revisão pelas fotos (máscaras, sticks, compactos, paletas):
   - Máscaras: haste preta (`rodColor`), como em todas as fotos; antes era branca.

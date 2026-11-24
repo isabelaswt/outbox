@@ -205,6 +205,10 @@ Pendências conhecidas (precisam de dado ou de decisão; não invente):
 - **cl217** — Dispensadores e frascos com sobretampa (Bulb, Dispensing 15/30/60, Quadrado, Amsterdam Deluxe…), pela foto aberta do Bulb: no Abrir a sobretampa transparente sai e fica ao lado da bomba (`capa: 'vira'`). A regra do cl212 agora vale também quando nenhuma outra peça sai.
 - **cl219** — Batons, revisão própria pelas fotos abertas:
 - **cl221** — Tube, dona (foto dos Tubes: "base acaba circular"): perfil próprio [t, a, b, n] no lugar do contorno do desenho. Corpo achatado (superelipse n 3,4, D 0,68 W) que, nos ~40% junto ao gargalo, vira suavemente um círculo de 0,9 W, o Ø da tampa. Essa transição é a "linha diagonal" das fotos; a torção (`polyTwist`) saiu. (cl220 só carimbo intermediário.)
+- **cl224** — Ella, dona ("está errado a tampa, é curva"): o topo da tampa era uma rampa quase reta na largura toda. Agora é plano em ~40% da largura e só o lado baixo rola em curva convexa (`curvaU: 0.6`, queda 2,2 mm), como nas fotos 1/2.
+
+- **cl223** — Tube, pente fino pela foto aberta (3.jpg, medida): de frente o corpo afina em linha reta do fundo ao ombro (0,81); o ombro é plano com quina pequena (`rTop` 1,6, antes abaulado); a passagem achatado→redondo corre o corpo todo; tampa 0,93 W (138/148 px).
+
 - **cl222** — Revisão pelas fotos (máscaras, sticks, compactos, paletas):
   - Máscaras: haste preta (`rodColor`), como em todas as fotos; antes era branca.
   - Chubby Stick M/G: no Abrir a tampa fica em pé ao lado (`capa: 'pe'`).
