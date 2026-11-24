@@ -1,4 +1,6 @@
-# Atualização Claude — 24/11/2026, cl232
+# Atualização Claude — 24/11/2026, cl233
+
+- **cl233** — Guggen Roll On, dona (detalhe da p.98: "rollon abraça a esfera"): novo aro transparente liso acima da rosca do suporte (`Aro que abraça a esfera`, perfil próprio). Ele se curva para dentro e envolve a esfera até ~15% acima do equador, deixando só a calota de fora. Esfera 7,8 → 8,6 mm (~0,75 da largura do suporte, como na foto). Antes a esfera ficava pousada no topo reto do suporte.
 
 - **cl232** — Glosses, dona (Guggen: "aumentar levemente o diâmetro da haste"): o limite da haste em `wandFit` passou de 0,4 para 0,5 do Ø do gargalo. Guggen: haste 4,1 → 5,1 mm (0,27 da tampa; foto 0,29). A ponta segue limitada a 0,62.
 

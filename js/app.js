@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION, ADDITION, INTERSECTION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-23.cl232';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-23.cl233';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -707,7 +707,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-23.cl232';
+const BUILD = '2026-11-23.cl233';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -11036,15 +11036,19 @@ function incomProduct(r) {
       if (r.t === 'glosssq') cap.h = r2(H * (1 - f)); // Timeless: sem o recorte do ápice, a tampa vai até a cota total
       const wv = r1(Math.max(5, Math.min(Math.min(W, D) * 0.55, 2 * (capHalfAt(cap, 0) - 1.6))));
       // Guggen Roll On (foto): no gargalo um suporte transparente com a bolinha de aço; a tampa veste os dois
-      if (/Roll On/.test(r.n)) { const hs = 6, db = r1(Math.min(8, Math.min(W, D) * 0.42)), wsup = r1(Math.min(W, D) * 0.62);
+      if (/Roll On/.test(r.n)) { const hs = 6, wsup = r1(Math.min(W, D) * 0.62), db = r1(Math.min(9, wsup * 0.75)), hcup = r1(db * 0.45);
+        // cl233 (dona, detalhe da p.98: "rollon abraça a esfera"): acima da rosca o suporte sobe liso e se curva para dentro, abraçando a
+        // esfera até ~15% acima do equador; só a calota de cima fica de fora. Esfera ~0,75 da largura do suporte (foto)
+        const kTop = Math.sqrt(0.25 - 0.15 ** 2) * db / (wsup / 2), cupProf = Array.from({ length: 17 }, (_, i) => { const t = i / 16, u = clamp((t - 0.3) / 0.7, 0, 1), a = 1 - (1 - kTop) * (1 - Math.sqrt(1 - u * u)); return [t, a, a, 2, 0, 0]; });
         // P98, detalhe ampliado: suporte PE aberto com filetes externos, não cilindro liso.
         // Passo ~12% do diâmetro e relevo ~4% estimados na foto; sem norma industrial presumida.
         ms = [P('Frasco', W, D, H * f, { ...s0, vol: true, rBot: 2.4, ...gl, ocoTopo: true, liqType: 'transparente', liqColor: '#cfe9f2', _t: [0, f] }),
           M('gargalo', { name: 'Suporte roscado do roll-on', neckStd: 'livre', W: wsup, D: wsup, h: hs,
             pitch: r1(wsup * 0.12), turns: 2.5, threadD: r1(wsup * 0.04), ringH: 0, ringW: 0, embed: 0,
             neckFillet: 0, exposedNeck: true, tuboAberto: true, own: true, finish: 'pet', color: '#ffffff' }),
-          P('Esfera de aço', db, null, db, { rTop: db / 2, rBot: db / 2, gap: r1(hs - db * 0.4), own: true, color: '#d6d8da', finish: 'metal' }),
-          { ...cap, gap: r1(-(hs + db * 0.6)) }];
+          P('Aro que abraça a esfera', wsup, null, hcup, { prof: cupProf, smoothProf: false, gap: hs, own: true, finish: 'pet', color: '#ffffff' }),
+          P('Esfera de aço', db, null, db, { rTop: db / 2, rBot: db / 2, gap: r1(-db * 0.65), own: true, color: '#d6d8da', finish: 'metal' }),
+          { ...cap, gap: r1(-(hs + db * 0.8)) }];
         const n = ms[1]; ms.at(-1).femaleThread = { W: n.W, h: n.h, pitch: n.pitch, turns: n.turns, threadD: n.threadD, ringH: n.ringH };
         break; } // tampa assenta no ombro; rosca fêmea corresponde ao suporte do roll-on.
       // Foto da dona: tampa externa e inserto roscado portando a haste são peças distintas.
