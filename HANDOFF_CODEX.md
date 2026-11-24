@@ -1,4 +1,6 @@
-# Atualização Claude — 24/11/2026, cl231
+# Atualização Claude — 24/11/2026, cl232
+
+- **cl232** — Glosses, dona (Guggen: "aumentar levemente o diâmetro da haste"): o limite da haste em `wandFit` passou de 0,4 para 0,5 do Ø do gargalo. Guggen: haste 4,1 → 5,1 mm (0,27 da tampa; foto 0,29). A ponta segue limitada a 0,62.
 
 - **cl231** — Berlim Plus, dona ("parece muito alto a esponjinha da haste"): ponta flocada 1,07 → 0,65 W (~14 mm, cerca de 2× a própria largura), como nas miniaturas dos aplicadores #54/#56AL/#65 do catálogo. A foto principal da p. 95 exagera a ponta.
 

@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION, ADDITION, INTERSECTION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-23.cl231';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-23.cl232';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -707,7 +707,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-23.cl231';
+const BUILD = '2026-11-23.cl232';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -10693,7 +10693,7 @@ const GLOSS_WAND = { Berlim: [0.21, 0.6, 2, 0.28], 'Berlim Plus': [0.36, 0.65, 1
   Timeless: [0.27, 0.63, 1], Silhouette: [0.22, 0.73, 1] };
 // cl230 (dona, Berlim Plus: "parece que fica grosso para entrar"): haste e ponta têm de passar pela boca do gargalo; a ponta flocada
 // no máximo ~0,62 do Ø do gargalo (o furo útil) e a haste ~0,4, qualquer que seja a medida tirada da foto
-function wandFit(o, nw) { return { ...o, pescD: Math.min(o.pescD, r1(nw * 0.4)), tipW: Math.min(o.tipW, r1(nw * 0.62)) }; }
+function wandFit(o, nw) { return { ...o, pescD: Math.min(o.pescD, r1(nw * 0.5)) /* cl232 (dona, Guggen: "aumentar levemente o diâmetro da haste"): 0,4 → 0,5 do gargalo */, tipW: Math.min(o.tipW, r1(nw * 0.62)) }; }
 function glossWand(n, w) { const k = GLOSS_WAND[n] || GLOSS_WAND[Object.keys(GLOSS_WAND).filter(x => n.startsWith(x)).sort((a, b) => b.length - a.length)[0]] || [0.24, 0.65, 3];
   const d = r1(w * k[0]); return { pescD: d, tipW: r1(k[3] ? w * k[3] : d * 1.35), tipL: r1(w * k[1] * 13 / 11.5) /* a ponta torneada sai ~11,5/13 do tipL */, pescGap: k[2] }; }
 // Aplicador do Petit (todas as 8 opções do catálogo): mesmo nome de peça para a troca sugerir as outras.
