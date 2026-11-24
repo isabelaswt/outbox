@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION, ADDITION, INTERSECTION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-23.cl224';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-23.cl225';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -707,7 +707,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-23.cl224';
+const BUILD = '2026-11-23.cl225';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -1598,6 +1598,10 @@ function furoGota(g, y0, m) {
 }
 function curvaTopo(g, y0, m) { // topo em curva: alto de um lado, descendo em arco até o outro (batom Ella)
   const p = g.attributes.position, R = m.W / 2, d = m.curvaTopo, cx = m.ox || 0, z0 = Math.max(0, m.h - Math.max(6, d * 3));
+  if (m.curvaSela) { const cz = m.oz || 0; // cl225 sela: de frente arco simétrico (desce nas laterais); girando 90°, curva para cima
+    for (let i = 0; i < p.count; i++) { const ly = p.getY(i) - y0; if (ly <= z0) continue; const x = (p.getX(i) - cx) / R, z = (p.getZ(i) - cz) / R, w = smooth(z0, m.h, ly);
+      p.setY(i, p.getY(i) - d * (1 - (z * z - x * x)) / 2 * w); }
+    p.needsUpdate = true; g.computeVertexNormals(); g.computeBoundingBox(); return; }
   for (let i = 0; i < p.length || i < p.count; i++) { if (i >= p.count) break; const ly = p.getY(i) - y0; if (ly <= z0) continue;
     const u0 = m.curvaU ?? 1, u = clamp((p.getX(i) - cx + R) / (2 * R), 0, 1), w = smooth(z0, m.h, ly), q = Math.max(0, (u0 - u) / u0); p.setY(i, p.getY(i) - d * q ** 2 * w); }
   p.needsUpdate = true; g.computeVertexNormals(); g.computeBoundingBox();
@@ -11095,7 +11099,7 @@ function incomProduct(r) {
           ...(ella || r.n === 'Squared' ? { lipPoint: true, lipBullet: false, tilt: null } : r.n === 'Spy' ? { taper: 75 } : {}),
           sobe: r1(lb * 0.85) /* cl218 (fotos abertas do Long: a bala sai ~22% da altura do batom aberto, como no Ella/Squared); era 41/320 da tampa */, own: true, color: cor, finish: 'brilho' }),
         P('Tampa', W, D, hc, { ...s0, rTop: 1.5, gap: r1(-(hs + hcol - 1.2)), capa: 'pe' /* cl218 (fotos abertas dos batons): tampa em pé ao lado, fecho para cima */, oco: true, ...(r.n === 'Spy' ? { mat2: true, mat2Side: 'topo', mat2R: 70, mat2Color: cor, mat2Finish: 'brilho' } : {}), /* Spy: janela com a cor do batom no topo da tampa */ _t: [f, r.n === 'Ella' ? 0.975 : /^Long/.test(r.n) ? 0.895 : 1], ...(r.abaulada ? { domeTop: r1(W * 0.45) } : {}), // abaulada: cúpula lisa (o topo do desenho tinha quina)
-          ...(r.n === 'Ella' ? { curvaTopo: 2.2, curvaU: 0.6 /* cl224 (dona: "está errado a tampa, é curva"; fotos 1/2): topo plano na maior parte e só o lado baixo rola em curva convexa; antes era uma rampa quase reta na largura toda */ } : {}) })]; break; } // Ella: "detalhe curvilíneo no topo" — o topo desce em curva de um lado (o desenho virava uma aba)
+          ...(r.n === 'Ella' ? { curvaTopo: 1.8, curvaSela: true /* cl225 (dona: "não é plano de um lado, tem uma curva simétrica, mas se girar ele fica uma curva pra cima"): topo em sela. cl224 (dona: "está errado a tampa, é curva"; fotos 1/2): topo plano na maior parte e só o lado baixo rola em curva convexa; antes era uma rampa quase reta na largura toda */ } : {}) })]; break; } // Ella: "detalhe curvilíneo no topo" — o topo desce em curva de um lado (o desenho virava uma aba)
     case 'pote': case 'potesq': {
       // Pote como o de verdade: corpo oco com creme dentro (conteúdo editável), boca com rosca em hélice e
       // tampa de rosca oca assentada no ombro. "Abrir" tira a tampa e deixa virada ao lado.

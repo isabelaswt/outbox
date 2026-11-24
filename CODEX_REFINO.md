@@ -212,6 +212,7 @@ Pendências conhecidas (precisam de dado ou de decisão; não invente):
   - Nota: os itens de líquidos labiais Berlim Plus e Guggen Plus usam fotos das máscaras homônimas (dado do itens.json); os modelos de máscara existem à parte.
 - **cl223** — Tube, pente fino pela foto aberta (3.jpg, medida): de frente o corpo afina em linha reta do fundo ao ombro (0,81); o ombro é plano com quina pequena (`rTop` 1,6, antes abaulado); a passagem achatado→redondo corre o corpo todo; tampa 0,93 W (138/148 px).
 - **cl224** — Ella, dona ("está errado a tampa, é curva"): o topo da tampa era uma rampa quase reta na largura toda. Agora é plano em ~40% da largura e só o lado baixo rola em curva convexa (`curvaU: 0.6`, queda 2,2 mm), como nas fotos 1/2.
+- **cl225** — Ella, dona ("não é plano de um lado, ele tem uma curva simétrica, mas se girar ele, fica uma curva pra cima"): o topo da tampa agora é uma sela (`curvaSela`, 1,8 mm). De frente é um arco simétrico que desce nas laterais; girando 90°, vira uma curva para cima. Substitui o cl224 (curva de um lado só).
   - No Abrir a tampa fica em pé ao lado da bala, com o fecho para cima. Novo modo `capa: 'pe'`: sai sem girar. Antes ficava deitada.
   - Long, Long Abaulada e Long Lipview: a bala sobe `lb * 0,85` (como Ella e Squared). Antes subia só 41/320 da tampa (Long) ou 0,45 (Lipview) e mal aparecia; nas fotos ela sai ~20% da altura do batom aberto.
   - Potes revisados sem divergências a corrigir. As peneiras pretas das fotos são acessório opcional.

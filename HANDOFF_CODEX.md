@@ -1,4 +1,6 @@
-# Atualização Claude — 24/11/2026, cl224
+# Atualização Claude — 24/11/2026, cl225
+
+- **cl225** — Ella, dona ("não é plano de um lado, ele tem uma curva simétrica, mas se girar ele, fica uma curva pra cima"): o topo da tampa agora é uma sela (`curvaSela`, 1,8 mm). De frente é um arco simétrico que desce nas laterais; girando 90°, vira uma curva para cima. Substitui o cl224 (curva de um lado só).
 
 - **cl224** — Ella, dona ("está errado a tampa, é curva"): o topo da tampa era uma rampa quase reta na largura toda. Agora é plano em ~40% da largura e só o lado baixo rola em curva convexa (`curvaU: 0.6`, queda 2,2 mm), como nas fotos 1/2.
 
