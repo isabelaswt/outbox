@@ -1,4 +1,6 @@
-# Atualização Claude — 23/11/2026, cl192
+# Atualização Claude — 23/11/2026, cl194
+
+- **cl194** — Olive, dona ("arredonde mais, não é tão duro as faces"): cantos da seção 0,35 → 0,5 (`sq`). Testado 0,65, mas já voltava a parecer oval; as laterais seguem com um trecho reto. (cl193 só carimbo de cache.)
 
 - **cl192** — Olive (frasnaga), dona (foto e desenho: "não é oval, tem lateral mais reta"): seção do frasco e da tampa passou de oval a retângulo de cantos macios (`sq(0.35)`); medidas 48 × 21,3 mantidas.
 
