@@ -1,4 +1,6 @@
-# Atualização Claude — 23/11/2026, cl204
+# Atualização Claude — 23/11/2026, cl205
+
+- **cl205** — Petit Aplicador (e as 7 variantes de aplicador), dona ("tem que ter rosca interna na tampa"): a tampa quadrada agora tem um furo redondo com rosca fêmea casando com a do gargalo (`threadReceiver` W 0,6 W, h 6,8, passo 1,1, 2,5 voltas, `threadNeckUid`). O oco é cheio para caber o aplicador (`threadCavityFull`, parede 1 mm). Antes o oco era quadrado e liso.
 
 - **cl204** — Tube, revisão própria pelas fotos e pelo desenho da p. 84 (pedido da dona de ser mais autônomo):
   - Fechado, fica em pé sobre a tampa (`viraFechado`), como em todas as fotos.
