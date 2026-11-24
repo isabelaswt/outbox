@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION, ADDITION, INTERSECTION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-23.cl201';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-23.cl204';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -707,7 +707,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-23.cl201';
+const BUILD = '2026-11-23.cl204';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -10938,7 +10938,9 @@ function incomProduct(r) {
       const f = 0.83, nh = NECKS['20/410'].h, lift = r2(nh - 0.5);
       // Foto 3/4 da dona: seção achatada e cantos arredondados. D≈80% de W é estimado, não cotado.
       const tubeD = r1(W * 0.8); r = { ...r, D: tubeD, est: 'D' };
-      const body = P('Frasco', W, tubeD, H - nh, { ...sq(0.35), vol: true, ocoTopo: true, rTop: 0, _t: [0, f] });
+      // cl202 (revisão pelas fotos/desenho p.84): o corpo afina para o gargalo (~80% da base), termina num ombro arredondado e as quinas
+      // correm em diagonal (seção levemente torcida, a linha inclinada das fotos e do desenho); antes era o contorno reto do desenho
+      const body = P('Frasco', W, tubeD, H - nh, { ...sq(0.35), vol: true, ocoTopo: true, taper: 91, polyTwist: r2(20 / (H - nh)), rTop: 3, rBot: 1.5 });
       // Inserto fica dentro da rosca exposta, não veste nem encurta o gargalo (detalhe p.84).
       const neck = NECK('20/410', { name: 'Rosca 20-410', exposedNeck: true, ringH: 0, ringW: 0, embed: 1, neckFillet: 0, tuboAberto: true });
       // Detalhe aberto: inserto cônico; dimensões externas proporcionais à rosca, sem cota própria.
@@ -10947,7 +10949,7 @@ function incomProduct(r) {
         gap: lift, pesc: false, mola: false });
       // Foto aberta da dona: tampa ~84% da largura / 32% da altura do corpo, sem cotas próprias.
       // Os 109 mm do desenho medem corpo + gargalo exposto, não o conjunto fechado.
-      const cap = P('Tampa', r1(W * 0.84), null, r1(body.h * 0.322), { rBot: 0.5, rTop: 0.7, oco: true, capa: 'vira', gap: -lift });
+      const cap = P('Tampa', r1(W * 0.84), null, r1(body.h * 0.322), { rBot: 0.5, rTop: 0.7, oco: true, capa: 'vira', viraFechado: true /* cl202 (fotos): fechado fica em pé sobre a tampa */, gap: -lift });
       ms = [body, neck, tip, cap]; break; }
     case 'gloss': case 'glosssq': { // a tampa veste a haste com o aplicador (ou a escova, na máscara), que desce até o fundo
       // Petit (frasnaga): na foto fica em pé sobre a tampa quadrada preta (36% de baixo, como no desenho) e o

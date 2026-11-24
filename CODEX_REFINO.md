@@ -195,6 +195,11 @@ Pendências conhecidas (precisam de dado ou de decisão; não invente):
 - **cl197** — Olive, dona ("parece mais redondo"; foto com a luz contínua da frente para o lado): a seção saiu do polígono de cantos redondos (`sq`, que deixava um vinco onde a reta encontra o arco) e virou superelipse n 3,6. As laterais seguem retas e a curva emenda sem vinco. Com `perfilLiso`, o expoente da seção agora vem de `o.n` (antes era fixo em 2 = oval). (cl196 só carimbo de cache.)
 - **cl199** — Petit com Haste, dona ("olha como está desproporcional, o aplicador está errado"; medido na foto aberta):
 - **cl201** — Petit com Haste, dona ("arredondar o pincel, é nesse nível de detalhe"): a ponta flocada agora é torneada, com borda de raio 0,85 do raio da ponta e emenda arredondada na haste. O chanfro passou a ser um cisalhamento suave dessa ponta (sem quina) em vez do corte reto do cilindro. (cl200 só carimbo de cache.)
+- **cl204** — Tube, revisão própria pelas fotos e pelo desenho da p. 84 (pedido da dona de ser mais autônomo):
+  - Fechado, fica em pé sobre a tampa (`viraFechado`), como em todas as fotos.
+  - O corpo afina para o gargalo (`taper` 91) e termina num ombro arredondado de 3 mm; antes era o contorno reto do desenho, com ombro reto.
+  - As quinas correm em diagonal: seção torcida 20° ao longo da altura (`polyTwist`), a linha inclinada das fotos e do desenho.
+  (cl202/203 só carimbos intermediários.)
   - Tampa: 0,36 → 0,31 H (no Petit Aplicador também).
   - Gargalo: 5,5 → 6,8 mm.
   - Ombro do frasco: quina arredondada (raio 0,12 W).

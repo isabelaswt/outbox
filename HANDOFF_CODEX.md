@@ -1,4 +1,10 @@
-# Atualização Claude — 23/11/2026, cl201
+# Atualização Claude — 23/11/2026, cl204
+
+- **cl204** — Tube, revisão própria pelas fotos e pelo desenho da p. 84 (pedido da dona de ser mais autônomo):
+  - Fechado, fica em pé sobre a tampa (`viraFechado`), como em todas as fotos.
+  - O corpo afina para o gargalo (`taper` 91) e termina num ombro arredondado de 3 mm; antes era o contorno reto do desenho, com ombro reto.
+  - As quinas correm em diagonal: seção torcida 20° ao longo da altura (`polyTwist`), a linha inclinada das fotos e do desenho.
+  (cl202/203 só carimbos intermediários.)
 
 - **cl201** — Petit com Haste, dona ("arredondar o pincel, é nesse nível de detalhe"): a ponta flocada agora é torneada, com borda de raio 0,85 do raio da ponta e emenda arredondada na haste. O chanfro passou a ser um cisalhamento suave dessa ponta (sem quina) em vez do corte reto do cilindro. (cl200 só carimbo de cache.)
 
