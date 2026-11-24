@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION, ADDITION, INTERSECTION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-23.cl221';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-23.cl222';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -707,7 +707,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-23.cl221';
+const BUILD = '2026-11-23.cl222';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -11050,7 +11050,7 @@ function incomProduct(r) {
           wandMouth: Math.max(0.5, Math.min(neckBore(neck), nw / 2 - neck.threadD - 1.2)), _t: [0, f] }), neck,
         M('tampaGloss', { name: masc ? 'Inserto roscado com haste e escova' : 'Inserto roscado com haste e aplicador',
           W: insertW, D: insertW, h: r1(nh + 1.2), wandInsert: { W: neck.W, h: neck.h, pitch: neck.pitch, turns: neck.turns, threadD: neck.threadD, ringH: 0 }, pescD: r1(Math.min(3, nw * 0.3)),
-          tipL: masc ? r1(Math.min(24, H * 0.2)) : 13, tipW: r1(Math.min(masc ? 7.5 : 6.5, Math.min(W, D) - 6)), tipColor: masc ? '#2b2b2b' : '#f4f1ec', ...(masc ? {} : { tipStyle: 'chanfro', rodColor: '#1a1a1a', ...glossWand(r.n, W) }) /* cl206 (fotos de todos os glosses abertos): haste preta e ponta flocada branca chanfrada e arredondada, como no Petit */,
+          tipL: masc ? r1(Math.min(24, H * 0.2)) : 13, tipW: r1(Math.min(masc ? 7.5 : 6.5, Math.min(W, D) - 6)), tipColor: masc ? '#2b2b2b' : '#f4f1ec', ...(masc ? { rodColor: '#1a1a1a' /* cl222 (fotos das máscaras): haste preta */ } : { tipStyle: 'chanfro', rodColor: '#1a1a1a', ...glossWand(r.n, W) }) /* cl206 (fotos de todos os glosses abertos): haste preta e ponta flocada branca chanfrada e arredondada, como no Petit */,
           ...(masc ? { brushStyle: r.n === 'Berlim Plus' ? 'cone' : ['Guggen', 'Oscar'].includes(r.n) ? 'fina' : 'fusiforme' } : {}),
           ...(/All Crystal/.test(r.n) ? { rodClear: true, own: true, finish: 'pet', color: '#ffffff' } : {}) }), cap]; break; } // All Crystal (foto): o inserto roscado também é incolor — pela tampa de cristal aparecem a rosca e a haste, não um bloco
     case 'baton': case 'batonsq': {
@@ -11118,7 +11118,7 @@ function incomProduct(r) {
         // Representa apenas a porção observável; o comprimento enterrado não é cotado no catálogo.
         P('Bastão (produto)', W * (g ? 82 : 84) / 120, null, hp, { rTop: 1, rBot: 0, gap: -hp, sobe: hp, own: true, color: corDe(BATOM_CORES, r.n), finish: 'fosco' }),
         // Envelope interno acompanha o colar da foto; espessura industrial não é cotada.
-        P('Tampa', W, D, ht, { rTop: 3, gap: r1(-hcol - hm), capa: true, oco: true, ocoWall: r2(W * (1 - (g ? 110 : 112) / 120) / 2), _t: [f, 1] })]; break; }
+        P('Tampa', W, D, ht, { rTop: 3, gap: r1(-hcol - hm), capa: 'pe' /* cl222 (fotos dos Chubby Stick abertos): tampa em pé ao lado */, oco: true, ocoWall: r2(W * (1 - (g ? 110 : 112) / 120) / 2), _t: [f, 1] })]; break; }
     default: ms = [P('Corpo', W, D, H, { vol: true, _t: [0, 1] })];
   }
   // P3/4: Case G/M oferecem tampa fechada ou cristal e espelho opcional; padrão com espelho por pedido da dona.
