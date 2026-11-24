@@ -1,4 +1,6 @@
-# Atualização Claude — 23/11/2026, cl189
+# Atualização Claude — 23/11/2026, cl190
+
+- **cl190** — Julie (frasnaga), dona ("não é redondo, eu quis dizer que é angulado quando encontra o bico, o ombro é bem reto"): desfeito o ombro redondo do cl189. Agora o ombro é reto, em cone baixo (~0,06 × largura de altura) que sobe da quina viva da borda (raio 0,8 mm) até o gargalo, como na foto aberta. Nova opção `coneTop: { h, k }` no `P()`: os últimos h mm do perfil afinam em reta até k × a largura. O pé segue com raio 2,5 mm.
 
 - **cl189** — Julie (frasnaga), dona (foto aberta: "ele não é tão reto, olha o perfil"): ombro do frasco arredondado (raio 0,11 × largura, ~3,9 mm) e pé com raio 2,5 mm. O corte do perfil do desenho limitava os raios a 0,6/0,5 mm; a nova opção `rLivre` do `P()` mantém os raios pedidos. (cl188 só carimbo de cache.)
 
