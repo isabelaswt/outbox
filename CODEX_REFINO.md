@@ -233,6 +233,7 @@ Pendências conhecidas (precisam de dado ou de decisão; não invente):
   - Cerdas: 40 níveis × 18–24 fios (antes 22 × 12–16) e miolo de 0,26 da escova. Antes parecia um pente de fios espetados; agora a escova lê preta e cheia, como nas fotos.
 - Potes (11) revisados pelas fotos: sem divergências a corrigir. Timeless Plus (gloss) conferido.
 - Revisão pelas fotos sem divergências a corrigir: Chubby Stick M/G, Case G/M Tampa Cristal, Petit Aplicador (7 variantes), Moma Tampa Alta (as fotos são do Moma), Long Abaulada e Long Lipview Abaulada.
+- **cl240** — Guggen Roll On, dona ("tem uma linha retangular no produto"): era a cavidade interna do frasco (`ocoTopo`), cujas paredes e piso apareciam pelo líquido claro como um retângulo de linhas. O frasco do Roll On não leva mais `ocoTopo`; o líquido preenche o corpo limpo. Nos glosses de cor forte o líquido escondia essa cavidade.
   - No Abrir a tampa fica em pé ao lado da bala, com o fecho para cima. Novo modo `capa: 'pe'`: sai sem girar. Antes ficava deitada.
   - Long, Long Abaulada e Long Lipview: a bala sobe `lb * 0,85` (como Ella e Squared). Antes subia só 41/320 da tampa (Long) ou 0,45 (Lipview) e mal aparecia; nas fotos ela sai ~20% da altura do batom aberto.
   - Potes revisados sem divergências a corrigir. As peneiras pretas das fotos são acessório opcional.

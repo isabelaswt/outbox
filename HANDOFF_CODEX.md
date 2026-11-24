@@ -1,4 +1,6 @@
-# Atualização Claude — 24/11/2026, cl239
+# Atualização Claude — 24/11/2026, cl240
+
+- **cl240** — Guggen Roll On, dona ("tem uma linha retangular no produto"): era a cavidade interna do frasco (`ocoTopo`), cujas paredes e piso apareciam pelo líquido claro como um retângulo de linhas. O frasco do Roll On não leva mais `ocoTopo`; o líquido preenche o corpo limpo. Nos glosses de cor forte o líquido escondia essa cavidade.
 
 - **cl237–239** — Máscaras, pente fino pelas fotos abertas (medidas em px, em múltiplos da largura da tampa):
   - Nova tabela `MASC_BRUSH` [haste, largura da escova, comprimento] e função `mascBrush`.
