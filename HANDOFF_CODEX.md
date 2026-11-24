@@ -1,4 +1,6 @@
-# Atualização Claude — 23/11/2026, cl216
+# Atualização Claude — 23/11/2026, cl217
+
+- **cl217** — Dispensadores e frascos com sobretampa (Bulb, Dispensing 15/30/60, Quadrado, Amsterdam Deluxe…), pela foto aberta do Bulb: no Abrir a sobretampa transparente sai e fica ao lado da bomba (`capa: 'vira'`). A regra do cl212 agora vale também quando nenhuma outra peça sai.
 
 - **cl216** — Olive: o pontinho escuro na frente da tampa fechada era a crista da rosca 20-410 furando a tampa achatada (20,75 mm de profundidade). Nas frasnagas de rosca, a tampa agora tem no mínimo o Ø do gargalo + 2 mm de profundidade (Olive: 21,7).
 
