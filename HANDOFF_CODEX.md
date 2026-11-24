@@ -1,4 +1,6 @@
-# Atualização Claude — 23/11/2026, cl194
+# Atualização Claude — 23/11/2026, cl195
+
+- **cl195** — Olive, dona (vista de cima: "não ficar com listras"): as listras vinham das ondinhas do contorno do desenho, que viravam faixas na luz mesmo depois de alisado. Nova opção `perfilLiso` no `P()`: a largura ao longo da altura é ajustada por uma parábola (mínimos quadrados, 25 pontos). Ligada no frasco e na tampa do Olive.
 
 - **cl194** — Olive, dona ("arredonde mais, não é tão duro as faces"): cantos da seção 0,35 → 0,5 (`sq`). Testado 0,65, mas já voltava a parecer oval; as laterais seguem com um trecho reto. (cl193 só carimbo de cache.)
 

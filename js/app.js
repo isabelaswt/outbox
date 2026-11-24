@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION, ADDITION, INTERSECTION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-23.cl194';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-23.cl195';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -707,7 +707,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-23.cl194';
+const BUILD = '2026-11-23.cl195';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -10671,8 +10671,14 @@ function incomProduct(r) {
     if (tt && pr) { const sl = profSlice(pr, tt[0], tt[1], W); sl.amax /= gmax;
       // contorno alisado: o desenho vem em degraus de ~0,1 mm (traço inclinado rasterizado) e a luz
       // marcava cada degrau como uma listra em volta do corpo; degraus de verdade (anel, ombro) ficam
-      const sp = smoothProfile(destair(sl.prof), x.h, W * sl.amax, 0.8), mx = Math.max(...sp.map(q => q[1])) || 1; sp.forEach(q => { q[1] /= mx; q[2] /= mx; q[4] = 0; }); // alisar não pode afinar a largura; produto é simétrico (o desenho deslocava o centro em décimos e somava largura)
-      x = { ...x, W: r2(Math.min(W, W * sl.amax)), D: r2(Math.min(d ?? D, (d ?? D) * sl.amax)), /* profundidade da peça (Charlotte achatada), não a do produto */ prof: sp, smoothProf: false, taper: 100, taperB: 100, bulge: 0, rTop: o.rLivre ? x.rTop : Math.min(x.rTop ?? 1, 0.6), rBot: o.rLivre ? x.rBot : Math.min(x.rBot ?? 1, 0.5) }; delete x.rLivre; /* cl188: `rLivre` mantém os raios pedidos (Julie: ombro e pé arredondados da foto) */
+      const sp = smoothProfile(destair(sl.prof), x.h, W * sl.amax, 0.8), mx = Math.max(...sp.map(q => q[1])) || 1; sp.forEach(q => { q[1] /= mx; q[2] /= mx; q[4] = 0; }); if (o.perfilLiso) { /* cl195 (dona, Olive de cima: "não ficar com listras"): largura ajustada por uma parábola (mínimos quadrados) — o contorno do desenho, mesmo alisado, tinha ondinhas que viravam listras na luz */
+        const fit = j => { let S = [0, 0, 0, 0, 0], T = [0, 0, 0]; sp.forEach(q => { const t = q[0], v = q[j]; for (let e = 0; e < 5; e++) S[e] += t ** e; for (let e = 0; e < 3; e++) T[e] += v * t ** e; });
+          const A = [[S[0], S[1], S[2]], [S[1], S[2], S[3]], [S[2], S[3], S[4]]], det = M3 => M3[0][0] * (M3[1][1] * M3[2][2] - M3[1][2] * M3[2][1]) - M3[0][1] * (M3[1][0] * M3[2][2] - M3[1][2] * M3[2][0]) + M3[0][2] * (M3[1][0] * M3[2][1] - M3[1][1] * M3[2][0]), d = det(A);
+          return [0, 1, 2].map(c => det(A.map((row, i) => row.map((x, k) => k === c ? T[i] : x))) / d); };
+        const c1 = fit(1), c2 = fit(2), ev = (c, t) => c[0] + c[1] * t + c[2] * t * t; sp.length = 0;
+        for (let i = 0; i <= 24; i++) { const t = i / 24; sp.push([t, ev(c1, t), ev(c2, t), 2, 0, 0]); }
+        const m2 = Math.max(...sp.map(q => q[1])); sp.forEach(q => { q[1] /= m2; q[2] /= m2; }); } // alisar não pode afinar a largura; produto é simétrico (o desenho deslocava o centro em décimos e somava largura)
+      x = { ...x, W: r2(Math.min(W, W * sl.amax)), D: r2(Math.min(d ?? D, (d ?? D) * sl.amax)), /* profundidade da peça (Charlotte achatada), não a do produto */ prof: sp, smoothProf: false, taper: 100, taperB: 100, bulge: 0, rTop: o.rLivre ? x.rTop : Math.min(x.rTop ?? 1, 0.6), rBot: o.rLivre ? x.rBot : Math.min(x.rBot ?? 1, 0.5) }; delete x.rLivre; delete x.perfilLiso; /* cl188: `rLivre` mantém os raios pedidos (Julie: ombro e pé arredondados da foto) */
       if (pr.d && tt[1] >= 1) x.topDip = r1(pr.d * H);
       // tampa abaulada (Oscar): o raio de cima do perfil é limitado a 0,6 mm; a cúpula entra no próprio perfil
       if (o.coneTop) { const d = Math.min(0.5, o.coneTop.h / x.h), base = x.prof.filter(q => q[0] <= 1 - d), q0 = base.at(-1), k = o.coneTop.k;
@@ -10910,7 +10916,7 @@ function incomProduct(r) {
         ms = [P('Tampa', W, Dc, hcC, { ...sc, rBot: 2, rTop: 0.5, oco: true, ocoCima: true, ocoTop: 1.6, capa: true, _t: [0, f] }),
           M('bicoAplicador', { name: 'Gargalo roscado e bico dosador', W: r1(Dc * 0.5), D: r1(Dc * 0.5), h: hbC, /* cl169: cabe no vão da tampa mais estreita (era 0,62) */ bocaBaixo: true, bocaCurto: true /* cl177 (dona: "charlotte também tem questão com o bico, replicar"): mesma solução do Olympea */, bocaPitch: 0.2, bocaVoltas: 3 /* cl181 (dona: "parece que a rosca é mais espaçada"); cl183: 3 voltas medidas na foto; cl184 (dona: "rosca são mais próximas e perto da tampa"): passo 0,2 Ø, as voltas ficam junto da boca e o resto do gargalo fica liso até o ombro */, bocaPerfil: 'trompete' /* cl182: bico em trompete (foto) */, gap: -hbC, pesc: false, mola: false, own: true, finish: 'petFosco', color: '#f6f3ee' /* cl165/cl166: PP natural leitoso — opaco acetinado (transparente, o canal aparecia na frente da rosca) */ }),
           P('Frasco', W, Dc, H * (1 - f), { ...sc, vol: true, rBot: 0.5, rTop: r.t === 'frnr' ? W * 0.4 : 2, _t: [f, 1] })]; break; }
-      const sb = r.n === 'Beatrice' ? sq(0.2) : r.n === 'Olive' ? sq(0.5) /* cl193 (dona: "arredonde mais, não é tão duro as faces"): 0,35 → 0,5 (0,65 já voltava a parecer oval); cl192 (dona, foto e desenho do Olive: "não é oval, tem lateral mais reta"): seção retangular de cantos macios */ : {}; // Beatrice: frasco retangular de cantos arredondados (foto)
+      const sb = r.n === 'Beatrice' ? sq(0.2) : r.n === 'Olive' ? { ...sq(0.5), perfilLiso: true } /* cl193 (dona: "arredonde mais, não é tão duro as faces"): 0,35 → 0,5 (0,65 já voltava a parecer oval); cl192 (dona, foto e desenho do Olive: "não é oval, tem lateral mais reta"): seção retangular de cantos macios */ : {}; // Beatrice: frasco retangular de cantos arredondados (foto)
       // cl164 (dona: "ele não é quadrado, é fino"): sem profundidade no catálogo — 45 ml em 42,9 × ~73 mm de corpo dão ~20 mm (quadrado seriam ~105 ml)
       const Db = r.n === 'Beatrice' ? r1(W * 0.47) : D;
       ms = [P('Frasco', W, Db, H * f, { ...sb, vol: true, rBot: 3, ...(r.n === 'Julie' ? { rLivre: true, rBot: 2.5, rTop: 0.8, coneTop: { h: r1(W * 0.06), k: 0.6 } } : { rTop: 1 }) /* cl188/cl190 (dona, foto do Julie aberto: "ele não é tão reto" — "não é redondo, é angulado quando encontra o bico, o ombro é bem reto"): ombro reto em cone baixo subindo até o gargalo, quina viva na borda */, ...o, _t: [0, f] }), P('Tampa', W * (r.t === 'frnt' ? 0.88 : 1), Db, H * (1 - f), { ...sb, rTop: r.t === 'frnr' ? W * 0.4 : 2, _t: [r.n === 'Julie' ? f + 5.5 / H : f, 1] /* cl186: no Julie o perfil da tampa pula o anel de 5,5 mm do desenho (cilindro simples, como nas fotos) */ })]; break; }
