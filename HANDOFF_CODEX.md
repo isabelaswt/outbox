@@ -1,4 +1,10 @@
-# Atualização Claude — 23/11/2026, cl217
+# Atualização Claude — 24/11/2026, cl219
+
+- **cl219** — Batons, revisão própria pelas fotos abertas:
+  - No Abrir a tampa fica em pé ao lado da bala, com o fecho para cima. Novo modo `capa: 'pe'`: sai sem girar. Antes ficava deitada.
+  - Long, Long Abaulada e Long Lipview: a bala sobe `lb * 0,85` (como Ella e Squared). Antes subia só 41/320 da tampa (Long) ou 0,45 (Lipview) e mal aparecia; nas fotos ela sai ~20% da altura do batom aberto.
+  - Potes revisados sem divergências a corrigir. As peneiras pretas das fotos são acessório opcional.
+  (cl218 só carimbo intermediário.)
 
 - **cl217** — Dispensadores e frascos com sobretampa (Bulb, Dispensing 15/30/60, Quadrado, Amsterdam Deluxe…), pela foto aberta do Bulb: no Abrir a sobretampa transparente sai e fica ao lado da bomba (`capa: 'vira'`). A regra do cl212 agora vale também quando nenhuma outra peça sai.
 

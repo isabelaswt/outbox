@@ -203,6 +203,11 @@ Pendências conhecidas (precisam de dado ou de decisão; não invente):
 - **cl215** — Tampas roscadas das frasnagas (Beatrice, Julie, Olive, Vênus 35/45 e Tube), dona (foto da tampa por dentro: "a tampa não é sólida, é oca assim"): nova opção `capAnel`. A tampa vira uma saia externa fina (1,2 mm, segue a forma da tampa) com uma bucha central roscada solta dela, e um vão aberto por baixo entre as duas. A bucha fica ~0,8 mm recolhida da boca e se funde ao teto. Em tampa achatada ou que afina (Olive), a bucha é recortada pela forma da própria tampa (INTERSECTION) para não vazar. Antes era um bloco maciço com um furo roscado. (cl213/214 só carimbos intermediários.)
 - **cl216** — Olive: o pontinho escuro na frente da tampa fechada era a crista da rosca 20-410 furando a tampa achatada (20,75 mm de profundidade). Nas frasnagas de rosca, a tampa agora tem no mínimo o Ø do gargalo + 2 mm de profundidade (Olive: 21,7).
 - **cl217** — Dispensadores e frascos com sobretampa (Bulb, Dispensing 15/30/60, Quadrado, Amsterdam Deluxe…), pela foto aberta do Bulb: no Abrir a sobretampa transparente sai e fica ao lado da bomba (`capa: 'vira'`). A regra do cl212 agora vale também quando nenhuma outra peça sai.
+- **cl219** — Batons, revisão própria pelas fotos abertas:
+  - No Abrir a tampa fica em pé ao lado da bala, com o fecho para cima. Novo modo `capa: 'pe'`: sai sem girar. Antes ficava deitada.
+  - Long, Long Abaulada e Long Lipview: a bala sobe `lb * 0,85` (como Ella e Squared). Antes subia só 41/320 da tampa (Long) ou 0,45 (Lipview) e mal aparecia; nas fotos ela sai ~20% da altura do batom aberto.
+  - Potes revisados sem divergências a corrigir. As peneiras pretas das fotos são acessório opcional.
+  (cl218 só carimbo intermediário.)
   - Tube (dona, foto dos 4 Tubes: o render tinha virado uma cunha): quase não afina (`taper` 97), seção achatada (D 0,6 W, era 0,8), torção leve de 12° (era 20°), fundo com quinas de 4 mm e tampa com 0,9 W (era 0,84).
   - Conta-gotas com sobretampa (Bulb, Dispensing 15/30): no Abrir a sobretampa sai junto e fica ao lado (`capa: 'vira'`); antes flutuava sobre o frasco vazio. Regra geral no fim de `incomProduct`: sobretampa sem `capa` quando outra peça tem.
   - Julie conta-gotas: mesmo frasco da frasnaga Julie, com ombro reto em cone baixo (`coneTop`, `rLivre`).

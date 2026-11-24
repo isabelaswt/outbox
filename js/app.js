@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION, ADDITION, INTERSECTION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-23.cl217';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-23.cl219';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -707,7 +707,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-23.cl217';
+const BUILD = '2026-11-23.cl219';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -7586,7 +7586,7 @@ function compactParts(product, L, S0) {
     const others = product.children.filter(o => o.isMesh && !objs.includes(o));
     if (m.ocoCima) { const drop = localBox(others).min.y - localBox(objs).min.y; others.forEach(o => { o.position.y -= drop; o.updateMatrixWorld(true); }); } // tampa de baixo tirada: o frasco desce ao chão
     const rest = localBox(others), bb = localBox(objs), c = bb.getCenter(new THREE.Vector3());
-    const rot = m.capa === 'vira' ? new THREE.Matrix4().makeRotationX(Math.PI) : new THREE.Matrix4().makeRotationY(-Math.PI / 5).multiply(new THREE.Matrix4().makeRotationZ(Math.PI / 2));
+    const rot = m.capa === 'vira' ? new THREE.Matrix4().makeRotationX(Math.PI) : m.capa === 'pe' ? new THREE.Matrix4() /* cl218: em pé, como saiu */ : new THREE.Matrix4().makeRotationY(-Math.PI / 5).multiply(new THREE.Matrix4().makeRotationZ(Math.PI / 2));
     const T = new THREE.Matrix4().makeTranslation(c.x, c.y, c.z).multiply(rot).multiply(new THREE.Matrix4().makeTranslation(-c.x, -c.y, -c.z));
     objs.forEach(o => o.applyMatrix4(T));
     const b2 = localBox(objs), dx = rest.max.x + 6 - b2.min.x, dy = rest.min.y - b2.min.y;
@@ -11075,9 +11075,9 @@ function incomProduct(r) {
           P('Aba da base', W, D, hf, { rTop: 0.5, rBot: 0.3 }),
           P('Base', wb2, null, hb, { rTop: 0.6, rBot: 0.2 }),
           P('Tubo (mecanismo)', wsL, null, hsL, { rTop: 0.5, rBot: 0.3, own: true, color: '#d6d8da', finish: 'metal' }),
-          P('Bala (batom)', wbL, null, lbL, { rTop: 0.8, rBot: 0.3, gap: r1(-(lbL + 1.2)), tilt: [1, 0.55], lipBullet: true, sobe: r1(lbL * 0.45), own: true, color: cor, finish: 'brilho' }),
+          P('Bala (batom)', wbL, null, lbL, { rTop: 0.8, rBot: 0.3, gap: r1(-(lbL + 1.2)), tilt: [1, 0.55], lipBullet: true, sobe: r1(lbL * 0.85) /* cl218 (foto aberta do Lipview: bala ~19% da altura) */, own: true, color: cor, finish: 'brilho' }),
           // A bala recua 1,2 mm: compensar esse recuo na tampa conserva os 74 mm fechados.
-          P('Tampa', W, D, hcL, { ...s0, rTop: 1.5, gap: r1(-(hsL + hb - 1.2)), capa: true, oco: true, _t: [(hv + hf) / H, 0.895], ...(r.abaulada ? { domeTop: r1(W * 0.45) } : {}) })]; break; }
+          P('Tampa', W, D, hcL, { ...s0, rTop: 1.5, gap: r1(-(hsL + hb - 1.2)), capa: 'pe' /* cl218 (fotos abertas dos batons): tampa em pé ao lado, fecho para cima */, oco: true, _t: [(hv + hf) / H, 0.895], ...(r.abaulada ? { domeTop: r1(W * 0.45) } : {}) })]; break; }
       ms = [...(visor ? [P('Visor de cor (fundo)', r1(Math.min(W, D) * 0.55), null, 1.2, { rTop: 0.2, rBot: 0.4, own: true, color: cor, finish: 'brilho' })] : []),
         P('Base', W, D, hb0, { ...s0, ...(visor ? { gap: -1 } : {}), ...(!long && !ella ? { _t: [0, f] } : {}) }),
         // Squared p92: apenas base/tampa quadradas; colar exposto circular na foto.
@@ -11086,8 +11086,8 @@ function incomProduct(r) {
         P('Tubo (mecanismo)', ws, null, hs, { rTop: 0.5, rBot: 0.3, own: true, color: '#d6d8da', finish: 'metal' }),
         P('Bala (batom)', wb, null, lb, { rTop: 0.8, rBot: 0.3, gap: r1(-(lb + 1.2)), tilt: [1, 0.55], lipBullet: true,
           ...(ella || r.n === 'Squared' ? { lipPoint: true, lipBullet: false, tilt: null } : r.n === 'Spy' ? { taper: 75 } : {}),
-          sobe: long ? r1(hc * 41 / 320 + 1.2) : r1(lb * 0.85), own: true, color: cor, finish: 'brilho' }),
-        P('Tampa', W, D, hc, { ...s0, rTop: 1.5, gap: r1(-(hs + hcol - 1.2)), capa: true, oco: true, ...(r.n === 'Spy' ? { mat2: true, mat2Side: 'topo', mat2R: 70, mat2Color: cor, mat2Finish: 'brilho' } : {}), /* Spy: janela com a cor do batom no topo da tampa */ _t: [f, r.n === 'Ella' ? 0.975 : /^Long/.test(r.n) ? 0.895 : 1], ...(r.abaulada ? { domeTop: r1(W * 0.45) } : {}), // abaulada: cúpula lisa (o topo do desenho tinha quina)
+          sobe: r1(lb * 0.85) /* cl218 (fotos abertas do Long: a bala sai ~22% da altura do batom aberto, como no Ella/Squared); era 41/320 da tampa */, own: true, color: cor, finish: 'brilho' }),
+        P('Tampa', W, D, hc, { ...s0, rTop: 1.5, gap: r1(-(hs + hcol - 1.2)), capa: 'pe' /* cl218 (fotos abertas dos batons): tampa em pé ao lado, fecho para cima */, oco: true, ...(r.n === 'Spy' ? { mat2: true, mat2Side: 'topo', mat2R: 70, mat2Color: cor, mat2Finish: 'brilho' } : {}), /* Spy: janela com a cor do batom no topo da tampa */ _t: [f, r.n === 'Ella' ? 0.975 : /^Long/.test(r.n) ? 0.895 : 1], ...(r.abaulada ? { domeTop: r1(W * 0.45) } : {}), // abaulada: cúpula lisa (o topo do desenho tinha quina)
           ...(r.n === 'Ella' ? { curvaTopo: 2.4 } : {}) })]; break; } // Ella: "detalhe curvilíneo no topo" — o topo desce em curva de um lado (o desenho virava uma aba)
     case 'pote': case 'potesq': {
       // Pote como o de verdade: corpo oco com creme dentro (conteúdo editável), boca com rosca em hélice e
