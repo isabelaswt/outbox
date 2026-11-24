@@ -1,4 +1,9 @@
-# Atualização Claude — 24/11/2026, cl244
+# Atualização Claude — 24/11/2026, cl245
+
+- **cl245** — Moma Charm, dona ("proporção de tampa e frasco parecem erradas"; desenho da p.100 medido em px): o corte tampa/frasco estava fixo em 0,6 (`SPLIT_FIX[100]`) e agora é 47,8/87,1.
+  - Frasco: 52,3 → 47,8 mm.
+  - Tampa: 26,9 → 32,6 mm.
+  - Argola: sai 6,7 mm acima da tampa. Nova opção `emb` (embutimento) na argola: 1,8 mm no Moma Charm; o padrão continua 0,6.
 
 - **cl244** — Guggen Roll On, dona ("parece que a bola é maior"): a faixa prateada vista pelo aro transparente da foto também é a bola. A bola volta a ~0,75 da largura da rosca (6,9 → 8,6 mm) e quase preenche a cúpula, que continua fechando rente a ela.
 

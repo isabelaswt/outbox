@@ -237,6 +237,10 @@ Pendências conhecidas (precisam de dado ou de decisão; não invente):
 - **cl241/242** — Guggen Roll On, dona ("não abre, acompanha a bola"): o aro não alarga mais para fora da rosca. Ele tem a largura do miolo da rosca (0,9 do suporte), sobe reto e fecha rente à bola, a 0,6 mm dela. A bola ficou em 0,6 da largura da rosca (6,9 mm; era 8,6), como na foto da p.98. Ela sai ~44% acima do aro, e a tampa compensa para manter a altura fechada.
 - **cl243** — Guggen Roll On, dona ("ela não faz esse gomo, é mais no formato da bola"): o topo do suporte agora é uma cúpula esférica contínua, com o raio do aro. Ela sai tangente da parede reta e fecha rente à bola, ~10% acima do equador, com folga de 0,3 mm. Antes era uma borda abaulada (perfil reto e quarto de círculo) que parecia um gomo.
 - **cl244** — Guggen Roll On, dona ("parece que a bola é maior"): a faixa prateada vista pelo aro transparente da foto também é a bola. A bola volta a ~0,75 da largura da rosca (6,9 → 8,6 mm) e quase preenche a cúpula, que continua fechando rente a ela.
+- **cl245** — Moma Charm, dona ("proporção de tampa e frasco parecem erradas"; desenho da p.100 medido em px): o corte tampa/frasco estava fixo em 0,6 (`SPLIT_FIX[100]`) e agora é 47,8/87,1.
+  - Frasco: 52,3 → 47,8 mm.
+  - Tampa: 26,9 → 32,6 mm.
+  - Argola: sai 6,7 mm acima da tampa. Nova opção `emb` (embutimento) na argola: 1,8 mm no Moma Charm; o padrão continua 0,6.
   - No Abrir a tampa fica em pé ao lado da bala, com o fecho para cima. Novo modo `capa: 'pe'`: sai sem girar. Antes ficava deitada.
   - Long, Long Abaulada e Long Lipview: a bala sobe `lb * 0,85` (como Ella e Squared). Antes subia só 41/320 da tampa (Long) ou 0,45 (Lipview) e mal aparecia; nas fotos ela sai ~20% da altura do batom aberto.
   - Potes revisados sem divergências a corrigir. As peneiras pretas das fotos são acessório opcional.
