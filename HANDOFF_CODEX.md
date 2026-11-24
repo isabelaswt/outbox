@@ -1,4 +1,8 @@
-# Atualização Claude — 24/11/2026, cl254
+# Atualização Claude — 24/11/2026, cl259
+
+- **cl255–259** — Timeless e Timeless Plus (gloss e máscara), dona ("ele afina no lado, não é plano"; "não é quina, ele afunila, como se fosse uma curva, visto de cima ele é quase oval com as bordas retas"): a seção deixou de ser quadrado de quinas arredondadas (`sq(0.24)`, polígono) e virou superelipse n 2,8 (`perfilLiso`) no frasco e na tampa.
+  - Testado e descartado: arredondar o topo da tampa só nos lados da profundidade (`roloTopo`, cl256/257). Criava uma dobra torta no topo. A função ficou no código, sem uso.
+  - A largura do módulo agora é a real (23,4). Com o polígono de 4 lados, o módulo guardava 30,1.
 
 - **cl250–254** — Tate e Timeless, dona ("proporção frasco e tampa parecem erradas"):
   - Tate (desenho p.106 medido): frasco 50,3 mm (`SPLIT_FIX[106]`; antes ~0,52 do total). O topo da tampa é reto, de cantos bem arredondados (`rTop` 0,28 W), e não a meia-esfera de antes. Líquido com piso reto.

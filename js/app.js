@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION, ADDITION, INTERSECTION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-23.cl254';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-23.cl259';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -707,7 +707,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-23.cl254';
+const BUILD = '2026-11-23.cl259';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -1604,6 +1604,13 @@ function curvaTopo(g, y0, m) { // topo em curva: alto de um lado, descendo em ar
     p.needsUpdate = true; g.computeVertexNormals(); g.computeBoundingBox(); return; }
   for (let i = 0; i < p.length || i < p.count; i++) { if (i >= p.count) break; const ly = p.getY(i) - y0; if (ly <= z0) continue;
     const u0 = m.curvaU ?? 1, u = clamp((p.getX(i) - cx + R) / (2 * R), 0, 1), w = smooth(z0, m.h, ly), q = Math.max(0, (u0 - u) / u0); p.setY(i, p.getY(i) - d * q ** 2 * w); }
+  p.needsUpdate = true; g.computeVertexNormals(); g.computeBoundingBox();
+}
+function roloTopo(g, y0, m) { // cl256 Timeless: de frente o topo é reto; de lado ele afina em curva (quinas de raio R só nos lados da profundidade)
+  g.computeBoundingBox(); const p = g.attributes.position, R = m.roloTopo, bb = g.boundingBox, hz = (bb.max.z - bb.min.z) / 2, cz = (bb.max.z + bb.min.z) / 2; // a largura do módulo quadrado não é a da peça
+  for (let i = 0; i < p.count; i++) { const ly = p.getY(i) - y0; if (ly < m.h - R - 0.01) continue;
+    const e = Math.abs(p.getZ(i) - cz) - (hz - R); if (e <= 0) continue;
+    const yt = m.h - R + Math.sqrt(Math.max(0, R * R - Math.min(e, R) ** 2)); if (ly > yt) p.setY(i, y0 + yt); }
   p.needsUpdate = true; g.computeVertexNormals(); g.computeBoundingBox();
 }
 function calhaTop(g, y0, m) {
@@ -3005,6 +3012,7 @@ function moduleGeo(m0, y0, opts = {}) {
   if (m.quadDish && g && !inset) quadDish(g, y0, m);
   if (m.calha && g) calhaTop(g, y0, m);
   if (m.curvaTopo > 0 && g) curvaTopo(g, y0, m);
+  if (m.roloTopo > 0 && g) roloTopo(g, y0, m);
   if (m.dobra && g) dobraTop(g, y0, m);
   if (m.chanfro && g) chanfroGeo(g, m);
   if (m.furo && g && !inset && !lo) g = furoGota(g, y0, m);
@@ -11015,7 +11023,7 @@ function incomProduct(r) {
             own: true, color: '#f1f2f0', finish: 'pet' }),
           ...(haste ? [] : [aplicPart(P, r.aplic || 'chanfrada', r1(nw * 0.75))]), // foto de uso: ~22 mm para fora do gargalo (1,2× a largura do frasco)
           haste ? cap : { ...cap, gap: r1(-((APLIC[r.aplic || 'chanfrada'].h || 21) + nh)), capa: true, /* cl205 (dona, Petit Aplicador aberto: "tem que ter rosca interna na tampa"): rosca fêmea casando com a do gargalo, oco cheio para caber o aplicador */ threadNeckUid: neck.uid, threadCavityFull: true, ocoWall: 1, threadReceiver: { W: nw, h: nh, pitch: 1.1, turns: 2.5, threadD: 0.45, ringH: 0 } }]; break; } // a tampa veste gargalo, inserto e aplicador e assenta no ombro // a tampa veste gargalo e ponteira e assenta no ombro
-      const s0 = r.t === 'glosssq' ? sq(0.24) : {}, /* Timeless (foto do site): quadrado de quinas verticais bem arredondadas */ [f] = SPLIT_FIX[r.pg] ? [SPLIT_FIX[r.pg]] : incomFrac(pr, [0.52]), capH = H * (1 - f), masc = r.c === 'Máscaras';
+      const s0 = r.t === 'glosssq' ? (/^Timeless/.test(r.n) ? { n: 2.8, perfilLiso: true } /* cl258 (dona: "não é quina, ele afunila, como se fosse uma curva, visto de cima ele é quase oval com as bordas retas"): superelipse, não quadrado de quinas */ : sq(0.24)) : {}, /* Timeless (foto do site): quadrado de quinas verticais bem arredondadas */ [f] = SPLIT_FIX[r.pg] ? [SPLIT_FIX[r.pg]] : incomFrac(pr, [0.52]), capH = H * (1 - f), masc = r.c === 'Máscaras';
       // gloss: frasco transparente (PET G/SAN, como no catálogo) com o gloss colorido dentro; máscara: frasco opaco
       const gl = masc ? {} : { own: true, finish: 'pet', color: '#ffffff', fundoGrosso: true, fundo: r1(Math.max(3, H * 0.05)), fundoR: r1(Math.min(W, D) / 2), // por dentro o fundo é uma concha (meio redondo)
          liq: true, liqType: 'cremoso', liqLevel: 100, liqColor: corDe(GLOSS_CORES, r.n) };
