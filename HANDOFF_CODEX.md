@@ -1,4 +1,6 @@
-# Atualização Claude — 23/11/2026, cl195
+# Atualização Claude — 23/11/2026, cl197
+
+- **cl197** — Olive, dona ("parece mais redondo"; foto com a luz contínua da frente para o lado): a seção saiu do polígono de cantos redondos (`sq`, que deixava um vinco onde a reta encontra o arco) e virou superelipse n 3,6. As laterais seguem retas e a curva emenda sem vinco. Com `perfilLiso`, o expoente da seção agora vem de `o.n` (antes era fixo em 2 = oval). (cl196 só carimbo de cache.)
 
 - **cl195** — Olive, dona (vista de cima: "não ficar com listras"): as listras vinham das ondinhas do contorno do desenho, que viravam faixas na luz mesmo depois de alisado. Nova opção `perfilLiso` no `P()`: a largura ao longo da altura é ajustada por uma parábola (mínimos quadrados, 25 pontos). Ligada no frasco e na tampa do Olive.
 
