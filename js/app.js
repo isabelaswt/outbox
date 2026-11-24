@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION, ADDITION, INTERSECTION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-23.cl212';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-23.cl215';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -707,7 +707,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-23.cl212';
+const BUILD = '2026-11-23.cl215';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -7787,7 +7787,21 @@ function buildInto(product, S, explodeAmt = 0) {
     if (!THUMB_LITE && (m0.incomRefillCavity || m0.incomTwistOutlet || m0.incomTwistNotch || m0.incomOnOff || m0.refilClic)) g = cutCached('incomDispensing', [m, y0], g, () => incomDispensingGeo(g, m, y0));
     if (!THUMB_LITE && m0.incomPoteCavity) g = cutCached('incomPote', [m, y0], g, () => incomPoteGeo(g, m, y0));
     if (m0.oco && !m0.threadReceiver && !THUMB_LITE) g = cutCached('oco', [m, y0, hasLogo], g, () => ocoGeo(g, m, y0));
-    if (m0.threadReceiver && !THUMB_LITE) g = cutCached('threadReceiver', [m, y0], g, () => {
+    // cl213 (dona, foto da tampa por dentro: "a tampa não é sólida, é oca assim"): tampa injetada de verdade — saia externa fina que segue a
+    // forma da tampa e, solta dela, uma bucha central com a rosca fêmea; entre as duas fica o vão aberto por baixo. A bucha começa ~0,8 mm
+    // recolhida da boca (na foto ela fica um pouco para dentro) e se funde ao teto
+    if (m0.capAnel && m0.threadReceiver && !THUMB_LITE) g = cutCached('capAnel', [m, y0], g, () => {
+      const n = m.threadReceiver, OT = m.ocoTop ?? OCO.top, hh = m.h - OT;
+      const shell = ocoGeo(g, { ...m, ocoWall: m.ocoWall ?? 1.2, femaleThread: null, ocoCima: false }, y0);
+      g.computeBoundingBox(); const gb = g.boundingBox, half = Math.min(gb.max.x - gb.min.x, gb.max.z - gb.min.z) / 2;
+      const rS = n.W / 2 + (n.threadD || 0.8) * 0.5 + 1.1, sl0 = cyl(rS, y0 + 0.8, hh - 0.8 + 0.4);
+      const cut = femaleThreadCutter({ ...m, femaleThread: n }, y0, hh + 0.2), [o, i] = cutHole(sl0, cut); cut.dispose();
+      let sl = o !== sl0 ? mergeLoose([o, i]) : sl0;
+      if (rS > half - 1.4) try { // bucha encostada na parede (tampa achatada ou que afina): recorta pela forma da própria tampa, para não vazar
+        const ev = new Evaluator(); ev.attributes = ['position', 'normal']; const r = ev.evaluate(new Brush(flatPN(sl)), new Brush(flatPN(g)), INTERSECTION).geometry; if (r.attributes.position.count) sl = r; } catch { }
+      const out = mergeLoose([shell, sl]); if (g.userData.extras) out.userData.extras = g.userData.extras; return out;
+    });
+    if (m0.threadReceiver && !m0.capAnel && !THUMB_LITE) g = cutCached('threadReceiver', [m, y0], g, () => {
       const height = m.threadThrough ? (m.sprayType === 'gotas' ? m.h - 1 : m.h + 0.6) /* cl104: no conta-gotas o colar fica fechado em cima (o furo aparecia em volta do botão) */ : m.threadCavityFull ? m.h - (m.ocoTop ?? OCO.top) : Math.min(m.h - 0.8, m.threadReceiver.h - m.threadPhase + 0.3);
       const cut = femaleThreadCutter({ ...m, femaleThread: m.threadReceiver }, y0, height), extras = g.userData.extras;
       const [outer, inner] = cutHole(g, cut); cut.dispose();
@@ -11383,7 +11397,7 @@ function incomProduct(r) {
     ms[0].wandMouth = Math.max(2, neck.W / 2 - 3.2);
     cap.threadReceiver = { W: neck.W, h: neck.h, pitch: neck.pitch, turns: neck.turns,
       threadD: neck.threadD, ringH: free ? 0 : neck.ringH, ...(free ? { threadTop: 0.45, threadBottom: 0.35 } : {}) }; // cl167: o anel da base da Beatrice fica dentro da tampa (ela apoia no ombro)
-    Object.assign(cap, { capa: 'vira', threadNeckUid: neck.uid }); ms.splice(1, 0, neck);
+    Object.assign(cap, { capa: 'vira', threadNeckUid: neck.uid, capAnel: true /* cl213 */ }); ms.splice(1, 0, neck);
     // Fotos abertas do site: Julie e Olive têm ponteira dosadora branca pontuda; Vênus, cone translúcido mais largo.
     // Proporções pela foto, sem cota; limitada ao vão da tampa, que desce o mesmo tanto (altura fechada mantida).
     { const vn = /^Vênus/.test(r.n), room = cap.h - neck.h + 0.8; // ponteira nasce 3 mm dentro da boca: sobra ~2 mm até o teto da tampa
@@ -11394,7 +11408,7 @@ function incomProduct(r) {
       if (free && neck.ringH) { const bi = ms.find(x => x.incomBico); if (bi) bi.gap = r2((bi.gap || 0) - neck.ringH); } } // cl167: o anel da base do gargalo entra na pilha — o bico e a tampa voltam ao lugar (tampa apoiada no ombro) // o bico sobe até a boca sem ocupar altura na pilha: a tampa desce o mesmo tanto e mantém o assento
   }
   if (r.c === 'Frasnagas' && r.n === 'Tube') {
-    const neck = ms[1]; Object.assign(ms.at(-1), { threadNeckUid: neck.uid, threadCavityFull: true, ocoWall: 1,
+    const neck = ms[1]; Object.assign(ms.at(-1), { threadNeckUid: neck.uid, threadCavityFull: true, ocoWall: 1, capAnel: true /* cl213: Tube também (tampa oca com bucha roscada) */,
       threadLead: { r: ms.at(-1).W / 2 - 1, h: 6.8 },
       threadReceiver: { W: neck.W, h: neck.h, pitch: neck.pitch, turns: neck.turns, threadD: neck.threadD, ringH: 0 } });
   }

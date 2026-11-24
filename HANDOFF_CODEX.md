@@ -1,4 +1,6 @@
-# Atualização Claude — 23/11/2026, cl212
+# Atualização Claude — 23/11/2026, cl215
+
+- **cl215** — Tampas roscadas das frasnagas (Beatrice, Julie, Olive, Vênus 35/45 e Tube), dona (foto da tampa por dentro: "a tampa não é sólida, é oca assim"): nova opção `capAnel`. A tampa vira uma saia externa fina (1,2 mm, segue a forma da tampa) com uma bucha central roscada solta dela, e um vão aberto por baixo entre as duas. A bucha fica ~0,8 mm recolhida da boca e se funde ao teto. Em tampa achatada ou que afina (Olive), a bucha é recortada pela forma da própria tampa (INTERSECTION) para não vazar. Antes era um bloco maciço com um furo roscado. (cl213/214 só carimbos intermediários.)
 
 - **cl212** — Rodada de comparativos (dona: "continuar os comparativos rígidos"):
   - Tube (dona, foto dos 4 Tubes: o render tinha virado uma cunha): quase não afina (`taper` 97), seção achatada (D 0,6 W, era 0,8), torção leve de 12° (era 20°), fundo com quinas de 4 mm e tampa com 0,9 W (era 0,84).
