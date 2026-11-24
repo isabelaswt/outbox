@@ -1,4 +1,12 @@
-# Atualização Claude — 23/11/2026, cl197
+# Atualização Claude — 23/11/2026, cl199
+
+- **cl199** — Petit com Haste, dona ("olha como está desproporcional, o aplicador está errado"; medido na foto aberta):
+  - Tampa: 0,36 → 0,31 H (no Petit Aplicador também).
+  - Gargalo: 5,5 → 6,8 mm.
+  - Ombro do frasco: quina arredondada (raio 0,12 W).
+  - Haste: preta, da cor da tampa (nova opção `rodColor`), Ø 2,4 → 3,6, saindo ~49 mm da tampa (`pescGap` 14, não vai até o fundo).
+  - Aplicador: ponta flocada roliça Ø 4,9 × 11,5 com chanfro de ~45° na ponta (nova opção `tipStyle: 'chanfro'`, `tipChanfro` = altura do corte ÷ Ø) no lugar da pá achatada.
+  (cl198 só carimbo de cache.)
 
 - **cl197** — Olive, dona ("parece mais redondo"; foto com a luz contínua da frente para o lado): a seção saiu do polígono de cantos redondos (`sq`, que deixava um vinco onde a reta encontra o arco) e virou superelipse n 3,6. As laterais seguem retas e a curva emenda sem vinco. Com `perfilLiso`, o expoente da seção agora vem de `o.n` (antes era fixo em 2 = oval). (cl196 só carimbo de cache.)
 

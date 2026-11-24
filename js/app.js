@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION, ADDITION, INTERSECTION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-23.cl197';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-23.cl199';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -707,7 +707,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-23.cl197';
+const BUILD = '2026-11-23.cl199';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -2453,6 +2453,12 @@ function pescanteGeo(m, yBot, yTop) {
       tpush(y, R + (wa - R) * taper, R + (wb - R) * taper, u); }
     for (let i = 0; i <= 30; i++) push(yBot + L - 0.5 + (len - L + 0.5) * i / 30, R);
     const g = loft(rings, 24); g.userData.tip = loft(tip, 32);
+    if (m.tipStyle === 'chanfro') { // cl198 (dona, Petit com Haste: "o aplicador está errado"; foto aberta): ponta flocada curta e roliça, um pouco mais
+      // larga que a haste, cortada em chanfro de ~45° na ponta livre (pé de corça do Petit), não a pá achatada
+      const ra = Math.max(R * 1.05, m.tipW / 2), ct = new THREE.CylinderGeometry(ra, ra, L, 40, 30, false), cp = ct.attributes.position, ch = ra * 2 * (m.tipChanfro ?? 0.9);
+      ct.translate(0, L / 2, 0);
+      for (let i = 0; i < cp.count; i++) { const x = cp.getX(i), yc = ch * (ra + x) / (2 * ra) /* plano do chanfro: mais alto de um lado (como na foto) */; if (cp.getY(i) < yc) cp.setY(i, yc); }
+      ct.translate(m.ox, yBot, 0); ct.deleteAttribute('uv'); ct.computeVertexNormals(); g.userData.tip = ct; }
     return g;
   }
   if (m.sprayType === 'gotas') {
@@ -7974,7 +7980,7 @@ function buildInto(product, S, explodeAmt = 0) {
         // Gloss: haste de plástico branco e ponta de feltro na cor do produto (opacas:
         // aparecem pelo vidro; em frasco opaco só no Explodir).
         const rod = new THREE.Mesh(pg, m.rodClear ? new THREE.MeshPhysicalMaterial({ color: '#f6eeee', roughness: 0.06, clearcoat: 1, transparent: true, opacity: 0.45, depthWrite: false }) // haste de cristal (All Crystal): incolor, mas aparece
-          : new THREE.MeshPhysicalMaterial({ color: '#f3f1ec', roughness: 0.3, clearcoat: 0.4 }));
+          : new THREE.MeshPhysicalMaterial({ color: m.rodColor || '#f3f1ec', roughness: 0.3, clearcoat: 0.4 })); // cl198: `rodColor` (Petit com Haste: haste preta, da cor da tampa)
         const tipC = m.tipColor || (base.find(e => e.m.vol && e.m.liq)?.m.liqColor) || '#e8a3ac';
         const tp = new THREE.Mesh(pg.userData.tip, new THREE.MeshPhysicalMaterial({ color: tipC, roughness: 0.75, sheen: 0.6, sheenRoughness: 0.5, sheenColor: new THREE.Color(tipC).lerp(new THREE.Color('#ffffff'), 0.4) }));
         [[rod, 'haste'], [tp, 'aplicador']].forEach(([o, n]) => { o.userData.idx = idx; o.userData.liquid = true; o.name = `${String(idx + 1).padStart(2, '0')}_${n}`; product.add(o); });
@@ -10944,15 +10950,15 @@ function incomProduct(r) {
       // arredondada (não em bico) e ombro reto com gargalo roscado; tampa quadrada preta (36% da altura, desenho).
       // Monta como na foto aberta (gargalo para cima) e, fechado, vira: fica em pé sobre a tampa (viraFechado).
       // Gargalo, rosca e ponteira proporcionais à foto aberta, sem cota própria no catálogo.
-      if (/^Petit/.test(r.n)) { const haste = /Haste/.test(r.n), capH = r1(H * 0.36), nw = r1(W * 0.6), nh = 5.5;
-        const body = P('Frasco', W, D, r1(H - capH), { ...sq(0.14), vol: true, rBot: r1(W * 0.3), rTop: 1, taperB: 88 }); // fotos: afina levemente para a ponta selada
+      if (/^Petit/.test(r.n)) { const haste = /Haste/.test(r.n), capH = r1(H * 0.31), nw = r1(W * 0.6), nh = 6.8; /* cl198 (dona: "olha como está desproporcional"; foto aberta medida: tampa 227 px de 734 = 0,31 H, gargalo 0,37 W de altura); era 0,36 H e 5,5 mm */
+        const body = P('Frasco', W, D, r1(H - capH), { ...sq(0.14), vol: true, rBot: r1(W * 0.3), rTop: r1(W * 0.12) /* cl198 (foto aberta): ombro de quina arredondada; era 1 mm */, taperB: 88 }); // fotos: afina levemente para a ponta selada
         const neck = M('gargalo', { name: 'Gargalo roscado', neckStd: 'livre', W: nw, D: nw, h: nh, pitch: 1.1, turns: 2.5, threadD: 0.45,
           ringH: 0, ringW: 0, embed: 0, neckFillet: 0, exposedNeck: true, tuboAberto: true, own: true, finish: 'pet', color: '#f1f2f0' }); // fotos do site: gargalo translúcido
         const cap = P('Tampa', W, D, capH, { ...sq(0.14), rBot: 0.6, rTop: 0.6, oco: true, capa: 'vira', capaCarry: haste, viraFechado: true, color: '#1a1a1a', own: true });
         const insertW = r1(2 * (capHalfAt(cap, 0) - OCO.wall - 0.05));
         ms = [body, neck, haste
           ? M('tampaGloss', { name: 'Inserto roscado com haste e aplicador', W: insertW, D: insertW, h: r1(nh + 1.2),
-              wandInsert: { W: nw, h: nh, pitch: 1.1, turns: 2.5, threadD: 0.45, ringH: 0 }, pescD: 2.4, tipL: 11, tipW: 5.5, tipColor: '#f4f1ec' })
+              wandInsert: { W: nw, h: nh, pitch: 1.1, turns: 2.5, threadD: 0.45, ringH: 0 }, pescD: 3.6, tipL: 11.5, tipW: 4.9, tipStyle: 'chanfro', tipColor: '#f4f1ec', rodColor: '#1a1a1a', pescGap: 14 }) /* cl198 (foto aberta): haste preta Ø3,6 que sai ~49 mm da tampa, ponta flocada Ø4,9 × 11,5 com chanfro; não vai até o fundo */
           // Foto aberta: ponteira branca estreita de ponta arredondada saindo da boca do gargalo.
           : P('Inserto do aplicador', r1(nw * 0.9), null, 4, { rBot: 0, rTop: 0.4, gap: r1(nh - 3), // o gargalo não ocupa altura na pilha: o inserto sobe até ~1 mm acima da boca
             own: true, color: '#f1f2f0', finish: 'pet' }),

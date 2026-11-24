@@ -193,6 +193,13 @@ Pendências conhecidas (precisam de dado ou de decisão; não invente):
 - **cl194** — Olive, dona ("arredonde mais, não é tão duro as faces"): cantos da seção 0,35 → 0,5 (`sq`). Testado 0,65, mas já voltava a parecer oval; as laterais seguem com um trecho reto. (cl193 só carimbo de cache.)
 - **cl195** — Olive, dona (vista de cima: "não ficar com listras"): as listras vinham das ondinhas do contorno do desenho, que viravam faixas na luz mesmo depois de alisado. Nova opção `perfilLiso` no `P()`: a largura ao longo da altura é ajustada por uma parábola (mínimos quadrados, 25 pontos). Ligada no frasco e na tampa do Olive.
 - **cl197** — Olive, dona ("parece mais redondo"; foto com a luz contínua da frente para o lado): a seção saiu do polígono de cantos redondos (`sq`, que deixava um vinco onde a reta encontra o arco) e virou superelipse n 3,6. As laterais seguem retas e a curva emenda sem vinco. Com `perfilLiso`, o expoente da seção agora vem de `o.n` (antes era fixo em 2 = oval). (cl196 só carimbo de cache.)
+- **cl199** — Petit com Haste, dona ("olha como está desproporcional, o aplicador está errado"; medido na foto aberta):
+  - Tampa: 0,36 → 0,31 H (no Petit Aplicador também).
+  - Gargalo: 5,5 → 6,8 mm.
+  - Ombro do frasco: quina arredondada (raio 0,12 W).
+  - Haste: preta, da cor da tampa (nova opção `rodColor`), Ø 2,4 → 3,6, saindo ~49 mm da tampa (`pescGap` 14, não vai até o fundo).
+  - Aplicador: ponta flocada roliça Ø 4,9 × 11,5 com chanfro de ~45° na ponta (nova opção `tipStyle: 'chanfro'`, `tipChanfro` = altura do corte ÷ Ø) no lugar da pá achatada.
+  (cl198 só carimbo de cache.)
 - **cl180** — Charlotte e Charlotte Rounded, dona (foto do Charlotte aberto: "não é tão alto"): o gargalo do `bocaCurto` tem no máximo ~1,05× o próprio Ø de altura (numa tampa alta ele esticava até encher o vão); o cone tem comprimento próprio (0,21 da peça) e embaixo dele sobra o vão da tampa. Olympea sem mudança (o gargalo dele já era mais curto que o limite).
 - **cl179** — Olympea, Charlotte e Charlotte Rounded, dona ("deixar mais curto ainda"): cone do bico independente bem mais curto (ponta a 42% da altura do trecho do bico, era 22%; base 0,48·R).
 - **cl178** — Olympea, Charlotte e Charlotte Rounded, dona (foto ao lado do render aberto: "um pouco menor o bico"): o cone do bico independente ficou ~22% mais curto e mais estreito (base 0,5·R, ponta 0,12·R); gargalo, rosca e tampa iguais — a ponta só fica mais acima.
