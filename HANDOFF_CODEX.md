@@ -6,6 +6,7 @@
   - Escova: Berlim Plus cone 0,5 × 1,4; Guggen e Oscar finas 0,36 × 0,9 e 0,35 × 0,75; Guggen Plus e Timeless Plus fusiformes ~0,5 × 1,2–1,3.
   - Cerdas: 40 níveis × 18–24 fios (antes 22 × 12–16) e miolo de 0,26 da escova. Antes parecia um pente de fios espetados; agora a escova lê preta e cheia, como nas fotos.
 - Potes (11) revisados pelas fotos: sem divergências a corrigir. Timeless Plus (gloss) conferido.
+- Revisão pelas fotos sem divergências a corrigir: Chubby Stick M/G, Case G/M Tampa Cristal, Petit Aplicador (7 variantes), Moma Tampa Alta (as fotos são do Moma), Long Abaulada e Long Lipview Abaulada.
 
 - **cl234–236** — Silhouette, pente fino pelas fotos:
   - Frasco e tampa são cones de lado reto: o corpo afina de baixo para cima e a tampa alarga para o topo. O contorno do desenho dava curva côncava. Nova opção `perfilReto` em P: reta por mínimos quadrados entre 8% e 92% da altura do perfil.
