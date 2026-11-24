@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION, ADDITION, INTERSECTION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-23.cl233';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-23.cl236';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -707,7 +707,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-23.cl233';
+const BUILD = '2026-11-23.cl236';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -10718,7 +10718,11 @@ function incomProduct(r) {
         const c1 = fit(1), c2 = fit(2), ev = (c, t) => c[0] + c[1] * t + c[2] * t * t; sp.length = 0;
         for (let i = 0; i <= 24; i++) { const t = i / 24; sp.push([t, ev(c1, t), ev(c2, t), o.n || 2 /* cl196: expoente da superelipse da seção (2 = oval) */, 0, 0]); }
         const m2 = Math.max(...sp.map(q => q[1])); sp.forEach(q => { q[1] /= m2; q[2] /= m2; }); } // alisar não pode afinar a largura; produto é simétrico (o desenho deslocava o centro em décimos e somava largura)
-      x = { ...x, W: r2(Math.min(W, W * sl.amax)), D: r2(Math.min(d ?? D, (d ?? D) * sl.amax)), /* profundidade da peça (Charlotte achatada), não a do produto */ prof: sp, smoothProf: false, taper: 100, taperB: 100, bulge: 0, rTop: o.rLivre ? x.rTop : Math.min(x.rTop ?? 1, 0.6), rBot: o.rLivre ? x.rBot : Math.min(x.rBot ?? 1, 0.5) }; delete x.rLivre; delete x.perfilLiso; /* cl188: `rLivre` mantém os raios pedidos (Julie: ombro e pé arredondados da foto) */
+      if (o.perfilReto) { /* cl234 (pente fino, fotos do Silhouette): frasco e tampa são cones de lado reto; o desenho dava curva côncava. Reta por mínimos quadrados entre 8% e 92% da altura */
+        const lin = j => { const q = sp.filter(v => v[0] >= 0.08 && v[0] <= 0.92), n = q.length, st = q.reduce((a, v) => a + v[0], 0), sv = q.reduce((a, v) => a + v[j], 0), stt = q.reduce((a, v) => a + v[0] * v[0], 0), stv = q.reduce((a, v) => a + v[0] * v[j], 0), b1 = (n * stv - st * sv) / (n * stt - st * st); return [(sv - b1 * st) / n, b1]; };
+        const l1 = lin(1), l2 = lin(2); sp.length = 0; for (let i = 0; i <= 12; i++) { const t = i / 12; sp.push([t, l1[0] + l1[1] * t, l2[0] + l2[1] * t, 2, 0, 0]); }
+        const m3 = Math.max(...sp.map(q => q[1])); sp.forEach(q => { q[1] /= m3; q[2] /= m3; }); }
+      x = { ...x, W: r2(Math.min(W, W * sl.amax)), D: r2(Math.min(d ?? D, (d ?? D) * sl.amax)), /* profundidade da peça (Charlotte achatada), não a do produto */ prof: sp, smoothProf: false, taper: 100, taperB: 100, bulge: 0, rTop: o.rLivre ? x.rTop : Math.min(x.rTop ?? 1, 0.6), rBot: o.rLivre ? x.rBot : Math.min(x.rBot ?? 1, 0.5) }; delete x.rLivre; delete x.perfilLiso; delete x.perfilReto; /* cl188: `rLivre` mantém os raios pedidos (Julie: ombro e pé arredondados da foto) */
       if (pr.d && tt[1] >= 1) x.topDip = r1(pr.d * H);
       // tampa abaulada (Oscar): o raio de cima do perfil é limitado a 0,6 mm; a cúpula entra no próprio perfil
       if (o.coneTop) { const d = Math.min(0.5, o.coneTop.h / x.h), base = x.prof.filter(q => q[0] <= 1 - d), q0 = base.at(-1), k = o.coneTop.k;
@@ -11013,7 +11017,7 @@ function incomProduct(r) {
          liq: true, liqType: 'cremoso', liqLevel: 100, liqColor: corDe(GLOSS_CORES, r.n) };
       // Págs.94/95/97/99/101: reservatório com piso plano e cantos arredondados,
       // não a concha genérica. Raio ~8% da largura estimado pela foto, sem cota de parede.
-      if (!masc && /^(Berlim|Berlim Plus|Guggen Plus|Moma|Moma 2\.0)$/.test(r.n)) gl.fundoR = r1(Math.min(W, D) * 0.08);
+      if (!masc && /^(Berlim|Berlim Plus|Guggen Plus|Moma|Moma 2\.0|Silhouette)$/.test(r.n)) gl.fundoR = r1(Math.min(W, D) * 0.08);
       // Timeless (fotos do site): seção quadrada, fundo de cristal grosso e reto; o líquido termina em piso plano de
       // cantos curtos — a concha redonda num frasco quadrado deixava o fundo do líquido recortado
       if (!masc && r.t === 'glosssq') gl.fundoR = r1(Math.min(W, D) * 0.08);
@@ -11026,7 +11030,7 @@ function incomProduct(r) {
       // Págs.100/104: vão circular Ø4,5 mm. Seção do aro 1 mm continua estimada;
       // a altura reservada ao olhal é compensada na tampa para manter a cota total.
       const charm = /Charm/.test(r.n), arg = tl < 1 && charm ? { R: 3.25, r: 1, feet: true } : null;
-      const cap = P('Tampa', W, D, H * (tl - f), { ...s0, ...(/All Crystal/.test(r.n) ? { own: true, finish: 'pet', color: '#ffffff', topDip: 0.5, roscaInt: { r: r1((Math.min(W, D) - 3) / 2 + 0.35), y0: r1(H * (tl - f) * 0.12), y1: r1(H * (tl - f) * 0.5), n: 5 } } : {}), rTop: arg ? 1.2 : r.t === 'gloss' ? W * 0.2 : r.t === 'glosssq' ? r1(Math.min(W, D ?? W) * 0.18) : 1.2, ...(tl < 1 && !arg && r.t !== 'glosssq' ? { domeTop: r1(W * 0.42) } : {}), ...(arg ? { argola: arg } : {}), ...(r.t === 'glosssq' ? {} : { _t: [f, tl] }) }); // Timeless: tampa quadrada de topo reto e borda arredondada (o perfil redondo do desenho virava ponta de pirâmide)
+      const cap = P('Tampa', W, D, H * (tl - f), { ...s0, ...(r.n === 'Silhouette' ? { perfilReto: true, rLivre: true, rTop: 1.5, rBot: 0.5 } : {}), ...(/All Crystal/.test(r.n) ? { own: true, finish: 'pet', color: '#ffffff', topDip: 0.5, roscaInt: { r: r1((Math.min(W, D) - 3) / 2 + 0.35), y0: r1(H * (tl - f) * 0.12), y1: r1(H * (tl - f) * 0.5), n: 5 } } : {}), rTop: arg ? 1.2 : r.t === 'gloss' ? W * 0.2 : r.t === 'glosssq' ? r1(Math.min(W, D ?? W) * 0.18) : 1.2, ...(tl < 1 && !arg && r.t !== 'glosssq' ? { domeTop: r1(W * 0.42) } : {}), ...(arg ? { argola: arg } : {}), ...(r.t === 'glosssq' ? {} : { _t: [f, tl] }) }); // Timeless: tampa quadrada de topo reto e borda arredondada (o perfil redondo do desenho virava ponta de pirâmide)
       // Fotos p.94-108 e 122-126: tampa, haste e aplicador saem juntos para conferência aberta.
       Object.assign(cap, { capa: 'vira', capaCarry: true, oco: true }); /* cl206 (revisão pelas fotos: em todas as fotos abertas de gloss e máscara a tampa fica em pé com a haste para cima, ao lado do frasco): vira em vez de deitar */
       if (r.n === 'Moma') cap.name = 'Tampa baixa'; // P99: 74 mm; corpo ~48,3 mm medido no desenho pela cota total.
@@ -11061,7 +11065,7 @@ function incomProduct(r) {
           threadD: r1(Math.min(0.5, nw * 0.045)), ringH: 0, ringW: 0, embed: 0,
           neckFillet: 0, exposedNeck: true, tuboAberto: true });
       delete cap.roscaInt; // A rosca pertence ao inserto, não à casca decorativa.
-      ms = [P('Frasco', W, D, H * f, { ...s0, vol: true, rBot: masc ? 1.5 : 2.4, ...gl,
+      ms = [P('Frasco', W, D, H * f, { ...s0, vol: true, rBot: masc ? 1.5 : 2.4, ...gl, ...(r.n === 'Silhouette' ? { perfilReto: true } : {}),
           wandMouth: Math.max(0.5, Math.min(neckBore(neck), nw / 2 - neck.threadD - 1.2)), _t: [0, f] }), neck,
         M('tampaGloss', { name: masc ? 'Inserto roscado com haste e escova' : 'Inserto roscado com haste e aplicador',
           W: insertW, D: insertW, h: r1(nh + 1.2), wandInsert: { W: neck.W, h: neck.h, pitch: neck.pitch, turns: neck.turns, threadD: neck.threadD, ringH: 0 }, pescD: r1(Math.min(3, nw * 0.3)),

@@ -221,6 +221,11 @@ Pendências conhecidas (precisam de dado ou de decisão; não invente):
 - **cl231** — Berlim Plus, dona ("parece muito alto a esponjinha da haste"): ponta flocada 1,07 → 0,65 W (~14 mm, cerca de 2× a própria largura), como nas miniaturas dos aplicadores #54/#56AL/#65 do catálogo. A foto principal da p. 95 exagera a ponta.
 - **cl232** — Glosses, dona (Guggen: "aumentar levemente o diâmetro da haste"): o limite da haste em `wandFit` passou de 0,4 para 0,5 do Ø do gargalo. Guggen: haste 4,1 → 5,1 mm (0,27 da tampa; foto 0,29). A ponta segue limitada a 0,62.
 - **cl233** — Guggen Roll On, dona (detalhe da p.98: "rollon abraça a esfera"): novo aro transparente liso acima da rosca do suporte (`Aro que abraça a esfera`, perfil próprio). Ele se curva para dentro e envolve a esfera até ~15% acima do equador, deixando só a calota de fora. Esfera 7,8 → 8,6 mm (~0,75 da largura do suporte, como na foto). Antes a esfera ficava pousada no topo reto do suporte.
+- **cl234–236** — Silhouette, pente fino pelas fotos:
+  - Frasco e tampa são cones de lado reto: o corpo afina de baixo para cima e a tampa alarga para o topo. O contorno do desenho dava curva côncava. Nova opção `perfilReto` em P: reta por mínimos quadrados entre 8% e 92% da altura do perfil.
+  - Tampa: borda do topo arredondada 1,5 mm (`rLivre`).
+  - Líquido: piso reto (`fundoR` 0,08 W). A concha redonda no fundo, que afina, fazia um bico.
+- Revisão de Moma 2.0, Oscar, Oscar All Crystal e Oscar Charm × fotos: sem divergências a corrigir. Tate: sem fotos.
   - No Abrir a tampa fica em pé ao lado da bala, com o fecho para cima. Novo modo `capa: 'pe'`: sai sem girar. Antes ficava deitada.
   - Long, Long Abaulada e Long Lipview: a bala sobe `lb * 0,85` (como Ella e Squared). Antes subia só 41/320 da tampa (Long) ou 0,45 (Lipview) e mal aparecia; nas fotos ela sai ~20% da altura do batom aberto.
   - Potes revisados sem divergências a corrigir. As peneiras pretas das fotos são acessório opcional.
