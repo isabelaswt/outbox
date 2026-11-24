@@ -1,4 +1,4 @@
-# Atualização Claude — 24/11/2026, cl228
+# Atualização Claude — 24/11/2026, cl229
 
 - **cl226** — Berlim, pente fino (foto 1 medida): frasco quadrado de cristal com parede grossa; a cor ocupa ~60% da largura e aparece a faixa incolor dos lados. Nova opção `liqInset` (recuo do líquido em mm) em `liquidMeshes`; Berlim 0,16 W, Berlim Plus 0,13 W (catálogo p.95).
 - **cl227/228** — Haste e aplicador, dona ("haste tá proporcional?", Berlim Plus × catálogo): medi as páginas 94/95 em px, em múltiplos da largura da tampa. `GLOSS_WAND` ganhou um 4º valor opcional, a largura da ponta.
