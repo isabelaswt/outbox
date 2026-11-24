@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION, ADDITION, INTERSECTION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-23.cl205';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-23.cl207';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -707,7 +707,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-23.cl205';
+const BUILD = '2026-11-23.cl207';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -10991,7 +10991,7 @@ function incomProduct(r) {
       const charm = /Charm/.test(r.n), arg = tl < 1 && charm ? { R: 3.25, r: 1, feet: true } : null;
       const cap = P('Tampa', W, D, H * (tl - f), { ...s0, ...(/All Crystal/.test(r.n) ? { own: true, finish: 'pet', color: '#ffffff', topDip: 0.5, roscaInt: { r: r1((Math.min(W, D) - 3) / 2 + 0.35), y0: r1(H * (tl - f) * 0.12), y1: r1(H * (tl - f) * 0.5), n: 5 } } : {}), rTop: arg ? 1.2 : r.t === 'gloss' ? W * 0.2 : r.t === 'glosssq' ? r1(Math.min(W, D ?? W) * 0.18) : 1.2, ...(tl < 1 && !arg && r.t !== 'glosssq' ? { domeTop: r1(W * 0.42) } : {}), ...(arg ? { argola: arg } : {}), ...(r.t === 'glosssq' ? {} : { _t: [f, tl] }) }); // Timeless: tampa quadrada de topo reto e borda arredondada (o perfil redondo do desenho virava ponta de pirâmide)
       // Fotos p.94-108 e 122-126: tampa, haste e aplicador saem juntos para conferência aberta.
-      Object.assign(cap, { capa: true, capaCarry: true, oco: true });
+      Object.assign(cap, { capa: 'vira', capaCarry: true, oco: true }); /* cl206 (revisão pelas fotos: em todas as fotos abertas de gloss e máscara a tampa fica em pé com a haste para cima, ao lado do frasco): vira em vez de deitar */
       if (r.n === 'Moma') cap.name = 'Tampa baixa'; // P99: 74 mm; corpo ~48,3 mm medido no desenho pela cota total.
       if (arg) cap.h = r2(H * (1 - f) - (2 * (arg.R + arg.r) - 0.6));
       // Oscar/Tate: o corte usado para arredondar o ápice não deve retirar altura do conjunto.
@@ -11024,7 +11024,7 @@ function incomProduct(r) {
           wandMouth: Math.max(0.5, Math.min(neckBore(neck), nw / 2 - neck.threadD - 1.2)), _t: [0, f] }), neck,
         M('tampaGloss', { name: masc ? 'Inserto roscado com haste e escova' : 'Inserto roscado com haste e aplicador',
           W: insertW, D: insertW, h: r1(nh + 1.2), wandInsert: { W: neck.W, h: neck.h, pitch: neck.pitch, turns: neck.turns, threadD: neck.threadD, ringH: 0 }, pescD: r1(Math.min(3, nw * 0.3)),
-          tipL: masc ? r1(Math.min(24, H * 0.2)) : 13, tipW: r1(Math.min(masc ? 7.5 : 6.5, Math.min(W, D) - 6)), tipColor: masc ? '#2b2b2b' : '#e2cdb8',
+          tipL: masc ? r1(Math.min(24, H * 0.2)) : 13, tipW: r1(Math.min(masc ? 7.5 : 6.5, Math.min(W, D) - 6)), tipColor: masc ? '#2b2b2b' : '#f4f1ec', ...(masc ? {} : { tipStyle: 'chanfro', rodColor: '#1a1a1a' }) /* cl206 (fotos de todos os glosses abertos): haste preta e ponta flocada branca chanfrada e arredondada, como no Petit */,
           ...(masc ? { brushStyle: r.n === 'Berlim Plus' ? 'cone' : ['Guggen', 'Oscar'].includes(r.n) ? 'fina' : 'fusiforme' } : {}),
           ...(/All Crystal/.test(r.n) ? { rodClear: true, own: true, finish: 'pet', color: '#ffffff' } : {}) }), cap]; break; } // All Crystal (foto): o inserto roscado também é incolor — pela tampa de cristal aparecem a rosca e a haste, não um bloco
     case 'baton': case 'batonsq': {

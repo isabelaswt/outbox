@@ -197,6 +197,11 @@ Pendências conhecidas (precisam de dado ou de decisão; não invente):
 - **cl201** — Petit com Haste, dona ("arredondar o pincel, é nesse nível de detalhe"): a ponta flocada agora é torneada, com borda de raio 0,85 do raio da ponta e emenda arredondada na haste. O chanfro passou a ser um cisalhamento suave dessa ponta (sem quina) em vez do corte reto do cilindro. (cl200 só carimbo de cache.)
 - **cl204** — Tube, revisão própria pelas fotos e pelo desenho da p. 84 (pedido da dona de ser mais autônomo):
 - **cl205** — Petit Aplicador (e as 7 variantes de aplicador), dona ("tem que ter rosca interna na tampa"): a tampa quadrada agora tem um furo redondo com rosca fêmea casando com a do gargalo (`threadReceiver` W 0,6 W, h 6,8, passo 1,1, 2,5 voltas, `threadNeckUid`). O oco é cheio para caber o aplicador (`threadCavityFull`, parede 1 mm). Antes o oco era quadrado e liso.
+- **cl207** — Líquidos labiais (todos), revisão própria pelas fotos abertas:
+  - No Abrir a tampa fica em pé com a haste para cima, ao lado do frasco (`capa: 'vira'`), como em todas as fotos; antes ficava deitada. Vale também para as máscaras.
+  - Aplicador: haste preta (`rodColor`) e ponta flocada branca chanfrada e arredondada (`tipStyle: 'chanfro'`, a mesma do Petit); antes a haste era branca e a ponta, uma pá bege.
+  - All Crystal segue com a haste incolor. Máscaras seguem com a escova preta.
+  (cl206 só carimbo intermediário.)
   - Fechado, fica em pé sobre a tampa (`viraFechado`), como em todas as fotos.
   - O corpo afina para o gargalo (`taper` 91) e termina num ombro arredondado de 3 mm; antes era o contorno reto do desenho, com ombro reto.
   - As quinas correm em diagonal: seção torcida 20° ao longo da altura (`polyTwist`), a linha inclinada das fotos e do desenho.
