@@ -263,6 +263,7 @@ Pendências conhecidas (precisam de dado ou de decisão; não invente):
 - **cl265/266** — Ajustes pedidos na aprovação:
   - Oscar, Oscar All Crystal e Oscar Charm ("fundo low poly"): o líquido terminava numa concha meia-esfera (`fundoR` = raio do frasco), que saía facetada, com bicos no contorno e uma linha onde começava. Agora é piso reto de cantos arredondados (`fundoR` 0,15 W), como na foto.
   - Tate ("base mais arredondada, produto desce mais"): pé do frasco com raio 0,2 W (5,4 mm; `rLivre`), fundo incolor de 7 → 2,7 mm e piso do líquido de cantos 0,2 W.
+- **cl267/268** — Long e Long Lipview, dona ("ter tampa redonda tb"; "quero ter opção como tem nos atuadores, sugestão de troca de tampa"): ao clicar na tampa, a troca mostra "Fechamentos do catálogo para este produto" com Tampa reta, Tampa redonda e Tampa redonda de cristal (incolor, como a tampa transparente da foto do Long). A reta e a redonda são as tampas prontas dos presets Long / Long Abaulada; a cúpula é montada no preset e não liga depois. Vale também abrindo pelos Abaulada.
   - No Abrir a tampa fica em pé ao lado da bala, com o fecho para cima. Novo modo `capa: 'pe'`: sai sem girar. Antes ficava deitada.
   - Long, Long Abaulada e Long Lipview: a bala sobe `lb * 0,85` (como Ella e Squared). Antes subia só 41/320 da tampa (Long) ou 0,45 (Lipview) e mal aparecia; nas fotos ela sai ~20% da altura do batom aberto.
   - Potes revisados sem divergências a corrigir. As peneiras pretas das fotos são acessório opcional.

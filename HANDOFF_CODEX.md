@@ -1,4 +1,6 @@
-# Atualização Claude — 24/11/2026, cl266
+# Atualização Claude — 24/11/2026, cl268
+
+- **cl267/268** — Long e Long Lipview, dona ("ter tampa redonda tb"; "quero ter opção como tem nos atuadores, sugestão de troca de tampa"): ao clicar na tampa, a troca mostra "Fechamentos do catálogo para este produto" com Tampa reta, Tampa redonda e Tampa redonda de cristal (incolor, como a tampa transparente da foto do Long). A reta e a redonda são as tampas prontas dos presets Long / Long Abaulada; a cúpula é montada no preset e não liga depois. Vale também abrindo pelos Abaulada.
 
 - **cl265/266** — Ajustes pedidos na aprovação:
   - Oscar, Oscar All Crystal e Oscar Charm ("fundo low poly"): o líquido terminava numa concha meia-esfera (`fundoR` = raio do frasco), que saía facetada, com bicos no contorno e uma linha onde começava. Agora é piso reto de cantos arredondados (`fundoR` 0,15 W), como na foto.

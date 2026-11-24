@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION, ADDITION, INTERSECTION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-23.cl266';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-23.cl268';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -707,7 +707,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-23.cl266';
+const BUILD = '2026-11-23.cl268';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -9738,6 +9738,18 @@ function incomSuggestions(m) {
       ['Espumadora', M('incomEspumadora', keep), 'incomEspumadora', true], ['Bico aplicador', M('incomBicoAplicador', keep), 'incomBicoAplicador', true],
       ['Tampa Sens', M('incomSens', { W: r1(Wb * 0.727), D: r1(Wb * 0.727), h: r1(Wb * 0.424), ...keep }), 'incomSens', true]);
     for (const [label, mod, k, dropCap] of opts) clos.push({ k, mod, label: dropCap && capM ? `${label} (sem sobretampa)` : label, cur: typeOf(m) === k || (k === 'spray' && m.sprayType === 'mist') || (k === 'pumpDosadora' && m.sprayType === 'dosadora'), fecho: true, dropCap: !!dropCap });
+  }
+  // cl267 (dona, Long: "ter tampa redonda tb"; "quero ter opção como tem nos atuadores, sugestão de troca de tampa"): nos batons Long
+  // (e Lipview) a tampa entra na lista de fechamentos do catálogo — reta, redonda (abaulada) e redonda de cristal (foto do Long)
+  const longFam = me?.fcat === 'Batons' && /^Long/.test(fam) && m.name === 'Tampa';
+  if (longFam) {
+    const capOf = k => { const q = PRESETS[k]?.modules.find(x => x.name === 'Tampa'); return q ? { ...structuredClone(q), gap: m.gap, ox: m.ox } : null; };
+    const reta = capOf(`Incom ${fam} (batons)`), dome = capOf(`Incom ${fam} Abaulada (batons)`), cristal = { own: true, finish: 'pet', color: '#ffffff' };
+    const sigC = x => JSON.stringify(x && [x.prof, x.domeTop]), isDome = dome && sigC(m) === sigC(dome), isCrist = m.own && m.finish === 'pet';
+    if (reta) clos.push({ k: 'tampa', mod: reta, label: 'Tampa reta', cur: !isDome && !isCrist, fecho: true });
+    if (dome) clos.push({ k: 'tampa', mod: dome, label: 'Tampa redonda', cur: isDome && !isCrist, fecho: true },
+      { k: 'tampa', mod: { ...dome, ...cristal }, label: 'Tampa redonda de cristal', cur: isDome && isCrist, fecho: true });
+    return clos; // a troca reta ↔ abaulada da família (Long ↔ Long Abaulada) já está aqui
   }
   return [...(out.length > 1 ? out : []), ...clos];
 }
