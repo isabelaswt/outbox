@@ -1,4 +1,6 @@
-# Atualização Claude — 23/11/2026, cl191
+# Atualização Claude — 23/11/2026, cl192
+
+- **cl192** — Olive (frasnaga), dona (foto e desenho: "não é oval, tem lateral mais reta"): seção do frasco e da tampa passou de oval a retângulo de cantos macios (`sq(0.35)`); medidas 48 × 21,3 mantidas.
 
 - **cl191** — Charlotte Rounded, dona (foto: "não é tão dura as arestas"): quinas da seção do frasco, da tampa e do sulco mais macias (`sq` 0,12 → 0,32). O Charlotte reto segue com as arestas vivas da foto dele.
 
