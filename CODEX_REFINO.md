@@ -259,6 +259,7 @@ Pendências conhecidas (precisam de dado ou de decisão; não invente):
   - Seção vista de cima: frente e trás em arco (0,87 W no meio) e laterais retas e curtas (0,62 W), com aresta viva no encontro. Nova deformação `frenteAba` [lateral, abaulamento], aplicada sobre superelipse n 12. Com n ≥ 12 a amostragem é polar e o arco fica liso, sem bico.
   - Inserto e gargalo limitados à lateral estreita (inserto 10,8 mm, gargalo 8,6 mm). O inserto redondo de 19,7 mm vazava pela parede.
   - Testado e descartado no caminho: hexágono de laterais em ponta (`hexLat`, cl260).
+- **cl264** — Tate (e todos com `liqInset`: Berlim, Berlim Plus, Timeless, Timeless Plus), dona ("tem um plano errado dentro do frasco"): o recuo grande do líquido era feito pela normal. No ombro arredondado de cima a normal aponta para cima, então os pontos desciam em vez de entrar e deixavam um plano largo no topo do líquido. Agora o recuo extra é uma escala horizontal (x/z) do interior: paredes retas e topo limpo.
   - No Abrir a tampa fica em pé ao lado da bala, com o fecho para cima. Novo modo `capa: 'pe'`: sai sem girar. Antes ficava deitada.
   - Long, Long Abaulada e Long Lipview: a bala sobe `lb * 0,85` (como Ella e Squared). Antes subia só 41/320 da tampa (Long) ou 0,45 (Lipview) e mal aparecia; nas fotos ela sai ~20% da altura do batom aberto.
   - Potes revisados sem divergências a corrigir. As peneiras pretas das fotos são acessório opcional.

@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION, ADDITION, INTERSECTION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-23.cl263';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-23.cl264';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -707,7 +707,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-23.cl263';
+const BUILD = '2026-11-23.cl264';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -6325,8 +6325,10 @@ function liquidMeshes(m, y0, levelAbs, lift = S.wall) {
   // O fundo grosso continua aparecendo embaixo.
   const glassBody = isGlass(m.own ? m.finish : S.finish);
   const reliefGap = m.reliefImg && m.reliefDepth > 0 ? Math.max(0.8, m.reliefDepth * 1.6 + 0.35) : 0;
-  const inset = Math.max(m.liqInset || 0, (glassBody ? Math.max(0.35, S.wall - 0.9) : S.wall + 0.3) + reliefGap); // cl226: liqInset = parede de cristal grossa visível (Berlim). O líquido encosta por dentro da parede (Volumetria: parede e fundo)
+  const inset = (glassBody ? Math.max(0.35, S.wall - 0.9) : S.wall + 0.3) + reliefGap, extraIn = Math.max(0, (m.liqInset || 0) - inset); // cl226: liqInset = parede de cristal grossa visível (Berlim). cl264: o recuo extra é horizontal (escala x/z) — pela normal, no ombro de cima ele descia em vez de entrar e deixava um plano largo no topo do líquido. O líquido encosta por dentro da parede (Volumetria: parede e fundo)
   const inner = offsetInner(m, y0, inset, lift); if (!inner) return []; // parede grossa: faixa de vidro em volta do líquido
+  if (extraIn > 0) { inner.computeBoundingBox(); const bb = inner.boundingBox, hx = (bb.max.x - bb.min.x) / 2, hz = (bb.max.z - bb.min.z) / 2, cx = (bb.max.x + bb.min.x) / 2, cz = (bb.max.z + bb.min.z) / 2;
+    inner.translate(-cx, 0, -cz); inner.scale(Math.max(0.2, (hx - extraIn) / hx), 1, Math.max(0.2, (hz - extraIn) / hz)); inner.translate(cx, 0, cz); }
   inner.computeBoundingBox();
   const b = inner.boundingBox, level = levelAbs ?? b.min.y + (b.max.y - b.min.y) * clamp(m.liqLevel, 0, 100) / 100;
   if (level <= b.min.y + 0.05) { inner.dispose(); return []; } // cópia acima do nível: vazia

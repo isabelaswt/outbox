@@ -1,4 +1,6 @@
-# Atualização Claude — 24/11/2026, cl263
+# Atualização Claude — 24/11/2026, cl264
+
+- **cl264** — Tate (e todos com `liqInset`: Berlim, Berlim Plus, Timeless, Timeless Plus), dona ("tem um plano errado dentro do frasco"): o recuo grande do líquido era feito pela normal. No ombro arredondado de cima a normal aponta para cima, então os pontos desciam em vez de entrar e deixavam um plano largo no topo do líquido. Agora o recuo extra é uma escala horizontal (x/z) do interior: paredes retas e topo limpo.
 
 - **cl260–263** — Timeless e Timeless Plus (gloss e máscara), dona ("olha a lateral, é dura, entra para dentro"; "ele é abaulado na frente, o que faz as laterais serem menores"; foto dos Timeless Plus):
   - Seção vista de cima: frente e trás em arco (0,87 W no meio) e laterais retas e curtas (0,62 W), com aresta viva no encontro. Nova deformação `frenteAba` [lateral, abaulamento], aplicada sobre superelipse n 12. Com n ≥ 12 a amostragem é polar e o arco fica liso, sem bico.
