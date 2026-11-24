@@ -1,4 +1,6 @@
-# Atualização Claude — 23/11/2026, cl215
+# Atualização Claude — 23/11/2026, cl216
+
+- **cl216** — Olive: o pontinho escuro na frente da tampa fechada era a crista da rosca 20-410 furando a tampa achatada (20,75 mm de profundidade). Nas frasnagas de rosca, a tampa agora tem no mínimo o Ø do gargalo + 2 mm de profundidade (Olive: 21,7).
 
 - **cl215** — Tampas roscadas das frasnagas (Beatrice, Julie, Olive, Vênus 35/45 e Tube), dona (foto da tampa por dentro: "a tampa não é sólida, é oca assim"): nova opção `capAnel`. A tampa vira uma saia externa fina (1,2 mm, segue a forma da tampa) com uma bucha central roscada solta dela, e um vão aberto por baixo entre as duas. A bucha fica ~0,8 mm recolhida da boca e se funde ao teto. Em tampa achatada ou que afina (Olive), a bucha é recortada pela forma da própria tampa (INTERSECTION) para não vazar. Antes era um bloco maciço com um furo roscado. (cl213/214 só carimbos intermediários.)
 

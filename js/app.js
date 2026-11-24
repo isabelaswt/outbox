@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION, ADDITION, INTERSECTION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-23.cl215';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-23.cl216';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -707,7 +707,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-23.cl215';
+const BUILD = '2026-11-23.cl216';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -11397,6 +11397,7 @@ function incomProduct(r) {
     ms[0].wandMouth = Math.max(2, neck.W / 2 - 3.2);
     cap.threadReceiver = { W: neck.W, h: neck.h, pitch: neck.pitch, turns: neck.turns,
       threadD: neck.threadD, ringH: free ? 0 : neck.ringH, ...(free ? { threadTop: 0.45, threadBottom: 0.35 } : {}) }; // cl167: o anel da base da Beatrice fica dentro da tampa (ela apoia no ombro)
+    if (cap.D && cap.D < neck.W + 2) cap.D = r1(neck.W + 2); /* cl216 (Olive): a tampa achatada era mais rasa que a rosca 20-410 e a crista do gargalo furava a frente (o pontinho escuro) */
     Object.assign(cap, { capa: 'vira', threadNeckUid: neck.uid, capAnel: true /* cl213 */ }); ms.splice(1, 0, neck);
     // Fotos abertas do site: Julie e Olive têm ponteira dosadora branca pontuda; Vênus, cone translúcido mais largo.
     // Proporções pela foto, sem cota; limitada ao vão da tampa, que desce o mesmo tanto (altura fechada mantida).
