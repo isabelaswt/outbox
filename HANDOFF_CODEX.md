@@ -1,4 +1,11 @@
-# Atualização Claude — 24/11/2026, cl236
+# Atualização Claude — 24/11/2026, cl239
+
+- **cl237–239** — Máscaras, pente fino pelas fotos abertas (medidas em px, em múltiplos da largura da tampa):
+  - Nova tabela `MASC_BRUSH` [haste, largura da escova, comprimento] e função `mascBrush`.
+  - Haste: 0,2–0,26 (antes ~0,13, fina demais), limitada a 0,5 do Ø do gargalo.
+  - Escova: Berlim Plus cone 0,5 × 1,4; Guggen e Oscar finas 0,36 × 0,9 e 0,35 × 0,75; Guggen Plus e Timeless Plus fusiformes ~0,5 × 1,2–1,3.
+  - Cerdas: 40 níveis × 18–24 fios (antes 22 × 12–16) e miolo de 0,26 da escova. Antes parecia um pente de fios espetados; agora a escova lê preta e cheia, como nas fotos.
+- Potes (11) revisados pelas fotos: sem divergências a corrigir. Timeless Plus (gloss) conferido.
 
 - **cl234–236** — Silhouette, pente fino pelas fotos:
   - Frasco e tampa são cones de lado reto: o corpo afina de baixo para cima e a tampa alarga para o topo. O contorno do desenho dava curva côncava. Nova opção `perfilReto` em P: reta por mínimos quadrados entre 8% e 92% da altura do perfil.

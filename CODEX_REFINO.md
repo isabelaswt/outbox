@@ -226,6 +226,12 @@ Pendências conhecidas (precisam de dado ou de decisão; não invente):
   - Tampa: borda do topo arredondada 1,5 mm (`rLivre`).
   - Líquido: piso reto (`fundoR` 0,08 W). A concha redonda no fundo, que afina, fazia um bico.
 - Revisão de Moma 2.0, Oscar, Oscar All Crystal e Oscar Charm × fotos: sem divergências a corrigir. Tate: sem fotos.
+- **cl237–239** — Máscaras, pente fino pelas fotos abertas (medidas em px, em múltiplos da largura da tampa):
+  - Nova tabela `MASC_BRUSH` [haste, largura da escova, comprimento] e função `mascBrush`.
+  - Haste: 0,2–0,26 (antes ~0,13, fina demais), limitada a 0,5 do Ø do gargalo.
+  - Escova: Berlim Plus cone 0,5 × 1,4; Guggen e Oscar finas 0,36 × 0,9 e 0,35 × 0,75; Guggen Plus e Timeless Plus fusiformes ~0,5 × 1,2–1,3.
+  - Cerdas: 40 níveis × 18–24 fios (antes 22 × 12–16) e miolo de 0,26 da escova. Antes parecia um pente de fios espetados; agora a escova lê preta e cheia, como nas fotos.
+- Potes (11) revisados pelas fotos: sem divergências a corrigir. Timeless Plus (gloss) conferido.
   - No Abrir a tampa fica em pé ao lado da bala, com o fecho para cima. Novo modo `capa: 'pe'`: sai sem girar. Antes ficava deitada.
   - Long, Long Abaulada e Long Lipview: a bala sobe `lb * 0,85` (como Ella e Squared). Antes subia só 41/320 da tampa (Long) ou 0,45 (Lipview) e mal aparecia; nas fotos ela sai ~20% da altura do batom aberto.
   - Potes revisados sem divergências a corrigir. As peneiras pretas das fotos são acessório opcional.

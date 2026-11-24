@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION, ADDITION, INTERSECTION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-23.cl236';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-23.cl239';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -707,7 +707,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-23.cl236';
+const BUILD = '2026-11-23.cl239';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -2427,10 +2427,10 @@ function pescanteGeo(m, yBot, yTop) {
   if (m.sprayType === 'gloss') {
     if (m.brushStyle) {
       // Fotos Incom p.122-126: escovas com cerdas; o gloss genérico permanece separado.
-      const R = m.pescD / 2, L = clamp(m.tipL, 3, len - 2), coreR = Math.min(R, m.tipW * 0.12);
+      const R = m.pescD / 2, L = clamp(m.tipL, 3, len - 2), coreR = Math.max(Math.min(R, m.tipW * 0.12), m.tipW * 0.26) /* cl238: miolo grosso, a escova lê preta e cheia como nas fotos */;
       for (let i = 0; i <= 24; i++) push(yBot + L * 0.96 + (len - L * 0.96) * i / 24, R);
       const core = cyl(coreR, yBot, L), parts = [core];
-      const levels = 22, teeth = m.brushStyle === 'fina' ? 12 : 16;
+      const levels = 40, teeth = m.brushStyle === 'fina' ? 18 : 24; /* cl237 (fotos): escova densa e cheia; com 22×16 fios parecia um pente */
       for (let j = 0; j < levels; j++) {
         const t = (j + 0.5) / levels;
         const envelope = m.brushStyle === 'cone' ? 0.95 - 0.6 * t
@@ -2439,7 +2439,7 @@ function pescanteGeo(m, yBot, yTop) {
         const outer = Math.max(coreR + 0.15, m.tipW / 2 * envelope), reach = outer - coreR;
         for (let k = 0; k < teeth; k++) {
           const a = TAU * (k / teeth + (j % 2) / (teeth * 2));
-          const tooth = new THREE.ConeGeometry(Math.min(0.18, L / levels * 0.18), reach, 5);
+          const tooth = new THREE.ConeGeometry(Math.min(0.32, L / levels * 0.45), reach, 4);
           tooth.applyQuaternion(new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), new THREE.Vector3(Math.cos(a), 0, Math.sin(a))));
           tooth.translate(m.ox + Math.cos(a) * (coreR + reach / 2), yBot + t * L, Math.sin(a) * (coreR + reach / 2));
           parts.push(tooth);
@@ -10694,6 +10694,10 @@ const GLOSS_WAND = { Berlim: [0.21, 0.6, 2, 0.28], 'Berlim Plus': [0.36, 0.65, 1
 // cl230 (dona, Berlim Plus: "parece que fica grosso para entrar"): haste e ponta têm de passar pela boca do gargalo; a ponta flocada
 // no máximo ~0,62 do Ø do gargalo (o furo útil) e a haste ~0,4, qualquer que seja a medida tirada da foto
 function wandFit(o, nw) { return { ...o, pescD: Math.min(o.pescD, r1(nw * 0.5)) /* cl232 (dona, Guggen: "aumentar levemente o diâmetro da haste"): 0,4 → 0,5 do gargalo */, tipW: Math.min(o.tipW, r1(nw * 0.62)) }; }
+// cl237 (pente fino, fotos das máscaras abertas medidas em px, × largura da tampa): haste 0,23–0,26 (era ~0,13) e escova maior
+// [haste, largura da escova (antes do envelope do estilo), comprimento da escova]
+const MASC_BRUSH = { 'Berlim Plus': [0.26, 0.5, 1.4], Guggen: [0.24, 0.36, 0.9], Oscar: [0.23, 0.35, 0.75], 'Guggen Plus': [0.21, 0.5, 1.3], 'Timeless Plus': [0.2, 0.48, 1.2] };
+function mascBrush(n, w, nw) { const k = MASC_BRUSH[n] || [0.22, 0.4, 0.9]; return { pescD: Math.min(r1(w * k[0]), r1(nw * 0.5)), tipW: Math.min(r1(w * k[1]), r1(nw)), tipL: r1(w * k[2]) }; }
 function glossWand(n, w) { const k = GLOSS_WAND[n] || GLOSS_WAND[Object.keys(GLOSS_WAND).filter(x => n.startsWith(x)).sort((a, b) => b.length - a.length)[0]] || [0.24, 0.65, 3];
   const d = r1(w * k[0]); return { pescD: d, tipW: r1(k[3] ? w * k[3] : d * 1.35), tipL: r1(w * k[1] * 13 / 11.5) /* a ponta torneada sai ~11,5/13 do tipL */, pescGap: k[2] }; }
 // Aplicador do Petit (todas as 8 opções do catálogo): mesmo nome de peça para a troca sugerir as outras.
@@ -11069,7 +11073,7 @@ function incomProduct(r) {
           wandMouth: Math.max(0.5, Math.min(neckBore(neck), nw / 2 - neck.threadD - 1.2)), _t: [0, f] }), neck,
         M('tampaGloss', { name: masc ? 'Inserto roscado com haste e escova' : 'Inserto roscado com haste e aplicador',
           W: insertW, D: insertW, h: r1(nh + 1.2), wandInsert: { W: neck.W, h: neck.h, pitch: neck.pitch, turns: neck.turns, threadD: neck.threadD, ringH: 0 }, pescD: r1(Math.min(3, nw * 0.3)),
-          tipL: masc ? r1(Math.min(24, H * 0.2)) : 13, tipW: r1(Math.min(masc ? 7.5 : 6.5, Math.min(W, D) - 6)), tipColor: masc ? '#2b2b2b' : '#f4f1ec', ...(masc ? { rodColor: '#1a1a1a' /* cl222 (fotos das máscaras): haste preta */ } : { tipStyle: 'chanfro', rodColor: '#1a1a1a', ...wandFit(glossWand(r.n, W), nw) }) /* cl206 (fotos de todos os glosses abertos): haste preta e ponta flocada branca chanfrada e arredondada, como no Petit */,
+          tipL: masc ? r1(Math.min(24, H * 0.2)) : 13, tipW: r1(Math.min(masc ? 7.5 : 6.5, Math.min(W, D) - 6)), tipColor: masc ? '#2b2b2b' : '#f4f1ec', ...(masc ? { rodColor: '#1a1a1a' /* cl222 (fotos das máscaras): haste preta */, ...mascBrush(r.n, W, nw) } : { tipStyle: 'chanfro', rodColor: '#1a1a1a', ...wandFit(glossWand(r.n, W), nw) }) /* cl206 (fotos de todos os glosses abertos): haste preta e ponta flocada branca chanfrada e arredondada, como no Petit */,
           ...(masc ? { brushStyle: r.n === 'Berlim Plus' ? 'cone' : ['Guggen', 'Oscar'].includes(r.n) ? 'fina' : 'fusiforme' } : {}),
           ...(/All Crystal/.test(r.n) ? { rodClear: true, own: true, finish: 'pet', color: '#ffffff' } : {}) }), cap]; break; } // All Crystal (foto): o inserto roscado também é incolor — pela tampa de cristal aparecem a rosca e a haste, não um bloco
     case 'baton': case 'batonsq': {
