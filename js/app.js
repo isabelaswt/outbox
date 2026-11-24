@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION, ADDITION, INTERSECTION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-23.cl259';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-23.cl263';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -707,7 +707,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-23.cl259';
+const BUILD = '2026-11-23.cl263';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -1611,6 +1611,12 @@ function roloTopo(g, y0, m) { // cl256 Timeless: de frente o topo é reto; de la
   for (let i = 0; i < p.count; i++) { const ly = p.getY(i) - y0; if (ly < m.h - R - 0.01) continue;
     const e = Math.abs(p.getZ(i) - cz) - (hz - R); if (e <= 0) continue;
     const yt = m.h - R + Math.sqrt(Math.max(0, R * R - Math.min(e, R) ** 2)); if (ly > yt) p.setY(i, y0 + yt); }
+  p.needsUpdate = true; g.computeVertexNormals(); g.computeBoundingBox();
+}
+function frenteAbaGeo(g, m) { // cl261 Timeless: frente e trás abauladas (arco), laterais retas e curtas com aresta viva
+  g.computeBoundingBox(); const p = g.attributes.position, bb = g.boundingBox, hx = (bb.max.x - bb.min.x) / 2,
+    cx = (bb.max.x + bb.min.x) / 2, cz = (bb.max.z + bb.min.z) / 2, [sl, b] = m.frenteAba;
+  for (let i = 0; i < p.count; i++) { const u = (p.getX(i) - cx) / hx; p.setZ(i, cz + (p.getZ(i) - cz) * sl * (1 + b * (1 - u * u))); }
   p.needsUpdate = true; g.computeVertexNormals(); g.computeBoundingBox();
 }
 function calhaTop(g, y0, m) {
@@ -3013,6 +3019,7 @@ function moduleGeo(m0, y0, opts = {}) {
   if (m.calha && g) calhaTop(g, y0, m);
   if (m.curvaTopo > 0 && g) curvaTopo(g, y0, m);
   if (m.roloTopo > 0 && g) roloTopo(g, y0, m);
+  if (m.frenteAba && g) frenteAbaGeo(g, m);
   if (m.dobra && g) dobraTop(g, y0, m);
   if (m.chanfro && g) chanfroGeo(g, m);
   if (m.furo && g && !inset && !lo) g = furoGota(g, y0, m);
@@ -11023,7 +11030,7 @@ function incomProduct(r) {
             own: true, color: '#f1f2f0', finish: 'pet' }),
           ...(haste ? [] : [aplicPart(P, r.aplic || 'chanfrada', r1(nw * 0.75))]), // foto de uso: ~22 mm para fora do gargalo (1,2× a largura do frasco)
           haste ? cap : { ...cap, gap: r1(-((APLIC[r.aplic || 'chanfrada'].h || 21) + nh)), capa: true, /* cl205 (dona, Petit Aplicador aberto: "tem que ter rosca interna na tampa"): rosca fêmea casando com a do gargalo, oco cheio para caber o aplicador */ threadNeckUid: neck.uid, threadCavityFull: true, ocoWall: 1, threadReceiver: { W: nw, h: nh, pitch: 1.1, turns: 2.5, threadD: 0.45, ringH: 0 } }]; break; } // a tampa veste gargalo, inserto e aplicador e assenta no ombro // a tampa veste gargalo e ponteira e assenta no ombro
-      const s0 = r.t === 'glosssq' ? (/^Timeless/.test(r.n) ? { n: 2.8, perfilLiso: true } /* cl258 (dona: "não é quina, ele afunila, como se fosse uma curva, visto de cima ele é quase oval com as bordas retas"): superelipse, não quadrado de quinas */ : sq(0.24)) : {}, /* Timeless (foto do site): quadrado de quinas verticais bem arredondadas */ [f] = SPLIT_FIX[r.pg] ? [SPLIT_FIX[r.pg]] : incomFrac(pr, [0.52]), capH = H * (1 - f), masc = r.c === 'Máscaras';
+      const s0 = r.t === 'glosssq' ? (/^Timeless/.test(r.n) ? { n: 12, perfilLiso: true, frenteAba: [0.62, 0.4] } /* cl261 (dona: "ele é abaulado na frente, o que faz as laterais serem menores"; foto dos Timeless Plus): frente/trás em arco (0,87 W no meio), laterais retas de 0,62 W com aresta viva; cl260 (dona: "olha a lateral, é dura, entra para dentro"): frente reta de ~74% da largura e laterais em duas faces até uma aresta viva (hexágono alongado visto de cima); cl258 (dona: "não é quina, ele afunila, como se fosse uma curva, visto de cima ele é quase oval com as bordas retas"): superelipse, não quadrado de quinas */ : sq(0.24)) : {}, /* Timeless (foto do site): quadrado de quinas verticais bem arredondadas */ [f] = SPLIT_FIX[r.pg] ? [SPLIT_FIX[r.pg]] : incomFrac(pr, [0.52]), capH = H * (1 - f), masc = r.c === 'Máscaras';
       // gloss: frasco transparente (PET G/SAN, como no catálogo) com o gloss colorido dentro; máscara: frasco opaco
       const gl = masc ? {} : { own: true, finish: 'pet', color: '#ffffff', fundoGrosso: true, fundo: r1(Math.max(3, H * 0.05)), fundoR: r1(Math.min(W, D) / 2), // por dentro o fundo é uma concha (meio redondo)
          liq: true, liqType: 'cremoso', liqLevel: 100, liqColor: corDe(GLOSS_CORES, r.n) };
@@ -11076,7 +11083,7 @@ function incomProduct(r) {
       // Foto da dona: tampa externa e inserto roscado portando a haste são peças distintas.
       // Diâmetro/passo/folga internos estimados; dimensões fechadas do catálogo preservadas.
       const ac = /All Crystal/.test(r.n), nh = ac ? r1(W * 0.5) /* cl248 (dona: "rever todo, topo do frasco errado"; foto): gargalo largo (~0,78 W) e curto (~0,5 W), 4 voltas; era 0,55 da tampa (19 mm) e estreito */ : r1(Math.min(6, cap.h * 0.16)),
-        insertW = r1(2 * (capHalfAt(cap, 0) - OCO.wall - 0.05)),
+        insertW = r1(Math.min(2 * (capHalfAt(cap, 0) - OCO.wall - 0.05), cap.frenteAba ? (cap.D ?? cap.W) * cap.frenteAba[0] - 2 * OCO.wall - 0.1 : 99)) /* cl263: na tampa de laterais estreitas (Timeless) o inserto redondo vazava pela lateral */,
         nw = ac ? r1(W * 0.78) : r1(Math.min(wv, insertW - 2.2)),
         neck = M('gargalo', { name: 'Gargalo roscado', neckStd: 'livre', W: nw, D: nw, h: nh,
           pitch: ac ? r1(nh / 4.5) : r1(Math.min(1.3, nh * 0.22)), turns: ac ? 4 : 2.5,
