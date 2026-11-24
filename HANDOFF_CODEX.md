@@ -1,4 +1,6 @@
-# Atualização Claude — 23/11/2026, cl190
+# Atualização Claude — 23/11/2026, cl191
+
+- **cl191** — Charlotte Rounded, dona (foto: "não é tão dura as arestas"): quinas da seção do frasco, da tampa e do sulco mais macias (`sq` 0,12 → 0,32). O Charlotte reto segue com as arestas vivas da foto dele.
 
 - **cl190** — Julie (frasnaga), dona ("não é redondo, eu quis dizer que é angulado quando encontra o bico, o ombro é bem reto"): desfeito o ombro redondo do cl189. Agora o ombro é reto, em cone baixo (~0,06 × largura de altura) que sobe da quina viva da borda (raio 0,8 mm) até o gargalo, como na foto aberta. Nova opção `coneTop: { h, k }` no `P()`: os últimos h mm do perfil afinam em reta até k × a largura. O pé segue com raio 2,5 mm.
 

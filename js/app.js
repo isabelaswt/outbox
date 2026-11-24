@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION, ADDITION, INTERSECTION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-23.cl190';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-23.cl191';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -707,7 +707,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-23.cl190';
+const BUILD = '2026-11-23.cl191';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -10904,7 +10904,7 @@ function incomProduct(r) {
         ms = [P('Tampa', W, W, hcO, { rBot: 2, rTop: 0.5, oco: true, ocoCima: true, ocoTop: 1.6, capa: true }), // cl171 (dona: "parece uma diferença grande entre frasco e tampa"; fotos OLYMPIA): a tampa tem a largura do pé do frasco (que afina para baixo, taperB 94), não a do topo
           M('bicoAplicador', { name: 'Gargalo roscado e bico dosador', W: r1(W * 0.56), D: r1(W * 0.56), h: hbO, /* cl174 (dona: "tudo parece que precisa ser maior comparado à foto, o raio da rosca"): rosca ~56% da largura do corpo (foto ampliada); era 0,62 × 22 */ bocaBaixo: true, bocaCurto: true /* cl174 */, gap: -hbO, pesc: false, mola: false, own: true, finish: 'petFosco', color: '#f6f3ee' /* cl175: gargalo translúcido como o da Beatrice; o bico (extra) é opaco */ /* cl165/cl166: PP natural leitoso — opaco acetinado (transparente, o canal aparecia na frente da rosca) */ }),
           P('Frasco', W, W, H * (1 - f), { ...sc, vol: true, rBot: 0.5, rTop: 1.5, coneZ: { k: r2(3 / W), pw: 2.6 } /* cl173 (dona: "ele é reto no topo"): sem a solda inclinada */ })]; break; }
-      if (f < 0.5) { const sc = { ...sq(0.12) }, Dc = r1(W * 0.58); // foto: retângulo de arestas vivas (raio pequeno), não oval
+      if (f < 0.5) { const sc = { ...sq(r.t === 'frnr' ? 0.32 : 0.12) } /* cl191 (dona, foto do Charlotte Rounded: "não é tão dura as arestas"): quinas da seção mais macias */, Dc = r1(W * 0.58); // foto: retângulo de arestas vivas (raio pequeno), não oval
         // fotos do site: tampa sai de baixo e mostra o gargalo roscado com o bico cônico dosador apontando para baixo
         const hcC = r1(H * f), hbC = r1(hcC - 2);
         ms = [P('Tampa', W, Dc, hcC, { ...sc, rBot: 2, rTop: 0.5, oco: true, ocoCima: true, ocoTop: 1.6, capa: true, _t: [0, f] }),
