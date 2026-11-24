@@ -1,4 +1,6 @@
-# Atualização Claude — 23/11/2026, cl187
+# Atualização Claude — 23/11/2026, cl189
+
+- **cl189** — Julie (frasnaga), dona (foto aberta: "ele não é tão reto, olha o perfil"): ombro do frasco arredondado (raio 0,11 × largura, ~3,9 mm) e pé com raio 2,5 mm. O corte do perfil do desenho limitava os raios a 0,6/0,5 mm; a nova opção `rLivre` do `P()` mantém os raios pedidos. (cl188 só carimbo de cache.)
 
 - **cl187** — Julie (frasnaga), dona ("não tem essa volta no julie"): saiu o anel de 5,5 mm entre o frasco e a tampa. O frasco acaba no ombro (fração do desenho, sem os +5,5 mm) e o perfil da tampa pula o trecho do anel do desenho, ficando um cilindro simples apoiado direto no ombro, como nas fotos. A altura total foi mantida. (cl186 só carimbo de cache.)
 

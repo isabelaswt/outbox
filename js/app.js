@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION, ADDITION, INTERSECTION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-23.cl187';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-23.cl189';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -707,7 +707,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-23.cl187';
+const BUILD = '2026-11-23.cl189';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -10672,7 +10672,7 @@ function incomProduct(r) {
       // contorno alisado: o desenho vem em degraus de ~0,1 mm (traço inclinado rasterizado) e a luz
       // marcava cada degrau como uma listra em volta do corpo; degraus de verdade (anel, ombro) ficam
       const sp = smoothProfile(destair(sl.prof), x.h, W * sl.amax, 0.8), mx = Math.max(...sp.map(q => q[1])) || 1; sp.forEach(q => { q[1] /= mx; q[2] /= mx; q[4] = 0; }); // alisar não pode afinar a largura; produto é simétrico (o desenho deslocava o centro em décimos e somava largura)
-      x = { ...x, W: r2(Math.min(W, W * sl.amax)), D: r2(Math.min(d ?? D, (d ?? D) * sl.amax)), /* profundidade da peça (Charlotte achatada), não a do produto */ prof: sp, smoothProf: false, taper: 100, taperB: 100, bulge: 0, rTop: Math.min(x.rTop ?? 1, 0.6), rBot: Math.min(x.rBot ?? 1, 0.5) };
+      x = { ...x, W: r2(Math.min(W, W * sl.amax)), D: r2(Math.min(d ?? D, (d ?? D) * sl.amax)), /* profundidade da peça (Charlotte achatada), não a do produto */ prof: sp, smoothProf: false, taper: 100, taperB: 100, bulge: 0, rTop: o.rLivre ? x.rTop : Math.min(x.rTop ?? 1, 0.6), rBot: o.rLivre ? x.rBot : Math.min(x.rBot ?? 1, 0.5) }; delete x.rLivre; /* cl188: `rLivre` mantém os raios pedidos (Julie: ombro e pé arredondados da foto) */
       if (pr.d && tt[1] >= 1) x.topDip = r1(pr.d * H);
       // tampa abaulada (Oscar): o raio de cima do perfil é limitado a 0,6 mm; a cúpula entra no próprio perfil
       if (o.domeTop > 0) { const d = Math.min(0.9, o.domeTop / x.h), base = x.prof.filter(q => q[0] <= 1 - d), q0 = base.at(-1);
@@ -10911,7 +10911,7 @@ function incomProduct(r) {
       const sb = r.n === 'Beatrice' ? sq(0.2) : {}; // Beatrice: frasco retangular de cantos arredondados (foto)
       // cl164 (dona: "ele não é quadrado, é fino"): sem profundidade no catálogo — 45 ml em 42,9 × ~73 mm de corpo dão ~20 mm (quadrado seriam ~105 ml)
       const Db = r.n === 'Beatrice' ? r1(W * 0.47) : D;
-      ms = [P('Frasco', W, Db, H * f, { ...sb, vol: true, rBot: 3, rTop: 1, ...o, _t: [0, f] }), P('Tampa', W * (r.t === 'frnt' ? 0.88 : 1), Db, H * (1 - f), { ...sb, rTop: r.t === 'frnr' ? W * 0.4 : 2, _t: [r.n === 'Julie' ? f + 5.5 / H : f, 1] /* cl186: no Julie o perfil da tampa pula o anel de 5,5 mm do desenho (cilindro simples, como nas fotos) */ })]; break; }
+      ms = [P('Frasco', W, Db, H * f, { ...sb, vol: true, rBot: 3, ...(r.n === 'Julie' ? { rLivre: true, rBot: 2.5 } : {}), rTop: r.n === 'Julie' ? r1(W * 0.11) : 1 /* cl188 (dona, foto do Julie aberto: "ele não é tão reto, olha o perfil"): ombro arredondado */, ...o, _t: [0, f] }), P('Tampa', W * (r.t === 'frnt' ? 0.88 : 1), Db, H * (1 - f), { ...sb, rTop: r.t === 'frnr' ? W * 0.4 : 2, _t: [r.n === 'Julie' ? f + 5.5 / H : f, 1] /* cl186: no Julie o perfil da tampa pula o anel de 5,5 mm do desenho (cilindro simples, como nas fotos) */ })]; break; }
     case 'tube': {
       // Pág. 84: frasco PE sem solda; 29 × 109 mm no desenho de corpo com gargalo, sem tampa.
       // Junção a ~83% da altura, medida no desenho. Seção traseira não cotada: D=W provisório.
