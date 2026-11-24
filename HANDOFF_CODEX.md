@@ -1,4 +1,6 @@
-# Atualização Claude — 23/11/2026, cl199
+# Atualização Claude — 23/11/2026, cl201
+
+- **cl201** — Petit com Haste, dona ("arredondar o pincel, é nesse nível de detalhe"): a ponta flocada agora é torneada, com borda de raio 0,85 do raio da ponta e emenda arredondada na haste. O chanfro passou a ser um cisalhamento suave dessa ponta (sem quina) em vez do corte reto do cilindro. (cl200 só carimbo de cache.)
 
 - **cl199** — Petit com Haste, dona ("olha como está desproporcional, o aplicador está errado"; medido na foto aberta):
   - Tampa: 0,36 → 0,31 H (no Petit Aplicador também).

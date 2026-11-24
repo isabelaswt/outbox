@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION, ADDITION, INTERSECTION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-23.cl199';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-23.cl201';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -707,7 +707,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-23.cl199';
+const BUILD = '2026-11-23.cl201';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -2455,9 +2455,15 @@ function pescanteGeo(m, yBot, yTop) {
     const g = loft(rings, 24); g.userData.tip = loft(tip, 32);
     if (m.tipStyle === 'chanfro') { // cl198 (dona, Petit com Haste: "o aplicador está errado"; foto aberta): ponta flocada curta e roliça, um pouco mais
       // larga que a haste, cortada em chanfro de ~45° na ponta livre (pé de corça do Petit), não a pá achatada
-      const ra = Math.max(R * 1.05, m.tipW / 2), ct = new THREE.CylinderGeometry(ra, ra, L, 40, 30, false), cp = ct.attributes.position, ch = ra * 2 * (m.tipChanfro ?? 0.9);
-      ct.translate(0, L / 2, 0);
-      for (let i = 0; i < cp.count; i++) { const x = cp.getX(i), yc = ch * (ra + x) / (2 * ra) /* plano do chanfro: mais alto de um lado (como na foto) */; if (cp.getY(i) < yc) cp.setY(i, yc); }
+      // cl200 (dona: "arredondar o pincel, é nesse nível de detalhe"): flocado não tem quina — ponta torneada de borda bem arredondada
+      // (raio ~0,6 do raio da ponta) e emenda arredondada com a haste; o chanfro é um cisalhamento suave dessa ponta, não um corte reto
+      const ra = Math.max(R * 1.05, m.tipW / 2), ch = ra * 2 * (m.tipChanfro ?? 0.9), e = ra * 0.85, eT = Math.min(1.2, (ra - R) + 0.8), prof = [];
+      for (let i = 0; i <= 10; i++) { const a = i / 10 * Math.PI / 2; prof.push([Math.max(0.001, (ra - e) + e * Math.sin(a)), e - e * Math.cos(a)]); }
+      for (let i = 1; i <= 12; i++) prof.push([ra, e + (L - eT - e) * i / 12]);
+      for (let i = 1; i <= 6; i++) { const a = i / 6 * Math.PI / 2; prof.push([ra - (ra - R) * Math.sin(a) - 0.05, L - eT + eT * Math.sin(a)]); }
+      const ct = new THREE.LatheGeometry(prof.map(([r, y]) => new THREE.Vector2(r, y)), 40), cp = ct.attributes.position;
+      for (let i = 0; i < cp.count; i++) { const x = cp.getX(i), y = cp.getY(i), u = clamp(y / L, 0, 1), w = 1 - u * u * (3 - 2 * u);
+        cp.setY(i, y + ch * (ra + x) / (2 * ra) * w); }
       ct.translate(m.ox, yBot, 0); ct.deleteAttribute('uv'); ct.computeVertexNormals(); g.userData.tip = ct; }
     return g;
   }

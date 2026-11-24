@@ -194,6 +194,7 @@ Pendências conhecidas (precisam de dado ou de decisão; não invente):
 - **cl195** — Olive, dona (vista de cima: "não ficar com listras"): as listras vinham das ondinhas do contorno do desenho, que viravam faixas na luz mesmo depois de alisado. Nova opção `perfilLiso` no `P()`: a largura ao longo da altura é ajustada por uma parábola (mínimos quadrados, 25 pontos). Ligada no frasco e na tampa do Olive.
 - **cl197** — Olive, dona ("parece mais redondo"; foto com a luz contínua da frente para o lado): a seção saiu do polígono de cantos redondos (`sq`, que deixava um vinco onde a reta encontra o arco) e virou superelipse n 3,6. As laterais seguem retas e a curva emenda sem vinco. Com `perfilLiso`, o expoente da seção agora vem de `o.n` (antes era fixo em 2 = oval). (cl196 só carimbo de cache.)
 - **cl199** — Petit com Haste, dona ("olha como está desproporcional, o aplicador está errado"; medido na foto aberta):
+- **cl201** — Petit com Haste, dona ("arredondar o pincel, é nesse nível de detalhe"): a ponta flocada agora é torneada, com borda de raio 0,85 do raio da ponta e emenda arredondada na haste. O chanfro passou a ser um cisalhamento suave dessa ponta (sem quina) em vez do corte reto do cilindro. (cl200 só carimbo de cache.)
   - Tampa: 0,36 → 0,31 H (no Petit Aplicador também).
   - Gargalo: 5,5 → 6,8 mm.
   - Ombro do frasco: quina arredondada (raio 0,12 W).
