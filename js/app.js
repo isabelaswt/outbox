@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION, ADDITION, INTERSECTION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-23.cl242';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-23.cl243';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -707,7 +707,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-23.cl242';
+const BUILD = '2026-11-23.cl243';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -11044,10 +11044,14 @@ function incomProduct(r) {
       if (r.t === 'glosssq') cap.h = r2(H * (1 - f)); // Timeless: sem o recorte do ápice, a tampa vai até a cota total
       const wv = r1(Math.max(5, Math.min(Math.min(W, D) * 0.55, 2 * (capHalfAt(cap, 0) - 1.6))));
       // Guggen Roll On (foto): no gargalo um suporte transparente com a bolinha de aço; a tampa veste os dois
-      if (/Roll On/.test(r.n)) { const hs = 6, wsup = r1(Math.min(W, D) * 0.62), db = r1(wsup * 0.6), hcup = r1(db * 0.6), wcup = r1(wsup * 0.9); /* cl241 (dona: "não abre, acompanha a bola"; foto p.98): o aro tem a largura do miolo da rosca e fecha rente à bola, sem abrir para fora; bola ~0,6 da rosca */
+      if (/Roll On/.test(r.n)) { const hs = 6, wsup = r1(Math.min(W, D) * 0.62), db = r1(wsup * 0.6), wcup = r1(wsup * 0.9); /* cl241 (dona: "não abre, acompanha a bola"; foto p.98): o aro tem a largura do miolo da rosca e fecha rente à bola, sem abrir para fora; bola ~0,6 da rosca */
         // cl233 (dona, detalhe da p.98: "rollon abraça a esfera"): acima da rosca o suporte sobe liso e se curva para dentro, abraçando a
         // esfera até ~15% acima do equador; só a calota de cima fica de fora. Esfera ~0,75 da largura do suporte (foto)
-        const kTop = (Math.sqrt(0.25 - 0.06 ** 2) * db + 0.6) / (wcup / 2), cupProf = Array.from({ length: 17 }, (_, i) => { const t = i / 16, u = clamp((t - 0.4) / 0.6, 0, 1), a = 1 - (1 - kTop) * (1 - Math.sqrt(1 - u * u)); return [t, a, a, 2, 0, 0]; });
+        // cl243 (dona: "ela não faz esse gomo, é mais no formato da bola"): o topo é uma cúpula esférica contínua (raio = do aro),
+        // saindo tangente da parede reta e terminando rente à bola um pouco acima do equador dela — sem a borda abaulada
+        const rc = wcup / 2, rb = db / 2, hR = db * 0.1, rRim = Math.sqrt(rb * rb - hR * hR) + 0.3, rise = Math.sqrt(rc * rc - rRim * rRim), y0d = 1,
+          hcup = r2(y0d + rise), yc = y0d + rise - hR, ballTop = yc + rb - hcup,
+          cupProf = Array.from({ length: 25 }, (_, i) => { const y = i / 24 * hcup, r = y <= y0d ? rc : Math.sqrt(Math.max(0, rc * rc - (y - y0d) ** 2)); return [i / 24, r / rc, r / rc, 2, 0, 0]; });
         // P98, detalhe ampliado: suporte PE aberto com filetes externos, não cilindro liso.
         // Passo ~12% do diâmetro e relevo ~4% estimados na foto; sem norma industrial presumida.
         ms = [P('Frasco', W, D, H * f, { ...s0, vol: true, rBot: 2.4, ...gl, liqType: 'transparente', liqColor: '#cfe9f2', _t: [0, f] }), /* cl240 (dona: "tem uma linha retangular no produto"): sem ocoTopo — a cavidade aparecia como um retângulo de linhas pelo líquido claro */
@@ -11055,8 +11059,8 @@ function incomProduct(r) {
             pitch: r1(wsup * 0.12), turns: 2.5, threadD: r1(wsup * 0.04), ringH: 0, ringW: 0, embed: 0,
             neckFillet: 0, exposedNeck: true, tuboAberto: true, own: true, finish: 'pet', color: '#ffffff' }),
           P('Aro que abraça a esfera', wcup, null, hcup, { prof: cupProf, smoothProf: false, gap: hs, own: true, finish: 'pet', color: '#ffffff' }),
-          P('Esfera de aço', db, null, db, { rTop: db / 2, rBot: db / 2, gap: r1(-db * 0.56), own: true, color: '#d6d8da', finish: 'metal' }),
-          { ...cap, gap: r1(-(hs + hcup + db * 0.44)) }];
+          P('Esfera de aço', db, null, db, { rTop: db / 2, rBot: db / 2, gap: r2(yc - rb - hcup), own: true, color: '#d6d8da', finish: 'metal' }),
+          { ...cap, gap: r1(-(hs + hcup + ballTop)) }];
         const n = ms[1]; ms.at(-1).femaleThread = { W: n.W, h: n.h, pitch: n.pitch, turns: n.turns, threadD: n.threadD, ringH: n.ringH };
         break; } // tampa assenta no ombro; rosca fêmea corresponde ao suporte do roll-on.
       // Foto da dona: tampa externa e inserto roscado portando a haste são peças distintas.
