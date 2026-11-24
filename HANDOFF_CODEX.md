@@ -1,4 +1,9 @@
-# Atualização Claude — 24/11/2026, cl225
+# Atualização Claude — 24/11/2026, cl228
+
+- **cl226** — Berlim, pente fino (foto 1 medida): frasco quadrado de cristal com parede grossa; a cor ocupa ~60% da largura e aparece a faixa incolor dos lados. Nova opção `liqInset` (recuo do líquido em mm) em `liquidMeshes`; Berlim 0,16 W, Berlim Plus 0,13 W (catálogo p.95).
+- **cl227/228** — Haste e aplicador, dona ("haste tá proporcional?", Berlim Plus × catálogo): medi as páginas 94/95 em px, em múltiplos da largura da tampa. `GLOSS_WAND` ganhou um 4º valor opcional, a largura da ponta.
+  - Berlim Plus (entrada própria; antes herdava do Berlim): haste 0,36 W (era 0,18), ponta 0,41 × 1,07 W (era 0,24 × 0,63), folga 1 mm até o fundo. A haste aparente fica em 3,3 W, o limite da profundidade do frasco.
+  - Berlim: haste 0,21 W, ponta 0,28 × 0,6 W, folga até o fundo 9,6 → 2 mm. A haste aparente passa de 2,5 para 2,86 W (foto: 2,9 W).
 
 - **cl225** — Ella, dona ("não é plano de um lado, ele tem uma curva simétrica, mas se girar ele, fica uma curva pra cima"): o topo da tampa agora é uma sela (`curvaSela`, 1,8 mm). De frente é um arco simétrico que desce nas laterais; girando 90°, vira uma curva para cima. Substitui o cl224 (curva de um lado só).
 

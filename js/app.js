@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION, ADDITION, INTERSECTION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-23.cl225';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-23.cl228';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -707,7 +707,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-23.cl225';
+const BUILD = '2026-11-23.cl228';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -6310,7 +6310,7 @@ function liquidMeshes(m, y0, levelAbs, lift = S.wall) {
   // O fundo grosso continua aparecendo embaixo.
   const glassBody = isGlass(m.own ? m.finish : S.finish);
   const reliefGap = m.reliefImg && m.reliefDepth > 0 ? Math.max(0.8, m.reliefDepth * 1.6 + 0.35) : 0;
-  const inset = (glassBody ? Math.max(0.35, S.wall - 0.9) : S.wall + 0.3) + reliefGap; // o líquido encosta por dentro da parede (Volumetria: parede e fundo)
+  const inset = Math.max(m.liqInset || 0, (glassBody ? Math.max(0.35, S.wall - 0.9) : S.wall + 0.3) + reliefGap); // cl226: liqInset = parede de cristal grossa visível (Berlim). O líquido encosta por dentro da parede (Volumetria: parede e fundo)
   const inner = offsetInner(m, y0, inset, lift); if (!inner) return []; // parede grossa: faixa de vidro em volta do líquido
   inner.computeBoundingBox();
   const b = inner.boundingBox, level = levelAbs ?? b.min.y + (b.max.y - b.min.y) * clamp(m.liqLevel, 0, 100) / 100;
@@ -10689,10 +10689,10 @@ const PROD_FIX = { incomp_liquidos_labiais_oscar: { W: 18.6, H: 109.9, prof: 'in
 // cl208 (dona: "os aplicadores não estão na proporção certa de haste e aplicador, conferir por foto"): medidas nas fotos abertas do
 // site (900 px, frasco e haste no mesmo plano), em múltiplos da largura do frasco: [Ø da haste, comprimento da ponta flocada, folga até o
 // fundo]. A ponta tem ~1,35× o Ø da haste. Folga: a haste aparente das fotos pede o aplicador quase no fundo (1 mm), exceto o Berlim.
-const GLOSS_WAND = { Berlim: [0.18, 0.56, 9.6], Guggen: [0.28, 0.76, 1.3], Moma: [0.25, 0.66, 1], 'Moma 2.0': [0.24, 0.63, 1], Oscar: [0.2, 0.57, 1],
+const GLOSS_WAND = { Berlim: [0.21, 0.6, 2, 0.28], 'Berlim Plus': [0.36, 1.07, 1, 0.41] /* cl227 (dona: "haste tá proporcional?"; catálogo p.94/95 medido em px, × largura da tampa): Berlim haste 0,21 ponta 0,28×0,6; Plus haste grossa 0,36, ponta 0,41×1,07 e haste aparente ~3,9 W */, Guggen: [0.28, 0.76, 1.3], Moma: [0.25, 0.66, 1], 'Moma 2.0': [0.24, 0.63, 1], Oscar: [0.2, 0.57, 1],
   Timeless: [0.27, 0.63, 1], Silhouette: [0.22, 0.73, 1] };
 function glossWand(n, w) { const k = GLOSS_WAND[n] || GLOSS_WAND[Object.keys(GLOSS_WAND).filter(x => n.startsWith(x)).sort((a, b) => b.length - a.length)[0]] || [0.24, 0.65, 3];
-  const d = r1(w * k[0]); return { pescD: d, tipW: r1(d * 1.35), tipL: r1(w * k[1] * 13 / 11.5) /* a ponta torneada sai ~11,5/13 do tipL */, pescGap: k[2] }; }
+  const d = r1(w * k[0]); return { pescD: d, tipW: r1(k[3] ? w * k[3] : d * 1.35), tipL: r1(w * k[1] * 13 / 11.5) /* a ponta torneada sai ~11,5/13 do tipL */, pescGap: k[2] }; }
 // Aplicador do Petit (todas as 8 opções do catálogo): mesmo nome de peça para a troca sugerir as outras.
 const aplicPart = (P, k, W) => { const t = APLIC[k]; return P('Ponteira aplicadora', W, null, t.h || 21, { aplic: k, rBot: 0, rTop: 0, gap: -1, own: true, color: t.color, finish: t.finish,
   ...(t.c2 || t.c3 ? { mat2: true, mat2Side: 'cima', mat2Color: t.c2 || t.color, mat2Finish: t.f2 || t.finish } : {}) }); };
@@ -11014,6 +11014,8 @@ function incomProduct(r) {
       // Timeless (fotos do site): seção quadrada, fundo de cristal grosso e reto; o líquido termina em piso plano de
       // cantos curtos — a concha redonda num frasco quadrado deixava o fundo do líquido recortado
       if (!masc && r.t === 'glosssq') gl.fundoR = r1(Math.min(W, D) * 0.08);
+      // cl226 (pente fino, foto 1 do Berlim medida): frasco quadrado de cristal com parede grossa; a cor ocupa ~60% da largura e a faixa incolor aparece dos lados
+      if (!masc && /^Berlim( Plus)?$/.test(r.n)) gl.liqInset = r1(W * (r.n === 'Berlim' ? 0.16 : 0.13)); // Plus (catálogo p.95): cor 128/177 px da largura
       if (!masc && /^(Guggen|Guggen Roll On)$/.test(r.n)) gl.incomSmileFloor = true;
       // Charm: a argola do topo não é parte do giro (virava um botão torneado); a tampa termina reta onde ela começa.
       // Oscar sem Charm: o desenho do catálogo traz a argola, mas a foto é a tampa abaulada lisa — corta ali e arredonda
