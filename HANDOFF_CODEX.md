@@ -1,4 +1,9 @@
-# Atualização Claude — 23/11/2026, cl207
+# Atualização Claude — 23/11/2026, cl208
+
+- **cl208** — Líquidos labiais, dona ("os aplicadores não estão na proporção certa de haste e aplicador, conferir por foto"): medi as fotos abertas do site (frasco e haste no mesmo plano) em múltiplos da largura do frasco. Nova tabela `GLOSS_WAND` [Ø da haste, comprimento da ponta, folga até o fundo] por produto; os irmãos herdam pelo prefixo do nome (Charm, Tampa Alta, Plus). Função `glossWand`.
+  - Haste: antes 3 mm em todos; agora 0,18–0,28 W (Berlim 3,4, Guggen 5,2, Moma 5,7, Timeless 6,3 mm).
+  - Ponta: ~1,35× o Ø da haste, comprimento 0,56–0,76 W.
+  - Haste aparente conferida no render: Berlim 1,9 W, Guggen 2,06 W, Oscar 2,22 W, iguais às fotos. Moma, Timeless e Silhouette ficam um pouco abaixo da foto porque o aplicador já está a 1 mm do fundo.
 
 - **cl207** — Líquidos labiais (todos), revisão própria pelas fotos abertas:
   - No Abrir a tampa fica em pé com a haste para cima, ao lado do frasco (`capa: 'vira'`), como em todas as fotos; antes ficava deitada. Vale também para as máscaras.

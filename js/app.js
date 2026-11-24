@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION, ADDITION, INTERSECTION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-23.cl207';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-23.cl208';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -707,7 +707,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-23.cl207';
+const BUILD = '2026-11-23.cl208';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -10668,6 +10668,13 @@ const corDe = (L, n) => L[[...n].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>>
 // Erros do próprio catálogo: a página do Oscar (líquido) repete o desenho do Moma Charm (Ø22,6 × 87,1 com argola);
 // a foto é o frasco do Oscar All Crystal/Oscar máscara (Ø18,6) com a tampa abaulada — vale o desenho da máscara
 const PROD_FIX = { incomp_liquidos_labiais_oscar: { W: 18.6, H: 109.9, prof: 'incomp_mascaras_oscar' } };
+// cl208 (dona: "os aplicadores não estão na proporção certa de haste e aplicador, conferir por foto"): medidas nas fotos abertas do
+// site (900 px, frasco e haste no mesmo plano), em múltiplos da largura do frasco: [Ø da haste, comprimento da ponta flocada, folga até o
+// fundo]. A ponta tem ~1,35× o Ø da haste. Folga: a haste aparente das fotos pede o aplicador quase no fundo (1 mm), exceto o Berlim.
+const GLOSS_WAND = { Berlim: [0.18, 0.56, 9.6], Guggen: [0.28, 0.76, 1.3], Moma: [0.25, 0.66, 1], 'Moma 2.0': [0.24, 0.63, 1], Oscar: [0.2, 0.57, 1],
+  Timeless: [0.27, 0.63, 1], Silhouette: [0.22, 0.73, 1] };
+function glossWand(n, w) { const k = GLOSS_WAND[n] || GLOSS_WAND[Object.keys(GLOSS_WAND).filter(x => n.startsWith(x)).sort((a, b) => b.length - a.length)[0]] || [0.24, 0.65, 3];
+  const d = r1(w * k[0]); return { pescD: d, tipW: r1(d * 1.35), tipL: r1(w * k[1] * 13 / 11.5) /* a ponta torneada sai ~11,5/13 do tipL */, pescGap: k[2] }; }
 // Aplicador do Petit (todas as 8 opções do catálogo): mesmo nome de peça para a troca sugerir as outras.
 const aplicPart = (P, k, W) => { const t = APLIC[k]; return P('Ponteira aplicadora', W, null, t.h || 21, { aplic: k, rBot: 0, rTop: 0, gap: -1, own: true, color: t.color, finish: t.finish,
   ...(t.c2 || t.c3 ? { mat2: true, mat2Side: 'cima', mat2Color: t.c2 || t.color, mat2Finish: t.f2 || t.finish } : {}) }); };
@@ -11024,7 +11031,7 @@ function incomProduct(r) {
           wandMouth: Math.max(0.5, Math.min(neckBore(neck), nw / 2 - neck.threadD - 1.2)), _t: [0, f] }), neck,
         M('tampaGloss', { name: masc ? 'Inserto roscado com haste e escova' : 'Inserto roscado com haste e aplicador',
           W: insertW, D: insertW, h: r1(nh + 1.2), wandInsert: { W: neck.W, h: neck.h, pitch: neck.pitch, turns: neck.turns, threadD: neck.threadD, ringH: 0 }, pescD: r1(Math.min(3, nw * 0.3)),
-          tipL: masc ? r1(Math.min(24, H * 0.2)) : 13, tipW: r1(Math.min(masc ? 7.5 : 6.5, Math.min(W, D) - 6)), tipColor: masc ? '#2b2b2b' : '#f4f1ec', ...(masc ? {} : { tipStyle: 'chanfro', rodColor: '#1a1a1a' }) /* cl206 (fotos de todos os glosses abertos): haste preta e ponta flocada branca chanfrada e arredondada, como no Petit */,
+          tipL: masc ? r1(Math.min(24, H * 0.2)) : 13, tipW: r1(Math.min(masc ? 7.5 : 6.5, Math.min(W, D) - 6)), tipColor: masc ? '#2b2b2b' : '#f4f1ec', ...(masc ? {} : { tipStyle: 'chanfro', rodColor: '#1a1a1a', ...glossWand(r.n, W) }) /* cl206 (fotos de todos os glosses abertos): haste preta e ponta flocada branca chanfrada e arredondada, como no Petit */,
           ...(masc ? { brushStyle: r.n === 'Berlim Plus' ? 'cone' : ['Guggen', 'Oscar'].includes(r.n) ? 'fina' : 'fusiforme' } : {}),
           ...(/All Crystal/.test(r.n) ? { rodClear: true, own: true, finish: 'pet', color: '#ffffff' } : {}) }), cap]; break; } // All Crystal (foto): o inserto roscado também é incolor — pela tampa de cristal aparecem a rosca e a haste, não um bloco
     case 'baton': case 'batonsq': {
