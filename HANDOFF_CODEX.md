@@ -1,4 +1,10 @@
-# Atualização Claude — 24/11/2026, cl246
+# Atualização Claude — 24/11/2026, cl249
+
+- **cl247–249** — Oscar All Crystal, dona ("faltou rosca interna da tampa" e "rever todo, topo do frasco errado"); revisão completa pela foto:
+  - Gargalo: largo (0,78 W = 14,5 mm) e curto (0,5 W = 9,3 mm), com 4 voltas. Antes era estreito e alto (19 mm, 0,55 da tampa).
+  - Ombro do frasco: arredondado até o gargalo (`rLivre`, `rTop` 2,2).
+  - Rosca fêmea: cortada na própria tampa de cristal (`femaleThread` na tampa). A tampa é maciça nos ~45% de cima (`ocoTop`) e tem o furo roscado do Ø do gargalo embaixo; fechada, a rosca aparece pelo cristal.
+  - Inserto: virou um anel fino e incolor. Transparente dentro de transparente não aparece no render; por isso a rosca do inserto sumia.
 
 - **cl246** — Oscar Charm, irmão do Moma Charm (desenho da p.104 medido): o corte tampa/frasco passou de 0,5 para 61,2/112,3. Frasco 56 → 61,2 mm, tampa 43,7 mm, argola 7,4 mm acima da tampa (`emb` 1,1).
 

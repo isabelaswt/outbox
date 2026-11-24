@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION, ADDITION, INTERSECTION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-23.cl246';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-23.cl249';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -707,7 +707,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-23.cl246';
+const BUILD = '2026-11-23.cl249';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -11065,21 +11065,24 @@ function incomProduct(r) {
         break; } // tampa assenta no ombro; rosca fêmea corresponde ao suporte do roll-on.
       // Foto da dona: tampa externa e inserto roscado portando a haste são peças distintas.
       // Diâmetro/passo/folga internos estimados; dimensões fechadas do catálogo preservadas.
-      const nh = /All Crystal/.test(r.n) ? r1(cap.h * 0.55) : r1(Math.min(6, cap.h * 0.16)),
+      const ac = /All Crystal/.test(r.n), nh = ac ? r1(W * 0.5) /* cl248 (dona: "rever todo, topo do frasco errado"; foto): gargalo largo (~0,78 W) e curto (~0,5 W), 4 voltas; era 0,55 da tampa (19 mm) e estreito */ : r1(Math.min(6, cap.h * 0.16)),
         insertW = r1(2 * (capHalfAt(cap, 0) - OCO.wall - 0.05)),
-        nw = r1(Math.min(wv, insertW - 2.2)),
+        nw = ac ? r1(W * 0.78) : r1(Math.min(wv, insertW - 2.2)),
         neck = M('gargalo', { name: 'Gargalo roscado', neckStd: 'livre', W: nw, D: nw, h: nh,
-          pitch: r1(Math.min(1.3, nh * 0.22)), turns: /All Crystal/.test(r.n) ? 5 : 2.5,
+          pitch: ac ? r1(nh / 4.5) : r1(Math.min(1.3, nh * 0.22)), turns: ac ? 4 : 2.5,
           threadD: r1(Math.min(0.5, nw * 0.045)), ringH: 0, ringW: 0, embed: 0,
           neckFillet: 0, exposedNeck: true, tuboAberto: true });
       delete cap.roscaInt; // A rosca pertence ao inserto, não à casca decorativa.
-      ms = [P('Frasco', W, D, H * f, { ...s0, vol: true, rBot: masc ? 1.5 : 2.4, ...gl, ...(r.n === 'Silhouette' ? { perfilReto: true } : {}),
+      // cl248 (dona: "faltou rosca interna da tampa"; foto): no All Crystal a rosca fêmea é cortada na própria tampa de cristal, que é maciça
+      // em cima (~45%) e tem o furo roscado do Ø do gargalo embaixo — a rosca aparece pelo cristal
+      if (ac) Object.assign(cap, { femaleThread: { W: neck.W, h: neck.h, pitch: neck.pitch, turns: neck.turns, threadD: neck.threadD, ringH: 0 }, ocoWall: r2((W - nw) / 2 - 0.2), ocoTop: r1(cap.h * 0.45) });
+      ms = [P('Frasco', W, D, H * f, { ...s0, vol: true, rBot: masc ? 1.5 : 2.4, ...gl, ...(r.n === 'Silhouette' ? { perfilReto: true } : {}), ...(ac ? { rLivre: true, rTop: 2.2 } /* cl248 (foto): ombro arredondado até o gargalo */ : {}),
           wandMouth: Math.max(0.5, Math.min(neckBore(neck), nw / 2 - neck.threadD - 1.2)), _t: [0, f] }), neck,
         M('tampaGloss', { name: masc ? 'Inserto roscado com haste e escova' : 'Inserto roscado com haste e aplicador',
-          W: insertW, D: insertW, h: r1(nh + 1.2), wandInsert: { W: neck.W, h: neck.h, pitch: neck.pitch, turns: neck.turns, threadD: neck.threadD, ringH: 0 }, pescD: r1(Math.min(3, nw * 0.3)),
+          W: ac ? r1(nw + 1.4) : insertW, D: ac ? r1(nw + 1.4) : insertW, h: r1(nh + 1.2), wandInsert: { W: neck.W, h: neck.h, pitch: neck.pitch, turns: neck.turns, threadD: neck.threadD, ringH: 0 }, pescD: r1(Math.min(3, nw * 0.3)),
           tipL: masc ? r1(Math.min(24, H * 0.2)) : 13, tipW: r1(Math.min(masc ? 7.5 : 6.5, Math.min(W, D) - 6)), tipColor: masc ? '#2b2b2b' : '#f4f1ec', ...(masc ? { rodColor: '#1a1a1a' /* cl222 (fotos das máscaras): haste preta */, ...mascBrush(r.n, W, nw) } : { tipStyle: 'chanfro', rodColor: '#1a1a1a', ...wandFit(glossWand(r.n, W), nw) }) /* cl206 (fotos de todos os glosses abertos): haste preta e ponta flocada branca chanfrada e arredondada, como no Petit */,
           ...(masc ? { brushStyle: r.n === 'Berlim Plus' ? 'cone' : ['Guggen', 'Oscar'].includes(r.n) ? 'fina' : 'fusiforme' } : {}),
-          ...(/All Crystal/.test(r.n) ? { rodClear: true, own: true, finish: 'pet', color: '#ffffff' } : {}) }), cap]; break; } // All Crystal (foto): o inserto roscado também é incolor — pela tampa de cristal aparecem a rosca e a haste, não um bloco
+          ...(/All Crystal/.test(r.n) ? { rodClear: true, own: true, finish: 'pet', color: '#ffffff' /* cl248: inserto fino e incolor; a rosca fêmea é da própria tampa de cristal */ } : {}) }), cap]; break; } // All Crystal (foto): o inserto roscado também é incolor — pela tampa de cristal aparecem a rosca e a haste, não um bloco
     case 'baton': case 'batonsq': {
       // Batom como no catálogo: base, tubo de metal (mecanismo) saindo dela, bala de 12,1 mm com a ponta
       // chanfrada, recolhida dentro do tubo, e a tampa que desce até a base vestindo tudo. "Abrir" tira a

@@ -242,6 +242,11 @@ Pendências conhecidas (precisam de dado ou de decisão; não invente):
   - Tampa: 26,9 → 32,6 mm.
   - Argola: sai 6,7 mm acima da tampa. Nova opção `emb` (embutimento) na argola: 1,8 mm no Moma Charm; o padrão continua 0,6.
 - **cl246** — Oscar Charm, irmão do Moma Charm (desenho da p.104 medido): o corte tampa/frasco passou de 0,5 para 61,2/112,3. Frasco 56 → 61,2 mm, tampa 43,7 mm, argola 7,4 mm acima da tampa (`emb` 1,1).
+- **cl247–249** — Oscar All Crystal, dona ("faltou rosca interna da tampa" e "rever todo, topo do frasco errado"); revisão completa pela foto:
+  - Gargalo: largo (0,78 W = 14,5 mm) e curto (0,5 W = 9,3 mm), com 4 voltas. Antes era estreito e alto (19 mm, 0,55 da tampa).
+  - Ombro do frasco: arredondado até o gargalo (`rLivre`, `rTop` 2,2).
+  - Rosca fêmea: cortada na própria tampa de cristal (`femaleThread` na tampa). A tampa é maciça nos ~45% de cima (`ocoTop`) e tem o furo roscado do Ø do gargalo embaixo; fechada, a rosca aparece pelo cristal.
+  - Inserto: virou um anel fino e incolor. Transparente dentro de transparente não aparece no render; por isso a rosca do inserto sumia.
   - No Abrir a tampa fica em pé ao lado da bala, com o fecho para cima. Novo modo `capa: 'pe'`: sai sem girar. Antes ficava deitada.
   - Long, Long Abaulada e Long Lipview: a bala sobe `lb * 0,85` (como Ella e Squared). Antes subia só 41/320 da tampa (Long) ou 0,45 (Lipview) e mal aparecia; nas fotos ela sai ~20% da altura do batom aberto.
   - Potes revisados sem divergências a corrigir. As peneiras pretas das fotos são acessório opcional.
