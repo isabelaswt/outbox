@@ -234,6 +234,7 @@ Pendências conhecidas (precisam de dado ou de decisão; não invente):
 - Potes (11) revisados pelas fotos: sem divergências a corrigir. Timeless Plus (gloss) conferido.
 - Revisão pelas fotos sem divergências a corrigir: Chubby Stick M/G, Case G/M Tampa Cristal, Petit Aplicador (7 variantes), Moma Tampa Alta (as fotos são do Moma), Long Abaulada e Long Lipview Abaulada.
 - **cl240** — Guggen Roll On, dona ("tem uma linha retangular no produto"): era a cavidade interna do frasco (`ocoTopo`), cujas paredes e piso apareciam pelo líquido claro como um retângulo de linhas. O frasco do Roll On não leva mais `ocoTopo`; o líquido preenche o corpo limpo. Nos glosses de cor forte o líquido escondia essa cavidade.
+- **cl241/242** — Guggen Roll On, dona ("não abre, acompanha a bola"): o aro não alarga mais para fora da rosca. Ele tem a largura do miolo da rosca (0,9 do suporte), sobe reto e fecha rente à bola, a 0,6 mm dela. A bola ficou em 0,6 da largura da rosca (6,9 mm; era 8,6), como na foto da p.98. Ela sai ~44% acima do aro, e a tampa compensa para manter a altura fechada.
   - No Abrir a tampa fica em pé ao lado da bala, com o fecho para cima. Novo modo `capa: 'pe'`: sai sem girar. Antes ficava deitada.
   - Long, Long Abaulada e Long Lipview: a bala sobe `lb * 0,85` (como Ella e Squared). Antes subia só 41/320 da tampa (Long) ou 0,45 (Lipview) e mal aparecia; nas fotos ela sai ~20% da altura do batom aberto.
   - Potes revisados sem divergências a corrigir. As peneiras pretas das fotos são acessório opcional.

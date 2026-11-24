@@ -1,4 +1,6 @@
-# Atualização Claude — 24/11/2026, cl240
+# Atualização Claude — 24/11/2026, cl242
+
+- **cl241/242** — Guggen Roll On, dona ("não abre, acompanha a bola"): o aro não alarga mais para fora da rosca. Ele tem a largura do miolo da rosca (0,9 do suporte), sobe reto e fecha rente à bola, a 0,6 mm dela. A bola ficou em 0,6 da largura da rosca (6,9 mm; era 8,6), como na foto da p.98. Ela sai ~44% acima do aro, e a tampa compensa para manter a altura fechada.
 
 - **cl240** — Guggen Roll On, dona ("tem uma linha retangular no produto"): era a cavidade interna do frasco (`ocoTopo`), cujas paredes e piso apareciam pelo líquido claro como um retângulo de linhas. O frasco do Roll On não leva mais `ocoTopo`; o líquido preenche o corpo limpo. Nos glosses de cor forte o líquido escondia essa cavidade.
 
