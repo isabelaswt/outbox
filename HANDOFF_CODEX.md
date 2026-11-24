@@ -1,4 +1,6 @@
-# Atualização Claude — 24/11/2026, cl219
+# Atualização Claude — 24/11/2026, cl221
+
+- **cl221** — Tube, dona (foto dos Tubes: "base acaba circular"): perfil próprio [t, a, b, n] no lugar do contorno do desenho. Corpo achatado (superelipse n 3,4, D 0,68 W) que, nos ~40% junto ao gargalo, vira suavemente um círculo de 0,9 W, o Ø da tampa. Essa transição é a "linha diagonal" das fotos; a torção (`polyTwist`) saiu. (cl220 só carimbo intermediário.)
 
 - **cl219** — Batons, revisão própria pelas fotos abertas:
   - No Abrir a tampa fica em pé ao lado da bala, com o fecho para cima. Novo modo `capa: 'pe'`: sai sem girar. Antes ficava deitada.

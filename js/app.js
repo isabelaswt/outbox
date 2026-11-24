@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION, ADDITION, INTERSECTION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-23.cl219';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-23.cl221';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -707,7 +707,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-23.cl219';
+const BUILD = '2026-11-23.cl221';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -10961,7 +10961,12 @@ function incomProduct(r) {
       const tubeD = r1(W * 0.6); /* cl210 (foto de cima dos Tubes em pé): seção bem achatada, ~0,6 da largura */ r = { ...r, D: tubeD, est: 'D' };
       // cl202 (revisão pelas fotos/desenho p.84): o corpo afina para o gargalo (~80% da base), termina num ombro arredondado e as quinas
       // correm em diagonal (seção levemente torcida, a linha inclinada das fotos e do desenho); antes era o contorno reto do desenho
-      const body = P('Frasco', W, tubeD, H - nh, { ...sq(0.35), vol: true, ocoTopo: true, taper: 97, polyTwist: r2(12 / (H - nh)), rTop: 3, rBot: 4 /* fotos: o fundo (em cima, fechado) tem quinas bem arredondadas */ /* cl210 (dona, foto dos 4 Tubes: o render ficou em cunha): quase sem afinar, seção achatada (D 0,6 W) e torção leve — a linha diagonal das fotos é só a quina */ });
+      // cl220 (dona, foto dos Tubes: "base acaba circular"): o corpo é achatado (retângulo arredondado, superelipse n 3,4, D 0,68 W) e, nos
+      // ~40% junto ao gargalo/tampa, vira um círculo do Ø da tampa; essa transição do plano para o redondo é a "linha diagonal"
+      // das fotos (não é torção). Perfil próprio [t, a, b, n] em vez do contorno do desenho
+      const capR = 0.9, tubeProf = Array.from({ length: 41 }, (_, i) => { const t = i / 40, u = clamp((t - 0.6) / 0.37, 0, 1), k = u * u * (3 - 2 * u), a = 1 - 0.03 * t;
+        return [t, a + (capR - a) * k, 0.68 + (capR - 0.68) * k, 3.4 + (2 - 3.4) * k, 0, 0]; });
+      const body = P('Frasco', W, W, H - nh, { vol: true, ocoTopo: true, prof: tubeProf, smoothProf: false, rTop: 3, rBot: 4 /* fotos: o fundo (em cima, fechado) tem quinas bem arredondadas */ });
       // Inserto fica dentro da rosca exposta, não veste nem encurta o gargalo (detalhe p.84).
       const neck = NECK('20/410', { name: 'Rosca 20-410', exposedNeck: true, ringH: 0, ringW: 0, embed: 1, neckFillet: 0, tuboAberto: true });
       // Detalhe aberto: inserto cônico; dimensões externas proporcionais à rosca, sem cota própria.

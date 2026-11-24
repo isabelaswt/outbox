@@ -204,6 +204,7 @@ Pendências conhecidas (precisam de dado ou de decisão; não invente):
 - **cl216** — Olive: o pontinho escuro na frente da tampa fechada era a crista da rosca 20-410 furando a tampa achatada (20,75 mm de profundidade). Nas frasnagas de rosca, a tampa agora tem no mínimo o Ø do gargalo + 2 mm de profundidade (Olive: 21,7).
 - **cl217** — Dispensadores e frascos com sobretampa (Bulb, Dispensing 15/30/60, Quadrado, Amsterdam Deluxe…), pela foto aberta do Bulb: no Abrir a sobretampa transparente sai e fica ao lado da bomba (`capa: 'vira'`). A regra do cl212 agora vale também quando nenhuma outra peça sai.
 - **cl219** — Batons, revisão própria pelas fotos abertas:
+- **cl221** — Tube, dona (foto dos Tubes: "base acaba circular"): perfil próprio [t, a, b, n] no lugar do contorno do desenho. Corpo achatado (superelipse n 3,4, D 0,68 W) que, nos ~40% junto ao gargalo, vira suavemente um círculo de 0,9 W, o Ø da tampa. Essa transição é a "linha diagonal" das fotos; a torção (`polyTwist`) saiu. (cl220 só carimbo intermediário.)
   - No Abrir a tampa fica em pé ao lado da bala, com o fecho para cima. Novo modo `capa: 'pe'`: sai sem girar. Antes ficava deitada.
   - Long, Long Abaulada e Long Lipview: a bala sobe `lb * 0,85` (como Ella e Squared). Antes subia só 41/320 da tampa (Long) ou 0,45 (Lipview) e mal aparecia; nas fotos ela sai ~20% da altura do batom aberto.
   - Potes revisados sem divergências a corrigir. As peneiras pretas das fotos são acessório opcional.
