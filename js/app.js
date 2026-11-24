@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION, ADDITION, INTERSECTION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-23.cl208';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-23.cl212';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -707,7 +707,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-23.cl208';
+const BUILD = '2026-11-23.cl212';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -10852,7 +10852,7 @@ function incomProduct(r) {
       let rT = /^Flacon 30/.test(r.n) ? W * 0.4 : W * 0.18; // cl52 (Flacon 30 Bulbo: "ombro mais redondo em cima")
       if (fb) { const t = fb[0] + fb[1] + fb[2]; f = fb[0] / t; tb = (fb[0] + fb[1]) / t; cw = fb[3]; bw = fb[4]; rT = fb[5]; }
       if (r.n === 'Sydney') f += 0.035; // cl119 (foto Sydney 60): o colar é ~4 mm mais baixo, o frasco começa mais alto
-      ms = [P('Frasco', W, D, H * f, { vol: true, rBot: 2, rTop: rT, _t: [0, f] }),
+      ms = [P('Frasco', W, D, H * f, { vol: true, rBot: 2, rTop: rT, _t: [0, f], ...(r.n === 'Julie' ? { rLivre: true, rBot: 2.5, rTop: 0.8, coneTop: { h: r1(W * 0.06), k: 0.6 } } : {}) /* cl209: Julie conta-gotas usa o mesmo frasco da frasnaga Julie — ombro reto em cone baixo (cl190) */ }),
         M('contaGotas', { ...(b ? { botao: true, ridges: 0 } : {}), name: b ? 'Conta-gotas de botão' : 'Conta-gotas', W: r1(W * cw), D: r1(W * cw), h: r2(H * (tb - f)), actW: r1(W * bw), actH: r2(H * (1 - tb) + 0.5) })]; // +0,5: o conta-gotas encaixa 0,5 mm no gargalo
       // Rosca: Julie 20-410 (ficha da frasnaga Julie, mesmo frasco); Flacon 15/30 — as fotos abertas do site mostram o
       // gargalo com rosca externa, mas a norma não é informada: rosca representativa no diâmetro que a saia comporta.
@@ -10944,10 +10944,10 @@ function incomProduct(r) {
       // Junção a ~83% da altura, medida no desenho. Seção traseira não cotada: D=W provisório.
       const f = 0.83, nh = NECKS['20/410'].h, lift = r2(nh - 0.5);
       // Foto 3/4 da dona: seção achatada e cantos arredondados. D≈80% de W é estimado, não cotado.
-      const tubeD = r1(W * 0.8); r = { ...r, D: tubeD, est: 'D' };
+      const tubeD = r1(W * 0.6); /* cl210 (foto de cima dos Tubes em pé): seção bem achatada, ~0,6 da largura */ r = { ...r, D: tubeD, est: 'D' };
       // cl202 (revisão pelas fotos/desenho p.84): o corpo afina para o gargalo (~80% da base), termina num ombro arredondado e as quinas
       // correm em diagonal (seção levemente torcida, a linha inclinada das fotos e do desenho); antes era o contorno reto do desenho
-      const body = P('Frasco', W, tubeD, H - nh, { ...sq(0.35), vol: true, ocoTopo: true, taper: 91, polyTwist: r2(20 / (H - nh)), rTop: 3, rBot: 1.5 });
+      const body = P('Frasco', W, tubeD, H - nh, { ...sq(0.35), vol: true, ocoTopo: true, taper: 97, polyTwist: r2(12 / (H - nh)), rTop: 3, rBot: 4 /* fotos: o fundo (em cima, fechado) tem quinas bem arredondadas */ /* cl210 (dona, foto dos 4 Tubes: o render ficou em cunha): quase sem afinar, seção achatada (D 0,6 W) e torção leve — a linha diagonal das fotos é só a quina */ });
       // Inserto fica dentro da rosca exposta, não veste nem encurta o gargalo (detalhe p.84).
       const neck = NECK('20/410', { name: 'Rosca 20-410', exposedNeck: true, ringH: 0, ringW: 0, embed: 1, neckFillet: 0, tuboAberto: true });
       // Detalhe aberto: inserto cônico; dimensões externas proporcionais à rosca, sem cota própria.
@@ -10956,7 +10956,7 @@ function incomProduct(r) {
         gap: lift, pesc: false, mola: false });
       // Foto aberta da dona: tampa ~84% da largura / 32% da altura do corpo, sem cotas próprias.
       // Os 109 mm do desenho medem corpo + gargalo exposto, não o conjunto fechado.
-      const cap = P('Tampa', r1(W * 0.84), null, r1(body.h * 0.322), { rBot: 0.5, rTop: 0.7, oco: true, capa: 'vira', viraFechado: true /* cl202 (fotos): fechado fica em pé sobre a tampa */, gap: -lift });
+      const cap = P('Tampa', r1(W * 0.9) /* cl210 (fotos): a tampa tem quase a largura da frente do corpo */, null, r1(body.h * 0.322), { rBot: 0.5, rTop: 0.7, oco: true, capa: 'vira', viraFechado: true /* cl202 (fotos): fechado fica em pé sobre a tampa */, gap: -lift });
       ms = [body, neck, tip, cap]; break; }
     case 'gloss': case 'glosssq': { // a tampa veste a haste com o aplicador (ou a escova, na máscara), que desce até o fundo
       // Petit (frasnaga): na foto fica em pé sobre a tampa quadrada preta (36% de baixo, como no desenho) e o
@@ -11404,6 +11404,8 @@ function incomProduct(r) {
     let lo = 0.2, hi = 1.6; for (let k = 0; k < 18; k++) { const mid = (lo + hi) / 2; ms.forEach((m, i) => { m.D = D0[i] * mid; });
       const v = volumes({ modules: ms, wall: 1, finish: 'fosco', gap: 0 }).cap; if (v > want) hi = mid; else lo = mid; }
     ms.forEach((m, i) => { m.D = r2(D0[i] * (lo + hi) / 2); }); }
+  // cl209 (revisão pelas fotos, conta-gotas Bulb/Dispensing): no Abrir a sobretampa sai junto — ficava flutuando sobre o frasco vazio
+  { const sc = ms.find(m => m.name === 'Sobretampa'); if (sc && !sc.capa && ms.some(m => m.capa)) sc.capa = 'vira'; }
   Object.assign(ms.find(m => /^(Base|Frasco|Pote|Corpo)/.test(m.name)) || ms[0], { forn: 'Incom', ref: r.n.toUpperCase(), fmat: r.mat, fterm: r.vol, fpg: r.pg, fest: r.est, fW: r.W, fD: r.D ?? r.W, fH: r.H, fcat: r.c });
   if (r.c === 'Frasnagas' && r.n === 'Tube') ms.find(m => m.vol).fMeasure = 'corpo + gargalo exposto, sem tampa e sem bico';
   const fapp = ['Frascos', 'Frasnagas'].includes(r.c) || r.t.startsWith('flacon') ? 'Fármaco' : 'Beleza';

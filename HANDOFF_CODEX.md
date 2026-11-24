@@ -1,4 +1,10 @@
-# Atualização Claude — 23/11/2026, cl208
+# Atualização Claude — 23/11/2026, cl212
+
+- **cl212** — Rodada de comparativos (dona: "continuar os comparativos rígidos"):
+  - Tube (dona, foto dos 4 Tubes: o render tinha virado uma cunha): quase não afina (`taper` 97), seção achatada (D 0,6 W, era 0,8), torção leve de 12° (era 20°), fundo com quinas de 4 mm e tampa com 0,9 W (era 0,84).
+  - Conta-gotas com sobretampa (Bulb, Dispensing 15/30): no Abrir a sobretampa sai junto e fica ao lado (`capa: 'vira'`); antes flutuava sobre o frasco vazio. Regra geral no fim de `incomProduct`: sobretampa sem `capa` quando outra peça tem.
+  - Julie conta-gotas: mesmo frasco da frasnaga Julie, com ombro reto em cone baixo (`coneTop`, `rLivre`).
+  (cl209–211 só carimbos intermediários.)
 
 - **cl208** — Líquidos labiais, dona ("os aplicadores não estão na proporção certa de haste e aplicador, conferir por foto"): medi as fotos abertas do site (frasco e haste no mesmo plano) em múltiplos da largura do frasco. Nova tabela `GLOSS_WAND` [Ø da haste, comprimento da ponta, folga até o fundo] por produto; os irmãos herdam pelo prefixo do nome (Charm, Tampa Alta, Plus). Função `glossWand`.
   - Haste: antes 3 mm em todos; agora 0,18–0,28 W (Berlim 3,4, Guggen 5,2, Moma 5,7, Timeless 6,3 mm).

@@ -199,6 +199,11 @@ Pendências conhecidas (precisam de dado ou de decisão; não invente):
 - **cl205** — Petit Aplicador (e as 7 variantes de aplicador), dona ("tem que ter rosca interna na tampa"): a tampa quadrada agora tem um furo redondo com rosca fêmea casando com a do gargalo (`threadReceiver` W 0,6 W, h 6,8, passo 1,1, 2,5 voltas, `threadNeckUid`). O oco é cheio para caber o aplicador (`threadCavityFull`, parede 1 mm). Antes o oco era quadrado e liso.
 - **cl207** — Líquidos labiais (todos), revisão própria pelas fotos abertas:
 - **cl208** — Líquidos labiais, dona ("os aplicadores não estão na proporção certa de haste e aplicador, conferir por foto"): medi as fotos abertas do site (frasco e haste no mesmo plano) em múltiplos da largura do frasco. Nova tabela `GLOSS_WAND` [Ø da haste, comprimento da ponta, folga até o fundo] por produto; os irmãos herdam pelo prefixo do nome (Charm, Tampa Alta, Plus). Função `glossWand`.
+- **cl212** — Rodada de comparativos (dona: "continuar os comparativos rígidos"):
+  - Tube (dona, foto dos 4 Tubes: o render tinha virado uma cunha): quase não afina (`taper` 97), seção achatada (D 0,6 W, era 0,8), torção leve de 12° (era 20°), fundo com quinas de 4 mm e tampa com 0,9 W (era 0,84).
+  - Conta-gotas com sobretampa (Bulb, Dispensing 15/30): no Abrir a sobretampa sai junto e fica ao lado (`capa: 'vira'`); antes flutuava sobre o frasco vazio. Regra geral no fim de `incomProduct`: sobretampa sem `capa` quando outra peça tem.
+  - Julie conta-gotas: mesmo frasco da frasnaga Julie, com ombro reto em cone baixo (`coneTop`, `rLivre`).
+  (cl209–211 só carimbos intermediários.)
   - Haste: antes 3 mm em todos; agora 0,18–0,28 W (Berlim 3,4, Guggen 5,2, Moma 5,7, Timeless 6,3 mm).
   - Ponta: ~1,35× o Ø da haste, comprimento 0,56–0,76 W.
   - Haste aparente conferida no render: Berlim 1,9 W, Guggen 2,06 W, Oscar 2,22 W, iguais às fotos. Moma, Timeless e Silhouette ficam um pouco abaixo da foto porque o aplicador já está a 1 mm do fundo.
