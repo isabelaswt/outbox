@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION, ADDITION, INTERSECTION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-23.cl185';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-23.cl187';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -707,7 +707,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-23.cl185';
+const BUILD = '2026-11-23.cl187';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -10892,7 +10892,7 @@ function incomProduct(r) {
       break; }
     case 'frn': case 'frnt': case 'frnr': case 'frnflat': {
       const o = r.t === 'frnt' ? { taper: 88 } : {}, [f0] = /Charlotte/.test(r.n) ? [0.32] : r.n === 'Olympea' ? [0.27] : incomFrac(pr, [0.66]),
-        f = r.n === 'Julie' ? f0 + 5.5 / H : f0; // Julie (fotos): o anel do ombro é do frasco; a tampa é um cilindro simples, sem aba // Charlotte e Olympea: em pé sobre a tampa (fotos)
+        f = f0; /* cl185 (dona: "não tem essa volta no julie"): sem o anel de 5,5 mm do desenho no alto do frasco — nas fotos a tampa assenta direto no ombro */ // Julie (fotos): o anel do ombro é do frasco; a tampa é um cilindro simples, sem aba // Charlotte e Olympea: em pé sobre a tampa (fotos)
       // Charlotte (divisão abaixo da metade no desenho): fica em pé sobre a tampa, corpo em cima. Na foto é uma
       // bisnaga achatada (frente larga, seção de retângulo arredondado), não um cilindro
       if (r.n === 'Olympea') { // foto: em pé sobre a tampa preta, solda de cima inclinada
@@ -10911,7 +10911,7 @@ function incomProduct(r) {
       const sb = r.n === 'Beatrice' ? sq(0.2) : {}; // Beatrice: frasco retangular de cantos arredondados (foto)
       // cl164 (dona: "ele não é quadrado, é fino"): sem profundidade no catálogo — 45 ml em 42,9 × ~73 mm de corpo dão ~20 mm (quadrado seriam ~105 ml)
       const Db = r.n === 'Beatrice' ? r1(W * 0.47) : D;
-      ms = [P('Frasco', W, Db, H * f, { ...sb, vol: true, rBot: 3, rTop: 1, ...o, _t: [0, f] }), P('Tampa', W * (r.t === 'frnt' ? 0.88 : 1), Db, H * (1 - f), { ...sb, rTop: r.t === 'frnr' ? W * 0.4 : 2, _t: [f, 1] })]; break; }
+      ms = [P('Frasco', W, Db, H * f, { ...sb, vol: true, rBot: 3, rTop: 1, ...o, _t: [0, f] }), P('Tampa', W * (r.t === 'frnt' ? 0.88 : 1), Db, H * (1 - f), { ...sb, rTop: r.t === 'frnr' ? W * 0.4 : 2, _t: [r.n === 'Julie' ? f + 5.5 / H : f, 1] /* cl186: no Julie o perfil da tampa pula o anel de 5,5 mm do desenho (cilindro simples, como nas fotos) */ })]; break; }
     case 'tube': {
       // Pág. 84: frasco PE sem solda; 29 × 109 mm no desenho de corpo com gargalo, sem tampa.
       // Junção a ~83% da altura, medida no desenho. Seção traseira não cotada: D=W provisório.

@@ -1,4 +1,6 @@
-# Atualização Claude — 23/11/2026, cl185
+# Atualização Claude — 23/11/2026, cl187
+
+- **cl187** — Julie (frasnaga), dona ("não tem essa volta no julie"): saiu o anel de 5,5 mm entre o frasco e a tampa. O frasco acaba no ombro (fração do desenho, sem os +5,5 mm) e o perfil da tampa pula o trecho do anel do desenho, ficando um cilindro simples apoiado direto no ombro, como nas fotos. A altura total foi mantida. (cl186 só carimbo de cache.)
 
 - **cl185** — Charlotte e Charlotte Rounded, dona ("a ponta do bico não é tão arredondada assim"): a ponta do trompete deixou de ser meia esfera; agora é chata, só com a borda arredondada (raio 0,35 do raio da ponta).
 
