@@ -1,4 +1,6 @@
-# Atualização Claude — 24/11/2026, cl229
+# Atualização Claude — 24/11/2026, cl230
+
+- **cl230** — Glosses, dona (Berlim Plus aberto: "parece que fica grosso para entrar"): haste e ponta agora sempre passam pela boca do gargalo. Nova `wandFit`: ponta no máximo 0,62 do Ø do gargalo e haste no máximo 0,4, aplicada sobre as medidas de `GLOSS_WAND`. No Berlim Plus, a haste foi de 7,7 para 4,7 mm e a ponta de 8,8 para 7,3 mm; Guggen e Oscar também afinaram a haste.
 
 - **cl226** — Berlim, pente fino (foto 1 medida): frasco quadrado de cristal com parede grossa; a cor ocupa ~60% da largura e aparece a faixa incolor dos lados. Nova opção `liqInset` (recuo do líquido em mm) em `liquidMeshes`; Berlim 0,16 W, Berlim Plus 0,13 W (catálogo p.95).
 - **cl227/228** — Haste e aplicador, dona ("haste tá proporcional?", Berlim Plus × catálogo): medi as páginas 94/95 em px, em múltiplos da largura da tampa. `GLOSS_WAND` ganhou um 4º valor opcional, a largura da ponta.
