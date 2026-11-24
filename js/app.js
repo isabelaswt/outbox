@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION, ADDITION, INTERSECTION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-23.cl230';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-23.cl231';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -707,7 +707,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-23.cl230';
+const BUILD = '2026-11-23.cl231';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -10689,7 +10689,7 @@ const PROD_FIX = { incomp_liquidos_labiais_oscar: { W: 18.6, H: 109.9, prof: 'in
 // cl208 (dona: "os aplicadores não estão na proporção certa de haste e aplicador, conferir por foto"): medidas nas fotos abertas do
 // site (900 px, frasco e haste no mesmo plano), em múltiplos da largura do frasco: [Ø da haste, comprimento da ponta flocada, folga até o
 // fundo]. A ponta tem ~1,35× o Ø da haste. Folga: a haste aparente das fotos pede o aplicador quase no fundo (1 mm), exceto o Berlim.
-const GLOSS_WAND = { Berlim: [0.21, 0.6, 2, 0.28], 'Berlim Plus': [0.36, 1.07, 1, 0.41] /* cl227 (dona: "haste tá proporcional?"; catálogo p.94/95 medido em px, × largura da tampa): Berlim haste 0,21 ponta 0,28×0,6; Plus haste grossa 0,36, ponta 0,41×1,07 e haste aparente ~3,9 W */, Guggen: [0.28, 0.76, 1.3], Moma: [0.25, 0.66, 1], 'Moma 2.0': [0.24, 0.63, 1], Oscar: [0.2, 0.57, 1],
+const GLOSS_WAND = { Berlim: [0.21, 0.6, 2, 0.28], 'Berlim Plus': [0.36, 0.65, 1, 0.41] /* cl231 (dona: "parece muito alto a esponjinha"): ponta ~2× a própria largura, como nas miniaturas #54/#56AL/#65 */ /* cl227 (dona: "haste tá proporcional?"; catálogo p.94/95 medido em px, × largura da tampa): Berlim haste 0,21 ponta 0,28×0,6; Plus haste grossa 0,36, ponta 0,41×1,07 e haste aparente ~3,9 W */, Guggen: [0.28, 0.76, 1.3], Moma: [0.25, 0.66, 1], 'Moma 2.0': [0.24, 0.63, 1], Oscar: [0.2, 0.57, 1],
   Timeless: [0.27, 0.63, 1], Silhouette: [0.22, 0.73, 1] };
 // cl230 (dona, Berlim Plus: "parece que fica grosso para entrar"): haste e ponta têm de passar pela boca do gargalo; a ponta flocada
 // no máximo ~0,62 do Ø do gargalo (o furo útil) e a haste ~0,4, qualquer que seja a medida tirada da foto

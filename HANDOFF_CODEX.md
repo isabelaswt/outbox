@@ -1,4 +1,6 @@
-# Atualização Claude — 24/11/2026, cl230
+# Atualização Claude — 24/11/2026, cl231
+
+- **cl231** — Berlim Plus, dona ("parece muito alto a esponjinha da haste"): ponta flocada 1,07 → 0,65 W (~14 mm, cerca de 2× a própria largura), como nas miniaturas dos aplicadores #54/#56AL/#65 do catálogo. A foto principal da p. 95 exagera a ponta.
 
 - **cl230** — Glosses, dona (Berlim Plus aberto: "parece que fica grosso para entrar"): haste e ponta agora sempre passam pela boca do gargalo. Nova `wandFit`: ponta no máximo 0,62 do Ø do gargalo e haste no máximo 0,4, aplicada sobre as medidas de `GLOSS_WAND`. No Berlim Plus, a haste foi de 7,7 para 4,7 mm e a ponta de 8,8 para 7,3 mm; Guggen e Oscar também afinaram a haste.
 

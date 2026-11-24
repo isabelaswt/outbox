@@ -218,6 +218,7 @@ Pendências conhecidas (precisam de dado ou de decisão; não invente):
   - Berlim Plus (entrada própria; antes herdava do Berlim): haste 0,36 W (era 0,18), ponta 0,41 × 1,07 W (era 0,24 × 0,63), folga 1 mm até o fundo. A haste aparente fica em 3,3 W, o limite da profundidade do frasco.
   - Berlim: haste 0,21 W, ponta 0,28 × 0,6 W, folga até o fundo 9,6 → 2 mm. A haste aparente passa de 2,5 para 2,86 W (foto: 2,9 W).
 - **cl230** — Glosses, dona (Berlim Plus aberto: "parece que fica grosso para entrar"): haste e ponta agora sempre passam pela boca do gargalo. Nova `wandFit`: ponta no máximo 0,62 do Ø do gargalo e haste no máximo 0,4, aplicada sobre as medidas de `GLOSS_WAND`. No Berlim Plus, a haste foi de 7,7 para 4,7 mm e a ponta de 8,8 para 7,3 mm; Guggen e Oscar também afinaram a haste.
+- **cl231** — Berlim Plus, dona ("parece muito alto a esponjinha da haste"): ponta flocada 1,07 → 0,65 W (~14 mm, cerca de 2× a própria largura), como nas miniaturas dos aplicadores #54/#56AL/#65 do catálogo. A foto principal da p. 95 exagera a ponta.
   - No Abrir a tampa fica em pé ao lado da bala, com o fecho para cima. Novo modo `capa: 'pe'`: sai sem girar. Antes ficava deitada.
   - Long, Long Abaulada e Long Lipview: a bala sobe `lb * 0,85` (como Ella e Squared). Antes subia só 41/320 da tampa (Long) ou 0,45 (Lipview) e mal aparecia; nas fotos ela sai ~20% da altura do batom aberto.
   - Potes revisados sem divergências a corrigir. As peneiras pretas das fotos são acessório opcional.
