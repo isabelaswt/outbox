@@ -19,7 +19,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { Brush, Evaluator, SUBTRACTION, ADDITION, INTERSECTION } from 'three-bvh-csg';
 import { icon } from './icons.js?v=2026-11-16.incom12';
-import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-23.cl264';
+import { INCOM_CAPS, INCOM_PRODUCTS, INCOM_CAP_PROF, INCOM_PROD_PROF, INCOM_TRAYS } from './incom.js?v=2026-11-23.cl266';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -707,7 +707,7 @@ const BEIGE = '#e8dcc6', PINK = BEIGE, CREAM = BEIGE;
 // de cada corpo e tampa foi medido nos OBJs (tools/perfis.py) e vira um
 // módulo "perfil" com os mesmos sliders, volumetria e troca dos demais.
 // Carimbo de versão: aparece no topo; se não bater com o último envio, é cache.
-const BUILD = '2026-11-23.cl264';
+const BUILD = '2026-11-23.cl266';
 document.getElementById('build').textContent = 'versão ' + BUILD;
 let PERFIS = {};
 try { PERFIS = await (await fetch('draft/perfis.json?v=' + BUILD)).json(); } catch { PERFIS = {}; }
@@ -11042,9 +11042,11 @@ function incomProduct(r) {
       // Timeless (fotos do site): seção quadrada, fundo de cristal grosso e reto; o líquido termina em piso plano de
       // cantos curtos — a concha redonda num frasco quadrado deixava o fundo do líquido recortado
       if (!masc && r.t === 'glosssq') gl.fundoR = r1(Math.min(W, D) * 0.08);
+      // cl265 (dona, Oscar e Oscar All Crystal: "fundo low poly"): a concha meia-esfera saía facetada (bicos no contorno e uma linha onde começava); pela foto o líquido termina num piso reto de cantos arredondados
+      if (!masc && /^Oscar/.test(r.n)) gl.fundoR = r1(Math.min(W, D) * 0.15);
       // cl226 (pente fino, foto 1 do Berlim medida): frasco quadrado de cristal com parede grossa; a cor ocupa ~60% da largura e a faixa incolor aparece dos lados
       // cl250 (fotos do Timeless/Tate): cristal de parede e fundo grossos — a cor fica recuada e o fundo incolor é alto
-      if (!masc && /^(Timeless|Timeless Plus|Tate)$/.test(r.n)) Object.assign(gl, { liqInset: r1(W * (r.n === 'Tate' ? 0.22 : 0.18)) /* o cristal amplia o líquido como lente: recuo ~1,4× o medido na foto */, fundo: r1(W * 0.26) });
+      if (!masc && /^(Timeless|Timeless Plus|Tate)$/.test(r.n)) Object.assign(gl, { ...(r.n === 'Tate' ? { fundoR: r1(W * 0.2) } : {}), liqInset: r1(W * (r.n === 'Tate' ? 0.22 : 0.18)) /* o cristal amplia o líquido como lente: recuo ~1,4× o medido na foto */, fundo: r1(W * (r.n === 'Tate' ? 0.1 : 0.26)) /* cl266 (dona, Tate: "base mais arredondada, produto desce mais"): fundo incolor 7 → 2,7 mm */ });
       if (!masc && /^Berlim( Plus)?$/.test(r.n)) gl.liqInset = r1(W * (r.n === 'Berlim' ? 0.16 : 0.13)); // Plus (catálogo p.95): cor 128/177 px da largura
       if (!masc && /^(Guggen|Guggen Roll On)$/.test(r.n)) gl.incomSmileFloor = true;
       // Charm: a argola do topo não é parte do giro (virava um botão torneado); a tampa termina reta onde ela começa.
@@ -11095,7 +11097,7 @@ function incomProduct(r) {
       // cl248 (dona: "faltou rosca interna da tampa"; foto): no All Crystal a rosca fêmea é cortada na própria tampa de cristal, que é maciça
       // em cima (~45%) e tem o furo roscado do Ø do gargalo embaixo — a rosca aparece pelo cristal
       if (ac) Object.assign(cap, { femaleThread: { W: neck.W, h: neck.h, pitch: neck.pitch, turns: neck.turns, threadD: neck.threadD, ringH: 0 }, ocoWall: r2((W - nw) / 2 - 0.2), ocoTop: r1(cap.h * 0.45) });
-      ms = [P('Frasco', W, D, H * f, { ...s0, vol: true, rBot: masc ? 1.5 : 2.4, ...gl, ...(r.n === 'Silhouette' ? { perfilReto: true } : {}), ...(ac ? { rLivre: true, rTop: 2.2 } /* cl248 (foto): ombro arredondado até o gargalo */ : {}),
+      ms = [P('Frasco', W, D, H * f, { ...s0, vol: true, rBot: masc ? 1.5 : 2.4, ...gl, ...(r.n === 'Silhouette' ? { perfilReto: true } : {}), ...(ac ? { rLivre: true, rTop: 2.2 } /* cl248 (foto): ombro arredondado até o gargalo */ : {}), ...(r.n === 'Tate' ? { rLivre: true, rTop: 0.6, rBot: r1(W * 0.2) } /* cl266: pé bem arredondado (5,4 mm) */ : {}),
           wandMouth: Math.max(0.5, Math.min(neckBore(neck), nw / 2 - neck.threadD - 1.2)), _t: [0, f] }), neck,
         M('tampaGloss', { name: masc ? 'Inserto roscado com haste e escova' : 'Inserto roscado com haste e aplicador',
           W: ac ? r1(nw + 1.4) : insertW, D: ac ? r1(nw + 1.4) : insertW, h: r1(nh + 1.2), wandInsert: { W: neck.W, h: neck.h, pitch: neck.pitch, turns: neck.turns, threadD: neck.threadD, ringH: 0 }, pescD: r1(Math.min(3, nw * 0.3)),

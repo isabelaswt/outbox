@@ -260,6 +260,9 @@ Pendências conhecidas (precisam de dado ou de decisão; não invente):
   - Inserto e gargalo limitados à lateral estreita (inserto 10,8 mm, gargalo 8,6 mm). O inserto redondo de 19,7 mm vazava pela parede.
   - Testado e descartado no caminho: hexágono de laterais em ponta (`hexLat`, cl260).
 - **cl264** — Tate (e todos com `liqInset`: Berlim, Berlim Plus, Timeless, Timeless Plus), dona ("tem um plano errado dentro do frasco"): o recuo grande do líquido era feito pela normal. No ombro arredondado de cima a normal aponta para cima, então os pontos desciam em vez de entrar e deixavam um plano largo no topo do líquido. Agora o recuo extra é uma escala horizontal (x/z) do interior: paredes retas e topo limpo.
+- **cl265/266** — Ajustes pedidos na aprovação:
+  - Oscar, Oscar All Crystal e Oscar Charm ("fundo low poly"): o líquido terminava numa concha meia-esfera (`fundoR` = raio do frasco), que saía facetada, com bicos no contorno e uma linha onde começava. Agora é piso reto de cantos arredondados (`fundoR` 0,15 W), como na foto.
+  - Tate ("base mais arredondada, produto desce mais"): pé do frasco com raio 0,2 W (5,4 mm; `rLivre`), fundo incolor de 7 → 2,7 mm e piso do líquido de cantos 0,2 W.
   - No Abrir a tampa fica em pé ao lado da bala, com o fecho para cima. Novo modo `capa: 'pe'`: sai sem girar. Antes ficava deitada.
   - Long, Long Abaulada e Long Lipview: a bala sobe `lb * 0,85` (como Ella e Squared). Antes subia só 41/320 da tampa (Long) ou 0,45 (Lipview) e mal aparecia; nas fotos ela sai ~20% da altura do batom aberto.
   - Potes revisados sem divergências a corrigir. As peneiras pretas das fotos são acessório opcional.

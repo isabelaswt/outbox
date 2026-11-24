@@ -1,4 +1,8 @@
-# Atualização Claude — 24/11/2026, cl264
+# Atualização Claude — 24/11/2026, cl266
+
+- **cl265/266** — Ajustes pedidos na aprovação:
+  - Oscar, Oscar All Crystal e Oscar Charm ("fundo low poly"): o líquido terminava numa concha meia-esfera (`fundoR` = raio do frasco), que saía facetada, com bicos no contorno e uma linha onde começava. Agora é piso reto de cantos arredondados (`fundoR` 0,15 W), como na foto.
+  - Tate ("base mais arredondada, produto desce mais"): pé do frasco com raio 0,2 W (5,4 mm; `rLivre`), fundo incolor de 7 → 2,7 mm e piso do líquido de cantos 0,2 W.
 
 - **cl264** — Tate (e todos com `liqInset`: Berlim, Berlim Plus, Timeless, Timeless Plus), dona ("tem um plano errado dentro do frasco"): o recuo grande do líquido era feito pela normal. No ombro arredondado de cima a normal aponta para cima, então os pontos desciam em vez de entrar e deixavam um plano largo no topo do líquido. Agora o recuo extra é uma escala horizontal (x/z) do interior: paredes retas e topo limpo.
 
